@@ -1,7 +1,6 @@
-import { AntDesign } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, useColorScheme, ViewStyle } from 'react-native';
-import { Colors } from '../../constants/Colors';
+import { StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
 
 interface GoogleButtonProps {
   onPress?: () => void;
@@ -9,12 +8,14 @@ interface GoogleButtonProps {
 }
 
 export default function GoogleButton({ onPress, style }: GoogleButtonProps) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
   return (
-    <TouchableOpacity style={[styles.googleButton, { backgroundColor: '1e90ff' }, style]} onPress={onPress} activeOpacity={0.8}>
-      <Text style={styles.googleButtonText}>Login with Google</Text>
-      <AntDesign name="google" size={24} color="#fff" style={styles.googleIcon} />
+    <TouchableOpacity 
+      style={[styles.googleButton, style]} 
+      onPress={onPress} 
+      activeOpacity={0.8}
+    >
+      <MaterialCommunityIcons name="google" size={20} color="#4285F4" style={styles.googleIcon} />
+      <Text style={styles.googleButtonText}>Continue with Google</Text>
     </TouchableOpacity>
   );
 }
@@ -23,21 +24,31 @@ const styles = StyleSheet.create({
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
     width: '100%',
-    justifyContent: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   googleButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#1e90ff',
+    fontWeight: '500',
     fontSize: 16,
-    flex: 1,
-    textAlign: 'center',
+    marginLeft: 12,
   },
   googleIcon: {
-    marginLeft: 8,
+    marginRight: 8,
   },
 }); 

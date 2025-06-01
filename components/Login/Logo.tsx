@@ -1,32 +1,25 @@
 import React from 'react';
-import { Image, StyleSheet, Text, useColorScheme, View } from 'react-native';
-import { Colors } from '../../constants/Colors';
+import { Image, StyleSheet, View } from 'react-native';
 
 export default function Logo() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
   return (
-    <View style={styles.header}>
-      <Image source={require('../../assets/images/Iconpiggybank.png')} style={styles.logo} />
-      <Text style={[styles.appName, { color: theme.tint }]}>Seima</Text>
+    <View style={styles.logoContainer}>
+      <Image source={require('../../assets/images/group.png')} style={styles.logoImage} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
+  logoContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 48,
+    marginTop: 8,
   },
-  logo: {
-    width: 48,
-    height: 48,
-    marginBottom: 8,
+  logoImage: {
+    width: 160,
+    height: 160,
     resizeMode: 'contain',
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    letterSpacing: 1,
   },
 }); 
