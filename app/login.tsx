@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { login } from '../api/auth';
 import GoogleButton from '../components/Login/GoogleButton';
 import Logo from '../components/Login/Logo';
 
@@ -23,8 +24,26 @@ export default function LoginScreen() {
   const cardTranslateY = cardAnim.interpolate({ inputRange: [0, 1], outputRange: [60, 0] });
   const cardOpacity = cardAnim;
 
-  const handleGoogleLogin = () => {
-    router.push('/register');
+  const handleGoogleLogin = async () => {
+    try {
+      const response = await login();
+      
+      if (!response.success) {
+        if (response.status === 400) {
+          // Navigate to Finance screen for 400 response
+          router.push('/FinanceScreen');
+        } else if (response.status === 401) {
+          // Navigate to Register screen for 401 response
+          router.push('/register');
+        }
+        return;
+      }
+      
+      // Handle successful login here
+      console.log('Login successful');
+    } catch (err) {
+      console.error('Login error:', err);
+    }
   };
 
   return (
