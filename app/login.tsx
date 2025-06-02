@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import GoogleButton from '../components/Login/GoogleButton';
@@ -6,6 +7,8 @@ import Logo from '../components/Login/Logo';
 const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
+  const router = useRouter();
+
   // Card animation
   const cardAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -21,7 +24,7 @@ export default function LoginScreen() {
   const cardOpacity = cardAnim;
 
   const handleGoogleLogin = () => {
-    alert('Google login pressed - integrate with your auth provider');
+    router.push('/register');
   };
 
   return (
