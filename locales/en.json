@@ -1,0 +1,14 @@
+{
+  "languageSettings": "Language Settings",
+  "selectLanguage": "Select your preferred language.",
+  "darkMode": "Dark Mode",
+  "darkModeDesc": "Toggle dark mode for a better viewing experience at night.",
+  "enableDarkMode": "Enable Dark Mode",
+  "updateProfile": "Update Profile",
+  "dateOfBirth": "Date of Birth",
+  "phone": "Phone",
+  "gender": "Gender",
+  "email": "Email",
+  "female": "Female",
+  "male": "Male"
+} 
