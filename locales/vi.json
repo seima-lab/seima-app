@@ -1,0 +1,14 @@
+{
+  "languageSettings": "Cài đặt ngôn ngữ",
+  "selectLanguage": "Chọn ngôn ngữ bạn muốn.",
+  "darkMode": "Chế độ tối",
+  "darkModeDesc": "Bật chế độ tối để trải nghiệm tốt hơn vào ban đêm.",
+  "enableDarkMode": "Bật chế độ tối",
+  "updateProfile": "Cập nhật hồ sơ",
+  "dateOfBirth": "Ngày sinh",
+  "phone": "Số điện thoại",
+  "gender": "Giới tính",
+  "email": "Email",
+  "female": "Nữ",
+  "male": "Nam"
+} 

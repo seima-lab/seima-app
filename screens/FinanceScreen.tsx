@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import {
   Dimensions,
+  Image,
+  Modal,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -8,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, G, Svg } from 'react-native-svg';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -31,9 +34,21 @@ interface ButtonProps {
   iconColor?: string;
 }
 
+const PERIODS = [
+  'This Day',
+  'This Week',
+  'This Month',
+  '1 Quarter',
+  'This Year'
+];
+
 const FinanceScreen = () => {
+  const insets = useSafeAreaInsets();
   const [selectedPeriod, setSelectedPeriod] = useState('This Month');
+  const [isPeriodModalVisible, setIsPeriodModalVisible] = useState(false);
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  const [activeTab, setActiveTab] = useState('Overview');
+  const [notificationCount, setNotificationCount] = useState(3); // Giả lập số thông báo
 
   // Dữ liệu mẫu
   const userData = {
@@ -128,10 +143,81 @@ const FinanceScreen = () => {
   );
 
   const BottomTabButton = ({ icon, label, isActive = false }: ButtonProps) => (
-    <TouchableOpacity style={styles.bottomTabButton}>
-      <Text style={[styles.bottomTabIcon, isActive && styles.activeBottomTabIcon]}>{icon}</Text>
-      <Text style={[styles.bottomTabLabel, isActive && styles.activeBottomTabLabel]}>{label}</Text>
+    <TouchableOpacity 
+      style={styles.bottomTabButton}
+      onPress={() => setActiveTab(label)}
+    >
+      <Icon2 
+        name={icon} 
+        size={20} 
+        color={isActive ? '#1e90ff' : '#999'} 
+        style={styles.bottomTabIcon}
+      />
+      <Text style={[styles.bottomTabLabel, isActive && styles.activeBottomTabLabel]}>
+        {label}
+      </Text>
     </TouchableOpacity>
+  );
+
+  const PeriodSelector = () => (
+    <View>
+      <TouchableOpacity 
+        style={styles.periodSelector}
+        onPress={() => setIsPeriodModalVisible(true)}
+      >
+        <Text style={styles.periodText}>{selectedPeriod}</Text>
+        <Text style={styles.dropdownIcon}>▼</Text>
+      </TouchableOpacity>
+
+      <Modal
+        visible={isPeriodModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsPeriodModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsPeriodModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            {PERIODS.map((period) => (
+              <TouchableOpacity
+                key={period}
+                style={[
+                  styles.periodOption,
+                  selectedPeriod === period && styles.selectedPeriodOption
+                ]}
+                onPress={() => {
+                  setSelectedPeriod(period);
+                  setIsPeriodModalVisible(false);
+                }}
+              >
+                <Text style={[
+                  styles.periodOptionText,
+                  selectedPeriod === period && styles.selectedPeriodOptionText
+                ]}>
+                  {period}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+
+  const NotificationIcon = () => (
+    <View style={styles.headerIcon}>
+      <Icon name="notifications" size={24} color="white" />
+      {notificationCount > 0 && (
+        <View style={styles.notificationBadge}>
+          <Text style={styles.notificationText}>
+            {notificationCount > 99 ? '99+' : notificationCount}
+          </Text>
+        </View>
+      )}
+    </View>
   );
 
   return (
@@ -143,7 +229,10 @@ const FinanceScreen = () => {
         <View style={styles.headerTop}>
           <View style={styles.profileSection}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>👤</Text>
+              <Image 
+                source={require('../assets/images/Unknown.jpg')} 
+                style={styles.avatarImage}
+              />
             </View>
             <View>
               <Text style={styles.greeting}>Hello!</Text>
@@ -154,8 +243,8 @@ const FinanceScreen = () => {
             <TouchableOpacity style={styles.headerIcon}>
               <Icon name="refresh" size={24} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Icon name="notifications" size={24} color="white" />
+            <TouchableOpacity>
+              <NotificationIcon />
             </TouchableOpacity>
           </View>
         </View>
@@ -177,15 +266,16 @@ const FinanceScreen = () => {
         </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Income and Expenses Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Income and Expenses</Text>
-            <TouchableOpacity style={styles.periodSelector}>
-              <Text style={styles.periodText}>{selectedPeriod}</Text>
-              <Text style={styles.dropdownIcon}>▼</Text>
-            </TouchableOpacity>
+            <PeriodSelector />
           </View>
 
           {/* Bar Chart */}
@@ -242,24 +332,13 @@ const FinanceScreen = () => {
             <Icon2 name="robot" size={24} color="white" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <Icon name="wallet" size={24} color="white" />
+            <Icon name="group" size={24} color="white" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <Icon name="settings" size={24} color="white" />
+            <Icon2 name="bullseye" size={24} color="white" />
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNavigation}>
-        <BottomTabButton icon="🏠" label="Overview" isActive={true} />
-        <BottomTabButton icon="💳" label="Wallet" />
-        <TouchableOpacity style={styles.addButton}>
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
-        <BottomTabButton icon="📊" label="Report" />
-        <BottomTabButton icon="⚙️" label="Setting" />
-      </View>
     </View>
   );
 };
@@ -295,9 +374,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
+    overflow: 'hidden',
   },
-  avatarText: {
-    fontSize: 24,
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   greeting: {
     color: 'white',
@@ -309,11 +391,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  headerIcons: {
+  headerIcons: {  
     flexDirection: 'row',
   },
   headerIcon: {
     marginLeft: 15,
+    position: 'relative',
   },
   headerIconText: {
     color: 'white',
@@ -375,6 +458,35 @@ const styles = StyleSheet.create({
   dropdownIcon: {
     fontSize: 10,
     color: '#666',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 10,
+    width: '80%',
+    maxWidth: 300,
+  },
+  periodOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+  },
+  selectedPeriodOption: {
+    backgroundColor: '#E8F0FE',
+  },
+  periodOptionText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  selectedPeriodOptionText: {
+    color: '#1e90ff',
+    fontWeight: '500',
   },
   barChartContainer: {
     flexDirection: 'row',
@@ -503,49 +615,39 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: 'white',
   },
-  bottomNavigation: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
   bottomTabButton: {
     alignItems: 'center',
-    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    minWidth: 60,
   },
   bottomTabIcon: {
-    fontSize: 20,
-    color: '#999',
     marginBottom: 4,
-  },
-  activeBottomTabIcon: {
-    color: '#4285F4',
   },
   bottomTabLabel: {
     fontSize: 10,
     color: '#999',
+    fontWeight: '500',
   },
   activeBottomTabLabel: {
-    color: '#4285F4',
-    fontWeight: '600',
+    color: '#1e90ff',
   },
-  addButton: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#1e90ff',
-    borderRadius: 25,
+  notificationBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 10,
+    paddingHorizontal: 4,
   },
-  addButtonText: {
+  notificationText: {
     color: 'white',
-    fontSize: 24,
-    fontWeight: '300',
+    fontSize: 10,
+    fontWeight: '600',
   },
 });
 

@@ -1,7 +1,14 @@
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { LanguageProvider } from '../contexts/LanguageContext';
+import MainTabScreen from '../screens/MainTabScreen';
+import LoginScreen from '../screens/login';
+import RegisterScreen from '../screens/register';
+import UpdateProfileScreen from '../screens/update-profile';
+
+const Stack = createNativeStackNavigator();
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -22,10 +29,19 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="register" options={{ headerShown: false }} />
-    </Stack>
+    <LanguageProvider>
+      <Stack.Navigator 
+        initialRouteName="Login"
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="MainTab" component={MainTabScreen} />
+        <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
+      </Stack.Navigator>
+    </LanguageProvider>
   );
 } 

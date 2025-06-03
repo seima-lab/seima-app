@@ -1,15 +1,15 @@
-import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { login } from '../api/auth';
 import GoogleButton from '../components/Login/GoogleButton';
 import Logo from '../components/Login/Logo';
+import { useNavigationService } from '../navigation/NavigationService';
 
 const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
-  const router = useRouter();
-
+  const navigation = useNavigationService();
+  
   // Card animation
   const cardAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -26,23 +26,27 @@ export default function LoginScreen() {
 
   const handleGoogleLogin = async () => {
     try {
+      console.log('LoginScreen - handleGoogleLogin called');
       const response = await login();
+      console.log('LoginScreen - login response:', response);
       
       if (!response.success) {
+        console.log('LoginScreen - login not successful, status:', response.status);
         if (response.status === 400) {
-          // Navigate to Finance screen for 400 response
-          router.push('/FinanceScreen');
+          console.log('LoginScreen - navigating to UpdateProfile');
+          navigation.replace('MainTab');
         } else if (response.status === 401) {
-          // Navigate to Register screen for 401 response
-          router.push('/register');
+          console.log('LoginScreen - navigating to Register');
+          navigation.replace('Register');
         }
         return;
       }
       
       // Handle successful login here
-      console.log('Login successful');
+      console.log('LoginScreen - login successful');
+      navigation.replace('FinanceScreen');
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('LoginScreen - login error:', err);
     }
   };
 

@@ -1,7 +1,6 @@
-
+import FinanceScreen from '@/screens/FinanceScreen';
 import React from 'react';
-import LoginScreen from './login';
 
 export default function Index() {
-  return <LoginScreen />;
+  return <FinanceScreen />;
 } 
