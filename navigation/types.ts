@@ -1,6 +1,16 @@
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
+  ForgotPassword: undefined;
+  OTP: {
+    email?: string;
+    phoneNumber?: string;
+    type?: 'register' | 'forgot-password';
+  };
+  ResetPassword: {
+    email?: string;
+  };
+  ChangePassword: undefined;
   FinanceScreen: undefined;
   UpdateProfile: undefined;
   SettingScreen: undefined;

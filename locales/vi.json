@@ -135,7 +135,12 @@
     "enterFullName": "Nhập họ và tên",
     "enterEmail": "Nhập email của bạn",
     "phoneNumber": "Số điện thoại",
-    "enterPhone": "Nhập số điện thoại"
+    "enterPhone": "Nhập số điện thoại",
+    "enterPassword": "Nhập mật khẩu của bạn",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "enterNewPassword": "Nhập mật khẩu mới",
+    "confirmNewPassword": "Xác nhận mật khẩu mới",
+    "enterCurrentPassword": "Nhập mật khẩu hiện tại"
   },
   
   "validation": {
@@ -143,8 +148,98 @@
     "invalidEmail": "Email không hợp lệ.",
     "invalidPhone": "Số điện thoại không hợp lệ.",
     "selectGender": "Vui lòng chọn giới tính.",
-    "invalidDate": "Ngày không hợp lệ."
+    "invalidDate": "Ngày không hợp lệ.",
+    "emailRequired": "Vui lòng nhập email.",
+    "phoneRequired": "Vui lòng nhập số điện thoại.",
+    "passwordRequired": "Vui lòng nhập mật khẩu.",
+    "passwordTooShort": "Mật khẩu phải có ít nhất 6 ký tự.",
+    "confirmPasswordRequired": "Vui lòng xác nhận mật khẩu.",
+    "passwordMismatch": "Mật khẩu không khớp.",
+    "currentPasswordRequired": "Vui lòng nhập mật khẩu hiện tại.",
+    "samePassword": "Mật khẩu mới phải khác với mật khẩu hiện tại."
   },
+  
+  "login": {
+    "signInTitle": "Đăng nhập vào tài khoản",
+    "password": "Mật khẩu",
+    "rememberMe": "Ghi nhớ đăng nhập",
+    "signIn": "Đăng nhập",
+    "forgotPassword": "Quên mật khẩu?",
+    "orContinueWith": "hoặc tiếp tục với",
+    "continueWithGoogle": "Tiếp tục với Google",
+    "noAccount": "Chưa có tài khoản?",
+    "signUp": "Đăng ký",
+    "termsText": "Bằng cách tiếp tục, bạn đồng ý với Điều khoản Dịch vụ và Chính sách Quyền riêng tư của chúng tôi",
+    "loginFailed": "Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập và thử lại."
+  },
+  
+  "register": {
+    "createAccount": "Tạo tài khoản",
+    "subtitle": "Tham gia Seima để quản lý tài chính dễ dàng.",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "selectDatePlaceholder": "Chọn ngày sinh của bạn",
+    "selectDateOfBirth": "Vui lòng chọn ngày sinh.",
+    "register": "Đăng ký",
+    "registerSuccess": "Tài khoản đã được tạo thành công! Vui lòng xác minh tài khoản.",
+    "registerFailed": "Đăng ký thất bại. Vui lòng thử lại.",
+    "haveAccount": "Đã có tài khoản?"
+  },
+  
+  "otp": {
+    "verifyAccount": "Xác minh tài khoản",
+    "verifyReset": "Xác minh đặt lại mật khẩu",
+    "sentTo": "Chúng tôi đã gửi mã xác minh đến",
+    "sentToReset": "Chúng tôi đã gửi mã đặt lại mật khẩu đến",
+    "enterComplete": "Vui lòng nhập đầy đủ mã 6 chữ số.",
+    "verify": "Xác minh",
+    "verifySuccess": "Xác minh tài khoản thành công! Bạn có thể đăng nhập ngay.",
+    "verifySuccessReset": "Xác minh mã thành công! Bạn có thể đặt lại mật khẩu ngay.",
+    "verifyFailed": "Xác minh thất bại. Vui lòng kiểm tra mã và thử lại.",
+    "resendCode": "Gửi lại mã",
+    "resendSuccess": "Mã xác minh đã được gửi lại.",
+    "resendFailed": "Gửi lại mã thất bại. Vui lòng thử lại.",
+    "resendIn": "Gửi lại mã sau",
+    "helpText": "Không nhận được mã? Kiểm tra thư mục spam hoặc liên hệ hỗ trợ."
+  },
+  
+  "forgotPassword": {
+    "title": "Quên mật khẩu",
+    "subtitle": "Nhập địa chỉ email và chúng tôi sẽ gửi mã xác minh để đặt lại mật khẩu.",
+    "sendOTP": "Gửi mã xác minh",
+    "otpSent": "Mã xác minh đã được gửi đến email của bạn.",
+    "sendFailed": "Gửi mã xác minh thất bại. Vui lòng thử lại.",
+    "rememberPassword": "Nhớ lại mật khẩu?"
+  },
+  
+  "resetPassword": {
+    "title": "Đặt lại mật khẩu",
+    "subtitle": "Tạo mật khẩu mới cho tài khoản của bạn.",
+    "newPassword": "Mật khẩu mới",
+    "reset": "Đặt lại mật khẩu",
+    "success": "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập với mật khẩu mới.",
+    "failed": "Đặt lại mật khẩu thất bại. Vui lòng thử lại.",
+    "requirements": "Yêu cầu mật khẩu:",
+    "minLength": "Ít nhất 6 ký tự",
+    "recommendation": "Sử dụng kết hợp chữ cái, số và ký hiệu",
+    "backToLogin": "Về"
+  },
+  
+  "changePassword": {
+    "title": "Đổi mật khẩu",
+    "subtitle": "Cập nhật mật khẩu tài khoản để bảo mật tốt hơn.",
+    "currentPassword": "Mật khẩu hiện tại",
+    "newPassword": "Mật khẩu mới",
+    "change": "Đổi mật khẩu",
+    "success": "Đổi mật khẩu thành công!",
+    "failed": "Đổi mật khẩu thất bại. Vui lòng thử lại.",
+    "requirements": "Yêu cầu mật khẩu:",
+    "minLength": "Ít nhất 6 ký tự",
+    "differentFromCurrent": "Phải khác với mật khẩu hiện tại",
+    "recommendation": "Sử dụng kết hợp chữ cái, số và ký hiệu",
+    "securityTip": "Để bảo mật, chúng tôi khuyến nghị sử dụng mật khẩu mạnh và thay đổi thường xuyên."
+  },
+  
+  "changePasswordBtn": "Đổi mật khẩu",
   
   "permissions": {
     "camera": "Camera",
