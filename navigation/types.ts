@@ -5,6 +5,18 @@ export type RootStackParamList = {
   UpdateProfile: undefined;
   SettingScreen: undefined;
   MainTab: undefined;
+  AddExpenseScreen: undefined;
+  EditCategoryScreen: { type: 'expense' | 'income' };
+  AddEditCategoryScreen: { 
+    mode: 'add' | 'edit';
+    type: 'expense' | 'income';
+    category?: {
+      key: string;
+      label: string;
+      icon: string;
+      color: string;
+    };
+  };
 };
 
 export type ScreenNames = keyof RootStackParamList; 

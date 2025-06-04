@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Image,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, G, Svg } from 'react-native-svg';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import '../i18n';
+import { useNavigationService } from '../navigation/NavigationService';
 const { width } = Dimensions.get('window');
 
 // Type definitions
@@ -34,17 +37,11 @@ interface ButtonProps {
   iconColor?: string;
 }
 
-const PERIODS = [
-  'This Day',
-  'This Week',
-  'This Month',
-  '1 Quarter',
-  'This Year'
-];
-
 const FinanceScreen = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [selectedPeriod, setSelectedPeriod] = useState('This Month');
+  const navigation = useNavigationService();
+  const [selectedPeriod, setSelectedPeriod] = useState(t('finance.periods.thisMonth'));
   const [isPeriodModalVisible, setIsPeriodModalVisible] = useState(false);
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [activeTab, setActiveTab] = useState('Overview');
@@ -220,6 +217,14 @@ const FinanceScreen = () => {
     </View>
   );
 
+  const PERIODS = [
+    t('finance.periods.thisDay'),
+    t('finance.periods.thisWeek'),
+    t('finance.periods.thisMonth'),
+    t('finance.periods.quarter'),
+    t('finance.periods.thisYear')
+  ];
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#4285F4" />
@@ -235,7 +240,7 @@ const FinanceScreen = () => {
               />
             </View>
             <View>
-              <Text style={styles.greeting}>Hello!</Text>
+              <Text style={styles.greeting}>{t('finance.hello')}</Text>
               <Text style={styles.userName}>{userData.name}</Text>
             </View>
           </View>
@@ -250,10 +255,10 @@ const FinanceScreen = () => {
         </View>
         
         <View style={styles.balanceSection}>
-          <Text style={styles.balanceLabel}>Total Balance</Text>
+          <Text style={styles.balanceLabel}>{t('finance.totalBalance')}</Text>
           <View style={styles.balanceRow}>
             <Text style={[styles.balanceAmount, { minWidth: 200 }]}>
-              {isBalanceVisible ? `${userData.balance} đ` : '********'}
+              {isBalanceVisible ? `${userData.balance} ${t('currency')}` : '********'}
             </Text>
             <TouchableOpacity onPress={() => setIsBalanceVisible(!isBalanceVisible)}>
               <Icon 
@@ -274,7 +279,7 @@ const FinanceScreen = () => {
         {/* Income and Expenses Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Income and Expenses</Text>
+            <Text style={styles.sectionTitle}>{t('finance.incomeAndExpenses')}</Text>
             <PeriodSelector />
           </View>
 
@@ -282,26 +287,26 @@ const FinanceScreen = () => {
           <View style={styles.barChartContainer}>
             <View style={styles.barChart}>
               <View style={styles.incomeBar}>
-                <Text style={styles.barLabel}>Inco</Text>
+                <Text style={styles.barLabel}>{t('finance.incomeShort')}</Text>
               </View>
               <View style={styles.expenseBar}>
-                <Text style={styles.barLabel}>Exp</Text>
+                <Text style={styles.barLabel}>{t('finance.expenseShort')}</Text>
               </View>
-              <Text style={styles.differenceLabel}>Difference</Text>
+              <Text style={styles.differenceLabel}>{t('finance.difference')}</Text>
             </View>
             
             <View style={styles.amountsList}>
               <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>Income</Text>
-                <Text style={styles.incomeAmount}>{userData.income} đ</Text>
+                <Text style={styles.amountLabel}>{t('incomeLabel')}</Text>
+                <Text style={styles.incomeAmount}>{userData.income} {t('currency')}</Text>
               </View>
               <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>Exp</Text>
-                <Text style={styles.expenseAmount}>{userData.expenses} đ</Text>
+                <Text style={styles.amountLabel}>{t('finance.expenseShort')}</Text>
+                <Text style={styles.expenseAmount}>{userData.expenses} {t('currency')}</Text>
               </View>
               <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>Difference</Text>
-                <Text style={styles.differenceAmount}>{userData.difference} đ</Text>
+                <Text style={styles.amountLabel}>{t('finance.difference')}</Text>
+                <Text style={styles.differenceAmount}>{userData.difference} {t('currency')}</Text>
               </View>
             </View>
           </View>
@@ -339,6 +344,7 @@ const FinanceScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
     </View>
   );
 };
@@ -615,6 +621,27 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: 'white',
   },
+  bottomNavigation: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
+  },
   bottomTabButton: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -631,6 +658,20 @@ const styles = StyleSheet.create({
   },
   activeBottomTabLabel: {
     color: '#1e90ff',
+  },
+  addButton: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#1e90ff',
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 10,
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: '300',
   },
   notificationBadge: {
     position: 'absolute',

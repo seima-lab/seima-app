@@ -59,21 +59,21 @@ const SettingScreen = () => {
         <Text style={styles.cardDesc}>{t('selectLanguage')}</Text>
         <View style={styles.langRow}>
           <TouchableOpacity
-            style={[styles.langBtn, i18n.language === 'en' && styles.langBtnActive]}
-            onPress={() => i18n.changeLanguage('en')}
+            style={[styles.langBtn, language === 'en' && styles.langBtnActive]}
+            onPress={() => setLanguage('en')}
           >
-            <View style={[styles.radio, i18n.language === 'en' && styles.radioActive]}>
-              {i18n.language === 'en' && <View style={styles.radioDot} />}
+            <View style={[styles.radio, language === 'en' && styles.radioActive]}>
+              {language === 'en' && <View style={styles.radioDot} />}
             </View>
             <Text style={styles.flag}>🇺🇸</Text>
             <Text style={styles.langText}>English</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.langBtn, i18n.language === 'vi' && styles.langBtnActive]}
-            onPress={() => i18n.changeLanguage('vi')}
+            style={[styles.langBtn, language === 'vi' && styles.langBtnActive]}
+            onPress={() => setLanguage('vi')}
           >
-            <View style={[styles.radio, i18n.language === 'vi' && styles.radioActive]}>
-              {i18n.language === 'vi' && <View style={styles.radioDot} />}
+            <View style={[styles.radio, language === 'vi' && styles.radioActive]}>
+              {language === 'vi' && <View style={styles.radioDot} />}
             </View>
             <Text style={styles.flag}>🇻🇳</Text>
             <Text style={styles.langText}>Vietnam</Text>

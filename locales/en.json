@@ -10,5 +10,162 @@
   "gender": "Gender",
   "email": "Email",
   "female": "Female",
-  "male": "Male"
+  "male": "Male",
+  "saveChanges": "Save Changes",
+  
+  "addExpense": "Add Expense",
+  "addIncome": "Add Income",
+  "expenses": "Expenses",
+  "income": "Income",
+  "expense": "Expenses",
+  "incomeLabel": "Income",
+  "date": "Date",
+  "note": "Note",
+  "notePlaceholder": "Enter note",
+  "amount": "Amount",
+  "category": "Category",
+  "categories": "Categories",
+  "addExpenseButton": "Add Expense",
+  "addIncomeButton": "Add Income",
+  "currency": "đ",
+  
+  "editCategories": "Edit Categories",
+  "expenseCategories": "Expense Categories",
+  "incomeCategories": "Income Categories",
+  "addCategory": "Add Category",
+  "edit": "Edit",
+  "done": "Done",
+  "delete": "Delete",
+  "cancel": "Cancel",
+  "deleteCategory": "Delete Category",
+  "deleteCategoryConfirm": "Are you sure you want to delete this category?",
+  "allCategories": "All available categories",
+  "deleteInstruction": "Tap X icon to delete categories",
+  "totalCategories": "Total: {{count}} categories",
+  "editMode": "• Edit mode",
+  
+  "createNew": "Create New",
+  "editCategory": "Edit Category",
+  "categoryName": "Category Name",
+  "categoryNamePlaceholder": "Please enter category name",
+  "icon": "Icon",
+  "color": "Color",
+  "save": "Save",
+  "pleaseEnterCategoryName": "Please enter category name",
+  "addCategorySuccess": "Category added successfully",
+  "editCategorySuccess": "Category updated successfully",
+  
+  "finance": {
+    "hello": "Hello!",
+    "totalBalance": "Total Balance",
+    "incomeAndExpenses": "Income and Expenses",
+    "incomeShort": "Inco",
+    "expenseShort": "Exp",
+    "difference": "Difference",
+    "periods": {
+      "thisDay": "This Day",
+      "thisWeek": "This Week", 
+      "thisMonth": "This Month",
+      "quarter": "1 Quarter",
+      "thisYear": "This Year"
+    }
+  },
+  
+  "categoryNames": {
+    "daily": "Daily Expenses",
+    "food": "Food & Dining",
+    "clothes": "Clothing",
+    "cosmetic": "Cosmetics",
+    "social": "Social Fees",
+    "health": "Healthcare",
+    "education": "Education",
+    "electric": "Electricity",
+    "transport": "Transportation",
+    "phone": "Communication",
+    "rent": "Rent",
+    "entertainment": "Entertainment",
+    "shopping": "Shopping",
+    "travel": "Travel",
+    "insurance": "Insurance",
+    "pet": "Pet Care",
+    "gift": "Gifts",
+    "book": "Books",
+    "sport": "Sports",
+    "otherExpense": "Other Expenses",
+    "salary": "Salary",
+    "bonus": "Bonus",
+    "investment": "Investment",
+    "freelance": "Freelance",
+    "business": "Business",
+    "rental": "Rental Income",
+    "dividend": "Dividend",
+    "interest": "Interest",
+    "giftMoney": "Gift Money",
+    "selling": "Selling",
+    "passive": "Passive Income",
+    "prize": "Prize",
+    "refund": "Refund",
+    "partTime": "Part-time Job",
+    "royalty": "Royalty",
+    "commission": "Commission",
+    "scholarship": "Scholarship",
+    "allowance": "Allowance",
+    "otherIncome": "Other Income"
+  },
+  
+  "navigation": {
+    "home": "Home",
+    "wallet": "Wallet",
+    "statistics": "Statistics",
+    "settings": "Settings"
+  },
+  
+  "profile": {
+    "name": "Name",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "fullName": "Full Name",
+    "birthday": "Birthday",
+    "selectDate": "Select Date",
+    "changeAvatar": "Change Avatar",
+    "selectGender": "Select Gender"
+  },
+  
+  "placeholders": {
+    "enterFullName": "Enter your full name",
+    "enterEmail": "Enter your email",
+    "phoneNumber": "Phone Number",
+    "enterPhone": "Enter your phone number"
+  },
+  
+  "validation": {
+    "fullNameRequired": "Full name is required.",
+    "invalidEmail": "Invalid email.",
+    "invalidPhone": "Invalid phone number.",
+    "selectGender": "Please select gender.",
+    "invalidDate": "Invalid date."
+  },
+  
+  "permissions": {
+    "camera": "Camera",
+    "gallery": "Gallery",
+    "chooseOption": "Choose how you want to select your avatar",
+    "permissionDenied": "Permission Denied",
+    "permissionMessage": "We need camera and photo library permissions to change your avatar.",
+    "cameraError": "Error accessing camera. Please try again.",
+    "galleryError": "Error accessing photo library. Please try again."
+  },
+  
+  "common": {
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Information",
+    "cancel": "Cancel"
+  }
 } 
