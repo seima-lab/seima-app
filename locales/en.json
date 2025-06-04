@@ -135,7 +135,12 @@
     "enterFullName": "Enter your full name",
     "enterEmail": "Enter your email",
     "phoneNumber": "Phone Number",
-    "enterPhone": "Enter your phone number"
+    "enterPhone": "Enter your phone number",
+    "enterPassword": "Enter your password",
+    "confirmPassword": "Confirm your password",
+    "enterNewPassword": "Enter your new password",
+    "confirmNewPassword": "Confirm your new password",
+    "enterCurrentPassword": "Enter your current password"
   },
   
   "validation": {
@@ -143,8 +148,98 @@
     "invalidEmail": "Invalid email.",
     "invalidPhone": "Invalid phone number.",
     "selectGender": "Please select gender.",
-    "invalidDate": "Invalid date."
+    "invalidDate": "Invalid date.",
+    "emailRequired": "Email is required.",
+    "phoneRequired": "Phone number is required.",
+    "passwordRequired": "Password is required.",
+    "passwordTooShort": "Password must be at least 6 characters.",
+    "confirmPasswordRequired": "Please confirm your password.",
+    "passwordMismatch": "Passwords do not match.",
+    "currentPasswordRequired": "Current password is required.",
+    "samePassword": "New password must be different from current password."
   },
+  
+  "login": {
+    "signInTitle": "Sign in to your account",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "signIn": "Sign In",
+    "forgotPassword": "Forgot your password?",
+    "orContinueWith": "or continue with",
+    "continueWithGoogle": "Continue with Google",
+    "noAccount": "Don't have an account?",
+    "signUp": "Sign up",
+    "termsText": "By continuing, you agree to our Terms of Service and Privacy Policy",
+    "loginFailed": "Login failed. Please check your credentials and try again."
+  },
+  
+  "register": {
+    "createAccount": "Create an Account",
+    "subtitle": "Join Seima to manage your finances easily.",
+    "confirmPassword": "Confirm Password",
+    "selectDatePlaceholder": "Select your birth date",
+    "selectDateOfBirth": "Please select your date of birth.",
+    "register": "Register",
+    "registerSuccess": "Account created successfully! Please verify your account.",
+    "registerFailed": "Registration failed. Please try again.",
+    "haveAccount": "Already have an account?"
+  },
+  
+  "otp": {
+    "verifyAccount": "Verify Your Account",
+    "verifyReset": "Verify Password Reset",
+    "sentTo": "We sent a verification code to",
+    "sentToReset": "We sent a password reset code to",
+    "enterComplete": "Please enter the complete 6-digit code.",
+    "verify": "Verify",
+    "verifySuccess": "Account verified successfully! You can now sign in.",
+    "verifySuccessReset": "Code verified successfully! You can now reset your password.",
+    "verifyFailed": "Verification failed. Please check your code and try again.",
+    "resendCode": "Resend Code",
+    "resendSuccess": "Verification code has been sent again.",
+    "resendFailed": "Failed to resend code. Please try again.",
+    "resendIn": "Resend code in",
+    "helpText": "Didn't receive the code? Check your spam folder or contact support."
+  },
+  
+  "forgotPassword": {
+    "title": "Forgot Password",
+    "subtitle": "Enter your email address and we'll send you a verification code to reset your password.",
+    "sendOTP": "Send Verification Code",
+    "otpSent": "Verification code has been sent to your email.",
+    "sendFailed": "Failed to send verification code. Please try again.",
+    "rememberPassword": "Remember your password?"
+  },
+  
+  "resetPassword": {
+    "title": "Reset Password",
+    "subtitle": "Create a new password for your account.",
+    "newPassword": "New Password",
+    "reset": "Reset Password",
+    "success": "Password reset successfully! You can now sign in with your new password.",
+    "failed": "Failed to reset password. Please try again.",
+    "requirements": "Password Requirements:",
+    "minLength": "At least 6 characters long",
+    "recommendation": "Use a mix of letters, numbers, and symbols",
+    "backToLogin": "Back to"
+  },
+  
+  "changePassword": {
+    "title": "Change Password",
+    "subtitle": "Update your account password for better security.",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "change": "Change Password",
+    "success": "Password changed successfully!",
+    "failed": "Failed to change password. Please try again.",
+    "requirements": "Password Requirements:",
+    "minLength": "At least 6 characters long",
+    "differentFromCurrent": "Must be different from current password",
+    "recommendation": "Use a mix of letters, numbers, and symbols",
+    "securityTip": "For your security, we recommend using a strong password and changing it regularly."
+  },
+  
+  "changePasswordBtn": "Change Password",
   
   "permissions": {
     "camera": "Camera",

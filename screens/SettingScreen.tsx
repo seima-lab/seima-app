@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Image, Linking, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Linking, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Language, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
@@ -10,6 +11,7 @@ const AVATAR_URL = '../assets/images/Unknown.png';
 
 const SettingScreen = () => {
   const navigation = useNavigationService();
+  const insets = useSafeAreaInsets();
   const [darkMode, setDarkMode] = useState(true);
   const { language, setLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState('Setting');
@@ -17,6 +19,10 @@ const SettingScreen = () => {
 
   const handleUpdateProfile = () => {
     navigation.navigate('UpdateProfile');
+  };
+
+  const handleChangePassword = () => {
+    navigation.navigate('ChangePassword');
   };
 
   const handleLanguageChange = (lang: Language) => setLanguage(lang);
@@ -30,6 +36,11 @@ const SettingScreen = () => {
 
   return (
     <View style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Header */}
       <View style={styles.header}>
         <Image source={require('../assets/images/group.png')} style={styles.logo} />
@@ -50,6 +61,9 @@ const SettingScreen = () => {
         </View>
         <TouchableOpacity style={styles.updateBtn} onPress={handleUpdateProfile}>
           <Text style={styles.updateBtnText}>{t('updateProfile')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.changePasswordBtn} onPress={handleChangePassword}>
+          <Text style={styles.changePasswordBtnText}>{t('changePasswordBtn')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -95,12 +109,15 @@ const SettingScreen = () => {
           />
         </View>
       </View>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },
+  scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff', marginTop: 30 },
   logo: { width: 100, height: 60, marginRight: 8, resizeMode: 'contain' },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1e90ff', flex: 1 },
@@ -112,6 +129,8 @@ const styles = StyleSheet.create({
   link: { color: '#1e90ff', textDecorationLine: 'underline' },
   updateBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10 },
   updateBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  changePasswordBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10 },
+  changePasswordBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
   card: { backgroundColor: '#fff', borderRadius: 18, marginHorizontal: 16, marginTop: 18, padding: 18, elevation: 1 },
   cardTitle: { fontSize: 20, fontWeight: 'bold', color: '#222', marginBottom: 6 },
   cardDesc: { color: '#888', marginBottom: 12 },
