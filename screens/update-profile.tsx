@@ -1,24 +1,30 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  Image,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActionSheetIOS,
+    Alert,
+    Image,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^\d{9,15}$/;
 
 const UpdateProfile = () => {
+  const { t } = useTranslation();
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
   const [fullName, setFullName] = useState('');
@@ -28,14 +34,15 @@ const UpdateProfile = () => {
   const [gender, setGender] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState<any>({});
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   const validate = () => {
     const newErrors: any = {};
-    if (!fullName.trim()) newErrors.fullName = 'Full name is required.';
-    if (!emailRegex.test(email)) newErrors.email = 'Invalid email.';
-    if (!phoneRegex.test(phoneNumber)) newErrors.phoneNumber = 'Invalid phone number.';
-    if (!gender) newErrors.gender = 'Please select gender.';
-    if (!dateOfBirth || isNaN(dateOfBirth.getTime())) newErrors.dateOfBirth = 'Invalid date.';
+    if (!fullName.trim()) newErrors.fullName = t('validation.fullNameRequired');
+    if (!emailRegex.test(email)) newErrors.email = t('validation.invalidEmail');
+    if (!phoneRegex.test(phoneNumber)) newErrors.phoneNumber = t('validation.invalidPhone');
+    if (!gender) newErrors.gender = t('validation.selectGender');
+    if (!dateOfBirth || isNaN(dateOfBirth.getTime())) newErrors.dateOfBirth = t('validation.invalidDate');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -48,13 +55,94 @@ const UpdateProfile = () => {
       email,
       phoneNumber,
       gender,
+      avatarUri,
     });
     // Handle save logic here
   };
 
+  const requestPermissions = async () => {
+    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (cameraStatus !== 'granted' || mediaLibraryStatus !== 'granted') {
+      Alert.alert(
+        t('permissions.permissionDenied'),
+        t('permissions.permissionMessage'),
+        [{ text: t('common.confirm'), style: 'default' }]
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const pickImageFromCamera = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setAvatarUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.log('Error picking image from camera:', error);
+      Alert.alert(t('common.error'), t('permissions.cameraError'));
+    }
+  };
+
+  const pickImageFromGallery = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setAvatarUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.log('Error picking image from gallery:', error);
+      Alert.alert(t('common.error'), t('permissions.galleryError'));
+    }
+  };
+
   const handleChangeAvatar = () => {
-    console.log('Change avatar pressed');
-    // Handle avatar change logic here
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [t('permissions.camera'), t('permissions.gallery'), t('common.cancel')],
+          cancelButtonIndex: 2,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 0) {
+            pickImageFromCamera();
+          } else if (buttonIndex === 1) {
+            pickImageFromGallery();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        t('profile.changeAvatar'),
+        t('permissions.chooseOption'),
+        [
+          { text: t('permissions.camera'), onPress: pickImageFromCamera },
+          { text: t('permissions.gallery'), onPress: pickImageFromGallery },
+          { text: t('common.cancel'), style: 'cancel' },
+        ]
+      );
+    }
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
@@ -84,7 +172,7 @@ const UpdateProfile = () => {
         >
           <Icon name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Update Profile</Text>
+        <Text style={styles.headerTitle}>{t('updateProfile')}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -92,12 +180,19 @@ const UpdateProfile = () => {
       <View style={styles.avatarContainer}>
         <View style={styles.avatarWrapper}>
           <Image
-            source={require('../assets/images/Unknown.jpg')}
+            source={
+              avatarUri 
+                ? { uri: avatarUri }
+                : require('../assets/images/Unknown.jpg')
+            }
             style={styles.avatar}
           />
+          <TouchableOpacity style={styles.cameraIconButton} onPress={handleChangeAvatar}>
+            <Icon name="camera-alt" size={20} color="#007AFF" />
+          </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.changeAvatarButton} onPress={handleChangeAvatar}>
-          <Text style={styles.changeAvatarText}>Change Avatar</Text>
+          <Text style={styles.changeAvatarText}>{t('profile.changeAvatar')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -105,19 +200,19 @@ const UpdateProfile = () => {
       <View style={styles.formContainer}>
         {/* Full Name */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={styles.label}>{t('profile.fullName')}</Text>
           <TextInput
             style={styles.input}
             value={fullName}
             onChangeText={setFullName}
-            placeholder="Enter your full name"
+            placeholder={t('placeholders.enterFullName')}
           />
           {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
         </View>
 
         {/* Date of Birth */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Date of Birth</Text>
+          <Text style={styles.label}>{t('dateOfBirth')}</Text>
           <TouchableOpacity 
             style={styles.input}
             onPress={() => setShowDatePicker(true)}
@@ -138,12 +233,12 @@ const UpdateProfile = () => {
 
         {/* Email */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>{t('email')}</Text>
           <TextInput
             style={styles.input}
             value={email}
             onChangeText={setEmail}
-            placeholder="Enter your email"
+            placeholder={t('placeholders.enterEmail')}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -152,12 +247,12 @@ const UpdateProfile = () => {
 
         {/* Phone Number */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Phone Number</Text>
+          <Text style={styles.label}>{t('placeholders.phoneNumber')}</Text>
           <TextInput
             style={styles.input}
             value={phoneNumber}
             onChangeText={setPhoneNumber}
-            placeholder="Enter your phone number"
+            placeholder={t('placeholders.enterPhone')}
             keyboardType="phone-pad"
           />
           {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
@@ -165,7 +260,7 @@ const UpdateProfile = () => {
 
         {/* Gender */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Gender</Text>
+          <Text style={styles.label}>{t('gender')}</Text>
           <View style={styles.genderContainer}>
             <TouchableOpacity
               style={[
@@ -180,7 +275,7 @@ const UpdateProfile = () => {
               ]}>
                 {gender === 'Male' && <View style={styles.radioButtonInner} />}
               </View>
-              <Text style={styles.genderText}>Male</Text>
+              <Text style={styles.genderText}>{t('male')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -196,7 +291,7 @@ const UpdateProfile = () => {
               ]}>
                 {gender === 'Female' && <View style={styles.radioButtonInner} />}
               </View>
-              <Text style={styles.genderText}>Female</Text>
+              <Text style={styles.genderText}>{t('female')}</Text>
             </TouchableOpacity>
           </View>
           {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
@@ -205,7 +300,7 @@ const UpdateProfile = () => {
 
       {/* Save Button */}
       <TouchableOpacity style={styles.saveButton} onPress={handleSaveChanges}>
-        <Text style={styles.saveButtonText}>Save Changes</Text>
+        <Text style={styles.saveButtonText}>{t('saveChanges')}</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -249,10 +344,24 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 3,
     borderColor: '#007AFF',
+    position: 'relative',
   },
   avatar: {
     width: '100%',
     height: '100%',
+  },
+  cameraIconButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#007AFF',
   },
   changeAvatarButton: {
     backgroundColor: '#007AFF',

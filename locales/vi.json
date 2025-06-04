@@ -10,5 +10,162 @@
   "gender": "Giới tính",
   "email": "Email",
   "female": "Nữ",
-  "male": "Nam"
+  "male": "Nam",
+  "saveChanges": "Lưu thay đổi",
+  
+  "addExpense": "Thêm chi tiêu",
+  "addIncome": "Thêm thu nhập",
+  "expenses": "Chi tiêu",
+  "income": "Thu nhập",
+  "expense": "Tiền chi",
+  "incomeLabel": "Tiền thu",
+  "date": "Ngày",
+  "note": "Ghi chú",
+  "notePlaceholder": "Nhập ghi chú",
+  "amount": "Số tiền",
+  "category": "Danh mục",
+  "categories": "Danh mục",
+  "addExpenseButton": "Nhập khoản chi",
+  "addIncomeButton": "Nhập khoản thu",
+  "currency": "đ",
+  
+  "editCategories": "Chỉnh sửa danh mục",
+  "expenseCategories": "Danh mục chi tiêu",
+  "incomeCategories": "Danh mục thu nhập",
+  "addCategory": "Thêm danh mục",
+  "edit": "Chỉnh sửa",
+  "done": "Xong",
+  "delete": "Xóa",
+  "cancel": "Hủy",
+  "deleteCategory": "Xóa danh mục",
+  "deleteCategoryConfirm": "Bạn có chắc chắn muốn xóa danh mục này?",
+  "allCategories": "Tất cả danh mục hiện có",
+  "deleteInstruction": "Ấn vào icon X để xóa danh mục",
+  "totalCategories": "Tổng số: {{count}} danh mục",
+  "editMode": "• Chế độ chỉnh sửa",
+  
+  "createNew": "Tạo mới",
+  "editCategory": "Chỉnh sửa danh mục",
+  "categoryName": "Tên danh mục",
+  "categoryNamePlaceholder": "Vui lòng nhập tên danh mục",
+  "icon": "Biểu tượng",
+  "color": "Màu sắc",
+  "save": "Lưu",
+  "pleaseEnterCategoryName": "Vui lòng nhập tên danh mục",
+  "addCategorySuccess": "Thêm danh mục thành công",
+  "editCategorySuccess": "Cập nhật danh mục thành công",
+  
+  "finance": {
+    "hello": "Xin chào!",
+    "totalBalance": "Tổng số dư",
+    "incomeAndExpenses": "Thu nhập và Chi tiêu",
+    "incomeShort": "Thu",
+    "expenseShort": "Chi",
+    "difference": "Chênh lệch",
+    "periods": {
+      "thisDay": "Hôm nay",
+      "thisWeek": "Tuần này",
+      "thisMonth": "Tháng này",
+      "quarter": "1 Quý",
+      "thisYear": "Năm nay"
+    }
+  },
+  
+  "categoryNames": {
+    "daily": "Chi tiêu hàng ngày",
+    "food": "Ăn uống",
+    "clothes": "Quần áo",
+    "cosmetic": "Mỹ phẩm",
+    "social": "Phí giao lưu",
+    "health": "Y tế",
+    "education": "Giáo dục",
+    "electric": "Tiền điện",
+    "transport": "Đi lại",
+    "phone": "Phí liên lạc",
+    "rent": "Tiền nhà",
+    "entertainment": "Giải trí",
+    "shopping": "Mua sắm",
+    "travel": "Du lịch",
+    "insurance": "Bảo hiểm",
+    "pet": "Thú cưng",
+    "gift": "Quà tặng",
+    "book": "Sách báo",
+    "sport": "Thể thao",
+    "otherExpense": "Chi phí khác",
+    "salary": "Tiền lương",
+    "bonus": "Tiền thưởng",
+    "investment": "Đầu tư",
+    "freelance": "Freelance",
+    "business": "Kinh doanh",
+    "rental": "Cho thuê",
+    "dividend": "Cổ tức",
+    "interest": "Lãi suất",
+    "giftMoney": "Tiền tặng",
+    "selling": "Bán hàng",
+    "passive": "Thu nhập thụ động",
+    "prize": "Giải thưởng",
+    "refund": "Hoàn tiền",
+    "partTime": "Công việc bán thời gian",
+    "royalty": "Bản quyền",
+    "commission": "Hoa hồng",
+    "scholarship": "Học bổng",
+    "allowance": "Trợ cấp",
+    "otherIncome": "Thu nhập khác"
+  },
+  
+  "navigation": {
+    "home": "Trang chủ",
+    "wallet": "Ví tiền",
+    "statistics": "Thống kê",
+    "settings": "Cài đặt"
+  },
+  
+  "profile": {
+    "name": "Tên",
+    "firstName": "Họ",
+    "lastName": "Tên",
+    "fullName": "Họ và tên",
+    "birthday": "Ngày sinh",
+    "selectDate": "Chọn ngày",
+    "changeAvatar": "Đổi ảnh đại diện",
+    "selectGender": "Chọn giới tính"
+  },
+  
+  "placeholders": {
+    "enterFullName": "Nhập họ và tên",
+    "enterEmail": "Nhập email của bạn",
+    "phoneNumber": "Số điện thoại",
+    "enterPhone": "Nhập số điện thoại"
+  },
+  
+  "validation": {
+    "fullNameRequired": "Vui lòng nhập họ và tên.",
+    "invalidEmail": "Email không hợp lệ.",
+    "invalidPhone": "Số điện thoại không hợp lệ.",
+    "selectGender": "Vui lòng chọn giới tính.",
+    "invalidDate": "Ngày không hợp lệ."
+  },
+  
+  "permissions": {
+    "camera": "Camera",
+    "gallery": "Thư viện ảnh",
+    "chooseOption": "Chọn cách bạn muốn chọn ảnh đại diện",
+    "permissionDenied": "Quyền truy cập bị từ chối",
+    "permissionMessage": "Chúng tôi cần quyền truy cập camera và thư viện ảnh để thay đổi ảnh đại diện của bạn.",
+    "cameraError": "Lỗi khi truy cập camera. Vui lòng thử lại.",
+    "galleryError": "Lỗi khi truy cập thư viện ảnh. Vui lòng thử lại."
+  },
+  
+  "common": {
+    "confirm": "Xác nhận",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "finish": "Hoàn thành",
+    "loading": "Đang tải...",
+    "error": "Lỗi",
+    "success": "Thành công",
+    "warning": "Cảnh báo",
+    "info": "Thông tin",
+    "cancel": "Hủy"
+  }
 } 
