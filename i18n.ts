@@ -7,7 +7,7 @@ import vi from './locales/vi.json';
 // Get device language, fallback to 'en' if not supported
 const getDeviceLanguage = () => {
   const locale = Localization.locale;
-  if (locale.startsWith('vi')) return 'vi';
+  if (locale && typeof locale === 'string' && locale.startsWith('vi')) return 'vi';
   return 'en';
 };
 
