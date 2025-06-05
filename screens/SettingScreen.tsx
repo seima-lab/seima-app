@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Image, Linking, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image, Linking, ScrollView, StatusBar, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Language, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
@@ -35,11 +35,14 @@ const SettingScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 20 }]}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
       >
       {/* Header */}
       <View style={styles.header}>
@@ -110,7 +113,7 @@ const SettingScreen = () => {
         </View>
       </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -118,7 +121,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },
   scrollView: { flex: 1 },
   scrollContent: { flexGrow: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff', marginTop: 30 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff' },
   logo: { width: 100, height: 60, marginRight: 8, resizeMode: 'contain' },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1e90ff', flex: 1 },
   profileSection: { backgroundColor: '#fff', alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16 },

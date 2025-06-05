@@ -10,8 +10,22 @@ export type RootStackParamList = {
   ResetPassword: {
     email?: string;
   };
+  Calendar: undefined;
   ChangePassword: undefined;
   ChatAI: undefined;
+  Notifications: undefined;
+  NotificationDetail: {
+    notification: {
+      id: string;
+      type: 'payment' | 'expense' | 'transaction';
+      title: string;
+      description: string;
+      timestamp: string;
+      icon: string;
+      iconColor: string;
+      iconBackground: string;
+    };
+  };
   FinanceScreen: undefined;
   UpdateProfile: undefined;
   SettingScreen: undefined;

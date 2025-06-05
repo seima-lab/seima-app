@@ -97,6 +97,12 @@ export default function AddExpenseScreen() {
     });
   };
 
+  const handleCameraPress = () => {
+    // TODO: Implement camera functionality for receipt scanning
+    console.log('Camera pressed - will implement receipt scanning');
+    // You can add camera/image picker logic here
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Status Bar - Thêm phần này */}
@@ -130,6 +136,12 @@ export default function AddExpenseScreen() {
             <Text style={[styles.tabText, activeTab === 'income' && styles.tabTextActive]}>{t('incomeLabel')}</Text>
           </TouchableOpacity>
         </View>
+        {/* Camera Icon - Only show for expense tab */}
+        {activeTab === 'expense' && (
+          <TouchableOpacity style={styles.cameraBtn} onPress={handleCameraPress}>
+            <Icon name="camera" size={24} color="#1e90ff" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Date */}
@@ -272,6 +284,15 @@ const styles = StyleSheet.create({
   backBtn: {
     position: 'absolute',
     left: 0, // Sửa từ 10 thành 0
+    width: 38,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  cameraBtn: {
+    position: 'absolute',
+    right: 0,
     width: 38,
     height: 38,
     justifyContent: 'center',
