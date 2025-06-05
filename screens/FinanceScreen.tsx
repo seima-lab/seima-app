@@ -130,10 +130,10 @@ const FinanceScreen = () => {
   const IconButton = ({ icon, label, isActive = false, iconColor = 'white' }: ButtonProps) => (
     <TouchableOpacity style={[styles.iconButton, isActive && styles.activeIconButton]}>
       <View style={styles.iconContainer}>
-        {icon.startsWith('M') ? (
+        {icon && typeof icon === 'string' && icon.startsWith('M') ? (
           <Icon name={icon} size={24} color={iconColor} />
         ) : (
-          <Text style={[styles.iconText, { color: iconColor }]}>{icon}</Text>
+          <Text style={[styles.iconText, { color: iconColor }]}>{icon || ''}</Text>
         )}
       </View>
     </TouchableOpacity>
