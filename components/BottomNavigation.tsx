@@ -20,8 +20,8 @@ const BottomNavigation: React.FC<Props> = ({ activeTab, setActiveTab }) => {
         <Text style={[styles.text, activeTab === 'Finance' && styles.active]}>Overview</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => {}} style={styles.tab}>
-        <Icon2 name="robot" size={28} style={styles.icon} color="#b0b0b0" />
-        <Text style={styles.text}>Ai Assistant</Text>
+        <Icon2 name="wallet" size={28} style={styles.icon} color="#b0b0b0" />
+        <Text style={styles.text}>Wallet</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.tabCenter}

@@ -8,6 +8,7 @@ import '../i18n';
 import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import ChatAIScreen from '../screens/ChatAIScreen';
 import EditCategoryScreen from '../screens/EditCategoryScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import MainTabScreen from '../screens/MainTabScreen';
@@ -52,6 +53,7 @@ function AppNavigator() {
       <Stack.Screen name="MainTab" component={MainTabScreen} />
       <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+      <Stack.Screen name="ChatAI" component={ChatAIScreen} />
     </Stack.Navigator>
   );
 }

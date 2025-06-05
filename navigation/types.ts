@@ -11,6 +11,7 @@ export type RootStackParamList = {
     email?: string;
   };
   ChangePassword: undefined;
+  ChatAI: undefined;
   FinanceScreen: undefined;
   UpdateProfile: undefined;
   SettingScreen: undefined;
