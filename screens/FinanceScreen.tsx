@@ -248,7 +248,7 @@ const FinanceScreen = () => {
             <TouchableOpacity style={styles.headerIcon}>
               <Icon name="refresh" size={24} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
               <NotificationIcon />
             </TouchableOpacity>
           </View>
@@ -330,7 +330,10 @@ const FinanceScreen = () => {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity 
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('Calendar')}
+          >
             <Icon name="calendar-month" size={24} color="white" />
           </TouchableOpacity>
           <TouchableOpacity 

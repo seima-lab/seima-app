@@ -7,11 +7,14 @@ import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
+import CalendarScreen from '../screens/CalendarScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ChatAIScreen from '../screens/ChatAIScreen';
 import EditCategoryScreen from '../screens/EditCategoryScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import MainTabScreen from '../screens/MainTabScreen';
+import NotificationDetailScreen from '../screens/NotificationDetailScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import OTPScreen from '../screens/OTPScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import LoginScreen from '../screens/login';
@@ -54,6 +57,9 @@ function AppNavigator() {
       <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="ChatAI" component={ChatAIScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
+      <Stack.Screen name="Calendar" component={CalendarScreen} />
     </Stack.Navigator>
   );
 }

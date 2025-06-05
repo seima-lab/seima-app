@@ -27,15 +27,6 @@ const AVAILABLE_ICONS = [
   'gift', 'book', 'bus', 'gamepad-variant',
 ];
 
-const COLOR_PALETTE = [
-  '#FFD60A', '#FF9F0A', '#FF453A', '#FF375F', '#BF5AF2',
-  '#FF6900', '#FF3B30', '#FF2D92', '#EC427A', '#AF52DE',
-  '#8B4513', '#B91827', '#DC362E', '#C31C5C', '#7B2CBF',
-  '#FFFF00', '#7FB069', '#C7F464', '#06FFA5', '#00D4FF',
-  '#FFE135', '#32D74B', '#30D158', '#00C896', '#007AFF',
-  '#B08D1A', '#6BCF7F', '#00B894', '#00A085', '#34495E',
-];
-
 export default function AddEditCategoryScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -44,7 +35,6 @@ export default function AddEditCategoryScreen() {
   
   const [categoryName, setCategoryName] = useState(category?.label || '');
   const [selectedIcon, setSelectedIcon] = useState(category?.icon || AVAILABLE_ICONS[0]);
-  const [selectedColor, setSelectedColor] = useState(category?.color || COLOR_PALETTE[0]);
   
   const title = mode === 'add' ? t('createNew') : t('editCategory');
   
@@ -58,7 +48,6 @@ export default function AddEditCategoryScreen() {
     console.log('Save category:', {
       name: categoryName,
       icon: selectedIcon,
-      color: selectedColor,
       type,
       mode
     });
@@ -74,19 +63,8 @@ export default function AddEditCategoryScreen() {
       ]}
       onPress={() => setSelectedIcon(item)}
     >
-      <Icon name={item} size={28} color={selectedIcon === item ? selectedColor : '#666'} />
+      <Icon name={item} size={28} color={selectedIcon === item ? '#1e90ff' : '#666'} />
     </TouchableOpacity>
-  );
-
-  const renderColorItem = ({ item }: { item: string }) => (
-    <TouchableOpacity
-      style={[
-        styles.colorItem,
-        { backgroundColor: item },
-        selectedColor === item && styles.colorItemSelected
-      ]}
-      onPress={() => setSelectedColor(item)}
-    />
   );
 
   return (
@@ -135,18 +113,7 @@ export default function AddEditCategoryScreen() {
           />
         </View>
 
-        {/* Color Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('color')}</Text>
-          <FlatList
-            data={COLOR_PALETTE}
-            renderItem={renderColorItem}
-            keyExtractor={item => item}
-            numColumns={5}
-            scrollEnabled={false}
-            contentContainerStyle={styles.colorGrid}
-          />
-        </View>
+
       </ScrollView>
 
       {/* Save Button */}
@@ -226,21 +193,7 @@ const styles = StyleSheet.create({
     borderColor: '#007AFF',
     borderWidth: 2,
   },
-  colorGrid: {
-    paddingTop: 8,
-  },
-  colorItem: {
-    flex: 1,
-    aspectRatio: 2,
-    borderRadius: 8,
-    margin: 4,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  colorItemSelected: {
-    borderWidth: 3,
-    borderColor: '#007AFF',
-  },
+
   bottomContainer: {
     backgroundColor: '#fff',
     paddingHorizontal: 16,
