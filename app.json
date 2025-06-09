@@ -35,6 +35,12 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps._some_id_here_"
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
@@ -49,7 +55,7 @@
         "expo-font",
         {
           "fonts": [
-            "node_modules/react-native-vector-icons/MaterialIcons.ttf"
+            "./node_modules/react-native-vector-icons/Fonts/MaterialIcons.ttf"
           ]
         }
       ],
