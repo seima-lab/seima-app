@@ -1,21 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Animated,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { login } from '../api/auth';
+import { configureGoogleSignIn, signInWithGoogle } from '../api/googleSignIn';
 import GoogleButton from '../components/Login/GoogleButton';
 import Logo from '../components/Login/Logo';
 import '../i18n';
@@ -38,6 +38,9 @@ export default function LoginScreen() {
   // Card animation
   const cardAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    // Configure Google Sign-In when component mounts
+    configureGoogleSignIn();
+    
     Animated.timing(cardAnim, {
       toValue: 1,
       duration: 900,
@@ -94,27 +97,35 @@ export default function LoginScreen() {
 
   const handleGoogleLogin = async () => {
     try {
-      console.log('LoginScreen - handleGoogleLogin called');
-      const response = await login();
-      console.log('LoginScreen - login response:', response);
+      console.log('LoginScreen - Starting Google Sign-In...');
+      const result = await signInWithGoogle();
       
-      if (!response.success) {
-        console.log('LoginScreen - login not successful, status:', response.status);
-        if (response.status === 400) {
-          console.log('LoginScreen - navigating to UpdateProfile');
-          navigation.replace('MainTab');
-        } else if (response.status === 401) {
-          console.log('LoginScreen - navigating to Register');
-          navigation.replace('Register');
-        }
-        return;
+      if (result.success) {
+        console.log('Google Sign-In successful!');
+        console.log('User Info:', result.userInfo);
+        console.log('ID Token:', result.idToken);
+        
+        // Hiển thị idToken cho người dùng
+        Alert.alert(
+          'Google Sign-In Success',
+          `ID Token: ${result.idToken?.substring(0, 50)}...`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Sau khi xác nhận, chuyển đến màn hình chính
+                navigation.replace('MainTab');
+              }
+            }
+          ]
+        );
+      } else {
+        console.error('Google Sign-In failed:', result.error);
+        Alert.alert(t('common.error'), result.error || t('login.loginFailed'));
       }
-      
-      // Handle successful login here
-      console.log('LoginScreen - login successful');
-      navigation.replace('FinanceScreen');
     } catch (err) {
-      console.error('LoginScreen - login error:', err);
+      console.error('LoginScreen - Google Sign-In error:', err);
+      Alert.alert(t('common.error'), t('login.loginFailed'));
     }
   };
 
