@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, G, Svg } from 'react-native-svg';
@@ -157,27 +157,18 @@ const FinanceScreen = () => {
   );
 
   const PeriodSelector = () => (
-    <View>
+    <View style={styles.periodSelectorContainer}>
       <TouchableOpacity 
         style={styles.periodSelector}
-        onPress={() => setIsPeriodModalVisible(true)}
+        onPress={() => setIsPeriodModalVisible(!isPeriodModalVisible)}
       >
         <Text style={styles.periodText}>{selectedPeriod}</Text>
         <Text style={styles.dropdownIcon}>▼</Text>
       </TouchableOpacity>
 
-      <Modal
-        visible={isPeriodModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsPeriodModalVisible(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setIsPeriodModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
+      {isPeriodModalVisible && (
+        <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+          <View style={styles.dropdownMenu}>
             {PERIODS.map((period) => (
               <TouchableOpacity
                 key={period}
@@ -199,8 +190,8 @@ const FinanceScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
-        </TouchableOpacity>
-      </Modal>
+        </TouchableWithoutFeedback>
+      )}
     </View>
   );
 
@@ -226,135 +217,137 @@ const FinanceScreen = () => {
   ];
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4285F4" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.profileSection}>
-            <View style={styles.avatar}>
-              <Image 
-                source={require('../assets/images/Unknown.jpg')} 
-                style={styles.avatarImage}
-              />
-            </View>
-            <View>
-              <Text style={styles.greeting}>{t('finance.hello')}</Text>
-              <Text style={styles.userName}>{userData.name}</Text>
-            </View>
-          </View>
-          <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Icon name="refresh" size={24} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
-              <NotificationIcon />
-            </TouchableOpacity>
-          </View>
-        </View>
+    <TouchableWithoutFeedback onPress={() => setIsPeriodModalVisible(false)}>
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#4285F4" />
         
-        <View style={styles.balanceSection}>
-          <Text style={styles.balanceLabel}>{t('finance.totalBalance')}</Text>
-          <View style={styles.balanceRow}>
-            <Text style={[styles.balanceAmount, { minWidth: 200 }]}>
-              {isBalanceVisible ? `${userData.balance} ${t('currency')}` : '********'}
-            </Text>
-            <TouchableOpacity onPress={() => setIsBalanceVisible(!isBalanceVisible)}>
-              <Icon 
-                name={isBalanceVisible ? "visibility" : "visibility-off"} 
-                size={24} 
-                color="white" 
-              />
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.profileSection}>
+              <View style={styles.avatar}>
+                <Image 
+                  source={require('../assets/images/Unknown.jpg')} 
+                  style={styles.avatarImage}
+                />
+              </View>
+              <View>
+                <Text style={styles.greeting}>{t('finance.hello')}</Text>
+                <Text style={styles.userName}>{userData.name}</Text>
+              </View>
+            </View>
+            <View style={styles.headerIcons}>
+              <TouchableOpacity style={styles.headerIcon}>
+                <Icon name="refresh" size={24} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+                <NotificationIcon />
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          <View style={styles.balanceSection}>
+            <Text style={styles.balanceLabel}>{t('finance.totalBalance')}</Text>
+            <View style={styles.balanceRow}>
+              <Text style={[styles.balanceAmount, { minWidth: 200 }]}>
+                {isBalanceVisible ? `${userData.balance} ${t('currency')}` : '********'}
+              </Text>
+              <TouchableOpacity onPress={() => setIsBalanceVisible(!isBalanceVisible)}>
+                <Icon 
+                  name={isBalanceVisible ? "visibility" : "visibility-off"} 
+                  size={24} 
+                  color="white" 
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <ScrollView 
+          style={styles.content} 
+          contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Income and Expenses Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t('finance.incomeAndExpenses')}</Text>
+              <PeriodSelector />
+            </View>
+
+            {/* Bar Chart */}
+            <View style={styles.barChartContainer}>
+              <View style={styles.barChart}>
+                <View style={styles.incomeBar}>
+                  <Text style={styles.barLabel}>{t('finance.incomeShort')}</Text>
+                </View>
+                <View style={styles.expenseBar}>
+                  <Text style={styles.barLabel}>{t('finance.expenseShort')}</Text>
+                </View>
+                <Text style={styles.differenceLabel}>{t('finance.difference')}</Text>
+              </View>
+              
+              <View style={styles.amountsList}>
+                <View style={styles.amountRow}>
+                  <Text style={styles.amountLabel}>{t('incomeLabel')}</Text>
+                  <Text style={styles.incomeAmount}>{userData.income} {t('currency')}</Text>
+                </View>
+                <View style={styles.amountRow}>
+                  <Text style={styles.amountLabel}>{t('finance.expenseShort')}</Text>
+                  <Text style={styles.expenseAmount}>{userData.expenses} {t('currency')}</Text>
+                </View>
+                <View style={styles.amountRow}>
+                  <Text style={styles.amountLabel}>{t('finance.difference')}</Text>
+                  <Text style={styles.differenceAmount}>{userData.difference} {t('currency')}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Pie Chart Section */}
+          <View style={styles.section}>
+            <View style={styles.pieChartSection}>
+              <PieChart data={expenseData} />
+              <View style={styles.legendContainer}>
+                {expenseData.map((item, index) => (
+                  <View key={index} style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: item.color }]} />
+                    <Text style={styles.legendLabel}>{item.category}</Text>
+                    <Text style={styles.legendPercentage}>{item.percentage} %</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('Calendar')}
+            >
+              <Icon name="calendar-month" size={24} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('ChatAI')}
+            >
+              <Icon2 name="robot" size={24} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton}>
+              <Icon name="group" size={24} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('BudgetScreen')}
+            >
+              <Icon2 name="bullseye" size={24} color="white" />
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
+
       </View>
-
-      <ScrollView 
-        style={styles.content} 
-        contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Income and Expenses Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('finance.incomeAndExpenses')}</Text>
-            <PeriodSelector />
-          </View>
-
-          {/* Bar Chart */}
-          <View style={styles.barChartContainer}>
-            <View style={styles.barChart}>
-              <View style={styles.incomeBar}>
-                <Text style={styles.barLabel}>{t('finance.incomeShort')}</Text>
-              </View>
-              <View style={styles.expenseBar}>
-                <Text style={styles.barLabel}>{t('finance.expenseShort')}</Text>
-              </View>
-              <Text style={styles.differenceLabel}>{t('finance.difference')}</Text>
-            </View>
-            
-            <View style={styles.amountsList}>
-              <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>{t('incomeLabel')}</Text>
-                <Text style={styles.incomeAmount}>{userData.income} {t('currency')}</Text>
-              </View>
-              <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>{t('finance.expenseShort')}</Text>
-                <Text style={styles.expenseAmount}>{userData.expenses} {t('currency')}</Text>
-              </View>
-              <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>{t('finance.difference')}</Text>
-                <Text style={styles.differenceAmount}>{userData.difference} {t('currency')}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Pie Chart Section */}
-        <View style={styles.section}>
-          <View style={styles.pieChartSection}>
-            <PieChart data={expenseData} />
-            <View style={styles.legendContainer}>
-              {expenseData.map((item, index) => (
-                <View key={index} style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: item.color }]} />
-                  <Text style={styles.legendLabel}>{item.category}</Text>
-                  <Text style={styles.legendPercentage}>{item.percentage} %</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={styles.iconButton}
-            onPress={() => navigation.navigate('Calendar')}
-          >
-            <Icon name="calendar-month" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.iconButton}
-            onPress={() => navigation.navigate('ChatAI')}
-          >
-            <Icon2 name="robot" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Icon name="group" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.iconButton}
-            onPress={() => navigation.navigate('BudgetScreen')}
-          >
-            <Icon2 name="bullseye" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -457,6 +450,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
+  periodSelectorContainer: {
+    position: 'relative',
+  },
   periodSelector: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -474,23 +470,33 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#666',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
+  dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
     backgroundColor: 'white',
     borderRadius: 15,
-    padding: 10,
-    width: '80%',
-    maxWidth: 300,
+    padding: 8,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 1000,
+    minWidth: 140,
+    maxWidth: 180,
   },
   periodOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 2,
   },
   selectedPeriodOption: {
     backgroundColor: '#E8F0FE',
@@ -498,10 +504,13 @@ const styles = StyleSheet.create({
   periodOptionText: {
     fontSize: 14,
     color: '#666',
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 16,
   },
   selectedPeriodOptionText: {
     color: '#1e90ff',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   barChartContainer: {
     flexDirection: 'row',
