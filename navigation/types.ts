@@ -64,6 +64,18 @@ export type RootStackParamList = {
       color: string;
     };
   };
+  AddWalletScreen: {
+    editMode?: boolean;
+    walletData?: {
+      balance: string;
+      name: string;
+      type: string;
+      bankName: string;
+      description: string;
+      isDefault: boolean;
+      excludeFromTotal: boolean;
+    };
+  } | undefined;
 };
 
 export type ScreenNames = keyof RootStackParamList; 

@@ -8,6 +8,7 @@ import '../i18n';
 import AddBudgetCategoryScreen from '../screens/AddBudgetCategoryScreen';
 import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
+import AddWalletScreen from '../screens/AddWalletScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
@@ -42,7 +43,7 @@ function AppNavigator() {
 
   return (
     <Stack.Navigator 
-      initialRouteName="Login"
+      initialRouteName="MainTab"
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
@@ -66,6 +67,7 @@ function AppNavigator() {
       <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
       <Stack.Screen name="Calendar" component={CalendarScreen} />
       <Stack.Screen name="SetBudgetLimitScreen" component={SetBudgetLimitScreen} />
+      <Stack.Screen name="AddWalletScreen" component={AddWalletScreen} />
     </Stack.Navigator>
   );
 }
