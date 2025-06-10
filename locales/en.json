@@ -170,7 +170,11 @@
     "noAccount": "Don't have an account?",
     "signUp": "Sign up",
     "termsText": "By continuing, you agree to our Terms of Service and Privacy Policy",
-    "loginFailed": "Login failed. Please check your credentials and try again."
+    "loginFailed": "Login failed. Please check your credentials and try again.",
+    "welcomeTitle": "Welcome to Seima!",
+    "firstTimeLoginMessage": "We need a bit more information to complete your account setup.",
+    "welcomeBack": "Welcome back!",
+    "loginSuccessMessage": "You have successfully signed in to your account."
   },
   
   "register": {
@@ -261,7 +265,8 @@
     "success": "Success",
     "warning": "Warning",
     "info": "Information",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "continue": "Continue"
   },
   
   "notifications": {
@@ -311,5 +316,80 @@
     "calendar": "Calendar",
     "reports": "Reports",
     "other": "Other"
+  },
+  
+  "budget": {
+    "title": "Budget",
+    "currentMonth": "June 2025",
+    "daysLeft": "{{days}} days left this month",
+    "remaining": "Remaining",
+    "spent": "Spent",
+    "exceeded": "Exceeded",
+    "addBudget": "Add Budget",
+    "addBudgetTitle": "Add Budget",
+    "editBudgetTitle": "Edit Budget",
+    "selectCategoryTitle": "Select Category",
+    "chooseCategory": "Choose a category",
+    "continue": "Continue",
+    "categorySelected": "Category selected successfully!",
+    "setBudgetLimit": "Set Budget Limit",
+    "updateBudgetLimit": "Update Budget Limit",
+    "selectedCategory": "Selected Category",
+    "newBudgetFor": "Create new budget for",
+    "updateBudgetFor": "Update budget for",
+    "new": "New",
+    "edit": "Edit",
+    "monthlyBudgetLimit": "Monthly Budget Limit",
+    "setBudgetHint": "Enter the maximum amount you want to spend for this category per month",
+    "month": "month",
+    "budgetLimit": "Budget Limit",
+    "enterLimit": "Enter limit",
+    "selectCategory": "Select Category",
+    "createBudget": "Create Budget",
+    "updateBudget": "Update Budget",
+          "addSuccess": "Budget added successfully!",
+      "updateSuccess": "Budget updated successfully!",
+      "budgetCreated": "Budget created",
+    "editQuestion": "Want to edit your budget?",
+    "adjust": "Adjust",
+    "validation": {
+      "limitRequired": "Please enter budget limit",
+      "categoryRequired": "Please select a category",
+      "limitInvalid": "Limit must be greater than 0"
+    },
+    "options": {
+      "customize": "Customize",
+      "edit": "Edit Budget",
+      "delete": "Delete Budget"
+    },
+    "deleteConfirm": {
+      "title": "Delete Budget",
+      "message": "Are you sure you want to delete the budget for category",
+      "hint": "This action cannot be undone!",
+      "delete": "Delete",
+      "success": "Successfully deleted budget for",
+      "deleted": "from your list"
+    },
+    "categories": {
+      "transport": "Transport",
+      "food": "Food & Dining", 
+      "shopping": "Shopping",
+      "entertainment": "Entertainment",
+      "healthcare": "Healthcare",
+      "education": "Education",
+      "utilities": "Utilities",
+      "travel": "Travel"
+    },
+    "sections": {
+      "livingExpenses": "Living Expenses",
+      "unexpectedExpenses": "Unexpected Expenses"
+    },
+    "periods": {
+      "lastMonth": "May 2025",
+      "currentMonth": "June 2025",
+      "nextMonth": "July 2025",
+      "quarter": "Q2 2025",
+      "year": "2025"
+    }
   }
 } 

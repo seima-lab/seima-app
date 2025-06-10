@@ -96,36 +96,59 @@ export default function LoginScreen() {
   };
 
   const handleGoogleLogin = async () => {
+    setIsLoading(true);
     try {
-      console.log('LoginScreen - Starting Google Sign-In...');
+      console.log('🟢 LoginScreen - Starting Google Sign-In...');
       const result = await signInWithGoogle();
       
       if (result.success) {
-        console.log('Google Sign-In successful!');
-        console.log('User Info:', result.userInfo);
-        console.log('ID Token:', result.idToken);
+        console.log('🟢 Google Sign-In successful!');
+        console.log('🟢 User Info:', result.userInfo);
+        console.log('🟢 Backend Data:', result.backendData);
+        console.log('🟢 Is First Login:', result.isFirstLogin);
         
-        // Hiển thị idToken cho người dùng
-        Alert.alert(
-          'Google Sign-In Success',
-          `ID Token: ${result.idToken?.substring(0, 50)}...`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Sau khi xác nhận, chuyển đến màn hình chính
-                navigation.replace('MainTab');
+        if (result.isFirstLogin) {
+          // First time login - navigate to register screen for additional info
+          console.log('🟢 First time login - navigating to Register screen');
+          Alert.alert(
+            t('login.welcomeTitle'),
+            t('login.firstTimeLoginMessage'),
+            [
+              {
+                text: t('common.continue'),
+                onPress: () => {
+                  // Navigate to register screen to collect additional information
+                  navigation.replace('Register');
+                }
               }
-            }
-          ]
-        );
+            ]
+          );
+        } else {
+          // Returning user - go directly to main app
+          console.log('🟢 Returning user - navigating to FinanceScreen');
+          Alert.alert(
+            t('login.welcomeBack'),
+            t('login.loginSuccessMessage'),
+            [
+              {
+                text: t('common.continue'),
+                onPress: () => {
+                  // Navigate directly to FinanceScreen for returning users
+                  navigation.replace('FinanceScreen');
+                }
+              }
+            ]
+          );
+        }
       } else {
-        console.error('Google Sign-In failed:', result.error);
+        console.error('🔴 Google Sign-In failed:', result.error);
         Alert.alert(t('common.error'), result.error || t('login.loginFailed'));
       }
     } catch (err) {
-      console.error('LoginScreen - Google Sign-In error:', err);
+      console.error('🔴 LoginScreen - Google Sign-In error:', err);
       Alert.alert(t('common.error'), t('login.loginFailed'));
+    } finally {
+      setIsLoading(false);
     }
   };
 

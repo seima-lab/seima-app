@@ -170,7 +170,11 @@
     "noAccount": "Chưa có tài khoản?",
     "signUp": "Đăng ký",
     "termsText": "Bằng cách tiếp tục, bạn đồng ý với Điều khoản Dịch vụ và Chính sách Quyền riêng tư của chúng tôi",
-    "loginFailed": "Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập và thử lại."
+    "loginFailed": "Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập và thử lại.",
+    "welcomeTitle": "Chào mừng đến với Seima!",
+    "firstTimeLoginMessage": "Chúng tôi cần thêm một số thông tin để hoàn tất thiết lập tài khoản của bạn.",
+    "welcomeBack": "Chào mừng bạn trở lại!",
+    "loginSuccessMessage": "Bạn đã đăng nhập thành công vào tài khoản của mình."
   },
   
   "register": {
@@ -261,7 +265,8 @@
     "success": "Thành công",
     "warning": "Cảnh báo",
     "info": "Thông tin",
-    "cancel": "Hủy"
+    "cancel": "Hủy",
+    "continue": "Tiếp tục"
   },
   
   "notifications": {
@@ -311,5 +316,80 @@
     "calendar": "Lịch",
     "reports": "Báo cáo",
     "other": "Khác"
+  },
+  
+  "budget": {
+    "title": "Ngân sách",
+    "currentMonth": "Tháng 6 2025",
+    "daysLeft": "Còn {{days}} ngày nữa hết tháng",
+    "remaining": "Còn lại",
+    "spent": "Chi",
+    "exceeded": "Đã vượt",
+    "addBudget": "Thêm ngân sách",
+    "addBudgetTitle": "Thêm ngân sách",
+    "editBudgetTitle": "Chỉnh sửa ngân sách",
+    "selectCategoryTitle": "Chọn danh mục",
+    "chooseCategory": "Chọn một danh mục",
+    "continue": "Tiếp tục",
+    "categorySelected": "Đã chọn danh mục thành công!",
+    "setBudgetLimit": "Đặt giới hạn ngân sách",
+    "updateBudgetLimit": "Cập nhật giới hạn",
+    "selectedCategory": "Danh mục đã chọn",
+    "newBudgetFor": "Tạo ngân sách mới cho",
+    "updateBudgetFor": "Cập nhật ngân sách cho",
+    "new": "Mới",
+    "edit": "Sửa",
+    "monthlyBudgetLimit": "Giới hạn ngân sách hàng tháng",
+    "setBudgetHint": "Nhập số tiền bạn muốn chi tiêu tối đa cho danh mục này trong tháng",
+    "month": "tháng",
+    "budgetLimit": "Giới hạn chi tiêu",
+    "enterLimit": "Nhập giới hạn",
+    "selectCategory": "Chọn danh mục",
+    "createBudget": "Tạo ngân sách",
+    "updateBudget": "Cập nhật ngân sách",
+          "addSuccess": "Thêm ngân sách thành công!",
+      "updateSuccess": "Cập nhật ngân sách thành công!",
+      "budgetCreated": "Đã tạo ngân sách",
+    "editQuestion": "Bạn có muốn chỉnh sửa ngân sách?",
+    "adjust": "Điều chỉnh",
+    "validation": {
+      "limitRequired": "Vui lòng nhập giới hạn chi tiêu",
+      "categoryRequired": "Vui lòng chọn danh mục",
+      "limitInvalid": "Giới hạn phải lớn hơn 0"
+    },
+    "options": {
+      "customize": "Tùy chỉnh",
+      "edit": "Chỉnh sửa ngân sách",
+      "delete": "Xóa ngân sách"
+    },
+    "deleteConfirm": {
+      "title": "Xóa ngân sách",
+      "message": "Bạn có chắc chắn muốn xóa ngân sách cho danh mục",
+      "hint": "Hành động này không thể hoàn tác!",
+      "delete": "Xóa",
+      "success": "Đã xóa thành công ngân sách",
+      "deleted": "khỏi danh sách của bạn"
+    },
+    "categories": {
+      "transport": "Di chuyển",
+      "food": "Ăn uống", 
+      "shopping": "Mua sắm",
+      "entertainment": "Giải trí",
+      "healthcare": "Y tế",
+      "education": "Giáo dục",
+      "utilities": "Tiện ích",
+      "travel": "Du lịch"
+    },
+    "sections": {
+      "livingExpenses": "Chi tiêu - sinh hoạt",
+      "unexpectedExpenses": "Chi phí phát sinh"
+    },
+    "periods": {
+      "lastMonth": "Tháng 5 2025",
+      "currentMonth": "Tháng 6 2025",
+      "nextMonth": "Tháng 7 2025",
+      "quarter": "Quý 2 2025",
+      "year": "Năm 2025"
+    }
   }
 } 
