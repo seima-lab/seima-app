@@ -120,6 +120,47 @@
     "settings": "Cài đặt"
   },
   
+  "wallet": {
+    "title": "Ví của tôi",
+    "currentBalance": "Tài chính hiện tại",
+    "totalAssets": "Tổng có",
+    "totalDebts": "Tổng nợ",
+    "includeInTotal": "Tính vào tổng",
+    "addWallet": "Thêm ví",
+    "transferMoney": "Chuyển khoản",
+    "defaultWallet": "Mặc định",
+    "alertTitle": "Chú ý",
+    "deleteMessage": "Nếu xoá {{walletName}} này, tất cả ghi chép liên quan cũng sẽ bị xoá. Bạn có chắc chắn muốn xoá?",
+    "cancel": "Huỷ",
+    "delete": "Xoá",
+    "balance": "Số dư",
+    "balanceRequired": "Số dư *",
+    "walletName": "Tên ví",
+    "walletType": "Loại ví",
+    "bankName": "Tên ngân hàng",
+    "eWalletName": "Tên ví điện tử",
+    "description": "Mô tả",
+    "isDefault": "Là ví mặc định",
+    "defaultDescription": "Ví mặc định sẽ được chọn mặc định khi thêm giao dịch mới",
+    "excludeFromTotal": "Không tính vào tổng",
+    "excludeDescription": "Bỏ qua ví này, không tính vào báo cáo và số dư khối \"Tổng\"",
+    "addWalletTitle": "Thêm ví",
+    "editWalletTitle": "Sửa ví",
+    "save": "Lưu",
+    "walletTypes": {
+      "cash": "Tiền mặt",
+      "ewallet": "Ví điện tử",
+      "bank": "Ngân hàng"
+    },
+    "placeholders": {
+      "enterBalance": "Nhập số dư",
+      "enterWalletName": "Nhập tên ví",
+      "enterBankName": "Nhập tên ngân hàng",
+      "enterEWalletName": "Nhập tên ví điện tử",
+      "enterDescription": "Nhập mô tả"
+    }
+  },
+  
   "profile": {
     "name": "Tên",
     "firstName": "Họ",

@@ -391,5 +391,44 @@
       "quarter": "Q2 2025",
       "year": "2025"
     }
+  },
+  
+  "wallet": {
+    "title": "My Wallet",
+    "currentBalance": "Current Balance",
+    "totalAssets": "Total Assets",
+    "totalDebts": "Total Debts",
+    "includeInTotal": "Include in Total",
+    "addWallet": "Add Wallet",
+    "transferMoney": "Transfer Money",
+    "defaultWallet": "Default",
+    "alertTitle": "Warning",
+    "deleteMessage": "If you delete {{walletName}}, all related records will also be deleted. Are you sure you want to delete?",
+    "balance": "Balance",
+    "balanceRequired": "Balance *",
+    "walletName": "Wallet Name",
+    "walletType": "Wallet Type",
+    "bankName": "Bank Name",
+    "eWalletName": "E-wallet Name",
+    "description": "Description",
+    "isDefault": "Set as Default",
+    "defaultDescription": "Default wallet will be selected automatically when adding new transactions",
+    "excludeFromTotal": "Exclude from Total",
+    "excludeDescription": "Skip this wallet, don't include in reports and total balance",
+    "addWalletTitle": "Add Wallet",
+    "editWalletTitle": "Edit Wallet",
+    "save": "Save",
+    "walletTypes": {
+      "cash": "Cash",
+      "ewallet": "E-wallet",
+      "bank": "Bank"
+    },
+    "placeholders": {
+      "enterBalance": "Enter balance",
+      "enterWalletName": "Enter wallet name",
+      "enterBankName": "Enter bank name",
+      "enterEWalletName": "Enter e-wallet name",
+      "enterDescription": "Enter description"
+    }
   }
 } 

@@ -6,8 +6,8 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigationService } from '../navigation/NavigationService';
 
 interface Props {
-  activeTab: 'Finance' | 'Setting';
-  setActiveTab: (tab: 'Finance' | 'Setting') => void;
+  activeTab: 'Finance' | 'Wallet' | 'Setting';
+  setActiveTab: (tab: 'Finance' | 'Wallet' | 'Setting') => void;
 }
 
 const BottomNavigation: React.FC<Props> = ({ activeTab, setActiveTab }) => {
@@ -19,9 +19,9 @@ const BottomNavigation: React.FC<Props> = ({ activeTab, setActiveTab }) => {
         <Icon name="home" size={30} style={styles.icon} color={activeTab === 'Finance' ? '#1e90ff' : '#b0b0b0'} />
         <Text style={[styles.text, activeTab === 'Finance' && styles.active]}>Overview</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => {}} style={styles.tab}>
-        <Icon2 name="wallet" size={28} style={styles.icon} color="#b0b0b0" />
-        <Text style={styles.text}>Wallet</Text>
+      <TouchableOpacity onPress={() => setActiveTab('Wallet')} style={styles.tab}>
+        <Icon2 name="wallet" size={28} style={styles.icon} color={activeTab === 'Wallet' ? '#1e90ff' : '#b0b0b0'} />
+        <Text style={[styles.text, activeTab === 'Wallet' && styles.active]}>Wallet</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.tabCenter}
