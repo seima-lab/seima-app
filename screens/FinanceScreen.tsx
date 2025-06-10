@@ -345,7 +345,10 @@ const FinanceScreen = () => {
           <TouchableOpacity style={styles.iconButton}>
             <Icon name="group" size={24} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity 
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('BudgetScreen')}
+          >
             <Icon2 name="bullseye" size={24} color="white" />
           </TouchableOpacity>
         </View>

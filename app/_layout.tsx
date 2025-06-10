@@ -5,8 +5,10 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
+import AddBudgetCategoryScreen from '../screens/AddBudgetCategoryScreen';
 import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
+import BudgetScreen from '../screens/BudgetScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ChatAIScreen from '../screens/ChatAIScreen';
@@ -17,6 +19,7 @@ import NotificationDetailScreen from '../screens/NotificationDetailScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import OTPScreen from '../screens/OTPScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import SetBudgetLimitScreen from '../screens/SetBudgetLimitScreen';
 import LoginScreen from '../screens/login';
 import RegisterScreen from '../screens/register';
 import UpdateProfileScreen from '../screens/update-profile';
@@ -48,6 +51,8 @@ function AppNavigator() {
       <Stack.Screen name="AddExpenseScreen" component={AddExpenseScreen} />
       <Stack.Screen name="EditCategoryScreen" component={EditCategoryScreen} />
       <Stack.Screen name="AddEditCategoryScreen" component={AddEditCategoryScreen} />
+      <Stack.Screen name="BudgetScreen" component={BudgetScreen} />
+      <Stack.Screen name="AddBudgetCategoryScreen" component={AddBudgetCategoryScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
@@ -60,6 +65,7 @@ function AppNavigator() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
       <Stack.Screen name="Calendar" component={CalendarScreen} />
+      <Stack.Screen name="SetBudgetLimitScreen" component={SetBudgetLimitScreen} />
     </Stack.Navigator>
   );
 }

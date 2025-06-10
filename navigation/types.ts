@@ -31,6 +31,28 @@ export type RootStackParamList = {
   SettingScreen: undefined;
   MainTab: undefined;
   AddExpenseScreen: undefined;
+  BudgetScreen: undefined;
+  AddBudgetCategoryScreen: undefined;
+  SetBudgetLimitScreen: {
+    mode: 'add' | 'edit';
+    category: {
+      id: string;
+      name: string;
+      icon: string;
+      color: string;
+      backgroundColor: string;
+    };
+    currentBudget?: number;
+  };
+  AddEditBudgetScreen: {
+    mode: 'add' | 'edit';
+    budgetItem?: {
+      id: string;
+      name: string;
+      budget: number;
+      categoryId: string;
+    };
+  };
   EditCategoryScreen: { type: 'expense' | 'income' };
   AddEditCategoryScreen: { 
     mode: 'add' | 'edit';
