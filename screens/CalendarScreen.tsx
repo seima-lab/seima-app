@@ -268,8 +268,8 @@ const CalendarScreen = () => {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
             
             {/* Header */}
             <View style={styles.header}>

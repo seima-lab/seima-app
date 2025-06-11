@@ -1,3 +1,4 @@
+import * as SecureStore from 'expo-secure-store';
 
 // API endpoints - read from environment variables
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
@@ -12,7 +13,7 @@ const ENDPOINTS = {
 
 // Types for authentication
 export interface GoogleLoginRequest {
-  idToken: string;
+  id_token: string;
 }
 
 export interface EmailLoginRequest {
@@ -40,10 +41,10 @@ export interface UserProfile {
 }
 
 export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  userInformation: UserProfile;
-  isFirstLogin: boolean;
+  access_token: string;
+  refresh_token: string;
+  is_first_login: boolean;
+  user_infomation: UserProfile; // ✅ đúng tên JSON trả về
 }
 
 // Authentication Service
@@ -72,7 +73,9 @@ export class AuthService {
   async googleLogin(request: GoogleLoginRequest): Promise<AuthResponse> {
     try {
       console.log('🟢 AuthService - Calling:', this.buildUrl(ENDPOINTS.GOOGLE_LOGIN));
-      
+      console.log('🟢 request', request);
+      console.log('🟢 Sendding', API_BASE_URL );
+      const idToken=request.id_token
       const response = await fetch(this.buildUrl(ENDPOINTS.GOOGLE_LOGIN), {
         method: 'POST',
         headers: {
@@ -82,10 +85,14 @@ export class AuthService {
       });
 
       const result = await response.json();
-      
+    
+      console.log('🟢 result', result);
       if (response.ok && result.data) {
+        console.log('🟢 result.data', result.data);
         // Store tokens if needed
-        await this.storeTokens(result.data.accessToken, result.data.refreshToken);
+        await this.storeTokens(result.data.access_token, result.data.refresh_token);
+        console.log("ok");
+        
         return result.data;
       }
       
@@ -159,24 +166,22 @@ export class AuthService {
     }
   }
 
-  // Token management (you might want to use AsyncStorage here)
+  // Token management using SecureStore for better security
   private async storeTokens(accessToken: string, refreshToken: string): Promise<void> {
     try {
-      // TODO: Implement with AsyncStorage
-      // await AsyncStorage.setItem('accessToken', accessToken);
-      // await AsyncStorage.setItem('refreshToken', refreshToken);
+      await SecureStore.setItemAsync('accessToken', accessToken);
+      await SecureStore.setItemAsync('refreshToken', refreshToken);
       
-      console.log('🟢 Tokens stored successfully');
+      console.log('🟢 Tokens stored securely');
     } catch (error) {
       console.error('🔴 Error storing tokens:', error);
     }
   }
 
-  private async clearTokens(): Promise<void> {
+  async clearTokens(): Promise<void> {
     try {
-      // TODO: Implement with AsyncStorage
-      // await AsyncStorage.removeItem('accessToken');
-      // await AsyncStorage.removeItem('refreshToken');
+      await SecureStore.deleteItemAsync('accessToken');
+      await SecureStore.deleteItemAsync('refreshToken');
       
       console.log('🟢 Tokens cleared successfully');
     } catch (error) {
@@ -186,11 +191,61 @@ export class AuthService {
 
   async getStoredToken(): Promise<string | null> {
     try {
-      // TODO: Implement with AsyncStorage
-      // return await AsyncStorage.getItem('accessToken');
-      return null;
+      return await SecureStore.getItemAsync('accessToken');
     } catch (error) {
       console.error('🔴 Error getting stored token:', error);
+      return null;
+    }
+  }
+
+  async getStoredRefreshToken(): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync('refreshToken');
+    } catch (error) {
+      console.error('🔴 Error getting stored refresh token:', error);
+      return null;
+    }
+  }
+
+  // Check if user is authenticated
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      const token = await this.getStoredToken();
+      return token !== null && token !== undefined;
+    } catch (error) {
+      console.error('🔴 Error checking authentication:', error);
+      return false;
+    }
+  }
+
+  // Refresh access token using refresh token
+  async refreshAccessToken(): Promise<string | null> {
+    try {
+      const refreshToken = await this.getStoredRefreshToken();
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await fetch(this.buildUrl(ENDPOINTS.REFRESH_TOKEN), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.data) {
+        await this.storeTokens(result.data.access_token, result.data.refresh_token);
+        return result.data.access_token;
+      }
+      
+      throw new Error(result.message || 'Token refresh failed');
+    } catch (error) {
+      console.error('🔴 AuthService - Token refresh error:', error);
+      // Clear tokens if refresh fails
+      await this.clearTokens();
       return null;
     }
   }

@@ -1,12 +1,12 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
-import { authService } from '../services/authService';
+import { authService } from './authService';
 
 // Configure Google Sign-In
 export const configureGoogleSignIn = () => {
   GoogleSignin.configure({
     // Read directly from environment variables
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '335208463427-ugtao25qigd5efinilc2mg29uggcol4o.apps.googleusercontent.com',
+    webClientId: '184930202192-mrks31c9u41a946prh2s1cpvdud41bmp.apps.googleusercontent.com',
     offlineAccess: true,
     scopes: ['profile', 'email'],
   });
@@ -25,18 +25,18 @@ export const signInWithGoogle = async () => {
     const tokens = await GoogleSignin.getTokens();
     
     console.log('🟢 Google Sign-In successful, got tokens');
-    
+    console.log('🟢 tokens', tokens);
     // Step 3: Send idToken to backend via authService
     if (!tokens.idToken) {
       throw new Error('No ID token received from Google');
     }
     
     console.log('🟢 Calling backend via authService...');
-    const backendResponse = await authService.googleLogin({ idToken: tokens.idToken });
+    const backendResponse = await authService.googleLogin({ id_token: tokens.idToken });
     
     console.log('🟢 Backend response received:', {
-      isFirstLogin: backendResponse.isFirstLogin,
-      userEmail: backendResponse.userInformation.email
+      isFirstLogin: backendResponse.is_first_login,
+      userEmail: backendResponse.user_infomation.email
     });
     
     return {
@@ -45,7 +45,8 @@ export const signInWithGoogle = async () => {
       idToken: tokens.idToken,
       accessToken: tokens.accessToken,
       backendData: backendResponse,
-      isFirstLogin: backendResponse.isFirstLogin,
+      isFirstLogin: backendResponse.is_first_login,
+      email: backendResponse.user_infomation.email,
     };
   } catch (error: any) {
     console.error('🔴 Google Sign-In Error:', error);

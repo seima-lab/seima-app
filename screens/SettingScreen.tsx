@@ -1,21 +1,64 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Image, Linking, ScrollView, StatusBar, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, ScrollView, StatusBar, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useAuth } from '../contexts/AuthContext';
 import { Language, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
-
-const AVATAR_URL = '../assets/images/Unknown.png';
+import { secureApiService, UserData } from '../services/secureApiService';
 
 const SettingScreen = () => {
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
+  const { user: authUser, logout, isAuthenticated } = useAuth();
+  const [userProfile, setUserProfile] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
   const { language, setLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState('Setting');
   const { t, i18n } = useTranslation();
+
+  // Load user profile from API
+  useEffect(() => {
+    loadUserProfile();
+  }, [isAuthenticated]);
+
+  const loadUserProfile = async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('🟡 Loading user profile...');
+      
+      const profile = await secureApiService.getCurrentUserProfile();
+      console.log('🟢 User profile loaded:', profile);
+      
+      setUserProfile(profile);
+    } catch (error: any) {
+      console.error('🔴 Failed to load user profile:', error);
+      Alert.alert(
+        t('common.error'),
+        error.message || 'Failed to load profile',
+        [
+          {
+            text: t('common.retry'),
+            onPress: loadUserProfile,
+          },
+          {
+            text: t('common.cancel'),
+            style: 'cancel',
+          },
+        ]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpdateProfile = () => {
     navigation.navigate('UpdateProfile');
@@ -25,14 +68,66 @@ const SettingScreen = () => {
     navigation.navigate('ChangePassword');
   };
 
+  const handleLogout = async () => {
+    Alert.alert(
+      t('Confirm'),
+      'Are you sure you want to logout?',
+      [
+        {
+          text: t('cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('Logout'),
+          onPress: async () => {
+            try {
+              await logout();
+              navigation.replace('Login');
+            } catch (error) {
+              console.error('Logout error:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleLanguageChange = (lang: Language) => setLanguage(lang);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     if (tab === 'FinanceScreen') navigation.replace('FinanceScreen');
     if (tab === 'Setting') return;
-    // Thêm các tab khác nếu có
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1e90ff" />
+          <Text style={styles.loadingText}>{t('common.loading')}...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show login prompt if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorText}>Please login to view settings</Text>
+          <TouchableOpacity 
+            style={styles.loginBtn}
+            onPress={() => navigation.replace('Login')}
+          >
+            <Text style={styles.loginBtnText}>Go to Login</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -47,26 +142,54 @@ const SettingScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <Image source={require('../assets/images/group.png')} style={styles.logo} />
-        <Icon name="settings" size={36} color="#1e90ff" />
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={loadUserProfile} style={styles.refreshBtn}>
+            <Icon name="refresh" size={24} color="#1e90ff" />
+          </TouchableOpacity>
+          <Icon name="settings" size={36} color="#1e90ff" />
+        </View>
       </View>
 
       {/* Profile Section */}
       <View style={styles.profileSection}>
         <Image source={require('../assets/images/Unknown.jpg')} style={styles.avatar} />
-        <Text style={styles.name}>Alexandra</Text>
+        <Text style={styles.name}>
+          {userProfile?.user_full_name || 'Unknown User'}
+        </Text>
         <View style={styles.infoBlock}>
-          <Text style={styles.infoText}>{t('dateOfBirth')}: January 15,</Text>
+          {userProfile?.user_dob && (
+            <Text style={styles.infoText}>
+              {t('dateOfBirth')}: {new Date(userProfile.user_dob).toLocaleDateString()}
+            </Text>
+          )}
           <Text style={styles.infoText}>
-            {t('email')}: <Text style={styles.link} onPress={() => Linking.openURL('mailto:alexandra.johnson@example.com')}>alexandra.johnson@example.com</Text>
+            {t('email')}: 
+            <Text 
+              style={styles.link} 
+              onPress={() => userProfile?.user_email && Linking.openURL(`mailto:${userProfile.user_email}`)}
+            >
+              {userProfile?.user_email || 'No email'}
+            </Text>
           </Text>
-          <Text style={styles.infoText}>{t('phone')}: +1 (555) 123-4567</Text>
-          <Text style={styles.infoText}>{t('gender')}: {t('female')}</Text>
+          {userProfile?.user_phone_number && (
+            <Text style={styles.infoText}>
+              {t('phone')}: {userProfile.user_phone_number}
+            </Text>
+          )}
+          {userProfile?.user_gender !== null && userProfile?.user_gender !== undefined && (
+            <Text style={styles.infoText}>
+              {t('gender')}: {userProfile.user_gender ? t('male') : t('female')}
+            </Text>
+          )}
         </View>
         <TouchableOpacity style={styles.updateBtn} onPress={handleUpdateProfile}>
           <Text style={styles.updateBtnText}>{t('updateProfile')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.changePasswordBtn} onPress={handleChangePassword}>
           <Text style={styles.changePasswordBtnText}>{t('changePasswordBtn')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Text style={styles.logoutBtnText}>{t('Logout')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -130,10 +253,10 @@ const styles = StyleSheet.create({
   infoBlock: { marginBottom: 12 },
   infoText: { fontSize: 15, color: '#444', marginBottom: 2 },
   link: { color: '#1e90ff', textDecorationLine: 'underline' },
-  updateBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10 },
-  updateBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
-  changePasswordBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10 },
-  changePasswordBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  updateBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10, minWidth: 200, alignItems: 'center' },
+  updateBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  changePasswordBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10, minWidth: 200, alignItems: 'center' },
+  changePasswordBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   card: { backgroundColor: '#fff', borderRadius: 18, marginHorizontal: 16, marginTop: 18, padding: 18, elevation: 1 },
   cardTitle: { fontSize: 20, fontWeight: 'bold', color: '#222', marginBottom: 6 },
   cardDesc: { color: '#888', marginBottom: 12 },
@@ -153,6 +276,15 @@ const styles = StyleSheet.create({
   plusBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#444', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   navText: { fontSize: 12, color: '#b0b0b0', marginTop: 2 },
   navTextActive: { color: '#1e90ff', fontWeight: 'bold' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { fontSize: 18, fontWeight: 'bold', color: '#1e90ff', marginTop: 20 },
+  errorText: { fontSize: 18, fontWeight: 'bold', color: 'red', marginBottom: 20 },
+  loginBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32 },
+  loginBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  logoutBtn: { backgroundColor: '#f44336', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10, minWidth: 200, alignItems: 'center' },
+  logoutBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  headerRight: { flexDirection: 'row', alignItems: 'center' },
+  refreshBtn: { padding: 8 },
 });
 
 export default SettingScreen; 

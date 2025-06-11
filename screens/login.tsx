@@ -1,25 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { configureGoogleSignIn, signInWithGoogle } from '../api/googleSignIn';
 import GoogleButton from '../components/Login/GoogleButton';
 import Logo from '../components/Login/Logo';
+import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { configureGoogleSignIn, signInWithGoogle } from '../services/googleSignIn';
 
 const { height } = Dimensions.get('window');
 
@@ -27,6 +28,7 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
+  const { login } = useAuth();
   
   // Form state
   const [email, setEmail] = useState('');
@@ -80,7 +82,7 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      // Simulate API call
+      // Call your email login API here
       console.log('Email login:', { email, password, rememberMe });
       
       // Replace with actual API call
@@ -101,11 +103,14 @@ export default function LoginScreen() {
       console.log('🟢 LoginScreen - Starting Google Sign-In...');
       const result = await signInWithGoogle();
       
-      if (result.success) {
+      if (result.success && result.backendData) {
         console.log('🟢 Google Sign-In successful!');
         console.log('🟢 User Info:', result.userInfo);
         console.log('🟢 Backend Data:', result.backendData);
         console.log('🟢 Is First Login:', result.isFirstLogin);
+        
+        // Update auth context with user data - tokens are automatically stored in SecureStore
+        login(result.backendData.user_infomation);
         
         if (result.isFirstLogin) {
           // First time login - navigate to register screen for additional info
@@ -117,7 +122,6 @@ export default function LoginScreen() {
               {
                 text: t('common.continue'),
                 onPress: () => {
-                  // Navigate to register screen to collect additional information
                   navigation.replace('Register');
                 }
               }
@@ -133,8 +137,7 @@ export default function LoginScreen() {
               {
                 text: t('common.continue'),
                 onPress: () => {
-                  // Navigate directly to FinanceScreen for returning users
-                  navigation.replace('FinanceScreen');
+                  navigation.replace('MainTab');
                 }
               }
             ]
