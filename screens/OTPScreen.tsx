@@ -17,6 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import LogoWithText from '../components/Login/LogoWithText';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { authService } from '../services/authService';
 
 const { width } = Dimensions.get('window');
 
@@ -25,7 +26,12 @@ interface OTPScreenProps {
     params?: {
       email?: string;
       phoneNumber?: string;
+      fullName?: string;
+      dateOfBirth?: string; // YYYY-MM-DD format
+      gender?: boolean; // true = male, false = female
       type?: 'register' | 'forgot-password';
+      password?: string; // Password for account creation
+      otpCode?: string; // For testing purposes
     };
   };
 }
@@ -37,7 +43,12 @@ export default function OTPScreen({ route }: OTPScreenProps) {
   
   const email = route?.params?.email || '';
   const phoneNumber = route?.params?.phoneNumber || '';
+  const fullName = route?.params?.fullName || '';
+  const dateOfBirth = route?.params?.dateOfBirth || '';
+  const gender = route?.params?.gender;
   const type = route?.params?.type || 'register';
+  const password = route?.params?.password || ''; // Password for account creation
+  const testOtpCode = route?.params?.otpCode || ''; // For testing
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +70,15 @@ export default function OTPScreen({ route }: OTPScreenProps) {
     }
     return () => clearInterval(interval);
   }, [timer]);
+
+  // Auto-fill OTP for testing (if provided)
+  useEffect(() => {
+    if (testOtpCode && testOtpCode.length === 6) {
+      const otpArray = testOtpCode.split('');
+      setOtp(otpArray);
+      console.log('🟡 Auto-filled OTP for testing:', testOtpCode);
+    }
+  }, [testOtpCode]);
 
   const handleOtpChange = (text: string, index: number) => {
     const newOtp = [...otp];
@@ -87,12 +107,41 @@ export default function OTPScreen({ route }: OTPScreenProps) {
 
     setIsLoading(true);
     try {
-      // Simulate API call
-      console.log('Verify OTP:', { otpCode, email, phoneNumber, type });
+      console.log('🟡 Verifying OTP:', { otpCode, email, type, fullName, dateOfBirth, gender });
       
-      setTimeout(() => {
-        setIsLoading(false);
-        
+      // Prepare verify OTP request based on type
+      let verifyRequest;
+      
+      if (type === 'register' && fullName && dateOfBirth && gender !== undefined) {
+        // Full registration verification with all user data
+        verifyRequest = {
+          email,
+          full_name: fullName,
+          dob: dateOfBirth,
+          phone_number: phoneNumber,
+          gender: gender,
+          password: password,
+          otp: otpCode
+        };
+      } else {
+        // Simple verification for forgot password or legacy flow
+        verifyRequest = {
+          email,
+          otp_code: otpCode,
+          password: password || undefined
+        };
+      }
+      
+      console.log('🟡 Final verify request:', verifyRequest);
+      
+      // Call verify OTP API
+      const verified = await authService.verifyOtp(verifyRequest);
+      
+      console.log('🟢 OTP verification result:', verified);
+      
+      setIsLoading(false);
+      
+      if (verified) {
         if (type === 'forgot-password') {
           // Navigate to reset password screen
           Alert.alert(t('common.success'), t('otp.verifySuccessReset'), [
@@ -103,18 +152,34 @@ export default function OTPScreen({ route }: OTPScreenProps) {
           ]);
         } else {
           // Navigate to login for register flow
-          Alert.alert(t('common.success'), t('otp.verifySuccess'), [
+          Alert.alert(t('common.success'), 'Account verified successfully! You can now login.', [
             {
               text: t('common.confirm'),
               onPress: () => navigation.replace('Login'),
             },
           ]);
         }
-      }, 2000);
+      } else {
+        Alert.alert(t('common.error'), 'OTP verification failed. Please try again.');
+      }
       
-    } catch (error) {
+    } catch (error: any) {
       setIsLoading(false);
-      Alert.alert(t('common.error'), t('otp.verifyFailed'));
+      console.error('🔴 OTP verification failed:', error);
+      
+      let errorMessage = t('otp.verifyFailed');
+      
+      if (error.message.includes('UNAUTHORIZED') || error.message.includes('Invalid')) {
+        errorMessage = 'Invalid OTP code. Please check and try again.';
+      } else if (error.message.includes('NOT_FOUND')) {
+        errorMessage = 'OTP not found. Please request a new one.';
+      } else if (error.message.includes('TOO_MANY_REQUESTS')) {
+        errorMessage = 'Too many attempts. Please try again later.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert(t('common.error'), errorMessage);
     }
   };
 
@@ -123,21 +188,36 @@ export default function OTPScreen({ route }: OTPScreenProps) {
     
     setResendLoading(true);
     try {
-      // Simulate API call
-      console.log('Resend OTP to:', email || phoneNumber, 'for', type);
+      console.log('🟡 Resending OTP to:', email);
       
-      setTimeout(() => {
-        setResendLoading(false);
-        setTimer(60);
-        setCanResend(false);
-        setOtp(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
-        Alert.alert(t('common.success'), t('otp.resendSuccess'));
-      }, 1000);
+      // Call resend OTP API
+      await authService.resendOtp(email);
       
-    } catch (error) {
+      console.log('🟢 OTP resent successfully');
+      
       setResendLoading(false);
-      Alert.alert(t('common.error'), t('otp.resendFailed'));
+      setTimer(60);
+      setCanResend(false);
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+      
+      Alert.alert(t('common.success'), 'OTP has been resent to your email.');
+      
+    } catch (error: any) {
+      setResendLoading(false);
+      console.error('🔴 Resend OTP failed:', error);
+      
+      let errorMessage = t('otp.resendFailed');
+      
+      if (error.message.includes('CONFLICT')) {
+        errorMessage = 'Email already verified or does not exist.';
+      } else if (error.message.includes('TOO_MANY_REQUESTS')) {
+        errorMessage = 'Too many requests. Please wait before requesting again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert(t('common.error'), errorMessage);
     }
   };
 

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+    ActivityIndicator,
     Dimensions,
     Image,
     ScrollView,
@@ -15,8 +17,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, G, Svg } from 'react-native-svg';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { UserProfile, userService } from '../services/userService';
+
 const { width } = Dimensions.get('window');
 
 // Type definitions
@@ -41,15 +46,75 @@ const FinanceScreen = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigationService();
+  const { isAuthenticated } = useAuth();
+  
+  // State for user data
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // UI state
   const [selectedPeriod, setSelectedPeriod] = useState(t('finance.periods.thisMonth'));
   const [isPeriodModalVisible, setIsPeriodModalVisible] = useState(false);
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [activeTab, setActiveTab] = useState('Overview');
-  const [notificationCount, setNotificationCount] = useState(3); // Giả lập số thông báo
+  const [notificationCount, setNotificationCount] = useState(3);
 
-  // Dữ liệu mẫu
-  const userData = {
-    name: 'Nguyen Manh Cuong',
+  // Load user profile from API
+  useEffect(() => {
+    loadUserProfile();
+  }, [isAuthenticated]);
+
+  // Auto reload data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        console.log('🔄 FinanceScreen focused, reloading profile...');
+        loadUserProfile();
+      }
+    }, [isAuthenticated])
+  );
+
+  const loadUserProfile = async (forceRefresh: boolean = false) => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('🟡 Loading user profile in FinanceScreen...', forceRefresh ? '(Force Refresh)' : '');
+      
+      const profile = await userService.getCurrentUserProfile(forceRefresh);
+      console.log('🟢 User profile loaded in FinanceScreen:', profile);
+      
+      setUserProfile(profile);
+    } catch (error: any) {
+      console.error('🔴 Failed to load user profile in FinanceScreen:', error);
+      // Don't show alert on finance screen, just use fallback data
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper function to get avatar source based on gender
+  const getAvatarSource = () => {
+    if (userProfile?.user_avatar_url) {
+      return { uri: userProfile.user_avatar_url };
+    }
+    
+    // Use gender-based default avatar
+    if (userProfile?.user_gender === true) {
+      return require('../assets/images/maleavatar.png');
+    } else if (userProfile?.user_gender === false) {
+      return require('../assets/images/femaleavatar.png');
+    }
+    
+    // Fallback to unknown avatar
+    return require('../assets/images/Unknown.jpg');
+  };
+
+  // Dữ liệu mẫu (will be replaced with real API data later)
+  const financeData = {
     balance: '2,100,000',
     income: '80,000',
     expenses: '1,980,000',
@@ -216,6 +281,19 @@ const FinanceScreen = () => {
     t('finance.periods.thisYear')
   ];
 
+  // Show loading state
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#4285F4" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={styles.loadingText}>{t('common.loading')}...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <TouchableWithoutFeedback onPress={() => setIsPeriodModalVisible(false)}>
       <View style={styles.container}>
@@ -227,17 +305,22 @@ const FinanceScreen = () => {
             <View style={styles.profileSection}>
               <View style={styles.avatar}>
                 <Image 
-                  source={require('../assets/images/Unknown.jpg')} 
+                  source={getAvatarSource()}
                   style={styles.avatarImage}
                 />
               </View>
               <View>
                 <Text style={styles.greeting}>{t('finance.hello')}</Text>
-                <Text style={styles.userName}>{userData.name}</Text>
+                <Text style={styles.userName}>
+                  {userProfile?.user_full_name || 'Unknown User'}
+                </Text>
               </View>
             </View>
             <View style={styles.headerIcons}>
-              <TouchableOpacity style={styles.headerIcon}>
+              <TouchableOpacity 
+                style={styles.headerIcon}
+                onPress={() => loadUserProfile(true)}
+              >
                 <Icon name="refresh" size={24} color="white" />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
@@ -250,7 +333,7 @@ const FinanceScreen = () => {
             <Text style={styles.balanceLabel}>{t('finance.totalBalance')}</Text>
             <View style={styles.balanceRow}>
               <Text style={[styles.balanceAmount, { minWidth: 200 }]}>
-                {isBalanceVisible ? `${userData.balance} ${t('currency')}` : '********'}
+                {isBalanceVisible ? `${financeData.balance} ${t('currency')}` : '********'}
               </Text>
               <TouchableOpacity onPress={() => setIsBalanceVisible(!isBalanceVisible)}>
                 <Icon 
@@ -290,15 +373,15 @@ const FinanceScreen = () => {
               <View style={styles.amountsList}>
                 <View style={styles.amountRow}>
                   <Text style={styles.amountLabel}>{t('incomeLabel')}</Text>
-                  <Text style={styles.incomeAmount}>{userData.income} {t('currency')}</Text>
+                  <Text style={styles.incomeAmount}>{financeData.income} {t('currency')}</Text>
                 </View>
                 <View style={styles.amountRow}>
                   <Text style={styles.amountLabel}>{t('finance.expenseShort')}</Text>
-                  <Text style={styles.expenseAmount}>{userData.expenses} {t('currency')}</Text>
+                  <Text style={styles.expenseAmount}>{financeData.expenses} {t('currency')}</Text>
                 </View>
                 <View style={styles.amountRow}>
                   <Text style={styles.amountLabel}>{t('finance.difference')}</Text>
-                  <Text style={styles.differenceAmount}>{userData.difference} {t('currency')}</Text>
+                  <Text style={styles.differenceAmount}>{financeData.difference} {t('currency')}</Text>
                 </View>
               </View>
             </View>
@@ -707,6 +790,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 10,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 20,
   },
 });
 

@@ -3,13 +3,15 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     FlatList,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     StatusBar,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -68,61 +70,70 @@ export default function AddEditCategoryScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="#fff" 
-        translucent={false}
-      />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <SafeAreaView style={styles.safeAreaContent}>
+        <StatusBar 
+          barStyle="dark-content" 
+          backgroundColor="#fff" 
+          translucent={false}
+        />
+        
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <IconBack name="arrow-back" size={24} color="#FF6900" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{title}</Text>
+          <View style={styles.placeholder} />
+        </View>
+
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <IconBack name="arrow-back" size={24} color="#FF6900" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{title}</Text>
-        <View style={styles.placeholder} />
-      </View>
+          {/* Name Input */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('categoryName')}</Text>
+            <TextInput
+              style={styles.nameInput}
+              placeholder={t('categoryNamePlaceholder')}
+              value={categoryName}
+              onChangeText={setCategoryName}
+              placeholderTextColor="#C7C7CC"
+              returnKeyType="done"
+              blurOnSubmit={false}
+            />
+          </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Name Input */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('categoryName')}</Text>
-          <TextInput
-            style={styles.nameInput}
-            placeholder={t('categoryNamePlaceholder')}
-            value={categoryName}
-            onChangeText={setCategoryName}
-            placeholderTextColor="#C7C7CC"
-          />
+          {/* Icon Selection */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('icon')}</Text>
+            <FlatList
+              data={AVAILABLE_ICONS}
+              renderItem={renderIconItem}
+              keyExtractor={item => item}
+              numColumns={4}
+              scrollEnabled={false}
+              contentContainerStyle={styles.iconGrid}
+            />
+          </View>
+        </ScrollView>
+
+        {/* Save Button */}
+        <View style={styles.bottomContainer}>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            <Text style={styles.saveButtonText}>{t('save')}</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Icon Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('icon')}</Text>
-          <FlatList
-            data={AVAILABLE_ICONS}
-            renderItem={renderIconItem}
-            keyExtractor={item => item}
-            numColumns={4}
-            scrollEnabled={false}
-            contentContainerStyle={styles.iconGrid}
-          />
-        </View>
-
-
-      </ScrollView>
-
-      {/* Save Button */}
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>{t('save')}</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -130,6 +141,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',
+  },
+  safeAreaContent: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

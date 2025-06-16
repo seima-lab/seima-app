@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { AuthProvider } from '../contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import AddBudgetCategoryScreen from '../screens/AddBudgetCategoryScreen';
@@ -14,6 +15,7 @@ import CalendarScreen from '../screens/CalendarScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ChatAIScreen from '../screens/ChatAIScreen';
 import EditCategoryScreen from '../screens/EditCategoryScreen';
+import FinanceScreen from '../screens/FinanceScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import MainTabScreen from '../screens/MainTabScreen';
 import NotificationDetailScreen from '../screens/NotificationDetailScreen';
@@ -43,7 +45,7 @@ function AppNavigator() {
 
   return (
     <Stack.Navigator 
-      initialRouteName="MainTab"
+      initialRouteName="Login"
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
@@ -60,6 +62,7 @@ function AppNavigator() {
       <Stack.Screen name="OTP" component={OTPScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="MainTab" component={MainTabScreen} />
+      <Stack.Screen name="FinanceScreen" component={FinanceScreen} />
       <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="ChatAI" component={ChatAIScreen} />
@@ -88,8 +91,10 @@ export default function RootLayout() {
   }
 
   return (
-    <LanguageProvider>
-      <AppNavigator />
-    </LanguageProvider>
+    <AuthProvider>
+      <LanguageProvider>
+        <AppNavigator />
+      </LanguageProvider>
+    </AuthProvider>
   );
 } 

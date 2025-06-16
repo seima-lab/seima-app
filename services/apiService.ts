@@ -1,3 +1,7 @@
+// services/ApiService.ts
+
+import * as SecureStore from 'expo-secure-store';
+
 // Types for API responses
 export interface ApiResponse<T = any> {
   statusCode: number;
@@ -6,15 +10,15 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
-// API Service Class
 export class ApiService {
   private static instance: ApiService;
   private baseURL: string;
   private timeout: number;
 
   private constructor() {
-    this.baseURL = process.env.EXPO_PUBLIC_API_BASE_URL || '';
-    this.timeout = parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '');
+    this.baseURL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.example.com';
+    this.timeout = parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '10000');
+    console.log('🌐 API Service initialized with baseURL:', this.baseURL);
   }
 
   // Singleton pattern
@@ -37,27 +41,39 @@ export class ApiService {
   ): Promise<ApiResponse<T>> {
     try {
       const url = this.buildUrl(endpoint);
-      
-      const defaultHeaders = {
+
+      // Default headers
+      const defaultHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...options.headers,
       };
+
+      // Safely merge headers
+      if (options.headers) {
+        const headersObj = options.headers as Record<string, string>;
+        Object.assign(defaultHeaders, headersObj);
+      }
+
+      // Get token from secure store
+      const token = await SecureStore.getItemAsync('access_token');
+      if (token) {
+        defaultHeaders['Authorization'] = `Bearer ${token}`;
+      }
 
       const config: RequestInit = {
         ...options,
         headers: defaultHeaders,
       };
 
-      // Create AbortController for timeout
+      // Setup timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.timeout);
       config.signal = controller.signal;
 
       console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
-      
+
       const response = await fetch(url, config);
       clearTimeout(timeoutId);
-      
+
       const result: ApiResponse<T> = await response.json();
 
       if (response.ok) {
@@ -112,16 +128,73 @@ export class ApiService {
     });
   }
 
-  // Auth token methods
-  setAuthToken(token: string) {
-    // Store token for future requests
-    // You might want to use AsyncStorage here
+  // Post FormData for multipart uploads
+  async postFormData<T>(
+    endpoint: string,
+    formData: FormData,
+    headers?: Record<string, string>
+  ): Promise<ApiResponse<T>> {
+    try {
+      const url = this.buildUrl(endpoint);
+
+      // Default headers (don't set Content-Type for FormData, let browser set it with boundary)
+      const defaultHeaders: Record<string, string> = {};
+
+      // Get token from secure store
+      const token = await SecureStore.getItemAsync('access_token');
+      if (token) {
+        defaultHeaders['Authorization'] = `Bearer ${token}`;
+      }
+
+      // Merge additional headers
+      if (headers) {
+        Object.assign(defaultHeaders, headers);
+      }
+
+      const config: RequestInit = {
+        method: 'POST',
+        headers: defaultHeaders,
+        body: formData,
+      };
+
+      // Setup timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+      config.signal = controller.signal;
+
+      console.log(`🌐 API FormData Request: POST ${url}`);
+
+      const response = await fetch(url, config);
+      clearTimeout(timeoutId);
+
+      const result: ApiResponse<T> = await response.json();
+
+      if (response.ok) {
+        console.log(`✅ API FormData Success: ${url}`, result);
+        return result;
+      } else {
+        console.error(`❌ API FormData Error: ${url}`, result);
+        throw new Error(result.message || 'API FormData request failed');
+      }
+    } catch (error: any) {
+      console.error(`🔴 API FormData Request Error:`, error);
+      throw error;
+    }
   }
 
-  removeAuthToken() {
-    // Remove stored token
+  // Auth token helpers
+  async setAuthToken(token: string) {
+    await SecureStore.setItemAsync('access_token', token);
+  }
+
+  async removeAuthToken() {
+    await SecureStore.deleteItemAsync('access_token');
+  }
+
+  async getAuthToken(): Promise<string | null> {
+    return await SecureStore.getItemAsync('access_token');
   }
 }
 
 // Export singleton instance
-export const apiService = ApiService.getInstance(); 
+export const apiService = ApiService.getInstance();
