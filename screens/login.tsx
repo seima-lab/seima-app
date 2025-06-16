@@ -4,9 +4,6 @@ import {
   Alert,
   Animated,
   Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +17,7 @@ import Logo from '../components/Login/Logo';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { authService, EmailLoginRequest } from '../services/authService';
 import { configureGoogleSignIn, signInWithGoogle } from '../services/googleSignIn';
 
 const { height } = Dimensions.get('window');
@@ -36,6 +34,7 @@ export default function LoginScreen() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [autoFillTest, setAutoFillTest] = useState(false);
   
   // Card animation
   const cardAnim = useRef(new Animated.Value(0)).current;
@@ -82,18 +81,58 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      // Call your email login API here
-      console.log('Email login:', { email, password, rememberMe });
+      console.log('🟡 Starting email login...');
       
-      // Replace with actual API call
-      setTimeout(() => {
-        setIsLoading(false);
-        navigation.replace('MainTab');
-      }, 2000);
+      // Prepare login request
+      const loginRequest: EmailLoginRequest = {
+        email: email.trim().toLowerCase(),
+        password: password.trim()
+      };
       
-    } catch (error) {
+      console.log('🟡 Login request:', { email: loginRequest.email, password: '[HIDDEN]' });
+      
+      // Call email login API
+      const response = await authService.emailLogin(loginRequest);
+      
+      console.log('🟢 Email login successful:', response);
+      
+      // Create user profile for AuthContext (using snake_case from API)
+      const userProfile = {
+        id: response.user_information.email, // Use email as ID
+        email: response.user_information.email,
+        name: response.user_information.full_name,
+        picture: response.user_information.avatar_url
+      };
+      
+      // Update auth context with user data
+      login(userProfile);
+      
       setIsLoading(false);
-      Alert.alert(t('common.error'), t('login.loginFailed'));
+      
+      // Navigate to main app
+      console.log('🟢 Navigating to MainTab');
+      navigation.replace('MainTab');
+      
+    } catch (error: any) {
+      setIsLoading(false);
+      console.error('🔴 Email login failed:', error);
+      
+      // Handle specific error cases
+      let errorMessage = t('login.loginFailed');
+      
+      if (error.message.includes('Invalid email or password')) {
+        errorMessage = 'Invalid email or password. Please check your credentials.';
+      } else if (error.message.includes('Account is not active')) {
+        errorMessage = 'Your account is not active. Please verify your email first.';
+      } else if (error.message.includes('Google login')) {
+        errorMessage = 'This account was created with Google. Please use Google login.';
+      } else if (error.message.includes('UNAUTHORIZED')) {
+        errorMessage = 'Invalid credentials. Please check your email and password.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert(t('common.error'), errorMessage);
     }
   };
 
@@ -107,41 +146,41 @@ export default function LoginScreen() {
         console.log('🟢 Google Sign-In successful!');
         console.log('🟢 User Info:', result.userInfo);
         console.log('🟢 Backend Data:', result.backendData);
-        console.log('🟢 Is First Login:', result.isFirstLogin);
+        const isUserActive = (result as any).is_user_active;
+        
+        console.log('🔍 DEBUG LOGIN LOGIC:', {
+          is_user_active: isUserActive,
+          'Logic: is_user_active=true should go to MainTab': isUserActive === true,
+          'Logic: is_user_active=false should go to Register': isUserActive === false
+        });
         
         // Update auth context with user data - tokens are automatically stored in SecureStore
         login(result.backendData.user_infomation);
         
-        if (result.isFirstLogin) {
-          // First time login - navigate to register screen for additional info
-          console.log('🟢 First time login - navigating to Register screen');
-          Alert.alert(
-            t('login.welcomeTitle'),
-            t('login.firstTimeLoginMessage'),
-            [
-              {
-                text: t('common.continue'),
-                onPress: () => {
-                  navigation.replace('Register');
-                }
-              }
-            ]
-          );
+        if (!isUserActive) {
+          // First time login (user_is_active = false) - navigate to register screen for additional info
+          console.log('🟢 First time login (user_is_active = false) - navigating to Register screen');
+          
+          // Extract Google user data for auto-fill
+          console.log('🔍 Login Screen - Backend response structure:', {
+            user_infomation: result.backendData?.user_infomation,
+            user_is_active: result.backendData?.is_user_active
+          });
+          
+          const userInfo = result.backendData?.user_infomation as any;
+          const googleUserData = {
+            fullName: userInfo?.name || userInfo?.full_name || userInfo?.fullName || '',
+            email: userInfo?.email || '',
+            isGoogleLogin: true,
+            userIsActive: isUserActive
+          };
+          
+          console.log('🟢 Passing Google user data to Register:', googleUserData);
+          navigation.replace('Register', { googleUserData });
         } else {
-          // Returning user - go directly to main app
-          console.log('🟢 Returning user - navigating to FinanceScreen');
-          Alert.alert(
-            t('login.welcomeBack'),
-            t('login.loginSuccessMessage'),
-            [
-              {
-                text: t('common.continue'),
-                onPress: () => {
-                  navigation.replace('MainTab');
-                }
-              }
-            ]
-          );
+          // Returning user (user_is_active = true) - go directly to main app
+          console.log('🟢 Returning user (user_is_active = true) - navigating to MainTab');
+          navigation.replace('MainTab');
         }
       } else {
         console.error('🔴 Google Sign-In failed:', result.error);
@@ -163,32 +202,51 @@ export default function LoginScreen() {
     navigation.navigate('ForgotPassword');
   };
 
+  const handleAutoFillToggle = (value: boolean) => {
+    setAutoFillTest(value);
+    
+    if (value) {
+      // Auto-fill test data
+      setEmail('cnguyenmanh2612@gmail.com');
+      setPassword('123123Mn@');
+    } else {
+      // Clear fields
+      setEmail('');
+      setPassword('');
+    }
+  };
+
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        bounces={false}
-      >
-        <View style={styles.content}>
-          {/* Animated Logo */}
-          <View style={styles.logoContainer}>
-            <Logo />
-          </View>
-          
-          {/* Animated Login Card */}
-          <Animated.View style={[
-            styles.loginCard, 
-            { 
-              opacity: cardOpacity, 
-              transform: [{ translateY: cardTranslateY }] 
-            }
-          ]}> 
+    <View style={styles.container}>
+      <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
+        {/* Compact Logo */}
+        <View style={styles.logoContainer}>
+          <Logo />
+        </View>
+        
+        {/* Animated Login Card */}
+        <Animated.View style={[
+          styles.loginCard, 
+          { 
+            opacity: cardOpacity, 
+            transform: [{ translateY: cardTranslateY }] 
+          }
+        ]}> 
             <Text style={styles.loginTitle}>{t('login.signInTitle')}</Text>
+            
+            {/* Auto-fill Test Data Checkbox */}
+            <TouchableOpacity 
+              style={styles.autoFillContainer}
+              onPress={() => handleAutoFillToggle(!autoFillTest)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, autoFillTest && styles.checkboxChecked]}>
+                {autoFillTest && (
+                  <Icon name="check" size={14} color="#fff" />
+                )}
+              </View>
+              <Text style={styles.autoFillText}>Auto-fill test data</Text>
+            </TouchableOpacity>
             
             {/* Email Input */}
             <View style={styles.inputContainer}>
@@ -273,27 +331,26 @@ export default function LoginScreen() {
 
             {/* Google Login */}
             <GoogleButton onPress={handleGoogleLogin} />
-          </Animated.View>
+        </Animated.View>
 
-          {/* Sign Up Link */}
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>
-              {t('login.noAccount')} 
-            </Text>
-            <TouchableOpacity onPress={handleSignUp}>
-              <Text style={styles.signupLink}>{t('login.signUp')}</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Sign Up Link */}
+        <View style={styles.signupContainer}>
+          <Text style={styles.signupText}>
+            {t('login.noAccount')} 
+          </Text>
+          <TouchableOpacity onPress={handleSignUp}>
+            <Text style={styles.signupLink}>{t('login.signUp')}</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-      
-      {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
-        <Text style={styles.footerText}>
-          {t('login.termsText')}
-        </Text>
+        
+        {/* Footer */}
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
+          <Text style={styles.footerText}>
+            {t('login.termsText')}
+          </Text>
+        </View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -302,28 +359,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingTop: 20,
-  },
   content: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    minHeight: height * 0.85, // 85% of screen height
   },
   logoContainer: {
-    height: height * 0.25, // 25% of screen height for logo
+    height: 80,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
+    marginTop: 20,
   },
   loginCard: {
     backgroundColor: '#fff',
     width: '100%',
     maxWidth: 400,
-    padding: 24,
+    padding: 20,
     borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: {
@@ -333,17 +386,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
-    marginBottom: 16,
+    flex: 1,
+    justifyContent: 'center',
   },
   loginTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   inputLabel: {
     fontSize: 14,
@@ -375,7 +429,7 @@ const styles = StyleSheet.create({
   rememberMeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   checkbox: {
     width: 20,
@@ -412,7 +466,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordButton: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   forgotPasswordText: {
     color: '#1e90ff',
@@ -464,4 +518,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
   },
-}); 
+  autoFillContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  autoFillText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+});
+
+ 

@@ -1,0 +1,714 @@
+import { apiService } from './apiService';
+
+// Enums
+export enum CategoryType {
+  INCOME = 'INCOME',
+  EXPENSE = 'EXPENSE'
+}
+
+// Interfaces for API requests and responses (snake_case format)
+export interface CategoryResponse {
+  category_id: number;
+  user_id: number;
+  group_id: number;
+  category_name: string;
+  category_type: CategoryType;
+  category_icon_url: string;
+  parent_category_id: number | null;
+  is_system_defined: boolean;
+}
+
+export interface CreateCategoryRequest {
+  user_id: number;
+  group_id: number;
+  category_name: string;
+  category_type: CategoryType;
+  category_icon_url: string;
+  parent_category_id?: number;
+  is_system_defined?: boolean;
+}
+
+export interface UpdateCategoryRequest {
+  user_id?: number;
+  group_id?: number;
+  category_name?: string;
+  category_type?: CategoryType;
+  category_icon_url?: string;
+  parent_category_id?: number;
+  is_system_defined?: boolean;
+}
+
+// Local category interface for UI (with icon mapping)
+export interface LocalCategory {
+  key: string;
+  label: string;
+  icon: string;
+  color: string;
+  category_id?: number;
+  is_system_defined?: boolean;
+}
+
+// Icon mapping từ key (backend trả về) sang local MaterialCommunityIcons
+const ICON_MAPPING: { [key: string]: string } = {
+  // Food & Dining - Expense Categories
+  'food': 'silverware-fork-knife',
+  'restaurant': 'silverware-fork-knife',
+  'coffee': 'coffee',
+  'fast-food': 'hamburger',
+  'dining': 'silverware-fork-knife',
+  
+  // Daily & Shopping - Expense Categories  
+  'daily': 'bottle-soda',
+  'shopping': 'shopping',
+  'grocery': 'cart',
+  'market': 'store',
+  
+  // Clothing & Fashion - Expense Categories
+  'clothes': 'tshirt-crew',
+  'clothing': 'tshirt-crew',
+  'fashion': 'tshirt-crew',
+  'shoes': 'shoe-heel',
+  
+  // Beauty & Cosmetic - Expense Categories
+  'cosmetic': 'lipstick',
+  'beauty': 'lipstick',
+  'makeup': 'lipstick',
+  'skincare': 'face-woman',
+  
+  // Entertainment & Social - Expense Categories
+  'social': 'glass-cocktail',
+  'entertainment': 'gamepad-variant',
+  'movie': 'movie',
+  'music': 'music',
+  'party': 'party-popper',
+  'gaming': 'gamepad-variant',
+  
+  // Health & Medical - Expense Categories
+  'health': 'pill',
+  'medical': 'hospital-box',
+  'hospital': 'hospital-box',
+  'pharmacy': 'pharmacy',
+  'fitness': 'dumbbell',
+  'doctor': 'doctor',
+  
+  // Education & Learning - Expense Categories
+  'education': 'book-open-variant',
+  'school': 'school',
+  'study': 'book-open-variant',
+  'course': 'book-open-variant',
+  'training': 'book-open-variant',
+  
+  // Work & Office - Mixed Categories
+  'work': 'briefcase',
+  'office': 'office-building',
+  'meeting': 'account-group',
+  
+  // Utilities - Expense Categories
+  'electric': 'flash',
+  'electricity': 'flash',
+  'water': 'water',
+  'internet': 'wifi',
+  'gas': 'fire',
+  'utility': 'home-lightning-bolt',
+  
+  // Transportation - Expense Categories
+  'transport': 'train',
+  'transportation': 'train',
+  'car': 'car',
+  'bus': 'bus',
+  'taxi': 'taxi',
+  'fuel': 'gas-station',
+  'petrol': 'gas-station',
+  'parking': 'parking',
+  
+  // Communication - Expense Categories
+  'phone': 'cellphone',
+  'mobile': 'cellphone',
+  'internet_bill': 'wifi',
+  'communication': 'cellphone',
+  
+  // Housing - Expense Categories
+  'rent': 'home-city',
+  'house': 'home',
+  'apartment': 'apartment',
+  'home': 'home',
+  'housing': 'home-city',
+  
+  // Income Categories
+  'salary': 'cash',
+  'wage': 'cash',
+  'income': 'cash-plus',
+  'bonus': 'gift',
+  'reward': 'gift',
+  'investment': 'chart-line',
+  'stock': 'chart-line',
+  'freelance': 'laptop',
+  'freelancing': 'laptop',
+  'business': 'store',
+  'company': 'office-building',
+  'rental': 'home-account',
+  'rent_income': 'home-account',
+  'dividend': 'bank',
+  'interest': 'percent',
+  'bank_interest': 'percent',
+  'gift_money': 'hand-heart',
+  'gift': 'hand-heart',
+  'selling': 'cart',
+  'sales': 'cart',
+  'commission': 'percent',
+  
+  // Additional common categories
+  'other': 'dots-horizontal',
+  'miscellaneous': 'dots-horizontal',
+  'transfer': 'bank-transfer',
+  'loan': 'bank',
+  'debt': 'credit-card-off',
+  'saving': 'piggy-bank',
+  'insurance': 'shield-account',
+  'subscription': 'credit-card-multiple',
+  'maintenance': 'tools',
+  'repair': 'wrench',
+  'pet': 'dog',
+  'child': 'baby',
+  'baby': 'baby',
+  'book': 'book-open-page-variant',
+  'travel': 'airplane',
+  'vacation': 'beach',
+  'holiday': 'calendar-heart',
+  'gym': 'dumbbell',
+  'sport': 'soccer',
+  'hobby': 'palette',
+  'charity': 'heart',
+  'donation': 'hand-heart',
+  'tax': 'file-document',
+  'fine': 'alert-circle',
+  'withdrawal': 'cash-minus',
+  'deposit': 'cash-plus',
+  
+  // Default fallback
+  'default_expense': 'cash-minus',
+  'default_income': 'cash-plus',
+};
+
+// Color mapping cho từng category key (backend trả về)
+const COLOR_MAPPING: { [key: string]: string } = {
+  // Food & Dining - Orange tones
+  'food': '#ff9500',
+  'restaurant': '#ff9500',
+  'coffee': '#8b4513',
+  'fast-food': '#ff6b35',
+  'dining': '#ff9500',
+  
+  // Daily & Shopping - Green tones
+  'daily': '#32d74b',
+  'shopping': '#32d74b',
+  'grocery': '#228b22',
+  'market': '#32d74b',
+  
+  // Clothing & Fashion - Blue tones
+  'clothes': '#007aff',
+  'clothing': '#007aff',
+  'fashion': '#4169e1',
+  'shoes': '#1e90ff',
+  
+  // Beauty & Cosmetic - Pink/Purple tones
+  'cosmetic': '#ff2d92',
+  'beauty': '#ff2d92',
+  'makeup': '#ff69b4',
+  'skincare': '#dda0dd',
+  
+  // Entertainment & Social - Yellow/Gold tones
+  'social': '#ffcc02',
+  'entertainment': '#ffcc02',
+  'movie': '#ffd700',
+  'music': '#ffa500',
+  'party': '#ffcc02',
+  'gaming': '#ff8c00',
+  
+  // Health & Medical - Green medical tones
+  'health': '#30d158',
+  'medical': '#30d158',
+  'hospital': '#228b22',
+  'pharmacy': '#32cd32',
+  'fitness': '#00ff7f',
+  'doctor': '#30d158',
+  
+  // Education & Learning - Red tones
+  'education': '#ff375f',
+  'school': '#ff375f',
+  'study': '#dc143c',
+  'course': '#ff375f',
+  'training': '#b22222',
+  
+  // Work & Office - Gray/Professional tones
+  'work': '#708090',
+  'office': '#708090',
+  'meeting': '#696969',
+  
+  // Utilities - Cyan/Teal tones
+  'electric': '#00c7be',
+  'electricity': '#00c7be',
+  'water': '#00bfff',
+  'internet': '#20b2aa',
+  'gas': '#ff4500',
+  'utility': '#00c7be',
+  
+  // Transportation - Purple tones
+  'transport': '#bf5af2',
+  'transportation': '#bf5af2',
+  'car': '#9370db',
+  'bus': '#8a2be2',
+  'taxi': '#dda0dd',
+  'fuel': '#ff4500',
+  'petrol': '#ff4500',
+  'parking': '#bf5af2',
+  
+  // Communication - Light Blue tones
+  'phone': '#6ac4dc',
+  'mobile': '#6ac4dc',
+  'internet_bill': '#87ceeb',
+  'communication': '#6ac4dc',
+  
+  // Housing - Orange/Brown tones
+  'rent': '#ff9500',
+  'house': '#cd853f',
+  'apartment': '#daa520',
+  'home': '#ff9500',
+  'housing': '#ff9500',
+  
+  // Income Categories - Green money tones
+  'salary': '#32d74b',
+  'wage': '#32d74b',
+  'income': '#00ff00',
+  'bonus': '#ff9500',
+  'reward': '#ffd700',
+  'investment': '#007aff',
+  'stock': '#4169e1',
+  'freelance': '#ff375f',
+  'freelancing': '#ff375f',
+  'business': '#30d158',
+  'company': '#708090',
+  'rental': '#ffcc02',
+  'rent_income': '#ffcc02',
+  'dividend': '#ff2d92',
+  'interest': '#00c7be',
+  'bank_interest': '#00c7be',
+  'gift_money': '#bf5af2',
+  'gift': '#bf5af2',
+  'selling': '#6ac4dc',
+  'sales': '#6ac4dc',
+  'commission': '#32d74b',
+  
+  // Additional common categories
+  'other': '#999999',
+  'miscellaneous': '#999999',
+  'transfer': '#708090',
+  'loan': '#ff6347',
+  'debt': '#dc143c',
+  'saving': '#32d74b',
+  'insurance': '#4682b4',
+  'subscription': '#bf5af2',
+  'maintenance': '#ff9500',
+  'repair': '#ff375f',
+  'pet': '#ffcc02',
+  'child': '#ff2d92',
+  'baby': '#ff2d92',
+  'book': '#30d158',
+  'travel': '#007aff',
+  'vacation': '#00c7be',
+  'holiday': '#ff2d92',
+  'gym': '#ff375f',
+  'sport': '#32d74b',
+  'hobby': '#bf5af2',
+  'charity': '#ff2d92',
+  'donation': '#ff2d92',
+  'tax': '#8e8e93',
+  'fine': '#ff375f',
+  'withdrawal': '#ff375f',
+  'deposit': '#32d74b',
+  
+  // Default fallback colors
+  'default_expense': '#ff375f',
+  'default_income': '#32d74b',
+};
+
+// API response structure
+interface ApiResponseData<T = any> {
+  status_code?: number;
+  statusCode?: number;
+  message?: string;
+  data?: T;
+}
+
+export class CategoryService {
+  private static instance: CategoryService;
+
+  private constructor() {}
+
+  public static getInstance(): CategoryService {
+    if (!CategoryService.instance) {
+      CategoryService.instance = new CategoryService();
+    }
+    return CategoryService.instance;
+  }
+
+  // Get system default categories by type
+  async getSystemCategoriesByType(categoryType: CategoryType): Promise<CategoryResponse[]> {
+    try {
+      console.log('🔄 Fetching system categories:', { categoryType });
+      
+             // Map CategoryType to integer values for backend
+       const categoryTypeValue = categoryType === CategoryType.EXPENSE ? 1 : 2;
+       
+       console.log('🔄 Trying system categories with categoryType:', categoryTypeValue);
+       
+       const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(
+         `/api/v1/categories/system?categoryType=${categoryTypeValue}`
+       );
+      
+      console.log('📊 System categories response:', response);
+      
+      // Handle different response structures
+      let categories: CategoryResponse[] = [];
+      
+      if (response.data && Array.isArray(response.data)) {
+        categories = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        categories = response.data.data;
+      } else if (response && Array.isArray(response)) {
+        categories = response;
+      }
+      
+      console.log('📊 System categories count:', categories.length);
+      return categories;
+    } catch (error) {
+      console.error('❌ Error fetching system categories:', error);
+      console.log('⚠️ System categories endpoint may not exist, will fallback to main API');
+      return [];
+    }
+  }
+
+  // Get all categories by type and user
+  async getAllCategoriesByTypeAndUser(
+    categoryType: CategoryType,
+    userId: number,
+    groupId: number
+  ): Promise<CategoryResponse[]> {
+    try {
+      console.log('🔄 Fetching categories:', { categoryType, userId, groupId });
+      
+            // Map CategoryType to integer values for backend
+      const categoryTypeValue = categoryType === CategoryType.EXPENSE ? 1 : 2;
+      
+      console.log('🔄 Fetching categories with params:', {
+        categoryType: categoryTypeValue,
+        categoryTypeString: categoryType,
+        userId,
+        groupId,
+        expectedResponse: categoryType === CategoryType.INCOME ? 'Should get income categories' : 'Should get expense categories'
+      });
+      
+      const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(
+        `/api/v1/categories?categoryType=${categoryTypeValue}&userId=${userId}&groupId=${groupId}`
+      );
+      
+      console.log('📊 Categories response for', categoryType, ':', response);
+      console.log('📊 Response data type:', typeof response.data);
+      console.log('📊 Response data length:', Array.isArray(response.data) ? response.data.length : 'Not array');
+      console.log('📊 Response data:', JSON.stringify(response.data, null, 2));
+      
+      // Handle different response structures
+      let categories: CategoryResponse[] = [];
+      
+      if (response.data && Array.isArray(response.data)) {
+        categories = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        categories = response.data.data;
+      } else if (response && Array.isArray(response)) {
+        categories = response;
+      }
+      
+            console.log('📊 Extracted categories count:', categories.length);
+      console.log('📊 Categories:', categories);
+      
+      // If no categories found and it's income, provide fallback immediately
+      if (categories.length === 0 && categoryType === CategoryType.INCOME) {
+        console.log('⚠️ No income categories found from API, using default fallback categories');
+        const defaultIncomeCategories = this.getDefaultCategories(CategoryType.INCOME);
+        console.log('📊 Default income categories:', defaultIncomeCategories);
+        
+        // Convert default categories to API format for consistency
+        return defaultIncomeCategories.map(defaultCat => ({
+          category_id: parseInt(defaultCat.key) || Math.floor(Math.random() * 1000),
+          user_id: userId,
+          group_id: groupId,
+          category_name: defaultCat.label,
+          category_type: CategoryType.INCOME,
+          category_icon_url: defaultCat.key,
+          parent_category_id: null,
+          is_system_defined: true
+        }));
+      }
+      
+      return categories;
+    } catch (error) {
+      console.error('❌ Error fetching categories:', error);
+      throw error;
+    }
+  }
+
+  // Get category by ID
+  async getCategoryById(categoryId: number): Promise<CategoryResponse> {
+    try {
+      console.log('🔄 Fetching category by ID:', categoryId);
+      
+      const response = await apiService.get<ApiResponseData<CategoryResponse>>(
+        `/api/v1/categories/${categoryId}`
+      );
+      
+      console.log('📊 Category response:', response);
+      
+      if (response.data) {
+        const data = response.data as any;
+        return data.data || data;
+      }
+      
+      throw new Error('Category not found');
+    } catch (error) {
+      console.error('❌ Error fetching category:', error);
+      throw error;
+    }
+  }
+
+  // Create new category
+  async createCategory(request: CreateCategoryRequest): Promise<CategoryResponse> {
+    try {
+      console.log('🔄 Creating category:', request);
+      
+      const response = await apiService.post<ApiResponseData<CategoryResponse>>(
+        '/api/v1/categories',
+        request
+      );
+      
+      console.log('📊 Create category response:', response);
+      
+      if (response.data) {
+        const data = response.data as any;
+        return data.data || data;
+      }
+      
+      throw new Error('Failed to create category');
+    } catch (error) {
+      console.error('❌ Error creating category:', error);
+      throw error;
+    }
+  }
+
+  // Update category
+  async updateCategory(categoryId: number, request: UpdateCategoryRequest): Promise<CategoryResponse> {
+    try {
+      console.log('🔄 Updating category:', { categoryId, request });
+      
+      const response = await apiService.put<ApiResponseData<CategoryResponse>>(
+        `/api/v1/categories/update/${categoryId}`,
+        request
+      );
+      
+      console.log('📊 Update category response:', response);
+      
+      if (response.data) {
+        const data = response.data as any;
+        return data.data || data;
+      }
+      
+      throw new Error('Failed to update category');
+    } catch (error) {
+      console.error('❌ Error updating category:', error);
+      throw error;
+    }
+  }
+
+  // Delete category
+  async deleteCategory(categoryId: number): Promise<void> {
+    try {
+      console.log('🔄 Deleting category:', categoryId);
+      
+      const response = await apiService.delete<ApiResponseData>(
+        `/api/v1/categories/delete/${categoryId}`
+      );
+      
+      console.log('📊 Delete category response:', response);
+      
+      const responseData = response as any;
+      if (responseData.status_code !== 200 && responseData.statusCode !== 200) {
+        throw new Error('Failed to delete category');
+      }
+    } catch (error) {
+      console.error('❌ Error deleting category:', error);
+      throw error;
+    }
+  }
+
+  // Convert API response to local category format for UI
+  convertToLocalCategory(apiCategory: CategoryResponse): LocalCategory {
+    // Extract icon key from category name or icon URL
+    const iconKey = this.extractIconKey(apiCategory.category_name, apiCategory.category_icon_url);
+    
+    console.log('🔄 Converting category:', {
+      category_name: apiCategory.category_name,
+      category_icon_url: apiCategory.category_icon_url,
+      extracted_key: iconKey,
+      mapped_icon: ICON_MAPPING[iconKey],
+      mapped_color: COLOR_MAPPING[iconKey]
+    });
+    
+    const finalIcon = ICON_MAPPING[iconKey] || (apiCategory.category_type === CategoryType.EXPENSE ? ICON_MAPPING['default_expense'] : ICON_MAPPING['default_income']);
+    const finalColor = COLOR_MAPPING[iconKey] || (apiCategory.category_type === CategoryType.EXPENSE ? '#ff375f' : '#32d74b');
+    
+    return {
+      key: apiCategory.category_id.toString(),
+      label: apiCategory.category_name,
+      icon: finalIcon,
+      color: finalColor,
+      category_id: apiCategory.category_id,
+      is_system_defined: apiCategory.is_system_defined,
+    };
+  }
+
+  // Convert local category to API format
+  convertToApiCategory(
+    localCategory: Partial<LocalCategory>,
+    userId: number,
+    groupId: number,
+    categoryType: CategoryType
+  ): CreateCategoryRequest {
+    return {
+      user_id: userId,
+      group_id: groupId,
+      category_name: localCategory.label || '',
+      category_type: categoryType,
+      category_icon_url: localCategory.icon || '',
+      is_system_defined: false,
+    };
+  }
+
+  // Extract icon key from category icon URL (which is actually just a key)
+  private extractIconKey(categoryName: string, iconUrlKey: string): string {
+    console.log('🔍 Extracting icon key:', { categoryName, iconUrlKey });
+    
+    // Backend trả về category_icon_url là key thuần túy (ví dụ: 'food', 'daily', 'clothes')
+    // Priority 1: Sử dụng trực tiếp iconUrlKey nếu có trong mapping
+    if (iconUrlKey && iconUrlKey.trim()) {
+      const cleanKey = iconUrlKey.toLowerCase().trim();
+      if (ICON_MAPPING[cleanKey]) {
+        console.log('✅ Found direct mapping:', cleanKey, '->', ICON_MAPPING[cleanKey]);
+        return cleanKey;
+      }
+    }
+    
+    // Priority 2: Thử match theo tên category (normalize spaces to underscores)
+    const nameKey = categoryName.toLowerCase().replace(/\s+/g, '_').trim();
+    if (ICON_MAPPING[nameKey]) {
+      console.log('✅ Found name mapping:', nameKey, '->', ICON_MAPPING[nameKey]);
+      return nameKey;
+    }
+    
+    // Priority 3: Thử các mapping phổ biến từ tên category
+    const commonMappings: { [key: string]: string } = {
+      'food': 'food',
+      'ăn': 'food',
+      'thức ăn': 'food',
+      'đồ ăn': 'food',
+      'drink': 'daily',
+      'uống': 'daily',
+      'đồ uống': 'daily',
+      'clothing': 'clothes',
+      'quần áo': 'clothes',
+      'thời trang': 'clothes',
+      'beauty': 'cosmetic',
+      'làm đẹp': 'cosmetic',
+      'mỹ phẩm': 'cosmetic',
+      'party': 'social',
+      'giải trí': 'social',
+      'vui chơi': 'social',
+      'medical': 'health',
+      'y tế': 'health',
+      'sức khỏe': 'health',
+      'study': 'education',
+      'học tập': 'education',
+      'giáo dục': 'education',
+      'electricity': 'electric',
+      'điện': 'electric',
+      'tiện ích': 'electric',
+      'vehicle': 'transport',
+      'xe cộ': 'transport',
+      'di chuyển': 'transport',
+      'giao thông': 'transport',
+      'phone': 'phone',
+      'điện thoại': 'phone',
+      'liên lạc': 'phone',
+      'house': 'rent',
+      'nhà ở': 'rent',
+      'thuê nhà': 'rent',
+      'income': 'salary',
+      'thu nhập': 'salary',
+      'lương': 'salary',
+      'wage': 'salary',
+      'profit': 'investment',
+      'lợi nhuận': 'investment',
+      'đầu tư': 'investment',
+    };
+    
+    const categoryLower = categoryName.toLowerCase();
+    for (const [key, value] of Object.entries(commonMappings)) {
+      if (categoryLower.includes(key)) {
+        return value;
+      }
+    }
+    
+    // Priority 4: Nếu không match được gì, thử dùng chính iconUrlKey làm fallback
+    if (iconUrlKey && iconUrlKey.trim()) {
+      console.log('🔄 Using iconUrlKey as fallback:', iconUrlKey.toLowerCase().trim());
+      return iconUrlKey.toLowerCase().trim();
+    }
+    
+    // Priority 5: Final fallback
+    console.log('⚠️ No mapping found, using default');
+    return 'default_expense';
+  }
+
+  // Get default categories for specific type (fallback when API fails)
+  getDefaultCategories(categoryType: CategoryType): LocalCategory[] {
+    if (categoryType === CategoryType.EXPENSE) {
+      return [
+        { key: 'food', label: 'Food & Dining', icon: 'silverware-fork-knife', color: '#ff9500' },
+        { key: 'daily', label: 'Daily Needs', icon: 'bottle-soda', color: '#32d74b' },
+        { key: 'clothes', label: 'Clothing', icon: 'tshirt-crew', color: '#007aff' },
+        { key: 'cosmetic', label: 'Beauty & Care', icon: 'lipstick', color: '#ff2d92' },
+        { key: 'social', label: 'Entertainment', icon: 'glass-cocktail', color: '#ffcc02' },
+        { key: 'health', label: 'Health', icon: 'pill', color: '#30d158' },
+        { key: 'education', label: 'Education', icon: 'book-open-variant', color: '#ff375f' },
+        { key: 'electric', label: 'Utilities', icon: 'flash', color: '#00c7be' },
+        { key: 'transport', label: 'Transportation', icon: 'train', color: '#bf5af2' },
+        { key: 'phone', label: 'Communication', icon: 'cellphone', color: '#6ac4dc' },
+        { key: 'rent', label: 'Housing', icon: 'home-city', color: '#ff9500' },
+      ];
+    } else {
+      return [
+        { key: 'salary', label: 'Salary', icon: 'cash', color: '#32d74b' },
+        { key: 'bonus', label: 'Bonus', icon: 'gift', color: '#ff9500' },
+        { key: 'investment', label: 'Investment', icon: 'chart-line', color: '#007aff' },
+        { key: 'freelance', label: 'Freelance', icon: 'laptop', color: '#ff375f' },
+        { key: 'business', label: 'Business', icon: 'store', color: '#30d158' },
+        { key: 'rental', label: 'Rental Income', icon: 'home-account', color: '#ffcc02' },
+        { key: 'dividend', label: 'Dividend', icon: 'bank', color: '#ff2d92' },
+        { key: 'interest', label: 'Interest', icon: 'percent', color: '#00c7be' },
+        { key: 'gift_money', label: 'Gift Money', icon: 'hand-heart', color: '#bf5af2' },
+        { key: 'selling', label: 'Selling', icon: 'cart', color: '#6ac4dc' },
+      ];
+    }
+  }
+}
+
+// Export singleton instance
+export const categoryService = CategoryService.getInstance(); 

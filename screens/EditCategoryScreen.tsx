@@ -1,98 +1,170 @@
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Alert,
-    FlatList,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import IconBack from 'react-native-vector-icons/MaterialIcons';
+import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import type { RootStackParamList } from '../navigation/types';
-
-const EXPENSE_CATEGORIES = [
-  { key: 'food', label: 'categoryNames.food', icon: 'silverware-fork-knife', color: '#ff9500' },
-  { key: 'daily', label: 'categoryNames.daily', icon: 'bottle-soda', color: '#32d74b' },
-  { key: 'clothes', label: 'categoryNames.clothes', icon: 'tshirt-crew', color: '#007aff' },
-  { key: 'cosmetic', label: 'categoryNames.cosmetic', icon: 'lipstick', color: '#ff2d92' },
-  { key: 'social', label: 'categoryNames.social', icon: 'glass-cocktail', color: '#ffcc02' },
-  { key: 'health', label: 'categoryNames.health', icon: 'pill', color: '#30d158' },
-  { key: 'education', label: 'categoryNames.education', icon: 'book-open-variant', color: '#ff375f' },
-  { key: 'electric', label: 'categoryNames.electric', icon: 'flash', color: '#00c7be' },
-  { key: 'transport', label: 'categoryNames.transport', icon: 'train', color: '#bf5af2' },
-  { key: 'phone', label: 'categoryNames.phone', icon: 'cellphone', color: '#6ac4dc' },
-  { key: 'rent', label: 'categoryNames.rent', icon: 'home-city', color: '#ff9500' },
-];
-
-const INCOME_CATEGORIES = [
-  { key: 'salary', label: 'categoryNames.salary', icon: 'cash', color: '#32d74b' },
-  { key: 'bonus', label: 'categoryNames.bonus', icon: 'gift', color: '#ff9500' },
-  { key: 'investment', label: 'categoryNames.investment', icon: 'chart-line', color: '#007aff' },
-  { key: 'freelance', label: 'categoryNames.freelance', icon: 'laptop', color: '#ff375f' },
-  { key: 'business', label: 'categoryNames.business', icon: 'store', color: '#30d158' },
-  { key: 'rental', label: 'categoryNames.rental', icon: 'home-account', color: '#ffcc02' },
-  { key: 'dividend', label: 'categoryNames.dividend', icon: 'bank', color: '#ff2d92' },
-  { key: 'interest', label: 'categoryNames.interest', icon: 'percent', color: '#00c7be' },
-  { key: 'gift_money', label: 'categoryNames.giftMoney', icon: 'hand-heart', color: '#bf5af2' },
-  { key: 'selling', label: 'categoryNames.selling', icon: 'cart', color: '#6ac4dc' },
-];
+import { categoryService, CategoryType, LocalCategory } from '../services/categoryService';
 
 export default function EditCategoryScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'EditCategoryScreen'>>();
+  const { user } = useAuth();
   const { type: initialType } = route.params;
   
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>(initialType);
   const [isEditMode, setIsEditMode] = useState(false);
-  
-  const categories = activeTab === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const [categories, setCategories] = useState<LocalCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load categories when component mounts or tab changes
+  useEffect(() => {
+    loadCategories();
+  }, [activeTab]);
+
+  const loadCategories = async () => {
+    if (!user) {
+      setError('User not authenticated');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🔄 Loading categories for:', { activeTab, userId: user.id });
+      
+      // Convert tab to CategoryType
+      const categoryType = activeTab === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME;
+      
+      // For now, using hardcoded userId and groupId - you should get these from user context
+      const userId = parseInt(user.id) || 1;
+      const groupId = 1; // You might want to get this from user context or app state
+      
+      // Fetch categories from API
+      const apiCategories = await categoryService.getAllCategoriesByTypeAndUser(
+        categoryType,
+        userId,
+        groupId
+      );
+      
+      console.log('📊 API categories received:', apiCategories);
+      
+      // Convert API categories to local format
+      const localCategories = apiCategories.map(apiCategory => 
+        categoryService.convertToLocalCategory(apiCategory)
+      );
+      
+      console.log('🔄 Converted to local categories:', localCategories);
+      
+      setCategories(localCategories);
+      
+    } catch (err: any) {
+      console.error('❌ Failed to load categories:', err);
+      setError(err.message || 'Failed to load categories');
+      
+      // Fallback to default categories
+      const categoryType = activeTab === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME;
+      const defaultCategories = categoryService.getDefaultCategories(categoryType);
+      setCategories(defaultCategories);
+      
+      Alert.alert(
+        t('common.error'),
+        'Failed to load categories from server. Using default categories.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddCategory = () => {
-    Alert.alert(
-      t('addCategory'),
-      'Add new category functionality will be implemented in the next version.',
-      [{ text: 'OK' }]
-    );
+    // Navigate to add new category screen
+    navigation.navigate('AddEditCategoryScreen', {
+      mode: 'add',
+      type: activeTab
+    });
   };
 
   const handleEdit = () => {
     setIsEditMode(!isEditMode);
   };
 
-  const handleDeleteCategory = (categoryKey: string, categoryLabel: string) => {
+  const handleDeleteCategory = async (categoryId: string, categoryLabel: string) => {
+    if (!user) {
+      Alert.alert(t('common.error'), 'User not authenticated');
+      return;
+    }
+
     Alert.alert(
       t('deleteCategory'),
-      t('deleteCategoryConfirm'),
+      `Are you sure you want to delete "${categoryLabel}"?`,
       [
         { text: t('cancel'), style: 'cancel' },
         { 
           text: t('delete'), 
           style: 'destructive',
-          onPress: () => {
-            // TODO: Implement delete category logic
-            console.log('Delete category:', categoryKey);
+          onPress: async () => {
+            try {
+              console.log('🗑️ Deleting category:', categoryId);
+              
+              // Call API to delete category
+              await categoryService.deleteCategory(parseInt(categoryId));
+              
+              console.log('✅ Category deleted successfully');
+              
+              // Refresh categories list
+              await loadCategories();
+              
+              Alert.alert(
+                t('common.success'),
+                'Category deleted successfully',
+                [{ text: 'OK' }]
+              );
+              
+            } catch (err: any) {
+              console.error('❌ Failed to delete category:', err);
+              Alert.alert(
+                t('common.error'),
+                err.message || 'Failed to delete category'
+              );
+            }
           }
         }
       ]
     );
   };
 
-  const handleCategoryPress = (item: any) => {
+  const handleCategoryPress = (item: LocalCategory) => {
     if (item.key === 'add_category') {
-      // Navigate to add new category screen
-      navigation.navigate('AddEditCategoryScreen', {
-        mode: 'add',
-        type: activeTab
-      });
+      handleAddCategory();
     } else if (isEditMode) {
-      handleDeleteCategory(item.key, t(item.label));
+      // Only allow deletion of non-system categories
+      if (item.is_system_defined) {
+        Alert.alert(
+          t('common.info'),
+          'System categories cannot be deleted',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      handleDeleteCategory(item.key, item.label);
     } else {
       // Navigate to edit existing category screen
       navigation.navigate('AddEditCategoryScreen', {
@@ -100,7 +172,7 @@ export default function EditCategoryScreen() {
         type: activeTab,
         category: {
           key: item.key,
-          label: t(item.label),
+          label: item.label,
           icon: item.icon,
           color: item.color
         }
@@ -108,11 +180,19 @@ export default function EditCategoryScreen() {
     }
   };
 
-  const renderCategoryItem = ({ item }: { item: any }) => {
+  const handleTabChange = (newTab: 'expense' | 'income') => {
+    if (newTab !== activeTab) {
+      setActiveTab(newTab);
+      setIsEditMode(false); // Reset edit mode when switching tabs
+    }
+  };
+
+  const renderCategoryItem = ({ item }: { item: LocalCategory }) => {
     if (item.key === 'add_category') {
       return (
         <TouchableOpacity style={styles.categoryItem} onPress={() => handleCategoryPress(item)}>
           <View style={styles.categoryContent}>
+            <Icon name="plus" size={24} color="#007aff" />
             <Text style={styles.addCategoryLabel}>{t('addCategory')}</Text>
           </View>
           {!isEditMode && <Icon name="chevron-right" size={20} color="#c7c7cc" />}
@@ -122,10 +202,10 @@ export default function EditCategoryScreen() {
 
     return (
       <TouchableOpacity style={styles.categoryItem} onPress={() => handleCategoryPress(item)}>
-        {isEditMode && (
+        {isEditMode && !item.is_system_defined && (
           <TouchableOpacity 
             style={styles.minusButton}
-            onPress={() => handleDeleteCategory(item.key, t(item.label))}
+            onPress={() => handleDeleteCategory(item.key, item.label)}
           >
             <Icon name="minus" size={16} color="#fff" />
           </TouchableOpacity>
@@ -133,7 +213,8 @@ export default function EditCategoryScreen() {
         <View style={styles.categoryContent}>
           <Icon name={item.icon} size={24} color={item.color} />
           <Text style={styles.categoryLabel}>
-            {t(item.label)}
+            {item.label}
+            {item.is_system_defined && <Text style={styles.systemBadge}> (System)</Text>}
           </Text>
         </View>
         {!isEditMode && <Icon name="chevron-right" size={20} color="#c7c7cc" />}
@@ -141,11 +222,23 @@ export default function EditCategoryScreen() {
     );
   };
 
-  // Combine add category item with regular categories
-  const listData = [
-    { key: 'add_category', label: t('addCategory') },
+  // Prepare data for FlatList
+  const listData: LocalCategory[] = [
+    { key: 'add_category', label: t('addCategory'), icon: 'plus', color: '#007aff' },
     ...categories
   ];
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" translucent={false} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007aff" />
+          <Text style={styles.loadingText}>{t('common.loading')}...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -168,7 +261,7 @@ export default function EditCategoryScreen() {
           <View style={styles.tabSwitch}>
             <TouchableOpacity
               style={[styles.tabItem, activeTab === 'expense' && styles.tabItemActive]}
-              onPress={() => setActiveTab('expense')}
+              onPress={() => handleTabChange('expense')}
             >
               <Text style={[styles.tabText, activeTab === 'expense' && styles.tabTextActive]}>
                 {t('expense')}
@@ -176,7 +269,7 @@ export default function EditCategoryScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tabItem, activeTab === 'income' && styles.tabItemActive]}
-              onPress={() => setActiveTab('income')}
+              onPress={() => handleTabChange('income')}
             >
               <Text style={[styles.tabText, activeTab === 'income' && styles.tabTextActive]}>
                 {t('incomeLabel')}
@@ -190,6 +283,16 @@ export default function EditCategoryScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Error message */}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadCategories}>
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Categories List */}
       <FlatList
         data={listData}
@@ -198,6 +301,8 @@ export default function EditCategoryScreen() {
         style={styles.categoriesList}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.categoriesContainer}
+        refreshing={loading}
+        onRefresh={loadCategories}
       />
     </SafeAreaView>
   );
@@ -207,6 +312,43 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f2f2f7',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#8e8e93',
+  },
+  errorContainer: {
+    backgroundColor: '#fff2f2',
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+    borderColor: '#fecaca',
+    borderWidth: 1,
+  },
+  errorText: {
+    color: '#dc2626',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  retryButton: {
+    backgroundColor: '#007aff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignSelf: 'center',
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',
@@ -298,9 +440,15 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontWeight: '400',
   },
+  systemBadge: {
+    fontSize: 12,
+    color: '#8e8e93',
+    fontWeight: '300',
+  },
   addCategoryLabel: {
     fontSize: 16,
-    color: '#8e8e93',
+    color: '#007aff',
+    marginLeft: 12,
     fontWeight: '400',
   },
   minusButton: {

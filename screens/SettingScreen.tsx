@@ -1,19 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Image, Linking, ScrollView, StatusBar, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../contexts/AuthContext';
 import { Language, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
-import { secureApiService, UserData } from '../services/secureApiService';
+import { UserProfile, userService } from '../services/userService';
 
 const SettingScreen = () => {
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
   const { user: authUser, logout, isAuthenticated } = useAuth();
-  const [userProfile, setUserProfile] = useState<UserData | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
   const { language, setLanguage } = useLanguage();
@@ -25,7 +26,17 @@ const SettingScreen = () => {
     loadUserProfile();
   }, [isAuthenticated]);
 
-  const loadUserProfile = async () => {
+  // Auto reload data when screen comes into focus (after returning from UpdateProfile)
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        console.log('🔄 SettingScreen focused, force reloading profile...');
+        loadUserProfile(true); // Force refresh
+      }
+    }, [isAuthenticated])
+  );
+
+  const loadUserProfile = async (forceRefresh: boolean = false) => {
     if (!isAuthenticated) {
       setLoading(false);
       return;
@@ -33,9 +44,9 @@ const SettingScreen = () => {
 
     try {
       setLoading(true);
-      console.log('🟡 Loading user profile...');
+      console.log('🟡 Loading user profile...', forceRefresh ? '(Force Refresh)' : '');
       
-      const profile = await secureApiService.getCurrentUserProfile();
+      const profile = await userService.getCurrentUserProfile(forceRefresh);
       console.log('🟢 User profile loaded:', profile);
       
       setUserProfile(profile);
@@ -47,7 +58,7 @@ const SettingScreen = () => {
         [
           {
             text: t('common.retry'),
-            onPress: loadUserProfile,
+            onPress: () => loadUserProfile(true),
           },
           {
             text: t('common.cancel'),
@@ -58,6 +69,23 @@ const SettingScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to get avatar source based on gender
+  const getAvatarSource = () => {
+    if (userProfile?.user_avatar_url) {
+      return { uri: userProfile.user_avatar_url };
+    }
+    
+    // Use gender-based default avatar
+    if (userProfile?.user_gender === true) {
+      return require('../assets/images/maleavatar.png');
+    } else if (userProfile?.user_gender === false) {
+      return require('../assets/images/femaleavatar.png');
+    }
+    
+    // Fallback to unknown avatar
+    return require('../assets/images/Unknown.jpg');
   };
 
   const handleUpdateProfile = () => {
@@ -143,7 +171,7 @@ const SettingScreen = () => {
       <View style={styles.header}>
         <Image source={require('../assets/images/group.png')} style={styles.logo} />
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={loadUserProfile} style={styles.refreshBtn}>
+          <TouchableOpacity onPress={() => loadUserProfile(true)} style={styles.refreshBtn}>
             <Icon name="refresh" size={24} color="#1e90ff" />
           </TouchableOpacity>
           <Icon name="settings" size={36} color="#1e90ff" />
@@ -152,7 +180,10 @@ const SettingScreen = () => {
 
       {/* Profile Section */}
       <View style={styles.profileSection}>
-        <Image source={require('../assets/images/Unknown.jpg')} style={styles.avatar} />
+        <Image 
+          source={getAvatarSource()}
+          style={styles.avatar} 
+        />
         <Text style={styles.name}>
           {userProfile?.user_full_name || 'Unknown User'}
         </Text>
@@ -163,13 +194,7 @@ const SettingScreen = () => {
             </Text>
           )}
           <Text style={styles.infoText}>
-            {t('email')}: 
-            <Text 
-              style={styles.link} 
-              onPress={() => userProfile?.user_email && Linking.openURL(`mailto:${userProfile.user_email}`)}
-            >
-              {userProfile?.user_email || 'No email'}
-            </Text>
+            {t('email')}: {userProfile?.user_email || 'No email'}
           </Text>
           {userProfile?.user_phone_number && (
             <Text style={styles.infoText}>
@@ -252,7 +277,6 @@ const styles = StyleSheet.create({
   name: { fontSize: 26, fontWeight: '600', color: '#333', marginBottom: 12 },
   infoBlock: { marginBottom: 12 },
   infoText: { fontSize: 15, color: '#444', marginBottom: 2 },
-  link: { color: '#1e90ff', textDecorationLine: 'underline' },
   updateBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10, minWidth: 200, alignItems: 'center' },
   updateBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   changePasswordBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10, minWidth: 200, alignItems: 'center' },

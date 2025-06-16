@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
     SafeAreaView,
     ScrollView,
     StatusBar,
@@ -39,6 +42,41 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   const [isDefault, setIsDefault] = useState(walletData?.isDefault || false);
   const [excludeFromTotal, setExcludeFromTotal] = useState(walletData?.excludeFromTotal || false);
   const [showWalletTypes, setShowWalletTypes] = useState(false);
+
+  // Add keyboard event listeners for debugging
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        console.log('⌨️ Keyboard DID SHOW - Success!');
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        console.log('⌨️ Keyboard DID HIDE');
+      }
+    );
+    const keyboardWillShowListener = Keyboard.addListener(
+      'keyboardWillShow',
+      () => {
+        console.log('⌨️ Keyboard WILL SHOW');
+      }
+    );
+    const keyboardWillHideListener = Keyboard.addListener(
+      'keyboardWillHide',
+      () => {
+        console.log('⌨️ Keyboard WILL HIDE');
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener?.remove();
+      keyboardDidShowListener?.remove();
+      keyboardWillShowListener?.remove();
+      keyboardWillHideListener?.remove();
+    };
+  }, []);
 
   const walletTypes = [
     t('wallet.walletTypes.cash'),
@@ -117,7 +155,10 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
         {/* Header */}
@@ -133,7 +174,11 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Balance Field */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>
@@ -146,6 +191,14 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
                 value={balance}
                 onChangeText={setBalance}
                 keyboardType="numeric"
+                onFocus={() => {
+                  console.log('🎯 Balance TextInput focused - keyboard should appear');
+                }}
+                onBlur={() => {
+                  console.log('🎯 Balance TextInput blurred - keyboard should hide');
+                }}
+                autoCorrect={false}
+                returnKeyType="next"
               />
               <Text style={styles.currency}>{t('currency')}</Text>
             </View>
@@ -159,6 +212,14 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
               placeholder={t('wallet.placeholders.enterWalletName')}
               value={walletName}
               onChangeText={setWalletName}
+              onFocus={() => {
+                console.log('🎯 Wallet Name TextInput focused - keyboard should appear');
+              }}
+              onBlur={() => {
+                console.log('🎯 Wallet Name TextInput blurred - keyboard should hide');
+              }}
+              autoCorrect={false}
+              returnKeyType="next"
             />
           </View>
 
@@ -232,7 +293,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

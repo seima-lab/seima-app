@@ -1,14 +1,16 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -17,16 +19,36 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import LogoWithText from '../components/Login/LogoWithText';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { authService, RegisterRequest } from '../services/authService';
+import { UserCreationRequestDto, UserService } from '../services/userService';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-export default function RegisterScreen() {
+interface GoogleUserData {
+  fullName: string;
+  email: string;
+  isGoogleLogin: boolean;
+  userIsActive: boolean;
+}
+
+interface RegisterScreenProps {
+  route?: {
+    params?: {
+      googleUserData?: GoogleUserData;
+    };
+  };
+}
+
+export default function RegisterScreen({ route }: RegisterScreenProps) {
   const { t } = useTranslation();
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
+  
+  // Animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
   
   // Form state
   const [fullName, setFullName] = useState('');
@@ -38,12 +60,65 @@ export default function RegisterScreen() {
   const [hasSelectedDate, setHasSelectedDate] = useState(false);
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   
+  // Error state
+  const [errors, setErrors] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    dateOfBirth: '',
+    gender: '',
+    password: '',
+    confirmPassword: '',
+  });
+  
   // UI state
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [tempDate, setTempDate] = useState<Date>(dateOfBirth);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [autoFillTest, setAutoFillTest] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  
+  // Loading modal state
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [isLoadingSuccess, setIsLoadingSuccess] = useState(false);
+
+  // Start animations when component mounts
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true
+      })
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
+  // Auto-fill Google user data if available
+  useEffect(() => {
+    const googleUserData = route?.params?.googleUserData;
+    console.log('🔍 Register Screen - Route params:', route?.params);
+    console.log('🔍 Register Screen - Google user data:', googleUserData);
+    
+    if (googleUserData?.isGoogleLogin) {
+      console.log('🟢 Auto-filling Google user data:', {
+        fullName: googleUserData.fullName,
+        email: googleUserData.email,
+        userIsActive: googleUserData.userIsActive
+      });
+      setFullName(googleUserData.fullName);
+      setEmail(googleUserData.email);
+      // Note: Google doesn't provide gender or date of birth, so those remain empty
+    } else {
+      console.log('🔴 No Google user data found or not Google login');
+    }
+  }, [route?.params?.googleUserData]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -55,119 +130,222 @@ export default function RegisterScreen() {
     return phoneRegex.test(phone);
   };
 
-  const handleRegister = async () => {
+  const validateForm = () => {
+    // Reset all errors
+    const newErrors = {
+      fullName: '',
+      email: '',
+      phoneNumber: '',
+      dateOfBirth: '',
+      gender: '',
+      password: '',
+      confirmPassword: '',
+    };
+    
+    let isValid = true;
+    
+    // Check if this is a Google user (no password required)
+    const googleUserData = route?.params?.googleUserData;
+    const isGoogleUser = googleUserData?.isGoogleLogin && !googleUserData?.userIsActive;
+    
     // Full Name validation
     if (!fullName.trim()) {
-      Alert.alert(t('common.error'), t('validation.fullNameRequired'));
-      return;
+      newErrors.fullName = t('validation.fullNameRequired');
+      isValid = false;
     }
     
     // Email validation
     if (!email.trim()) {
-      Alert.alert(t('common.error'), t('validation.emailRequired'));
-      return;
-    }
-    
-    if (!validateEmail(email)) {
-      Alert.alert(t('common.error'), t('validation.invalidEmail'));
-      return;
+      newErrors.email = t('validation.emailRequired');
+      isValid = false;
+    } else if (!validateEmail(email)) {
+      newErrors.email = t('validation.invalidEmail');
+      isValid = false;
     }
     
     // Phone number validation
     if (!phoneNumber.trim()) {
-      Alert.alert(t('common.error'), t('validation.phoneRequired'));
-      return;
-    }
-    
-    if (!validatePhoneNumber(phoneNumber)) {
-      Alert.alert(t('common.error'), t('validation.invalidPhone'));
-      return;
+      newErrors.phoneNumber = t('validation.phoneRequired');
+      isValid = false;
+    } else if (!validatePhoneNumber(phoneNumber)) {
+      newErrors.phoneNumber = t('validation.invalidPhone');
+      isValid = false;
     }
     
     // Date of birth validation
     if (!hasSelectedDate) {
-      Alert.alert(t('common.error'), t('register.selectDateOfBirth'));
-      return;
+      newErrors.dateOfBirth = t('register.selectDateOfBirth');
+      isValid = false;
     }
     
     // Gender validation
     if (!gender) {
-      Alert.alert(t('common.error'), t('validation.selectGender'));
-      return;
+      newErrors.gender = t('validation.selectGender');
+      isValid = false;
     }
     
-    // Password validation
-    if (!password.trim()) {
-      Alert.alert(t('common.error'), t('validation.passwordRequired'));
-      return;
+    // Password validation (skip for Google users)
+    if (!isGoogleUser) {
+      if (!password.trim()) {
+        newErrors.password = t('validation.passwordRequired');
+        isValid = false;
+      } else if (password.length < 6) {
+        newErrors.password = t('validation.passwordTooShort');
+        isValid = false;
+      }
+      
+      // Confirm password validation
+      if (!confirmPassword.trim()) {
+        newErrors.confirmPassword = t('validation.confirmPasswordRequired');
+        isValid = false;
+      } else if (password !== confirmPassword) {
+        newErrors.confirmPassword = t('validation.passwordMismatch');
+        isValid = false;
+      }
     }
     
-    if (password.length < 6) {
-      Alert.alert(t('common.error'), t('validation.passwordTooShort'));
-      return;
-    }
-    
-    // Confirm password validation
-    if (!confirmPassword.trim()) {
-      Alert.alert(t('common.error'), t('validation.confirmPasswordRequired'));
-      return;
-    }
-    
-    if (password !== confirmPassword) {
-      Alert.alert(t('common.error'), t('validation.passwordMismatch'));
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleRegister = async () => {
+    if (!validateForm()) {
+      // Shake animation for error
+      const shakeAnimation = Animated.sequence([
+        Animated.timing(slideAnim, { toValue: 5, duration: 50, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: -5, duration: 50, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 5, duration: 50, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 50, useNativeDriver: true })
+      ]);
+      shakeAnimation.start();
       return;
     }
 
+    const googleUserData = route?.params?.googleUserData;
     setIsLoading(true);
+
     try {
-      // Simulate API call
-      console.log('Register:', { 
-        fullName, 
-        email, 
-        phoneNumber, 
-        password, 
-        dateOfBirth, 
-        gender 
-      });
-      
-      setTimeout(() => {
+      if (googleUserData?.isGoogleLogin && !googleUserData?.userIsActive) {
+        // Handle Google user profile creation (first login)
+        console.log('🟡 Creating Google user profile...');
+        
+        const createData: UserCreationRequestDto = {
+          email: email.trim().toLowerCase(),
+          full_name: fullName.trim(),
+          birth_date: dateOfBirth.toISOString().split('T')[0], // YYYY-MM-DD format
+          phone_number: phoneNumber.trim(),
+          avatar_url: '', // Empty for now, can be updated later
+          gender: gender === 'male', // Convert to boolean: true = male, false = female
+        };
+
+        console.log('🟡 Create data (snake_case):', createData);
+        
+        const userService = UserService.getInstance();
+        await userService.createUser(createData);
+        
+        console.log('🟢 Google user created successfully');
+        
         setIsLoading(false);
-        Alert.alert(t('common.success'), t('register.registerSuccess'), [
-          {
-            text: t('common.confirm'),
-            onPress: () => navigation.navigate('OTP', { 
+        
+        // Show loading modal for Google profile creation
+        setShowLoadingModal(true);
+        setIsLoadingSuccess(false);
+        setLoadingMessage('Đang tạo hồ sơ của bạn...');
+        
+        // Simulate a small delay for better UX
+        setTimeout(() => {
+          setIsLoadingSuccess(true);
+          
+          // Auto navigate to main app after 2 seconds
+          setTimeout(() => {
+            setShowLoadingModal(false);
+            navigation.replace('MainTab');
+          }, 2000);
+        }, 1000);
+        
+      } else {
+        // Handle normal registration flow
+        console.log('🟡 Normal registration flow...');
+        
+        // Double check password match before sending (only for normal registration)
+        if (password.trim() !== confirmPassword.trim()) {
+          Alert.alert(t('common.error'), 'Passwords do not match. Please check again.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Prepare request data according to backend format (snake_case)
+        const registerData: RegisterRequest = {
+          full_name: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          dob: dateOfBirth.toISOString().split('T')[0], // Convert to YYYY-MM-DD format
+          phone_number: phoneNumber.trim(),
+          gender: gender === 'male', // Convert to boolean: true = male, false = female
+          password: password.trim(),
+          confirm_password: confirmPassword.trim(), // Backend validation requires this field
+        };
+
+        console.log('🟡 Registering with data:', registerData);
+        
+        // Call register API
+        const response = await authService.register(registerData);
+        
+        console.log('🟢 Registration successful:', response);
+        
+        setIsLoading(false);
+        
+        // Show loading modal for OTP sending
+        setShowLoadingModal(true);
+        setIsLoadingSuccess(false);
+        setLoadingMessage('Đang gửi mã OTP đến email của bạn...');
+        
+        // Simulate a small delay for better UX
+        setTimeout(() => {
+          setIsLoadingSuccess(true);
+          
+          // Auto navigate to OTP screen after 2 seconds
+          setTimeout(() => {
+            setShowLoadingModal(false);
+            navigation.navigate('OTP', { 
               email: email,
-              phoneNumber: phoneNumber 
-            }),
-          },
-        ]);
-      }, 2000);
+              fullName: fullName.trim(),
+              phoneNumber: phoneNumber,
+              password: password.trim(),
+              dateOfBirth: dateOfBirth.toISOString().split('T')[0], // YYYY-MM-DD format
+              gender: gender === 'male', // Convert to boolean
+              otpCode: response.otp_code,
+              type: 'register' // To distinguish from forgot password flow
+            });
+          }, 2000);
+        }, 1000);
+      }
       
-    } catch (error) {
+    } catch (error: any) {
       setIsLoading(false);
-      Alert.alert(t('common.error'), t('register.registerFailed'));
+      setShowLoadingModal(false); // Hide loading modal on error
+      console.error('🔴 Registration/Update failed:', error);
+      
+      let errorMessage = googleUserData?.isGoogleLogin 
+        ? 'Failed to create profile. Please try again.'
+        : t('register.registerFailed');
+        
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert(t('common.error'), errorMessage);
     }
   };
 
-  const openDatePicker = () => {
-    setTempDate(dateOfBirth);
-    setShowDatePicker(true);
-  };
-
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
     if (selectedDate) {
-      setTempDate(selectedDate);
+      setDateOfBirth(selectedDate);
+      setHasSelectedDate(true);
+      if (errors.dateOfBirth) {
+        setErrors({...errors, dateOfBirth: ''});
+      }
     }
-  };
-
-  const handleConfirmDate = () => {
-    setDateOfBirth(tempDate);
-    setHasSelectedDate(true);
-    setShowDatePicker(false);
-  };
-
-  const handleCancelDate = () => {
-    setShowDatePicker(false);
   };
 
   const formatDate = (date: Date) => {
@@ -179,451 +357,844 @@ export default function RegisterScreen() {
   };
 
   const handleBackToLogin = () => {
-    navigation.goBack();
+    navigation.navigate('Login');
+  };
+
+  const handleAutoFillToggle = (value: boolean) => {
+    setAutoFillTest(value);
+    
+    if (value) {
+      // Auto-fill test data
+      setFullName('Nguyen Van Test');
+      setEmail('test@example.com');
+      setPhoneNumber('0123456789');
+      setPassword('123456');
+      setConfirmPassword('123456');
+      setDateOfBirth(new Date(1995, 5, 15));
+      setHasSelectedDate(true);
+      setGender('male');
+    } else {
+      // Clear fields, but restore Google data if available
+      const googleUserData = route?.params?.googleUserData;
+      if (googleUserData?.isGoogleLogin) {
+        setFullName(googleUserData.fullName);
+        setEmail(googleUserData.email);
+        setPhoneNumber('');
+        setPassword('');
+        setConfirmPassword('');
+        setDateOfBirth(new Date(2000, 0, 1));
+        setHasSelectedDate(false);
+        setGender('');
+      } else {
+        setFullName('');
+        setEmail('');
+        setPhoneNumber('');
+        setPassword('');
+        setConfirmPassword('');
+        setDateOfBirth(new Date(2000, 0, 1));
+        setHasSelectedDate(false);
+        setGender('');
+      }
+    }
+  };
+
+  const handleInputFocus = (fieldName: string) => {
+    setFocusedField(fieldName);
+  };
+
+  const handleInputBlur = () => {
+    setFocusedField(null);
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer} 
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        bounces={false}
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#1e90ff" />
+      
+      {/* Loading Modal */}
+      <Modal
+        visible={showLoadingModal}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
       >
-        {/* Header with back button and logo */}
-        <View style={[styles.header, { paddingTop: insets.top }]}>
-          <TouchableOpacity onPress={handleBackToLogin} style={styles.backButton}>
-            <Icon name="arrow-back" size={24} color="#1e90ff" />
-          </TouchableOpacity>
-          <View style={styles.logoContainer}>
-            <View style={styles.compactLogo}>
-              <LogoWithText />
-            </View>
-          </View>
-          <View style={styles.placeholder} />
-        </View>
-
-        <View style={styles.content}>
-          <View style={styles.titleSection}>
-            <Text style={styles.title}>{t('register.createAccount')}</Text>
-            <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
-          </View>
-          
-          <View style={styles.form}>
-            {/* 1. Full Name */}
-            <Text style={styles.label}>{t('profile.fullName')}</Text>
-            <View style={styles.inputWrapper}>
-              <Icon name="person" size={20} color="#9CA3AF" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('placeholders.enterFullName')}
-                placeholderTextColor="#9ca3af"
-                value={fullName}
-                onChangeText={setFullName}
-                returnKeyType="next"
-                autoCapitalize="words"
-              />
-            </View>
-
-            {/* 2. Email */}
-            <Text style={styles.label}>{t('email')}</Text>
-            <View style={styles.inputWrapper}>
-              <Icon name="email" size={20} color="#9CA3AF" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('placeholders.enterEmail')}
-                placeholderTextColor="#9ca3af"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                returnKeyType="next"
-              />
-            </View>
-
-            {/* 3. Phone Number */}
-            <Text style={styles.label}>{t('placeholders.phoneNumber')}</Text>
-            <View style={styles.inputWrapper}>
-              <Icon name="phone" size={20} color="#9CA3AF" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('placeholders.enterPhone')}
-                placeholderTextColor="#9ca3af"
-                keyboardType="phone-pad"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                returnKeyType="next"
-              />
-            </View>
-
-            {/* 4. Date of Birth */}
-            <Text style={styles.label}>{t('dateOfBirth')}</Text>
-            <Pressable style={styles.inputWrapper} onPress={openDatePicker}>
-              <Icon name="event" size={20} color="#9CA3AF" style={styles.inputIcon} />
-              <Text style={[styles.dateInput, { color: hasSelectedDate ? '#374151' : '#9ca3af' }]}>
-                {hasSelectedDate ? formatDate(dateOfBirth) : t('register.selectDatePlaceholder')}
-              </Text>
-              <Icon name="keyboard-arrow-down" size={20} color="#9CA3AF" />
-            </Pressable>
-
-            {/* Date Picker Modal */}
-            <Modal
-              visible={showDatePicker}
-              transparent
-              animationType="fade"
-              onRequestClose={handleCancelDate}
-            >
-              <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>{t('register.selectDateOfBirth')}</Text>
-                  <DateTimePicker
-                    value={tempDate}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={handleDateChange}
-                    maximumDate={new Date()}
-                    minimumDate={new Date(1900, 0, 1)}
-                    themeVariant="light"
-                    style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
-                  />
-                  <View style={styles.modalButtons}>
-                    <TouchableOpacity style={styles.modalButton} onPress={handleCancelDate}>
-                      <Text style={styles.modalButtonText}>{t('common.cancel')}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.modalButton, styles.modalButtonConfirm]} onPress={handleConfirmDate}>
-                      <Text style={[styles.modalButtonText, styles.modalButtonTextConfirm]}>{t('common.confirm')}</Text>
-                    </TouchableOpacity>
-                  </View>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {!isLoadingSuccess ? (
+              <>
+                <ActivityIndicator size="large" color="#1e90ff" style={styles.spinner} />
+                <Text style={styles.loadingTitle}>
+                  {loadingMessage.includes('hồ sơ') ? 'Đang tạo hồ sơ' : 'Đang gửi OTP'}
+                </Text>
+                <Text style={styles.loadingMessage}>{loadingMessage}</Text>
+              </>
+            ) : (
+              <>
+                <View style={styles.successIcon}>
+                  <Icon name="check-circle" size={50} color="#10B981" />
                 </View>
-              </View>
-            </Modal>
-
-            {/* 5. Gender */}
-            <Text style={styles.label}>{t('gender')}</Text>
-            <View style={styles.genderRow}>
-              <Pressable
-                style={[styles.genderButton, gender === 'male' && styles.genderButtonSelected]}
-                onPress={() => setGender('male')}
-              >
-                <Icon 
-                  name="male" 
-                  size={20} 
-                  color={gender === 'male' ? '#fff' : '#9CA3AF'} 
-                  style={styles.genderIcon}
-                />
-                <Text style={[styles.genderButtonText, gender === 'male' && styles.genderButtonTextSelected]}>
-                  {t('male')}
+                <Text style={styles.successTitle}>
+                  {loadingMessage.includes('hồ sơ') ? 'Hoàn thành!' : 'Đã gửi xong!'}
                 </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.genderButton, gender === 'female' && styles.genderButtonSelected]}
-                onPress={() => setGender('female')}
-              >
-                <Icon 
-                  name="female" 
-                  size={20} 
-                  color={gender === 'female' ? '#fff' : '#9CA3AF'} 
-                  style={styles.genderIcon}
-                />
-                <Text style={[styles.genderButtonText, gender === 'female' && styles.genderButtonTextSelected]}>
-                  {t('female')}
+                <Text style={styles.successMessage}>
+                  {loadingMessage.includes('hồ sơ') ? 'Hồ sơ đã được tạo thành công' : 'Mã OTP đã được gửi thành công'}
                 </Text>
-              </Pressable>
-            </View>
-
-            {/* 6. Password */}
-            <Text style={styles.label}>{t('login.password')}</Text>
-            <View style={styles.inputWrapper}>
-              <Icon name="lock" size={20} color="#9CA3AF" style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                placeholder={t('placeholders.enterPassword')}
-                placeholderTextColor="#9ca3af"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-                autoCapitalize="none"
-                returnKeyType="next"
-              />
-              <TouchableOpacity 
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeButton}
-              >
-                <Icon 
-                  name={showPassword ? "visibility" : "visibility-off"} 
-                  size={20} 
-                  color="#9CA3AF" 
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* 7. Confirm Password */}
-            <Text style={styles.label}>{t('register.confirmPassword')}</Text>
-            <View style={styles.inputWrapper}>
-              <Icon name="lock-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                placeholder={t('placeholders.confirmPassword')}
-                placeholderTextColor="#9ca3af"
-                secureTextEntry={!showConfirmPassword}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                autoCapitalize="none"
-                returnKeyType="done"
-              />
-              <TouchableOpacity 
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeButton}
-              >
-                <Icon 
-                  name={showConfirmPassword ? "visibility" : "visibility-off"} 
-                  size={20} 
-                  color="#9CA3AF" 
-                />
-              </TouchableOpacity>
-            </View>
-            
-            {/* Register Button */}
-            <TouchableOpacity 
-              style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
-              onPress={handleRegister}
-              disabled={isLoading}
-            >
-              <Text style={styles.registerButtonText}>
-                {isLoading ? t('common.loading') : t('register.register')}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Login Link */}
-            <View style={styles.loginContainer}>
-              <Text style={styles.loginText}>{t('register.haveAccount')} </Text>
-              <TouchableOpacity onPress={handleBackToLogin}>
-                <Text style={styles.loginLink}>{t('login.signIn')}</Text>
-              </TouchableOpacity>
-            </View>
+              </>
+            )}
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </Modal>
+      
+      {/* Blue Background */}
+      <View style={styles.backgroundGradient}>
+        <KeyboardAvoidingView
+          style={styles.keyboardContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={[styles.content, { paddingTop: insets.top + 10 }]}>
+            {/* Header */}
+            <Animated.View 
+              style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
+            >
+              <TouchableOpacity style={styles.backButton} onPress={handleBackToLogin}>
+                <Icon name="arrow-back-ios" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <View style={styles.headerContent}>
+                <Text style={styles.title}>Create Account</Text>
+                <Text style={styles.subtitle}>Join us and start your journey</Text>
+              </View>
+              <View style={styles.placeholder} />
+            </Animated.View>
+
+            {/* White Card Container */}
+            <Animated.View 
+              style={[
+                styles.cardContainer, 
+                { 
+                  opacity: fadeAnim,
+                  transform: [{ translateY: slideAnim }] 
+                }
+              ]}
+            >
+              <ScrollView 
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Auto Fill Toggle */}
+                <TouchableOpacity
+                  style={styles.autoFillContainer}
+                  onPress={() => handleAutoFillToggle(!autoFillTest)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.checkbox, autoFillTest && styles.checkboxChecked]}>
+                    {autoFillTest && <Icon name="check" size={12} color="#fff" />}
+                  </View>
+                  <Text style={styles.autoFillText}>Auto-fill test data</Text>
+                </TouchableOpacity>
+
+                {/* Google Data Pre-filled Indicator */}
+                {route?.params?.googleUserData?.isGoogleLogin && (
+                  <View style={styles.googleDataIndicator}>
+                    <Icon name="account-circle" size={14} color="#4285F4" />
+                    <Text style={styles.googleDataText}>
+                      Some fields are pre-filled from your Google account
+                    </Text>
+                  </View>
+                )}
+
+                {/* Form Fields */}
+                <View style={styles.form}>
+                  {/* Full Name */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>
+                      <Icon name="person" size={12} color="#1e90ff" style={styles.labelIcon} />
+                      Full Name
+                    </Text>
+                    <View style={[
+                      styles.inputContainer, 
+                      focusedField === 'fullName' && styles.inputFocused,
+                      errors.fullName ? styles.inputError : null
+                    ]}>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Enter your full name"
+                        placeholderTextColor="#9CA3AF"
+                        value={fullName}
+                        onChangeText={(text) => {
+                          setFullName(text);
+                          if (errors.fullName) setErrors({...errors, fullName: ''});
+                        }}
+                        onFocus={() => handleInputFocus('fullName')}
+                        onBlur={handleInputBlur}
+                        returnKeyType="next"
+                        autoCapitalize="words"
+                      />
+                      {fullName ? (
+                        <Icon name="check-circle" size={16} color="#10B981" />
+                      ) : null}
+                    </View>
+                                          {errors.fullName ? (
+                        <View style={styles.errorRow}>
+                          <Icon name="error-outline" size={10} color="#EF4444" />
+                          <Text style={styles.errorText}>{errors.fullName}</Text>
+                        </View>
+                      ) : null}
+                  </View>
+
+                  {/* Email */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>
+                      <Icon name="email" size={12} color="#1e90ff" style={styles.labelIcon} />
+                      Email Address
+                    </Text>
+                    <View style={[
+                      styles.inputContainer,
+                      focusedField === 'email' && styles.inputFocused,
+                      errors.email ? styles.inputError : null
+                    ]}>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Enter your email address"
+                        placeholderTextColor="#9CA3AF"
+                        value={email}
+                        onChangeText={(text) => {
+                          setEmail(text);
+                          if (errors.email) setErrors({...errors, email: ''});
+                        }}
+                        onFocus={() => handleInputFocus('email')}
+                        onBlur={handleInputBlur}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        returnKeyType="next"
+                      />
+                      {email && validateEmail(email) ? (
+                        <Icon name="check-circle" size={16} color="#10B981" />
+                      ) : null}
+                    </View>
+                    {errors.email ? (
+                      <View style={styles.errorRow}>
+                        <Icon name="error-outline" size={10} color="#EF4444" />
+                        <Text style={styles.errorText}>{errors.email}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Phone Number */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>
+                      <Icon name="phone" size={12} color="#1e90ff" style={styles.labelIcon} />
+                      Phone Number
+                    </Text>
+                    <View style={[
+                      styles.inputContainer,
+                      focusedField === 'phone' && styles.inputFocused,
+                      errors.phoneNumber ? styles.inputError : null
+                    ]}>
+                      <Text style={styles.countryCode}>+84</Text>
+                      <TextInput
+                        style={[styles.textInput, { marginLeft: 10 }]}
+                        placeholder="Enter your phone number"
+                        placeholderTextColor="#9CA3AF"
+                        value={phoneNumber}
+                        onChangeText={(text) => {
+                          setPhoneNumber(text);
+                          if (errors.phoneNumber) setErrors({...errors, phoneNumber: ''});
+                        }}
+                        onFocus={() => handleInputFocus('phone')}
+                        onBlur={handleInputBlur}
+                        keyboardType="phone-pad"
+                        returnKeyType="next"
+                      />
+                      {phoneNumber && validatePhoneNumber(phoneNumber) ? (
+                        <Icon name="check-circle" size={16} color="#10B981" />
+                      ) : null}
+                    </View>
+                    {errors.phoneNumber ? (
+                      <View style={styles.errorRow}>
+                        <Icon name="error-outline" size={10} color="#EF4444" />
+                        <Text style={styles.errorText}>{errors.phoneNumber}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Date of Birth - Updated to match update-profile.tsx format */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>
+                      <Icon name="cake" size={12} color="#1e90ff" style={styles.labelIcon} />
+                      Date of Birth
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.inputContainer,
+                        focusedField === 'dateOfBirth' && styles.inputFocused,
+                        errors.dateOfBirth ? styles.inputError : null,
+                        styles.datePickerInput
+                      ]}
+                      onPress={() => {
+                        console.log('📅 Date picker opening...');
+                        setShowDatePicker(true);
+                        if (errors.dateOfBirth) setErrors({...errors, dateOfBirth: ''});
+                      }}
+                      onFocus={() => handleInputFocus('dateOfBirth')}
+                      onBlur={handleInputBlur}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.datePickerContent}>
+                        <Text style={[
+                          styles.dateText, 
+                          !hasSelectedDate && styles.placeholderText
+                        ]}>
+                          {hasSelectedDate ? formatDate(dateOfBirth) : 'Select your date of birth'}
+                        </Text>
+                                                  <Icon name="event" size={16} color="#1e90ff" />
+                      </View>
+                    </TouchableOpacity>
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={dateOfBirth}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={onDateChange}
+                        maximumDate={new Date()}
+                        minimumDate={new Date(1900, 0, 1)}
+                        themeVariant="light"
+                      />
+                    )}
+                    {errors.dateOfBirth ? (
+                      <View style={styles.errorRow}>
+                        <Icon name="error-outline" size={10} color="#EF4444" />
+                        <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Gender - Updated to horizontal button layout */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>
+                      <Icon name="people" size={12} color="#1e90ff" style={styles.labelIcon} />
+                      Gender
+                    </Text>
+                    <View style={styles.genderContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.genderButton,
+                          gender === 'male' && styles.genderButtonSelected
+                        ]}
+                        onPress={() => {
+                          setGender('male');
+                          if (errors.gender) setErrors({...errors, gender: ''});
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Icon 
+                          name="male" 
+                          size={14} 
+                          color={gender === 'male' ? "#FFFFFF" : "#6B7280"} 
+                        />
+                        <Text style={[
+                          styles.genderText,
+                          gender === 'male' && styles.genderTextSelected
+                        ]}>
+                          Male
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.genderButton,
+                          gender === 'female' && styles.genderButtonSelected
+                        ]}
+                        onPress={() => {
+                          setGender('female');
+                          if (errors.gender) setErrors({...errors, gender: ''});
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Icon 
+                          name="female" 
+                          size={14} 
+                          color={gender === 'female' ? "#FFFFFF" : "#6B7280"} 
+                        />
+                        <Text style={[
+                          styles.genderText,
+                          gender === 'female' && styles.genderTextSelected
+                        ]}>
+                          Female
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    {errors.gender ? (
+                      <View style={styles.errorRow}>
+                        <Icon name="error-outline" size={10} color="#EF4444" />
+                        <Text style={styles.errorText}>{errors.gender}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Password Fields - Hidden for Google Users */}
+                  {!(route?.params?.googleUserData?.isGoogleLogin && !route?.params?.googleUserData?.userIsActive) && (
+                    <>
+                      {/* Password */}
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>
+                          <Icon name="lock" size={12} color="#1e90ff" style={styles.labelIcon} />
+                          Password
+                        </Text>
+                        <View style={[
+                          styles.inputContainer,
+                          focusedField === 'password' && styles.inputFocused,
+                          errors.password ? styles.inputError : null
+                        ]}>
+                          <TextInput
+                            style={styles.textInput}
+                            placeholder="Enter your password"
+                            placeholderTextColor="#9CA3AF"
+                            value={password}
+                            onChangeText={(text) => {
+                              setPassword(text);
+                              if (errors.password) setErrors({...errors, password: ''});
+                            }}
+                            onFocus={() => handleInputFocus('password')}
+                            onBlur={handleInputBlur}
+                            secureTextEntry={!showPassword}
+                            returnKeyType="next"
+                            autoCapitalize="none"
+                          />
+                          <TouchableOpacity 
+                            onPress={() => setShowPassword(!showPassword)}
+                            style={styles.eyeButton}
+                          >
+                            <Icon 
+                              name={showPassword ? "visibility" : "visibility-off"} 
+                              size={16} 
+                              color="#6B7280" 
+                            />
+                          </TouchableOpacity>
+                        </View>
+                        {errors.password ? (
+                          <View style={styles.errorRow}>
+                            <Icon name="error-outline" size={12} color="#EF4444" />
+                            <Text style={styles.errorText}>{errors.password}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+
+                      {/* Confirm Password */}
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>
+                          <Icon name="lock-outline" size={12} color="#1e90ff" style={styles.labelIcon} />
+                          Confirm Password
+                        </Text>
+                        <View style={[
+                          styles.inputContainer,
+                          focusedField === 'confirmPassword' && styles.inputFocused,
+                          errors.confirmPassword ? styles.inputError : null
+                        ]}>
+                          <TextInput
+                            style={styles.textInput}
+                            placeholder="Confirm your password"
+                            placeholderTextColor="#9CA3AF"
+                            value={confirmPassword}
+                            onChangeText={(text) => {
+                              setConfirmPassword(text);
+                              if (errors.confirmPassword) setErrors({...errors, confirmPassword: ''});
+                            }}
+                            onFocus={() => handleInputFocus('confirmPassword')}
+                            onBlur={handleInputBlur}
+                            secureTextEntry={!showConfirmPassword}
+                            returnKeyType="done"
+                            autoCapitalize="none"
+                            onSubmitEditing={handleRegister}
+                          />
+                          <TouchableOpacity 
+                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                            style={styles.eyeButton}
+                          >
+                            <Icon 
+                              name={showConfirmPassword ? "visibility" : "visibility-off"} 
+                              size={16} 
+                              color="#6B7280" 
+                            />
+                          </TouchableOpacity>
+                        </View>
+                        {errors.confirmPassword ? (
+                          <View style={styles.errorRow}>
+                            <Icon name="error-outline" size={12} color="#EF4444" />
+                            <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </>
+                  )}
+                </View>
+
+                {/* Bottom Section */}
+                <View style={styles.bottomSection}>
+                  {/* Create Account Button */}
+                  <TouchableOpacity
+                    style={[styles.createButton, isLoading && styles.createButtonDisabled]}
+                    onPress={handleRegister}
+                    disabled={isLoading}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.createButtonText}>
+                      {isLoading ? 
+                        (route?.params?.googleUserData?.isGoogleLogin && !route?.params?.googleUserData?.userIsActive ? 
+                          'Creating Profile...' : 'Creating Account...') : 
+                        (route?.params?.googleUserData?.isGoogleLogin && !route?.params?.googleUserData?.userIsActive ? 
+                          'Complete Profile' : 'Create Account')
+                      }
+                    </Text>
+                    {!isLoading && <Icon name="arrow-forward" size={16} color="#FFFFFF" style={styles.buttonIcon} />}
+                  </TouchableOpacity>
+
+                  {/* Back to Login Link */}
+                  <TouchableOpacity onPress={handleBackToLogin} style={styles.backToLoginContainer}>
+                    <Text style={styles.backToLoginText}>
+                      Already have an account? <Text style={styles.backToLoginLink}>Sign In</Text>
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </Animated.View>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e90ff',
   },
-  scrollContainer: {
-    flexGrow: 1,
+  backgroundGradient: {
+    flex: 1,
+    backgroundColor: '#1e90ff',
+  },
+  keyboardContainer: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingBottom: 12,
+    paddingTop: 5,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoContainer: {
+  headerContent: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
   },
   placeholder: {
-    width: 40,
-    height: 40,
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 0,
-  },
-  titleSection: {
-    marginBottom: 16,
+    width: 32,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginTop: 4,
-    marginBottom: 3,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
     textAlign: 'center',
+    marginBottom: 2,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 16,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
   },
-  form: {
-    width: '100%',
-    maxWidth: 400,
+  cardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    flex: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '500',
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 20,
+  },
+  autoFillContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  checkbox: {
+    width: 14,
+    height: 14,
+    borderWidth: 2,
+    borderColor: '#1e90ff',
+    borderRadius: 3,
+    marginRight: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  checkboxChecked: {
+    backgroundColor: '#1e90ff',
+    borderColor: '#1e90ff',
+  },
+  autoFillText: {
+    fontSize: 11,
+    color: '#1e90ff',
+    fontWeight: '600',
+  },
+  form: {
+    flex: 1,
+  },
+  inputGroup: {
+    marginBottom: 10,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
     color: '#374151',
     marginBottom: 4,
-    marginTop: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  inputWrapper: {
+  labelIcon: {
+    marginRight: 4,
+  },
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 36,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  inputIcon: {
-    marginRight: 10,
+  inputFocused: {
+    borderColor: '#1e90ff',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#1e90ff',
+    shadowOpacity: 0.15,
   },
-  input: {
+  inputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  textInput: {
     flex: 1,
-    fontSize: 15,
-    color: '#374151',
+    fontSize: 13,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  countryCode: {
+    fontSize: 13,
+    color: '#1F2937',
+    fontWeight: '600',
+    paddingRight: 8,
+    borderRightWidth: 1,
+    borderRightColor: '#E5E7EB',
   },
   eyeButton: {
-    padding: 4,
+    padding: 2,
   },
-  dateInput: {
+  datePickerInput: {
+    minHeight: 40,
+    paddingVertical: 8,
+  },
+  datePickerContent: {
     flex: 1,
-    fontSize: 15,
-  },
-  genderRow: {
     flexDirection: 'row',
-    width: '100%',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+  },
+  dateText: {
+    fontSize: 13,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  placeholderText: {
+    color: '#9CA3AF',
+  },
+  genderContainer: {
+    flexDirection: 'row',
+    gap: 8,
   },
   genderButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 10,
-    paddingVertical: 12,
-    marginHorizontal: 3,
-    backgroundColor: '#F9FAFB',
+    paddingVertical: 8,
+    gap: 4,
+    minHeight: 36,
   },
   genderButtonSelected: {
     backgroundColor: '#1e90ff',
     borderColor: '#1e90ff',
   },
-  genderIcon: {
-    marginRight: 6,
-  },
-  genderButtonText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  genderButtonTextSelected: {
-    color: '#fff',
+  genderText: {
+    fontSize: 13,
+    color: '#6B7280',
     fontWeight: '600',
   },
-  registerButton: {
-    width: '100%',
-    backgroundColor: '#1e90ff',
-    borderRadius: 10,
-    paddingVertical: 14,
+  genderTextSelected: {
+    color: '#FFFFFF',
+  },
+  errorRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 12,
+    marginTop: 3,
+    paddingLeft: 2,
   },
-  registerButtonDisabled: {
-    opacity: 0.6,
+  errorText: {
+    fontSize: 10,
+    color: '#EF4444',
+    marginLeft: 3,
+    flex: 1,
   },
-  registerButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 15,
+  bottomSection: {
+    marginTop: 16,
   },
-  loginContainer: {
+  createButton: {
+    backgroundColor: '#1e90ff',
+    borderRadius: 12,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
+    shadowColor: '#1e90ff',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  loginText: {
-    fontSize: 13,
+  createButtonDisabled: {
+    opacity: 0.6,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  buttonIcon: {
+    marginLeft: 6,
+  },
+  backToLoginContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  backToLoginText: {
+    fontSize: 12,
     color: '#6B7280',
   },
-  loginLink: {
-    fontSize: 13,
+  backToLoginLink: {
     color: '#1e90ff',
     fontWeight: '600',
   },
+  googleDataIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  googleDataText: {
+    fontSize: 11,
+    color: '#4285F4',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  // Loading Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 30,
     alignItems: 'center',
-    width: 320,
+    justifyContent: 'center',
+    minWidth: 250,
+    maxWidth: 300,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  modalTitle: {
+  spinner: {
+    marginBottom: 20,
+  },
+  loadingTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 16,
+    marginBottom: 8,
     textAlign: 'center',
   },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 16,
+  loadingMessage: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
-    marginHorizontal: 6,
+  successIcon: {
+    marginBottom: 20,
   },
-  modalButtonConfirm: {
-    backgroundColor: '#1e90ff',
-  },
-  modalButtonText: {
-    fontSize: 16,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  modalButtonTextConfirm: {
-    color: '#fff',
+  successTitle: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#10B981',
+    marginBottom: 8,
+    textAlign: 'center',
   },
-  iosDatePicker: {
-    backgroundColor: '#fff',
-    marginVertical: 10,
-  },
-  compactLogo: {
-    width: 100,
-    height: 100,
+  successMessage: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
+

@@ -35,8 +35,17 @@ export const signInWithGoogle = async () => {
     const backendResponse = await authService.googleLogin({ id_token: tokens.idToken });
     
     console.log('🟢 Backend response received:', {
-      isFirstLogin: backendResponse.is_first_login,
+      user_is_active: backendResponse.user_is_active,
+      calculated_isFirstLogin: !backendResponse.user_is_active,
       userEmail: backendResponse.user_infomation.email
+    });
+    
+    // Use is_user_active directly from backend
+    const isUserActive = (backendResponse as any).is_user_active;
+    
+    console.log('🔍 DEBUGGING is_user_active field:', {
+      'backendResponse.is_user_active': (backendResponse as any).is_user_active,
+      'typeof is_user_active': typeof (backendResponse as any).is_user_active
     });
     
     return {
@@ -45,7 +54,7 @@ export const signInWithGoogle = async () => {
       idToken: tokens.idToken,
       accessToken: tokens.accessToken,
       backendData: backendResponse,
-      isFirstLogin: backendResponse.is_first_login,
+      is_user_active: isUserActive,
       email: backendResponse.user_infomation.email,
     };
   } catch (error: any) {
