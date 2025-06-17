@@ -16,6 +16,53 @@ const ENDPOINTS = {
   UPLOAD_AVATAR: '/api/v1/users/upload-avatar',
 };
 
+// Token storage keys
+const STORAGE_KEYS = {
+  ACCESS_TOKEN: 'access_token',
+  REFRESH_TOKEN: 'refresh_token',
+  TOKEN_EXPIRY: 'token_expiry',
+  LOGIN_TIME: 'login_time',
+};
+
+// Token configuration based on backend settings
+const TOKEN_CONFIG = {
+  ACCESS_TOKEN_DURATION: 3600 * 1000, // 1 hour in milliseconds
+  REFRESH_TOKEN_DURATION: 604800 * 1000, // 7 days in milliseconds
+  WARNING_THRESHOLD: 59 * 60 * 1000, // Warn 1 minute before expiry
+  REFRESH_THRESHOLD: 15 * 60 * 1000, // Auto-refresh 15 minutes before expiry
+};
+
+// Helper function to decode JWT and get expiry time
+const getTokenExpiry = (token: string): number | null => {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.exp ? payload.exp * 1000 : null; // Convert to milliseconds
+  } catch (error) {
+    console.error('🔴 Error decoding token:', error);
+    return null;
+  }
+};
+
+// Check if token is about to expire (using configurable threshold)
+const isTokenNearExpiry = (expiryTime: number): boolean => {
+  const now = Date.now();
+  return (expiryTime - now) <= TOKEN_CONFIG.WARNING_THRESHOLD;
+};
+
+// Check if token should be auto-refreshed (15 minutes before expiry)
+const shouldAutoRefresh = (expiryTime: number): boolean => {
+  const now = Date.now();
+  return (expiryTime - now) <= TOKEN_CONFIG.REFRESH_THRESHOLD;
+};
+
+// Check if token is expired
+const isTokenExpired = (expiryTime: number): boolean => {
+  return Date.now() >= expiryTime;
+};
+
 // Types for authentication
 export interface GoogleLoginRequest {
   id_token: string;
@@ -461,8 +508,18 @@ export class AuthService {
   // Store tokens securely
   private async storeTokens(access_token: string, refresh_token: string): Promise<void> {
     try {
-      await SecureStore.setItemAsync('access_token', access_token);
-      await SecureStore.setItemAsync('refresh_token', refresh_token);
+      await SecureStore.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, access_token);
+      await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, refresh_token);
+      
+      // Store token expiry time
+      const expiryTime = getTokenExpiry(access_token);
+      if (expiryTime) {
+        await SecureStore.setItemAsync(STORAGE_KEYS.TOKEN_EXPIRY, expiryTime.toString());
+      }
+      
+      // Store login time
+      await SecureStore.setItemAsync(STORAGE_KEYS.LOGIN_TIME, Date.now().toString());
+      
       console.log('🟢 Tokens stored successfully');
     } catch (error) {
       console.error('🔴 Error storing tokens:', error);
@@ -472,8 +529,10 @@ export class AuthService {
   // Clear stored tokens
   async clearTokens(): Promise<void> {
     try {
-      await SecureStore.deleteItemAsync('access_token');
-      await SecureStore.deleteItemAsync('refresh_token');
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN_EXPIRY);
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.LOGIN_TIME);
       console.log('🟢 Tokens cleared successfully');
     } catch (error) {
       console.error('🔴 Error clearing tokens:', error);
@@ -483,7 +542,7 @@ export class AuthService {
   // Get stored access token
   async getStoredToken(): Promise<string | null> {
     try {
-      return await SecureStore.getItemAsync('access_token');
+      return await SecureStore.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
     } catch (error) {
       console.error('🔴 Error getting stored token:', error);
       return null;
@@ -493,22 +552,106 @@ export class AuthService {
   // Get stored refresh token
   async getStoredRefreshToken(): Promise<string | null> {
     try {
-      return await SecureStore.getItemAsync('refresh_token');
+      return await SecureStore.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
     } catch (error) {
       console.error('🔴 Error getting stored refresh token:', error);
       return null;
     }
   }
 
-  // Check if user is authenticated
+  // Get token expiry time
+  async getTokenExpiry(): Promise<number | null> {
+    try {
+      const expiry = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN_EXPIRY);
+      return expiry ? parseInt(expiry) : null;
+    } catch (error) {
+      console.error('🔴 Error getting token expiry:', error);
+      return null;
+    }
+  }
+
+  // Check if token is near expiry and show notification
+  async checkTokenExpiry(): Promise<{ isExpired: boolean; isNearExpiry: boolean; remainingTime?: number }> {
+    try {
+      const expiryTime = await this.getTokenExpiry();
+      if (!expiryTime) {
+        return { isExpired: true, isNearExpiry: false };
+      }
+
+      const now = Date.now();
+      const remainingTime = expiryTime - now;
+      const expired = isTokenExpired(expiryTime);
+      const nearExpiry = isTokenNearExpiry(expiryTime);
+
+      if (expired) {
+        console.log('🔴 Token has expired');
+        return { isExpired: true, isNearExpiry: false, remainingTime: 0 };
+      }
+
+      if (nearExpiry) {
+        console.log('🟡 Token is near expiry, remaining time:', Math.floor(remainingTime / 1000 / 60), 'minutes');
+        return { isExpired: false, isNearExpiry: true, remainingTime };
+      }
+
+      return { isExpired: false, isNearExpiry: false, remainingTime };
+    } catch (error) {
+      console.error('🔴 Error checking token expiry:', error);
+      return { isExpired: true, isNearExpiry: false };
+    }
+  }
+
+  // Check if user is authenticated with token validation
   async isAuthenticated(): Promise<boolean> {
     try {
       const token = await this.getStoredToken();
       const refresh_token = await this.getStoredRefreshToken();
-      return !!(token && refresh_token);
+      
+      if (!token || !refresh_token) {
+        return false;
+      }
+
+      // Check token expiry
+      const { isExpired } = await this.checkTokenExpiry();
+      if (isExpired) {
+        console.log('🔴 Token expired, attempting refresh...');
+        const newToken = await this.refreshAccessToken();
+        return !!newToken;
+      }
+
+      return true;
     } catch (error) {
       console.error('🔴 Error checking authentication:', error);
       return false;
+    }
+  }
+
+  // Auto-refresh token if needed
+  async getValidToken(): Promise<string | null> {
+    try {
+      const token = await this.getStoredToken();
+      if (!token) return null;
+
+      const expiryTime = await this.getTokenExpiry();
+      if (!expiryTime) return null;
+
+      const expired = isTokenExpired(expiryTime);
+      const shouldRefresh = shouldAutoRefresh(expiryTime);
+      
+      if (expired) {
+        console.log('🔴 Token expired, refreshing...');
+        return await this.refreshAccessToken();
+      }
+      
+      if (shouldRefresh) {
+        console.log('🟡 Token will expire soon, refreshing preemptively...');
+        const newToken = await this.refreshAccessToken();
+        return newToken || token; // Return new token or fallback to current
+      }
+
+      return token;
+    } catch (error) {
+      console.error('🔴 Error getting valid token:', error);
+      return null;
     }
   }
 
@@ -520,26 +663,80 @@ export class AuthService {
         throw new Error('No refresh token available');
       }
 
+      console.log('🟡 Refreshing access token...');
+
       const response = await fetch(this.buildUrl(ENDPOINTS.REFRESH_TOKEN), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${refresh_token}`, // ✅ Send refresh token in Authorization header
         },
-        body: JSON.stringify({ refresh_token }),
+        // ✅ No body needed as backend reads from Authorization header
       });
 
       const result = await response.json();
+      console.log('🟡 Refresh token response:', result);
       
-      if (response.ok && result.data?.access_token) {
-        await SecureStore.setItemAsync('access_token', result.data.access_token);
-        return result.data.access_token;
+      // ✅ Backend returns "accessToken" (camelCase), not "access_token"
+      if (response.ok && result.accessToken) {
+        await SecureStore.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, result.accessToken);
+        
+        // Store new token expiry time
+        const expiryTime = getTokenExpiry(result.accessToken);
+        if (expiryTime) {
+          await SecureStore.setItemAsync(STORAGE_KEYS.TOKEN_EXPIRY, expiryTime.toString());
+        }
+        
+        console.log('🟢 Access token refreshed successfully');
+        return result.accessToken;
       }
       
-      throw new Error('Failed to refresh token');
+      // Handle error response
+      const errorMessage = result.error || 'Failed to refresh token';
+      throw new Error(errorMessage);
     } catch (error) {
       console.error('🔴 AuthService - Token Refresh Error:', error);
       await this.clearTokens();
       return null;
+    }
+  }
+
+  // Check refresh token expiry (7 days)
+  async checkRefreshTokenExpiry(): Promise<{ isExpired: boolean; isNearExpiry: boolean; remainingDays?: number }> {
+    try {
+      const refreshToken = await this.getStoredRefreshToken();
+      if (!refreshToken) {
+        return { isExpired: true, isNearExpiry: false };
+      }
+
+      const expiryTime = getTokenExpiry(refreshToken);
+      if (!expiryTime) {
+        return { isExpired: true, isNearExpiry: false };
+      }
+
+      const now = Date.now();
+      const remainingTime = expiryTime - now;
+      const expired = isTokenExpired(expiryTime);
+      
+      // Warn user 1 day before refresh token expires
+      const oneDayInMs = 24 * 60 * 60 * 1000;
+      const nearExpiry = (remainingTime <= oneDayInMs) && !expired;
+
+      if (expired) {
+        console.log('🔴 Refresh token has expired');
+        return { isExpired: true, isNearExpiry: false, remainingDays: 0 };
+      }
+
+      if (nearExpiry) {
+        const remainingDays = Math.ceil(remainingTime / oneDayInMs);
+        console.log('🟡 Refresh token expires in:', remainingDays, 'days');
+        return { isExpired: false, isNearExpiry: true, remainingDays };
+      }
+
+      return { isExpired: false, isNearExpiry: false, remainingDays: Math.ceil(remainingTime / oneDayInMs) };
+    } catch (error) {
+      console.error('🔴 Error checking refresh token expiry:', error);
+      return { isExpired: true, isNearExpiry: false };
     }
   }
 }

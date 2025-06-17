@@ -70,6 +70,50 @@
       "thisYear": "Năm nay"
     }
   },
+
+  "group": {
+    "title": "Danh sách hội nhóm",
+    "createGroup": "Tạo nhóm mới",
+    "joinGroup": "Tham gia nhóm",
+    "settings": "Cài đặt",
+    "groupSettings": "Cài đặt nhóm",
+    "groupDetail": "Chi tiết nhóm",
+    "members": "thành viên",
+    "member": "thành viên",
+    "loading": "Đang tải danh sách nhóm...",
+    "noGroups": "Không có nhóm nào",
+    "actions": {
+      "createGroup": "Chức năng tạo nhóm mới",
+      "joinGroup": "Chức năng tham gia nhóm",
+      "viewDetail": "Xem chi tiết nhóm"
+    },
+    "create": {
+      "title": "Tạo nhóm mới",
+      "avatar": "Avatar nhóm",
+      "selectImage": "Chọn ảnh",
+      "groupName": "Tên nhóm",
+      "groupDescription": "Mô tả nhóm",
+      "required": "*",
+      "nameRequired": "Tên nhóm là bắt buộc",
+      "nameMinLength": "Tên nhóm phải có ít nhất 3 ký tự",
+      "nameMaxLength": "Tên nhóm không được vượt quá 50 ký tự",
+      "descriptionRequired": "Mô tả nhóm là bắt buộc",
+      "descriptionMinLength": "Mô tả phải có ít nhất 10 ký tự",
+      "descriptionMaxLength": "Mô tả không được vượt quá 200 ký tự",
+      "info": "Sau khi tạo nhóm, bạn sẽ nhận được mã nhóm để chia sẻ với những người muốn tham gia.",
+      "createButton": "Tạo nhóm",
+      "success": {
+        "title": "Tạo nhóm thành công!",
+        "message": "Nhóm \"{{name}}\" đã được tạo thành công.\nBạn có thể bắt đầu mời thành viên tham gia.",
+        "backButton": "Quay lại danh sách nhóm"
+      },
+      "errors": {
+        "cameraPermission": "Cần quyền truy cập thư viện ảnh để chọn avatar nhóm",
+        "imagePickerError": "Không thể chọn ảnh. Vui lòng thử lại.",
+        "createError": "Không thể tạo nhóm. Vui lòng thử lại."
+      }
+    }
+  },
   
   "categoryNames": {
     "daily": "Chi tiêu hàng ngày",
@@ -181,7 +225,9 @@
     "confirmPassword": "Xác nhận mật khẩu",
     "enterNewPassword": "Nhập mật khẩu mới",
     "confirmNewPassword": "Xác nhận mật khẩu mới",
-    "enterCurrentPassword": "Nhập mật khẩu hiện tại"
+    "enterCurrentPassword": "Nhập mật khẩu hiện tại",
+    "enterGroupName": "Nhập tên nhóm",
+    "enterGroupDescription": "Nhập mô tả về nhóm..."
   },
   
   "validation": {
@@ -307,7 +353,8 @@
     "warning": "Cảnh báo",
     "info": "Thông tin",
     "cancel": "Hủy",
-    "continue": "Tiếp tục"
+    "continue": "Tiếp tục",
+    "ok": "OK"
   },
   
   "notifications": {

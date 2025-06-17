@@ -70,6 +70,50 @@
       "thisYear": "This Year"
     }
   },
+
+  "group": {
+    "title": "Group List",
+    "createGroup": "Create New Group",
+    "joinGroup": "Join Group",
+    "settings": "Settings",
+    "groupSettings": "Group Settings",
+    "groupDetail": "Group Detail",
+    "members": "members",
+    "member": "member",
+    "loading": "Loading group list...",
+    "noGroups": "No groups available",
+    "actions": {
+      "createGroup": "Create new group feature",
+      "joinGroup": "Join group feature",
+      "viewDetail": "View group detail"
+    },
+    "create": {
+      "title": "Create New Group",
+      "avatar": "Group Avatar",
+      "selectImage": "Select Image",
+      "groupName": "Group Name",
+      "groupDescription": "Group Description",
+      "required": "*",
+      "nameRequired": "Group name is required",
+      "nameMinLength": "Group name must be at least 3 characters",
+      "nameMaxLength": "Group name cannot exceed 50 characters",
+      "descriptionRequired": "Group description is required",
+      "descriptionMinLength": "Description must be at least 10 characters",
+      "descriptionMaxLength": "Description cannot exceed 200 characters",
+      "info": "After creating the group, you will receive a group code to share with people you want to invite.",
+      "createButton": "Create Group",
+      "success": {
+        "title": "Group Created Successfully!",
+        "message": "Group \"{{name}}\" has been created successfully.\nYou can now start inviting members to join.",
+        "backButton": "Back to Group List"
+      },
+      "errors": {
+        "cameraPermission": "Camera permission required to select group avatar",
+        "imagePickerError": "Cannot select image. Please try again.",
+        "createError": "Cannot create group. Please try again."
+      }
+    }
+  },
   
   "categoryNames": {
     "daily": "Daily Expenses",
@@ -140,7 +184,9 @@
     "confirmPassword": "Confirm your password",
     "enterNewPassword": "Enter your new password",
     "confirmNewPassword": "Confirm your new password",
-    "enterCurrentPassword": "Enter your current password"
+    "enterCurrentPassword": "Enter your current password",
+    "enterGroupName": "Enter group name",
+    "enterGroupDescription": "Enter group description..."
   },
   
   "validation": {
@@ -266,7 +312,8 @@
     "warning": "Warning",
     "info": "Information",
     "cancel": "Cancel",
-    "continue": "Continue"
+    "continue": "Continue",
+    "ok": "OK"
   },
   
   "notifications": {
