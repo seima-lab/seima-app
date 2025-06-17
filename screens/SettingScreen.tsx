@@ -1,9 +1,10 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import LogoutModal from '../components/LogoutModal';
 import { useAuth } from '../contexts/AuthContext';
 import { Language, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
@@ -19,11 +20,21 @@ const SettingScreen = () => {
   const [darkMode, setDarkMode] = useState(true);
   const { language, setLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState('Setting');
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const { t, i18n } = useTranslation();
+  
+  // Prevent multiple concurrent API calls
+  const isLoadingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   // Load user profile from API
   useEffect(() => {
     loadUserProfile();
+    
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [isAuthenticated]);
 
   // Auto reload data when screen comes into focus (after returning from UpdateProfile)
@@ -37,37 +48,57 @@ const SettingScreen = () => {
   );
 
   const loadUserProfile = async (forceRefresh: boolean = false) => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !isMountedRef.current) {
       setLoading(false);
       return;
     }
 
+    // Prevent multiple concurrent calls
+    if (isLoadingRef.current && !forceRefresh) {
+      console.log('⏭️ Skipping profile load - already loading');
+      return;
+    }
+
     try {
+      isLoadingRef.current = true;
       setLoading(true);
       console.log('🟡 Loading user profile...', forceRefresh ? '(Force Refresh)' : '');
       
       const profile = await userService.getCurrentUserProfile(forceRefresh);
       console.log('🟢 User profile loaded:', profile);
       
-      setUserProfile(profile);
+      if (isMountedRef.current) {
+        setUserProfile(profile);
+      }
     } catch (error: any) {
       console.error('🔴 Failed to load user profile:', error);
-      Alert.alert(
-        t('common.error'),
-        error.message || 'Failed to load profile',
-        [
-          {
-            text: t('common.retry'),
-            onPress: () => loadUserProfile(true),
-          },
-          {
-            text: t('common.cancel'),
-            style: 'cancel',
-          },
-        ]
-      );
+      
+      if (isMountedRef.current) {
+        // Only show alert if error is not AbortError (timeout/cancelled)
+        if (error.name !== 'AbortError') {
+          Alert.alert(
+            t('common.error'),
+            error.message || 'Failed to load profile',
+            [
+              {
+                text: t('common.retry'),
+                onPress: () => loadUserProfile(true),
+              },
+              {
+                text: t('common.cancel'),
+                style: 'cancel',
+              },
+            ]
+          );
+        } else {
+          console.log('🟡 Request was aborted (timeout or cancelled)');
+        }
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+      isLoadingRef.current = false;
     }
   };
 
@@ -96,28 +127,8 @@ const SettingScreen = () => {
     navigation.navigate('ChangePassword');
   };
 
-  const handleLogout = async () => {
-    Alert.alert(
-      t('Confirm'),
-      'Are you sure you want to logout?',
-      [
-        {
-          text: t('cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('Logout'),
-          onPress: async () => {
-            try {
-              await logout();
-              navigation.replace('Login');
-            } catch (error) {
-              console.error('Logout error:', error);
-            }
-          },
-        },
-      ]
-    );
+  const handleLogout = () => {
+    setLogoutModalVisible(true);
   };
 
   const handleLanguageChange = (lang: Language) => setLanguage(lang);
@@ -261,6 +272,20 @@ const SettingScreen = () => {
         </View>
       </View>
       </ScrollView>
+             <LogoutModal
+         visible={logoutModalVisible}
+         userName={userProfile?.user_full_name?.split(' ')[0] || 'Bạn'}
+         onConfirm={async () => {
+           setLogoutModalVisible(false);
+           try {
+             await logout();
+             navigation.replace('Login');
+           } catch (error) {
+             console.error('Logout error:', error);
+           }
+         }}
+         onCancel={() => setLogoutModalVisible(false)}
+       />
     </SafeAreaView>
   );
 };

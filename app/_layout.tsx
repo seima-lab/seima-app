@@ -1,9 +1,10 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { AuthProvider } from '../contexts/AuthContext';
+import TokenExpiryProvider from '../components/UserPresenceProvider';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import AddBudgetCategoryScreen from '../screens/AddBudgetCategoryScreen';
@@ -37,10 +38,10 @@ const Stack = createNativeStackNavigator();
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-function AppNavigator() {
-  const { isLoading } = useLanguage();
+function AuthNavigator() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
         <ActivityIndicator size="large" color="#1e90ff" />
@@ -50,24 +51,27 @@ function AppNavigator() {
 
   return (
     <Stack.Navigator 
-      initialRouteName="Login"
+      key={isAuthenticated ? 'authenticated' : 'unauthenticated'}
+      initialRouteName={isAuthenticated ? "MainTab" : "Login"}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="AddExpenseScreen" component={AddExpenseScreen} />
-      
-      <Stack.Screen name="EditCategoryScreen" component={EditCategoryScreen} />
-      <Stack.Screen name="AddEditCategoryScreen" component={AddEditCategoryScreen} />
-      <Stack.Screen name="BudgetScreen" component={BudgetScreen} />
-      <Stack.Screen name="AddBudgetCategoryScreen" component={AddBudgetCategoryScreen} />
+      {/* Auth screens */}
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="OTP" component={OTPScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+      
+      {/* Main app screens */}
       <Stack.Screen name="MainTab" component={MainTabScreen} />
+      <Stack.Screen name="AddExpenseScreen" component={AddExpenseScreen} />
+      <Stack.Screen name="EditCategoryScreen" component={EditCategoryScreen} />
+      <Stack.Screen name="AddEditCategoryScreen" component={AddEditCategoryScreen} />
+      <Stack.Screen name="BudgetScreen" component={BudgetScreen} />
+      <Stack.Screen name="AddBudgetCategoryScreen" component={AddBudgetCategoryScreen} />
       <Stack.Screen name="FinanceScreen" component={FinanceScreen} />
       <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
@@ -84,6 +88,20 @@ function AppNavigator() {
       <Stack.Screen name="ApproveMembers" component={ApproveMembersScreen} />
     </Stack.Navigator>
   );
+}
+
+function AppNavigator() {
+  const { isLoading } = useLanguage();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#1e90ff" />
+      </View>
+    );
+  }
+
+  return <AuthNavigator />;
 }
 
 export default function RootLayout() {
@@ -104,7 +122,9 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <LanguageProvider>
-        <AppNavigator />
+        <TokenExpiryProvider>
+          <AppNavigator />
+        </TokenExpiryProvider>
       </LanguageProvider>
     </AuthProvider>
   );
