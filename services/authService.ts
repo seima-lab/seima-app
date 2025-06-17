@@ -520,22 +520,30 @@ export class AuthService {
         throw new Error('No refresh token available');
       }
 
+      console.log('🟡 Refreshing access token...');
+
       const response = await fetch(this.buildUrl(ENDPOINTS.REFRESH_TOKEN), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${refresh_token}`, // ✅ Send refresh token in Authorization header
         },
-        body: JSON.stringify({ refresh_token }),
+        // ✅ No body needed as backend reads from Authorization header
       });
 
       const result = await response.json();
+      console.log('🟡 Refresh token response:', result);
       
-      if (response.ok && result.data?.access_token) {
-        await SecureStore.setItemAsync('access_token', result.data.access_token);
-        return result.data.access_token;
+      // ✅ Backend returns "accessToken" (camelCase), not "access_token"
+      if (response.ok && result.accessToken) {
+        await SecureStore.setItemAsync('access_token', result.accessToken);
+        console.log('🟢 Access token refreshed successfully');
+        return result.accessToken;
       }
       
-      throw new Error('Failed to refresh token');
+      // Handle error response
+      const errorMessage = result.error || 'Failed to refresh token';
+      throw new Error(errorMessage);
     } catch (error) {
       console.error('🔴 AuthService - Token Refresh Error:', error);
       await this.clearTokens();

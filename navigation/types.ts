@@ -9,10 +9,13 @@ export type RootStackParamList = {
   };
   ResetPassword: {
     email?: string;
+    otp: string;
   };
   Calendar: undefined;
   ChangePassword: undefined;
   ChatAI: undefined;
+  GroupManagement: undefined;
+  CreateGroup: undefined;
   Notifications: undefined;
   NotificationDetail: {
     notification: {
@@ -76,6 +79,9 @@ export type RootStackParamList = {
       excludeFromTotal: boolean;
     };
   } | undefined;
+  GroupDetail: { groupId: string; groupName: string };
+  InviteUsers: { groupId: string };
+  ApproveMembers: { groupId: string };
 };
 
 export type ScreenNames = keyof RootStackParamList; 

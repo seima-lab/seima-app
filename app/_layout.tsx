@@ -10,13 +10,18 @@ import AddBudgetCategoryScreen from '../screens/AddBudgetCategoryScreen';
 import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
 import AddWalletScreen from '../screens/AddWalletScreen';
+import ApproveMembersScreen from '../screens/ApproveMembersScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ChatAIScreen from '../screens/ChatAIScreen';
+import CreateGroupScreen from '../screens/CreateGroupScreen';
 import EditCategoryScreen from '../screens/EditCategoryScreen';
 import FinanceScreen from '../screens/FinanceScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import GroupDetailTabScreen from '../screens/GroupDetailTabScreen';
+import GroupManagementScreen from '../screens/GroupManagementScreen';
+import InviteUsersScreen from '../screens/InviteUsersScreen';
 import MainTabScreen from '../screens/MainTabScreen';
 import NotificationDetailScreen from '../screens/NotificationDetailScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
@@ -52,6 +57,7 @@ function AppNavigator() {
       }}
     >
       <Stack.Screen name="AddExpenseScreen" component={AddExpenseScreen} />
+      
       <Stack.Screen name="EditCategoryScreen" component={EditCategoryScreen} />
       <Stack.Screen name="AddEditCategoryScreen" component={AddEditCategoryScreen} />
       <Stack.Screen name="BudgetScreen" component={BudgetScreen} />
@@ -66,11 +72,16 @@ function AppNavigator() {
       <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="ChatAI" component={ChatAIScreen} />
+      <Stack.Screen name="GroupManagement" component={GroupManagementScreen} />
+      <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
+      <Stack.Screen name="GroupDetail" component={GroupDetailTabScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
       <Stack.Screen name="Calendar" component={CalendarScreen} />
       <Stack.Screen name="SetBudgetLimitScreen" component={SetBudgetLimitScreen} />
       <Stack.Screen name="AddWalletScreen" component={AddWalletScreen} />
+      <Stack.Screen name="InviteUsers" component={InviteUsersScreen} />
+      <Stack.Screen name="ApproveMembers" component={ApproveMembersScreen} />
     </Stack.Navigator>
   );
 }
