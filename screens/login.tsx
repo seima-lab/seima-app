@@ -1,20 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Animated,
+    Dimensions,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomToast from '../components/CustomToast';
 import GoogleButton from '../components/Login/GoogleButton';
 import Logo from '../components/Login/Logo';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { authService, EmailLoginRequest } from '../services/authService';
@@ -24,6 +25,7 @@ const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
@@ -35,6 +37,13 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [autoFillTest, setAutoFillTest] = useState(false);
+  
+  // Toast state
+  const [toast, setToast] = useState({
+    visible: false,
+    message: '',
+    type: 'error' as 'error' | 'success' | 'warning' | 'info'
+  });
   
   // Card animation
   const cardAnim = useRef(new Animated.Value(0)).current;
@@ -53,6 +62,18 @@ export default function LoginScreen() {
   const cardTranslateY = cardAnim.interpolate({ inputRange: [0, 1], outputRange: [60, 0] });
   const cardOpacity = cardAnim;
 
+  const showToast = (message: string, type: 'error' | 'success' | 'warning' | 'info' = 'error') => {
+    setToast({
+      visible: true,
+      message,
+      type
+    });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, visible: false }));
+  };
+
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -60,22 +81,22 @@ export default function LoginScreen() {
 
   const handleEmailLogin = async () => {
     if (!email.trim()) {
-      Alert.alert(t('common.error'), t('validation.emailRequired'));
+      showToast(t('validation.emailRequired'), 'warning');
       return;
     }
     
     if (!validateEmail(email)) {
-      Alert.alert(t('common.error'), t('validation.invalidEmail'));
+      showToast(t('validation.invalidEmail'), 'warning');
       return;
     }
     
     if (!password.trim()) {
-      Alert.alert(t('common.error'), t('validation.passwordRequired'));
+      showToast(t('validation.passwordRequired'), 'warning');
       return;
     }
     
     if (password.length < 6) {
-      Alert.alert(t('common.error'), t('validation.passwordTooShort'));
+      showToast(t('validation.passwordTooShort'), 'warning');
       return;
     }
 
@@ -109,30 +130,34 @@ export default function LoginScreen() {
       
       setIsLoading(false);
       
-      // Navigate to main app
-      console.log('🟢 Navigating to MainTab');
-      navigation.replace('MainTab');
+      // Show success toast briefly before navigation
+      showToast(t('login.loginSuccessMessage'), 'success');
+      
+      // Navigate to main app after a short delay
+      setTimeout(() => {
+        console.log('🟢 Navigating to MainTab');
+        navigation.replace('MainTab');
+      }, 1000);
       
     } catch (error: any) {
       setIsLoading(false);
-      console.error('🔴 Email login failed:', error);
+      // Log error for debugging (won't show on screen)
+      console.log('🔴 Email login failed:', error);
       
       // Handle specific error cases
       let errorMessage = t('login.loginFailed');
       
-      if (error.message.includes('Invalid email or password')) {
-        errorMessage = 'Invalid email or password. Please check your credentials.';
+      if (error.message.includes('Invalid email or password') || error.message.includes('UNAUTHORIZED')) {
+        errorMessage = t('login.invalidCredentials');
       } else if (error.message.includes('Account is not active')) {
-        errorMessage = 'Your account is not active. Please verify your email first.';
+        errorMessage = t('login.accountNotActive');
       } else if (error.message.includes('Google login')) {
-        errorMessage = 'This account was created with Google. Please use Google login.';
-      } else if (error.message.includes('UNAUTHORIZED')) {
-        errorMessage = 'Invalid credentials. Please check your email and password.';
+        errorMessage = t('login.googleAccountOnly');
       } else if (error.message) {
         errorMessage = error.message;
       }
       
-      Alert.alert(t('common.error'), errorMessage);
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -176,19 +201,25 @@ export default function LoginScreen() {
           };
           
           console.log('🟢 Passing Google user data to Register:', googleUserData);
-          navigation.replace('Register', { googleUserData });
+          showToast(t('login.welcomeTitle'), 'success');
+          setTimeout(() => {
+            navigation.replace('Register', { googleUserData });
+          }, 1000);
         } else {
           // Returning user (user_is_active = true) - go directly to main app
           console.log('🟢 Returning user (user_is_active = true) - navigating to MainTab');
-          navigation.replace('MainTab');
+          showToast(t('login.welcomeBack'), 'success');
+          setTimeout(() => {
+            navigation.replace('MainTab');
+          }, 1000);
         }
       } else {
-        console.error('🔴 Google Sign-In failed:', result.error);
-        Alert.alert(t('common.error'), result.error || t('login.loginFailed'));
+        console.log('🔴 Google Sign-In failed:', result.error);
+        showToast(result.error || t('login.loginFailed'), 'error');
       }
     } catch (err) {
-      console.error('🔴 LoginScreen - Google Sign-In error:', err);
-      Alert.alert(t('common.error'), t('login.loginFailed'));
+      console.log('🔴 LoginScreen - Google Sign-In error:', err);
+      showToast(t('login.loginFailed'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -245,7 +276,7 @@ export default function LoginScreen() {
                   <Icon name="check" size={14} color="#fff" />
                 )}
               </View>
-              <Text style={styles.autoFillText}>Auto-fill test data</Text>
+              <Text style={styles.autoFillText}>{t('register.autoFillTest')}</Text>
             </TouchableOpacity>
             
             {/* Email Input */}
@@ -350,6 +381,15 @@ export default function LoginScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Custom Toast */}
+      <CustomToast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+        duration={4000}
+      />
     </View>
   );
 }

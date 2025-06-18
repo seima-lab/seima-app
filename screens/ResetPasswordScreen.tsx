@@ -1,22 +1,24 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Alert,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomToast from '../components/CustomToast';
 import LogoWithText from '../components/Login/LogoWithText';
+import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { authService, ResetPasswordRequest } from '../services/authService';
 
 const { width } = Dimensions.get('window');
 
@@ -24,16 +26,19 @@ interface ResetPasswordScreenProps {
   route?: {
     params?: {
       email?: string;
+      otpCode?: string;
     };
   };
 }
 
 export default function ResetPasswordScreen({ route }: ResetPasswordScreenProps) {
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
   
   const email = route?.params?.email || '';
+  const otpCode = route?.params?.otpCode || '';
   
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -41,47 +46,90 @@ export default function ResetPasswordScreen({ route }: ResetPasswordScreenProps)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Toast state
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'error' | 'success' | 'warning' | 'info'>('error');
+
+  // Toast functions
+  const showToast = (message: string, type: 'error' | 'success' | 'warning' | 'info' = 'error') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
+
+  const hideToast = () => {
+    setToastVisible(false);
+  };
+
   const handleResetPassword = async () => {
     // Password validation
     if (!newPassword.trim()) {
-      Alert.alert(t('common.error'), t('validation.passwordRequired'));
+      showToast(t('validation.passwordRequired'), 'warning');
       return;
     }
     
-    if (newPassword.length < 6) {
-      Alert.alert(t('common.error'), t('validation.passwordTooShort'));
+    if (newPassword.length < 8) {
+      showToast(t('validation.passwordTooShort'), 'warning');
+      return;
+    }
+    
+    // Check if password contains at least 1 letter and 1 number
+    const hasLetter = /[a-zA-Z]/.test(newPassword);
+    const hasNumber = /\d/.test(newPassword);
+    if (!hasLetter || !hasNumber) {
+      showToast(t('validation.passwordInvalid'), 'warning');
       return;
     }
     
     // Confirm password validation
     if (!confirmPassword.trim()) {
-      Alert.alert(t('common.error'), t('validation.confirmPasswordRequired'));
+      showToast(t('validation.confirmPasswordRequired'), 'warning');
       return;
     }
     
     if (newPassword !== confirmPassword) {
-      Alert.alert(t('common.error'), t('validation.passwordMismatch'));
+      showToast(t('validation.passwordMismatch'), 'warning');
       return;
     }
 
     setIsLoading(true);
     try {
-      // Simulate API call
-      console.log('Reset password for:', email);
+      console.log('🟡 Resetting password for:', email);
       
+      const request: ResetPasswordRequest = {
+        email: email.trim().toLowerCase(),
+        otp_code: otpCode,
+        new_password: newPassword.trim(),
+        confirm_password: confirmPassword.trim()
+      };
+      
+      await authService.resetPassword(request);
+      
+      showToast(t('resetPassword.success'), 'success');
+      
+      // Navigate to login after success
       setTimeout(() => {
-        setIsLoading(false);
-        Alert.alert(t('common.success'), t('resetPassword.success'), [
-          {
-            text: t('common.confirm'),
-            onPress: () => navigation.replace('Login'),
-          },
-        ]);
+        navigation.replace('Login');
       }, 2000);
       
-    } catch (error) {
+    } catch (error: any) {
+      console.log('🔴 Reset password failed:', error);
+      
+      let errorMessage = t('resetPassword.failed');
+      if (error.message) {
+        if (error.message.includes('invalid') || error.message.includes('expired')) {
+          errorMessage = t('resetPassword.invalidOtp');
+        } else if (error.message.includes('password')) {
+          errorMessage = t('resetPassword.weakPassword');
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      showToast(errorMessage, 'error');
+    } finally {
       setIsLoading(false);
-      Alert.alert(t('common.error'), t('resetPassword.failed'));
     }
   };
 
@@ -197,6 +245,14 @@ export default function ResetPasswordScreen({ route }: ResetPasswordScreenProps)
           </View>
         </View>
       </ScrollView>
+
+      {/* Custom Toast */}
+      <CustomToast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={hideToast}
+      />
     </KeyboardAvoidingView>
   );
 }

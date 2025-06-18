@@ -1,6 +1,6 @@
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import GroupTabNavigation from '../components/GroupTabNavigation';
@@ -15,12 +15,57 @@ type TabType = 'overview' | 'members' | 'settings';
 const GroupDetailTabScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<GroupDetailRouteProp>();
-  const [activeTab, setActiveTab] = useState<TabType>('members');
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [showMenu, setShowMenu] = useState(false);
 
   const { groupId, groupName } = route.params;
 
   const handleBackPress = () => {
     navigation.goBack();
+  };
+
+  const getHeaderTitle = () => {
+    switch (activeTab) {
+      case 'overview':
+        return 'Overview';
+      case 'members':
+        return 'Members';
+      case 'settings':
+        return 'Settings';
+      default:
+        return 'Overview';
+    }
+  };
+
+  const handleMenuPress = () => {
+    setShowMenu(true);
+  };
+
+  const handleEditGroup = () => {
+    setShowMenu(false);
+    navigation.navigate('EditGroup', { groupId, groupName });
+  };
+
+  const handleLeaveGroup = () => {
+    setShowMenu(false);
+    Alert.alert(
+      'Leave Group',
+      'Are you sure you want to leave this group?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () => {
+            console.log('Leave group:', groupId);
+            navigation.goBack();
+          }
+        }
+      ]
+    );
   };
 
   const renderScreen = () => {
@@ -45,8 +90,8 @@ const GroupDetailTabScreen = () => {
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Icon name="arrow-back" size={24} color="#333333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Members</Text>
-        <TouchableOpacity style={styles.menuButton}>
+        <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
+        <TouchableOpacity style={styles.menuButton} onPress={handleMenuPress}>
           <Icon name="more-vert" size={24} color="#333333" />
         </TouchableOpacity>
       </View>
@@ -58,6 +103,31 @@ const GroupDetailTabScreen = () => {
 
       {/* Bottom Tab Navigation */}
       <GroupTabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {/* Menu Modal */}
+      <Modal
+        visible={showMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMenu(false)}
+        >
+          <View style={styles.menuContainer}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleEditGroup}>
+              <Icon name="edit" size={20} color="#333" />
+              <Text style={styles.menuItemText}>Edit Group</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={handleLeaveGroup}>
+              <Icon name="exit-to-app" size={20} color="#dc3545" />
+              <Text style={[styles.menuItemText, { color: '#dc3545' }]}>Leave Group</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -93,6 +163,38 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 60,
+    paddingRight: 16,
+  },
+  menuContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    minWidth: 150,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 12,
+    fontWeight: '500',
   },
 });
 

@@ -35,8 +35,8 @@ export const signInWithGoogle = async () => {
     const backendResponse = await authService.googleLogin({ id_token: tokens.idToken });
     
     console.log('🟢 Backend response received:', {
-      user_is_active: backendResponse.user_is_active,
-      calculated_isFirstLogin: !backendResponse.user_is_active,
+      user_is_active: backendResponse.is_user_active,
+      calculated_isFirstLogin: !backendResponse.is_user_active,
       userEmail: backendResponse.user_infomation.email
     });
     

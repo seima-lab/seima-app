@@ -1,3 +1,4 @@
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -39,6 +40,7 @@ interface OTPScreenProps {
 export default function OTPScreen({ route }: OTPScreenProps) {
   const { t } = useTranslation();
   const navigation = useNavigationService();
+  const navigationHook = useNavigation();
   const insets = useSafeAreaInsets();
   
   const email = route?.params?.email || '';
@@ -57,6 +59,15 @@ export default function OTPScreen({ route }: OTPScreenProps) {
   const [canResend, setCanResend] = useState(false);
   
   const inputRefs = useRef<TextInput[]>([]);
+
+  // Prevent uncontrolled back navigation for forgot-password flow
+  useFocusEffect(
+    React.useCallback(() => {
+      // Remove the beforeRemove listener as it's causing issues
+      // Just let normal back navigation work
+      return () => {};
+    }, [navigationHook, type])
+  );
 
   // Timer for resend OTP
   useEffect(() => {
@@ -147,7 +158,10 @@ export default function OTPScreen({ route }: OTPScreenProps) {
           Alert.alert(t('common.success'), t('otp.verifySuccessReset'), [
             {
               text: t('common.confirm'),
-              onPress: () => navigation.navigate('ResetPassword', { email }),
+              onPress: () => navigation.navigate('ResetPassword', { 
+                email,
+                otpCode: otpCode 
+              }),
             },
           ]);
         } else {
@@ -222,6 +236,7 @@ export default function OTPScreen({ route }: OTPScreenProps) {
   };
 
   const handleBackToPrevious = () => {
+    // Simply go back to previous screen for all cases
     navigation.goBack();
   };
 
