@@ -3,33 +3,37 @@ import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomToast from '../components/CustomToast';
+import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { userService } from '../services/userService';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^(0[3|5|7|8|9])([0-9]{8})$/; // Vietnamese phone number format
+const fullNameRegex = /^[a-zA-ZÀ-ỹ\s]{2,50}$/; // Allow Vietnamese characters, 2-50 chars
 
 const UpdateProfile = () => {
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
   
@@ -54,9 +58,25 @@ const UpdateProfile = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasDateOfBirth, setHasDateOfBirth] = useState(false);
 
+  // Toast state
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'error' | 'success' | 'warning' | 'info'>('error');
+
   // Refs for TextInputs
   const fullNameRef = useRef<TextInput>(null);
   const phoneNumberRef = useRef<TextInput>(null);
+
+  // Toast functions
+  const showToast = (message: string, type: 'error' | 'success' | 'warning' | 'info' = 'error') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
+
+  const hideToast = () => {
+    setToastVisible(false);
+  };
 
   // Start animations when component mounts
   useEffect(() => {
@@ -121,8 +141,8 @@ const UpdateProfile = () => {
       
     } catch (err: any) {
       console.error('❌ Failed to fetch user profile:', err);
-      setError(err.message || 'Failed to load profile data');
-      Alert.alert('Error', 'Failed to load profile data');
+      setError(err.message || t('updateProfilePage.loadFailed'));
+      showToast(t('updateProfilePage.loadFailed'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -130,17 +150,57 @@ const UpdateProfile = () => {
 
   const validate = () => {
     const newErrors: any = {};
-    if (!fullName.trim()) newErrors.fullName = 'Full name is required';
-    if (email && !emailRegex.test(email)) newErrors.email = 'Invalid email format';
-    if (phoneNumber && !phoneRegex.test(phoneNumber)) newErrors.phoneNumber = 'Invalid phone number format';
-    if (!gender) newErrors.gender = 'Please select your gender';
-    if (hasDateOfBirth && (!dateOfBirth || isNaN(dateOfBirth.getTime()))) newErrors.dateOfBirth = 'Invalid date';
+    
+    // Full name validation
+    if (!fullName.trim()) {
+      newErrors.fullName = t('validation.fullNameRequired');
+    } else if (fullName.trim().length < 2) {
+      newErrors.fullName = t('validation.fullNameTooShort');
+    } else if (fullName.trim().length > 50) {
+      newErrors.fullName = t('validation.fullNameTooLong');
+    } else if (!fullNameRegex.test(fullName.trim())) {
+      newErrors.fullName = t('validation.fullNameInvalid');
+    }
+    
+    // Phone number validation (optional but if provided must be valid)
+    if (phoneNumber.trim() && !phoneRegex.test(phoneNumber.trim())) {
+      newErrors.phoneNumber = t('validation.invalidPhone');
+    }
+    
+    // Gender validation
+    if (!gender) {
+      newErrors.gender = t('validation.selectGender');
+    }
+    
+    // Date of birth validation (optional but if set must be valid)
+    if (hasDateOfBirth) {
+      if (!dateOfBirth || isNaN(dateOfBirth.getTime())) {
+        newErrors.dateOfBirth = t('validation.invalidDate');
+      } else {
+        // Check if date is not in the future
+        const today = new Date();
+        if (dateOfBirth > today) {
+          newErrors.dateOfBirth = t('validation.futureDateNotAllowed');
+        }
+        
+        // Check if age is reasonable (not more than 120 years)
+        const age = today.getFullYear() - dateOfBirth.getFullYear();
+        if (age > 120) {
+          newErrors.dateOfBirth = t('validation.ageTooOld');
+        }
+      }
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSaveChanges = async () => {
     if (!validate()) {
+      // Show first validation error with toast
+      const firstError = Object.values(errors)[0] as string;
+      showToast(firstError, 'warning');
+      
       // Shake animation for error
       const shakeAnimation = Animated.sequence([
         Animated.timing(slideAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
@@ -185,7 +245,7 @@ const UpdateProfile = () => {
           payload.avatar_url = newAvatarUrl;
         } catch (err: any) {
           console.error('❌ Failed to upload avatar:', err);
-          Alert.alert('Error', 'Failed to upload avatar');
+          showToast(t('updateProfilePage.avatarUploadFailed'), 'warning');
           // Continue with profile update even if avatar upload fails
         }
       }
@@ -198,15 +258,24 @@ const UpdateProfile = () => {
       console.log('🔄 Refreshing local profile data after update...');
       await fetchUserProfile();
       
-      Alert.alert(
-        'Success', 
-        'Profile updated successfully',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      showToast(t('updateProfilePage.updateSuccess'), 'success');
+      
+      // Navigate back after showing success message
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
       
     } catch (err: any) {
       console.error('❌ Failed to update profile:', err);
-      Alert.alert('Error', 'Failed to update profile');
+      
+      let errorMessage = t('updateProfilePage.updateFailed');
+      if (err.message && err.message.includes('validation')) {
+        errorMessage = t('updateProfilePage.validationError');
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      showToast(errorMessage, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -217,11 +286,7 @@ const UpdateProfile = () => {
     const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (cameraStatus !== 'granted' || mediaLibraryStatus !== 'granted') {
-      Alert.alert(
-        'Permission Denied',
-        'Please grant camera and photo library permissions to change your avatar.',
-        [{ text: 'OK', style: 'default' }]
-      );
+      showToast(t('permissions.permissionMessage'), 'warning');
       return false;
     }
     return true;
@@ -244,7 +309,7 @@ const UpdateProfile = () => {
       }
     } catch (error) {
       console.log('Error picking image from camera:', error);
-      Alert.alert('Error', 'Could not access camera');
+      showToast(t('permissions.cameraError'), 'error');
     }
   };
 
@@ -265,7 +330,7 @@ const UpdateProfile = () => {
       }
     } catch (error) {
       console.log('Error picking image from gallery:', error);
-      Alert.alert('Error', 'Could not access photo gallery');
+      showToast(t('permissions.galleryError'), 'error');
     }
   };
 
@@ -286,12 +351,12 @@ const UpdateProfile = () => {
       );
     } else {
       Alert.alert(
-        'Change Avatar',
-        'Choose an option',
+        t('permissions.chooseOption'),
+        '',
         [
-          { text: 'Camera', onPress: pickImageFromCamera },
-          { text: 'Photo Gallery', onPress: pickImageFromGallery },
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('permissions.camera'), onPress: pickImageFromCamera },
+          { text: t('permissions.gallery'), onPress: pickImageFromGallery },
+          { text: t('common.cancel'), style: 'cancel' },
         ]
       );
     }
@@ -355,7 +420,7 @@ const UpdateProfile = () => {
           <Icon name="error-outline" size={48} color="#ff3b30" />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={fetchUserProfile}>
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -374,7 +439,7 @@ const UpdateProfile = () => {
         >
           <Icon name="arrow-back-ios" size={22} color="#1e90ff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Update Profile</Text>
+        <Text style={styles.headerTitle}>{t('updateProfile')}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -416,7 +481,7 @@ const UpdateProfile = () => {
                 </TouchableOpacity>
               </View>
               <TouchableOpacity style={styles.changeAvatarButton} onPress={handleChangeAvatar}>
-                <Text style={styles.changeAvatarText}>Change Avatar</Text>
+                <Text style={styles.changeAvatarText}>{t('profile.changeAvatar')}</Text>
                 <Icon name="edit" size={16} color="#fff" style={styles.editIcon} />
               </TouchableOpacity>
             </View>
@@ -427,7 +492,7 @@ const UpdateProfile = () => {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>
                   <Icon name="person" size={16} color="#1e90ff" style={styles.inputIcon} />
-                  Full Name
+                  {t('profile.fullName')}
                 </Text>
                 <TextInput
                   style={[
@@ -437,7 +502,7 @@ const UpdateProfile = () => {
                   ]}
                   value={fullName}
                   onChangeText={setFullName}
-                  placeholder="Enter your full name"
+                  placeholder={t('placeholders.enterFullName')}
                   placeholderTextColor="#9ca3af"
                   onFocus={() => handleInputFocus('fullName')}
                   onBlur={handleInputBlur}
@@ -459,7 +524,7 @@ const UpdateProfile = () => {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>
                   <Icon name="cake" size={16} color="#1e90ff" style={styles.inputIcon} />
-                  Date of Birth
+                  {t('dateOfBirth')}
                 </Text>
                 <TouchableOpacity 
                   style={[
@@ -476,7 +541,7 @@ const UpdateProfile = () => {
                       styles.dateText, 
                       !hasDateOfBirth && { color: '#9ca3af' }
                     ]}>
-                      {hasDateOfBirth ? formatDate(dateOfBirth) : "Select date"}
+                      {hasDateOfBirth ? formatDate(dateOfBirth) : t('profile.selectDate')}
                     </Text>
                     <Icon name="event" size={20} color="#1e90ff" />
                   </View>
@@ -503,11 +568,11 @@ const UpdateProfile = () => {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>
                   <Icon name="email" size={16} color="#1e90ff" style={styles.inputIcon} />
-                  Email
+                  {t('email')}
                 </Text>
                 <View style={[styles.input, styles.disabledInput]}>
                   <Text style={styles.readOnlyText}>
-                    {email || "No email provided"}
+                    {email || t('updateProfilePage.noEmailProvided')}
                   </Text>
                   <Icon name="lock-outline" size={18} color="#8E8E93" />
                 </View>
@@ -517,7 +582,7 @@ const UpdateProfile = () => {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>
                   <Icon name="phone" size={16} color="#1e90ff" style={styles.inputIcon} />
-                  Phone Number
+                  {t('placeholders.phoneNumber')}
                 </Text>
                 <TextInput
                   style={[
@@ -527,7 +592,7 @@ const UpdateProfile = () => {
                   ]}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
-                  placeholder="Enter your phone number"
+                  placeholder={t('placeholders.enterPhone')}
                   placeholderTextColor="#9ca3af"
                   keyboardType="phone-pad"
                   onFocus={() => handleInputFocus('phoneNumber')}
@@ -543,14 +608,14 @@ const UpdateProfile = () => {
                     <Text style={styles.validationErrorText}>{errors.phoneNumber}</Text>
                   </View>
                 )}
-                <Text style={styles.helperText}>Format: 0xxxxxxxxx (10 digits)</Text>
+                <Text style={styles.helperText}>{t('updateProfilePage.phoneFormat')}</Text>
               </View>
 
               {/* Gender */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>
                   <Icon name="people" size={16} color="#1e90ff" style={styles.inputIcon} />
-                  Gender
+                  {t('gender')}
                 </Text>
                 <View style={styles.genderContainer}>
                   <TouchableOpacity
@@ -576,7 +641,7 @@ const UpdateProfile = () => {
                         color={gender === 'Male' ? "#1e90ff" : "#8E8E93"} 
                         style={styles.genderIcon} 
                       />
-                      Male
+                      {t('male')}
                     </Text>
                   </TouchableOpacity>
 
@@ -605,7 +670,7 @@ const UpdateProfile = () => {
                         color={gender === 'Female' ? "#1e90ff" : "#8E8E93"} 
                         style={styles.genderIcon} 
                       />
-                      Female
+                      {t('female')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -628,7 +693,7 @@ const UpdateProfile = () => {
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <>
-                      <Text style={styles.saveButtonText}>Save Changes</Text>
+                      <Text style={styles.saveButtonText}>{t('saveChanges')}</Text>
                       <Icon name="check-circle" size={20} color="#fff" style={styles.saveIcon} />
                     </>
                   )}
@@ -639,6 +704,14 @@ const UpdateProfile = () => {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Custom Toast */}
+      <CustomToast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={hideToast}
+      />
     </SafeAreaView>
   );
 };

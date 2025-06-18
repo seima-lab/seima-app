@@ -26,6 +26,7 @@ import '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 import { categoryService, CategoryType, LocalCategory } from '../services/categoryService';
 import { CreateTransactionRequest, transactionService, TransactionType } from '../services/transactionService';
+import { WalletResponse, walletService } from '../services/walletService';
 
 export default function AddExpenseScreen() {
   const { t } = useTranslation();
@@ -42,6 +43,12 @@ export default function AddExpenseScreen() {
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   
+  // Wallet selection state
+  const [wallets, setWallets] = useState<WalletResponse[]>([]);
+  const [selectedWallet, setSelectedWallet] = useState<number | null>(null);
+  const [showWalletPicker, setShowWalletPicker] = useState(false);
+  const [loadingWallets, setLoadingWallets] = useState(true);
+  
   // Categories state
   const [categories, setCategories] = useState<LocalCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,10 +57,47 @@ export default function AddExpenseScreen() {
   // Transaction saving state
   const [saving, setSaving] = useState(false);
 
-  // Load categories when component mounts or tab changes
+  // Load categories and wallets when component mounts or tab changes
   useEffect(() => {
     loadCategories();
+    loadWallets();
   }, [activeTab]);
+
+  const loadWallets = async () => {
+    if (!user) {
+      setLoadingWallets(false);
+      return;
+    }
+
+    setLoadingWallets(true);
+    
+    try {
+      console.log('🔄 Loading wallets for user:', user.id);
+      
+      const userId = parseInt(user.id) || 1;
+      const userWallets = await walletService.getAllWallets(userId);
+      
+      console.log('💳 Loaded wallets:', userWallets);
+      
+      setWallets(userWallets);
+      
+      // Auto-select default wallet or first wallet
+      if (userWallets.length > 0 && !selectedWallet) {
+        const defaultWallet = userWallets.find(wallet => wallet.isDefault);
+        setSelectedWallet(defaultWallet ? defaultWallet.walletId : userWallets[0].walletId);
+      }
+      
+    } catch (err: any) {
+      console.error('❌ Failed to load wallets:', err);
+      Alert.alert(
+        t('common.error'),
+        'Failed to load wallets. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoadingWallets(false);
+    }
+  };
 
   const loadCategories = async () => {
     if (!user) {
@@ -225,6 +269,11 @@ export default function AddExpenseScreen() {
       return;
     }
 
+    if (!selectedWallet) {
+      Alert.alert(t('common.error'), 'Please select a wallet');
+      return;
+    }
+
     if (!user) {
       Alert.alert(t('common.error'), 'User not authenticated');
       return;
@@ -243,7 +292,7 @@ export default function AddExpenseScreen() {
       // Prepare transaction data
       const transactionData: CreateTransactionRequest = {
         user_id: parseInt(user.id) || 1,
-        wallet_id: 1, // Default wallet ID - you might want to get this from user context
+        wallet_id: selectedWallet || 1,
         category_id: parseInt(selectedCategoryData.key), // Assuming category key is the ID
         group_id: 1, // Default group ID
         transaction_type: activeTab === 'expense' ? TransactionType.EXPENSE : TransactionType.INCOME,
@@ -428,18 +477,49 @@ export default function AddExpenseScreen() {
             )
           )}
 
-          {/* Note */}
+          {/* Wallet Selection */}
           <View style={styles.row}>
-            <Text style={styles.label}>{t('note')}</Text>
-            <TextInput
-              style={[styles.input, styles.noteInput]}
-              placeholder={t('notePlaceholder')}
-              value={note}
-              onChangeText={setNote}
-              placeholderTextColor="#aaa"
-              returnKeyType="next"
-              blurOnSubmit={false}
-            />
+            <Text style={styles.label}>Ví</Text>
+            {loadingWallets ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#1e90ff" />
+              </View>
+            ) : (
+              <View style={styles.dropdownContainer}>
+                <TouchableOpacity 
+                  style={styles.dropdown}
+                  onPress={() => setShowWalletPicker(!showWalletPicker)}
+                >
+                  <Text style={styles.dropdownText}>
+                    {selectedWallet 
+                      ? wallets.find(w => w.walletId === selectedWallet)?.walletName || 'Chọn ví'
+                      : 'Chọn ví'
+                    }
+                  </Text>
+                  <Icon name="chevron-down" size={20} color="#666" />
+                </TouchableOpacity>
+                
+                {showWalletPicker && wallets.length > 0 && (
+                  <View style={styles.dropdownList}>
+                    {wallets.map((wallet) => (
+                      <TouchableOpacity
+                        key={wallet.walletId}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setSelectedWallet(wallet.walletId);
+                          setShowWalletPicker(false);
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>{wallet.walletName}</Text>
+                        <Text style={styles.dropdownItemBalance}>
+                          {wallet.balance.toLocaleString('vi-VN')} VND
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Amount */}
@@ -490,10 +570,10 @@ export default function AddExpenseScreen() {
           <TouchableOpacity 
             style={[
               styles.button, 
-              (!amount.trim() || !selectedCategory || saving) && styles.buttonDisabled
+              (!amount.trim() || !selectedCategory || !selectedWallet || saving) && styles.buttonDisabled
             ]} 
             onPress={handleSaveTransaction}
-            disabled={!amount.trim() || !selectedCategory || saving}
+            disabled={!amount.trim() || !selectedCategory || !selectedWallet || saving}
           >
             {saving ? (
               <View style={styles.buttonLoadingContainer}>
@@ -508,6 +588,8 @@ export default function AddExpenseScreen() {
           </TouchableOpacity>
         </SafeAreaView>
       </ScrollView>
+
+
     </KeyboardAvoidingView>
   );
 }
@@ -840,5 +922,59 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Wallet dropdown styles
+  dropdownContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  dropdown: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#eee',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+  },
+  dropdownList: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1000,
+    maxHeight: 200,
+  },
+  dropdownItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  dropdownItemBalance: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
 });

@@ -33,6 +33,7 @@ export type RootStackParamList = {
   UpdateProfile: undefined;
   SettingScreen: undefined;
   MainTab: undefined;
+  MainTabScreen: undefined;
   AddExpenseScreen: undefined;
   BudgetScreen: undefined;
   AddBudgetCategoryScreen: undefined;
@@ -80,6 +81,7 @@ export type RootStackParamList = {
     };
   } | undefined;
   GroupDetail: { groupId: string; groupName: string };
+  EditGroup: { groupId: string; groupName: string };
   InviteUsers: { groupId: string };
   ApproveMembers: { groupId: string };
 };

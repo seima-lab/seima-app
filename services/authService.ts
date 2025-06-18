@@ -9,6 +9,8 @@ const ENDPOINTS = {
   REGISTER: '/api/v1/auth/register',
   VERIFY_OTP: '/api/v1/auth/verify-otp',
   RESEND_OTP: '/api/v1/auth/resend-otp',
+  FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
+  RESET_PASSWORD: '/api/v1/auth/reset-password',
   REFRESH_TOKEN: '/api/v1/auth/refresh',
   LOGOUT: '/api/v1/auth/logout',
   UPDATE_PROFILE: '/api/v1/users/update',
@@ -28,7 +30,7 @@ const STORAGE_KEYS = {
 const TOKEN_CONFIG = {
   ACCESS_TOKEN_DURATION: 3600 * 1000, // 1 hour in milliseconds
   REFRESH_TOKEN_DURATION: 604800 * 1000, // 7 days in milliseconds
-  WARNING_THRESHOLD: 59 * 60 * 1000, // Warn 1 minute before expiry
+  WARNING_THRESHOLD: 1 * 60 * 1000, // Warn 1 minute before expiry
   REFRESH_THRESHOLD: 15 * 60 * 1000, // Auto-refresh 15 minutes before expiry
 };
 
@@ -121,6 +123,17 @@ export interface ResendOtpRequest {
   email: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  otp_code: string;
+  new_password: string;
+  confirm_password: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -205,7 +218,7 @@ export class AuthService {
       
       throw new Error(result.message || 'Google login failed');
     } catch (error) {
-      console.error('🔴 AuthService - Google Login Error:', error);
+      console.log('🔴 AuthService - Google Login Error:', error);
       throw error;
     }
   }
@@ -233,7 +246,7 @@ export class AuthService {
       
       throw new Error(result.message || 'Login failed');
     } catch (error) {
-      console.error('🔴 AuthService - Email Login Error:', error);
+      console.log('🔴 AuthService - Email Login Error:', error);
       throw error;
     }
   }
@@ -342,6 +355,95 @@ export class AuthService {
     } catch (error) {
       console.error('🔴 AuthService - Resend OTP Error:', error);
       throw error;
+    }
+  }
+
+  // Forgot Password - Send OTP to email for password reset
+  async forgotPassword(request: ForgotPasswordRequest): Promise<void> {
+    try {
+      console.log('🟡 AuthService - Sending forgot password OTP for:', request.email);
+      
+      const response = await fetch(this.buildUrl(ENDPOINTS.FORGOT_PASSWORD), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      const result = await response.json();
+      console.log('🟢 Forgot password response:', result);
+
+      // Check status_code in the JSON response (not HTTP status)
+      if (result.status_code && result.status_code !== 200) {
+        console.log('🔴 Error detected - status_code:', result.status_code, 'message:', result.message);
+        
+        // Handle specific error cases based on status_code and message
+        if (result.status_code === 400) {
+          // Bad Request - User not found or validation errors
+          if (result.message && result.message.includes('User with email')) {
+            throw new Error('User with email ' + request.email + ' not found');
+          } else if (result.message && result.message.includes('Google login')) {
+            throw new Error('GoogleAccountConflictException: This account was created with Google login. Password reset is not available for Google accounts. Please use Google login.');
+          } else if (result.message && result.message.includes('does not have a password')) {
+            throw new Error('GoogleAccountConflictException: This account does not have a password set. Please use Google login.');
+          }
+        } else if (result.status_code === 429) {
+          // Too Many Requests
+          throw new Error('Too many requests. Please wait before trying again.');
+        } else if (result.status_code === 500) {
+          // Internal Server Error - Email service issues
+          if (result.message && result.message.includes('Failed to send OTP email')) {
+            throw new Error('Failed to send OTP email');
+          }
+        }
+        
+        // Fallback error message
+        throw new Error(result.message || 'Failed to send password reset OTP');
+      }
+
+      // Only proceed if status_code is 200 (success)
+      if (!result.status_code || result.status_code !== 200) {
+        throw new Error(result.message || 'Failed to send password reset OTP');
+      }
+
+    } catch (error: any) {
+      console.log('🔴 AuthService - Forgot password failed:', error);
+      
+      // Re-throw the error with proper message
+      if (error.message) {
+        throw new Error(error.message);
+      } else {
+        throw new Error('Failed to send password reset OTP');
+      }
+    }
+  }
+
+  // Reset Password - Verify OTP and set new password
+  async resetPassword(request: ResetPasswordRequest): Promise<void> {
+    try {
+      console.log('🟡 AuthService - Resetting password for:', request.email);
+      
+      const response = await fetch(this.buildUrl(ENDPOINTS.RESET_PASSWORD), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      const result = await response.json();
+      console.log('🟢 Reset password response:', result);
+
+      if (!response.ok) {
+        if (result.message) {
+          throw new Error(result.message);
+        }
+        throw new Error('Failed to reset password');
+      }
+    } catch (error: any) {
+      console.log('🔴 AuthService - Reset password failed:', error);
+      throw new Error(error.message || 'Failed to reset password');
     }
   }
 

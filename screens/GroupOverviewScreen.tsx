@@ -1,3 +1,4 @@
+import { NavigationProp, useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
     FlatList,
@@ -10,6 +11,7 @@ import {
     View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import type { RootStackParamList } from '../navigation/types';
 
 interface GroupOverviewScreenProps {
   groupId: string;
@@ -32,6 +34,8 @@ interface Member {
 }
 
 const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, groupName }) => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  
   // Mock data
   const groupInfo = {
     name: groupName,
@@ -49,7 +53,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
 
   const members: Member[] = [
     { id: '1', name: 'Nguyễn Mạnh Cường', avatar: require('../assets/images/maleavatar.png') },
-    { id: '2', name: 'Nguyễn Sỹ Hào', avatar: require('../assets/images/femaleavatar.png') },
+    { id: '2', name: 'Nguyễn Sỹ Hão', avatar: require('../assets/images/femaleavatar.png') },
     { id: '3', name: 'Trần Thị Mai', avatar: require('../assets/images/femaleavatar.png') },
     { id: '4', name: 'Lê Văn Nam', avatar: require('../assets/images/maleavatar.png') },
   ];
@@ -83,6 +87,14 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString('vi-VN') + '₫';
+  };
+
+  const handleEditGroup = () => {
+    navigation.navigate('EditGroup', { groupId, groupName });
+  };
+
+  const handleAddTransaction = () => {
+    navigation.navigate('AddExpenseScreen');
   };
 
   const renderTransaction: ListRenderItem<Transaction> = ({ item }) => (
@@ -127,6 +139,9 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
                 {groupInfo.memberCount} thành viên • Tạo ngày {groupInfo.createdDate}
               </Text>
             </View>
+            <TouchableOpacity style={styles.editButton} onPress={handleEditGroup}>
+              <Icon name="edit" size={20} color="#1e90ff" />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -183,7 +198,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab}>
+      <TouchableOpacity style={styles.fab} onPress={handleAddTransaction}>
         <Icon name="add" size={24} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
@@ -401,6 +416,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  editButton: {
+    padding: 8,
   },
 });
 

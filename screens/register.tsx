@@ -2,23 +2,24 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { authService, RegisterRequest } from '../services/authService';
@@ -43,6 +44,7 @@ interface RegisterScreenProps {
 
 export default function RegisterScreen({ route }: RegisterScreenProps) {
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
   
@@ -130,6 +132,23 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
     return phoneRegex.test(phone);
   };
 
+  const validatePassword = (password: string) => {
+    // Kiểm tra ít nhất 8 ký tự
+    if (password.length < 8) {
+      return { isValid: false, error: t('validation.passwordTooShort') };
+    }
+    
+    // Kiểm tra có ít nhất 1 chữ cái và 1 số
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    
+    if (!hasLetter || !hasNumber) {
+      return { isValid: false, error: t('validation.passwordInvalid') };
+    }
+    
+    return { isValid: true, error: '' };
+  };
+
   const validateForm = () => {
     // Reset all errors
     const newErrors = {
@@ -189,9 +208,12 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
       if (!password.trim()) {
         newErrors.password = t('validation.passwordRequired');
         isValid = false;
-      } else if (password.length < 6) {
-        newErrors.password = t('validation.passwordTooShort');
-        isValid = false;
+      } else {
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.isValid) {
+          newErrors.password = passwordValidation.error;
+          isValid = false;
+        }
       }
       
       // Confirm password validation
@@ -335,7 +357,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
       
       Alert.alert(t('common.error'), errorMessage);
     }
-  };
+  };  
 
   const onDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
@@ -459,8 +481,8 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                 <Icon name="arrow-back-ios" size={20} color="#FFFFFF" />
               </TouchableOpacity>
               <View style={styles.headerContent}>
-                <Text style={styles.title}>Create Account</Text>
-                <Text style={styles.subtitle}>Join us and start your journey</Text>
+                <Text style={styles.title}>{t('register.createAccount')}</Text>
+                <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
               </View>
               <View style={styles.placeholder} />
             </Animated.View>
@@ -482,23 +504,23 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                 keyboardShouldPersistTaps="handled"
               >
                 {/* Auto Fill Toggle */}
-                <TouchableOpacity
-                  style={styles.autoFillContainer}
-                  onPress={() => handleAutoFillToggle(!autoFillTest)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.checkbox, autoFillTest && styles.checkboxChecked]}>
-                    {autoFillTest && <Icon name="check" size={12} color="#fff" />}
-                  </View>
-                  <Text style={styles.autoFillText}>Auto-fill test data</Text>
-                </TouchableOpacity>
+                                  <TouchableOpacity
+                    style={styles.autoFillContainer}
+                    onPress={() => handleAutoFillToggle(!autoFillTest)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.checkbox, autoFillTest && styles.checkboxChecked]}>
+                      {autoFillTest && <Icon name="check" size={12} color="#fff" />}
+                    </View>
+                    <Text style={styles.autoFillText}>{t('register.autoFillTest')}</Text>
+                  </TouchableOpacity>
 
                 {/* Google Data Pre-filled Indicator */}
                 {route?.params?.googleUserData?.isGoogleLogin && (
                   <View style={styles.googleDataIndicator}>
                     <Icon name="account-circle" size={14} color="#4285F4" />
                     <Text style={styles.googleDataText}>
-                      Some fields are pre-filled from your Google account
+                      {t('register.googleDataNote')}
                     </Text>
                   </View>
                 )}
@@ -509,7 +531,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>
                       <Icon name="person" size={12} color="#1e90ff" style={styles.labelIcon} />
-                      Full Name
+                      {t('register.fullName')}
                     </Text>
                     <View style={[
                       styles.inputContainer, 
@@ -518,7 +540,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                     ]}>
                       <TextInput
                         style={styles.textInput}
-                        placeholder="Enter your full name"
+                        placeholder={t('register.enterFullName')}
                         placeholderTextColor="#9CA3AF"
                         value={fullName}
                         onChangeText={(text) => {
@@ -546,7 +568,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>
                       <Icon name="email" size={12} color="#1e90ff" style={styles.labelIcon} />
-                      Email Address
+                      {t('register.emailAddress')}
                     </Text>
                     <View style={[
                       styles.inputContainer,
@@ -555,7 +577,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                     ]}>
                       <TextInput
                         style={styles.textInput}
-                        placeholder="Enter your email address"
+                        placeholder={t('register.enterEmail')}
                         placeholderTextColor="#9CA3AF"
                         value={email}
                         onChangeText={(text) => {
@@ -584,7 +606,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>
                       <Icon name="phone" size={12} color="#1e90ff" style={styles.labelIcon} />
-                      Phone Number
+                      {t('register.phoneNumber')}
                     </Text>
                     <View style={[
                       styles.inputContainer,
@@ -594,7 +616,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                       <Text style={styles.countryCode}>+84</Text>
                       <TextInput
                         style={[styles.textInput, { marginLeft: 10 }]}
-                        placeholder="Enter your phone number"
+                        placeholder={t('register.enterPhone')}
                         placeholderTextColor="#9CA3AF"
                         value={phoneNumber}
                         onChangeText={(text) => {
@@ -622,7 +644,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>
                       <Icon name="cake" size={12} color="#1e90ff" style={styles.labelIcon} />
-                      Date of Birth
+                      {t('register.dateOfBirth')}
                     </Text>
                     <TouchableOpacity
                       style={[
@@ -645,7 +667,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                           styles.dateText, 
                           !hasSelectedDate && styles.placeholderText
                         ]}>
-                          {hasSelectedDate ? formatDate(dateOfBirth) : 'Select your date of birth'}
+                          {hasSelectedDate ? formatDate(dateOfBirth) : t('register.selectDatePlaceholder')}
                         </Text>
                                                   <Icon name="event" size={16} color="#1e90ff" />
                       </View>
@@ -673,7 +695,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>
                       <Icon name="people" size={12} color="#1e90ff" style={styles.labelIcon} />
-                      Gender
+                      {t('register.gender')}
                     </Text>
                     <View style={styles.genderContainer}>
                       <TouchableOpacity
@@ -696,7 +718,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                           styles.genderText,
                           gender === 'male' && styles.genderTextSelected
                         ]}>
-                          Male
+                          {t('register.male')}
                         </Text>
                       </TouchableOpacity>
 
@@ -720,7 +742,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                           styles.genderText,
                           gender === 'female' && styles.genderTextSelected
                         ]}>
-                          Female
+                          {t('register.female')}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -739,7 +761,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                       <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>
                           <Icon name="lock" size={12} color="#1e90ff" style={styles.labelIcon} />
-                          Password
+                          {t('register.password')}
                         </Text>
                         <View style={[
                           styles.inputContainer,
@@ -748,7 +770,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                         ]}>
                           <TextInput
                             style={styles.textInput}
-                            placeholder="Enter your password"
+                            placeholder={t('register.enterPassword')}
                             placeholderTextColor="#9CA3AF"
                             value={password}
                             onChangeText={(text) => {
@@ -777,6 +799,12 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                             <Icon name="error-outline" size={12} color="#EF4444" />
                             <Text style={styles.errorText}>{errors.password}</Text>
                           </View>
+                        ) : focusedField === 'password' ? (
+                          <View style={styles.passwordRequirements}>
+                            <Text style={styles.requirementsTitle}>{t('register.passwordRequirements')}</Text>
+                            <Text style={styles.requirementText}>{t('register.passwordMinLength')}</Text>
+                            <Text style={styles.requirementText}>{t('register.passwordMustContain')}</Text>
+                          </View>
                         ) : null}
                       </View>
 
@@ -784,7 +812,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                       <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>
                           <Icon name="lock-outline" size={12} color="#1e90ff" style={styles.labelIcon} />
-                          Confirm Password
+                          {t('register.confirmPassword')}
                         </Text>
                         <View style={[
                           styles.inputContainer,
@@ -793,7 +821,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                         ]}>
                           <TextInput
                             style={styles.textInput}
-                            placeholder="Confirm your password"
+                            placeholder={t('register.enterConfirmPassword')}
                             placeholderTextColor="#9CA3AF"
                             value={confirmPassword}
                             onChangeText={(text) => {
@@ -841,9 +869,9 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                     <Text style={styles.createButtonText}>
                       {isLoading ? 
                         (route?.params?.googleUserData?.isGoogleLogin && !route?.params?.googleUserData?.userIsActive ? 
-                          'Creating Profile...' : 'Creating Account...') : 
+                          t('register.creatingProfile') : t('register.creatingAccount')) : 
                         (route?.params?.googleUserData?.isGoogleLogin && !route?.params?.googleUserData?.userIsActive ? 
-                          'Complete Profile' : 'Create Account')
+                          t('register.completeProfile') : t('register.createButton'))
                       }
                     </Text>
                     {!isLoading && <Icon name="arrow-forward" size={16} color="#FFFFFF" style={styles.buttonIcon} />}
@@ -852,7 +880,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                   {/* Back to Login Link */}
                   <TouchableOpacity onPress={handleBackToLogin} style={styles.backToLoginContainer}>
                     <Text style={styles.backToLoginText}>
-                      Already have an account? <Text style={styles.backToLoginLink}>Sign In</Text>
+                      {t('register.alreadyHaveAccount')} <Text style={styles.backToLoginLink}>{t('register.signIn')}</Text>
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1195,6 +1223,27 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  passwordRequirements: {
+    marginTop: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E0F2FE',
+  },
+  requirementsTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0369A1',
+    marginBottom: 3,
+  },
+  requirementText: {
+    fontSize: 10,
+    color: '#0284C7',
+    lineHeight: 14,
+    marginBottom: 1,
   },
 });
 

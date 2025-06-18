@@ -2,7 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, LogBox, View } from 'react-native';
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
@@ -18,6 +18,7 @@ import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ChatAIScreen from '../screens/ChatAIScreen';
 import CreateGroupScreen from '../screens/CreateGroupScreen';
 import EditCategoryScreen from '../screens/EditCategoryScreen';
+import EditGroupScreen from '../screens/EditGroupScreen';
 import FinanceScreen from '../screens/FinanceScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import GroupDetailTabScreen from '../screens/GroupDetailTabScreen';
@@ -37,6 +38,23 @@ const Stack = createNativeStackNavigator();
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+// Hide yellow box warnings and red box errors from showing on screen
+LogBox.ignoreLogs([
+  'Warn: ',
+  'Warning: ',
+  'ERROR',
+  '🔴',
+  'AuthService',
+  'Email login failed',
+  'Google Sign-In failed',
+  'Invalid email or password'
+]);
+
+// In development, you can also completely disable the error overlay
+if (__DEV__) {
+  LogBox.ignoreAllLogs(true);
+}
 
 function AuthNavigator() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -79,6 +97,7 @@ function AuthNavigator() {
       <Stack.Screen name="GroupManagement" component={GroupManagementScreen} />
       <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
       <Stack.Screen name="GroupDetail" component={GroupDetailTabScreen} />
+      <Stack.Screen name="EditGroup" component={EditGroupScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
       <Stack.Screen name="Calendar" component={CalendarScreen} />
