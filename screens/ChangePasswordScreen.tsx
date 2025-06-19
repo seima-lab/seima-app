@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Alert,
@@ -32,6 +32,29 @@ export default function ChangePasswordScreen() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Error state
+  const [errors, setErrors] = useState({
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  const validatePassword = (password: string) => {
+    // Kiểm tra ít nhất 8 ký tự
+    if (password.length < 8) {
+      return { isValid: false, error: t('validation.passwordTooShort') };
+    }
+    
+    // Kiểm tra có ít nhất 1 chữ cái và 1 số
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    
+    if (!hasLetter || !hasNumber) {
+      return { isValid: false, error: t('validation.passwordInvalid') };
+    }
+    
+    return { isValid: true, error: '' };
+  };
 
   const handleChangePassword = async () => {
     // Current password validation
@@ -152,7 +175,7 @@ export default function ChangePasswordScreen() {
 
             {/* New Password */}
             <Text style={styles.label}>{t('changePassword.newPassword')}</Text>
-            <View style={styles.inputWrapper}>
+            <View style={[styles.inputWrapper, errors.newPassword ? styles.inputError : null]}>
               <Icon name="lock" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
@@ -160,7 +183,34 @@ export default function ChangePasswordScreen() {
                 placeholderTextColor="#9ca3af"
                 secureTextEntry={!showNewPassword}
                 value={newPassword}
-                onChangeText={setNewPassword}
+                onChangeText={(text) => {
+                  setNewPassword(text);
+                  // Real-time validation for new password
+                  const newErrors = {...errors};
+                  
+                  if (text.trim()) {
+                    const passwordValidation = validatePassword(text);
+                    if (!passwordValidation.isValid) {
+                      newErrors.newPassword = passwordValidation.error;
+                    } else {
+                      newErrors.newPassword = '';
+                    }
+                  } else {
+                    // Clear error when field is empty (user is still typing)
+                    newErrors.newPassword = '';
+                  }
+                  
+                  // Also check confirm password if it exists
+                  if (confirmPassword.trim() && text.trim()) {
+                    if (text !== confirmPassword) {
+                      newErrors.confirmPassword = t('validation.passwordMismatch');
+                    } else {
+                      newErrors.confirmPassword = '';
+                    }
+                  }
+                  
+                  setErrors(newErrors);
+                }}
                 autoCapitalize="none"
                 returnKeyType="next"
               />
@@ -175,10 +225,16 @@ export default function ChangePasswordScreen() {
                 />
               </TouchableOpacity>
             </View>
+            {errors.newPassword ? (
+              <View style={styles.errorRow}>
+                <Icon name="error-outline" size={12} color="#EF4444" />
+                <Text style={styles.errorText}>{errors.newPassword}</Text>
+              </View>
+            ) : null}
 
             {/* Confirm New Password */}
             <Text style={styles.label}>{t('register.confirmPassword')}</Text>
-            <View style={styles.inputWrapper}>
+            <View style={[styles.inputWrapper, errors.confirmPassword ? styles.inputError : null]}>
               <Icon name="lock" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
@@ -186,7 +242,20 @@ export default function ChangePasswordScreen() {
                 placeholderTextColor="#9ca3af"
                 secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  // Real-time validation for confirm password
+                  if (text.trim() && newPassword.trim()) {
+                    if (newPassword !== text) {
+                      setErrors({...errors, confirmPassword: t('validation.passwordMismatch')});
+                    } else {
+                      setErrors({...errors, confirmPassword: ''});
+                    }
+                  } else {
+                    // Clear error when field is empty (user is still typing)
+                    setErrors({...errors, confirmPassword: ''});
+                  }
+                }}
                 autoCapitalize="none"
                 returnKeyType="done"
                 onSubmitEditing={handleChangePassword}
@@ -202,13 +271,19 @@ export default function ChangePasswordScreen() {
                 />
               </TouchableOpacity>
             </View>
+            {errors.confirmPassword ? (
+              <View style={styles.errorRow}>
+                <Icon name="error-outline" size={12} color="#EF4444" />
+                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+              </View>
+            ) : null}
 
             {/* Password Requirements */}
             <View style={styles.requirementsContainer}>
               <Text style={styles.requirementsTitle}>{t('changePassword.requirements')}</Text>
-              <Text style={styles.requirementText}>• {t('changePassword.minLength')}</Text>
-              <Text style={styles.requirementText}>• {t('changePassword.differentFromCurrent')}</Text>
-              <Text style={styles.requirementText}>• {t('changePassword.recommendation')}</Text>
+              <Text style={styles.requirementText}>• Ít nhất 8 ký tự</Text>
+              <Text style={styles.requirementText}>• Phải có ít nhất 1 chữ cái và 1 số</Text>
+              <Text style={styles.requirementText}>• Khác với mật khẩu hiện tại</Text>
             </View>
 
             {/* Change Password Button */}
@@ -376,5 +451,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1e40af',
     lineHeight: 18,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 12,
+    paddingLeft: 2,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginLeft: 4,
+    flex: 1,
   },
 }); 

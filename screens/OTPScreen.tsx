@@ -16,9 +16,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LogoWithText from '../components/Login/LogoWithText';
+import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
-import { authService } from '../services/authService';
+import { authService, EmailLoginRequest } from '../services/authService';
 
 const { width } = Dimensions.get('window');
 
@@ -42,6 +43,7 @@ export default function OTPScreen({ route }: OTPScreenProps) {
   const navigation = useNavigationService();
   const navigationHook = useNavigation();
   const insets = useSafeAreaInsets();
+  const { login } = useAuth();
   
   const email = route?.params?.email || '';
   const phoneNumber = route?.params?.phoneNumber || '';
@@ -51,6 +53,21 @@ export default function OTPScreen({ route }: OTPScreenProps) {
   const type = route?.params?.type || 'register';
   const password = route?.params?.password || ''; // Password for account creation
   const testOtpCode = route?.params?.otpCode || ''; // For testing
+  
+  // Debug log to check received parameters
+  useEffect(() => {
+    console.log('🔍 OTPScreen - Received parameters:', {
+      email,
+      phoneNumber,
+      fullName,
+      dateOfBirth,
+      gender,
+      type,
+      hasPassword: !!password,
+      passwordLength: password.length,
+      testOtpCode
+    });
+  }, []);
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,14 +99,7 @@ export default function OTPScreen({ route }: OTPScreenProps) {
     return () => clearInterval(interval);
   }, [timer]);
 
-  // Auto-fill OTP for testing (if provided)
-  useEffect(() => {
-    if (testOtpCode && testOtpCode.length === 6) {
-      const otpArray = testOtpCode.split('');
-      setOtp(otpArray);
-      console.log('🟡 Auto-filled OTP for testing:', testOtpCode);
-    }
-  }, [testOtpCode]);
+  // Removed auto-fill OTP to let user input manually
 
   const handleOtpChange = (text: string, index: number) => {
     const newOtp = [...otp];
@@ -165,13 +175,69 @@ export default function OTPScreen({ route }: OTPScreenProps) {
             },
           ]);
         } else {
-          // Navigate to login for register flow
-          Alert.alert(t('common.success'), 'Account verified successfully! You can now login.', [
-            {
-              text: t('common.confirm'),
-              onPress: () => navigation.replace('Login'),
-            },
-          ]);
+          // Auto login after successful registration verification
+          console.log('🟢 OTP verified successfully, attempting auto login...');
+          console.log('🔍 Debug - Password check:', {
+            hasPassword: !!password,
+            passwordLength: password.length,
+            passwordTrimmed: password.trim().length
+          });
+          
+          if (password && password.trim()) {
+            try {
+              console.log('🟡 Starting auto login process...');
+              
+              // Prepare login request
+              const loginRequest: EmailLoginRequest = {
+                email: email.trim().toLowerCase(),
+                password: password.trim()
+              };
+              
+              console.log('🟡 Auto login request:', { email: loginRequest.email, password: '[HIDDEN]' });
+              
+              // Call email login API
+              const loginResponse = await authService.emailLogin(loginRequest);
+              
+              console.log('🟢 Auto login successful:', loginResponse);
+              
+              // Create user profile for AuthContext
+              const userProfile = {
+                id: loginResponse.user_information.email,
+                email: loginResponse.user_information.email,
+                name: loginResponse.user_information.full_name,
+                picture: loginResponse.user_information.avatar_url
+              };
+              
+              console.log('🟡 Updating auth context with user profile...');
+              
+              // Update auth context with user data
+              await login(userProfile);
+              
+              console.log('🟢 Auto login complete, navigating to MainTab');
+              
+              // Navigate directly to main app
+              navigation.replace('MainTab');
+              
+            } catch (loginError: any) {
+              console.error('🔴 Auto login failed:', loginError);
+              // Fallback to login screen if auto login fails
+              Alert.alert(t('common.success'), 'Account verified successfully! Please login to continue.', [
+                {
+                  text: t('common.confirm'),
+                  onPress: () => navigation.replace('Login'),
+                },
+              ]);
+            }
+          } else {
+            // No password available, navigate to login
+            console.log('🔴 No password available for auto login, navigating to login screen');
+            Alert.alert(t('common.success'), 'Account verified successfully! Please login to continue.', [
+              {
+                text: t('common.confirm'),
+                onPress: () => navigation.replace('Login'),
+              },
+            ]);
+          }
         }
       } else {
         Alert.alert(t('common.error'), 'OTP verification failed. Please try again.');

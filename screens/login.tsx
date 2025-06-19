@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Animated,
-    Dimensions,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -126,18 +126,14 @@ export default function LoginScreen() {
       };
       
       // Update auth context with user data
-      login(userProfile);
+      await login(userProfile);
+      
+      console.log('🟢 Email login successful, navigating to MainTab');
+      
+      // Navigate immediately without delay
+      navigation.replace('MainTab');
       
       setIsLoading(false);
-      
-      // Show success toast briefly before navigation
-      showToast(t('login.loginSuccessMessage'), 'success');
-      
-      // Navigate to main app after a short delay
-      setTimeout(() => {
-        console.log('🟢 Navigating to MainTab');
-        navigation.replace('MainTab');
-      }, 1000);
       
     } catch (error: any) {
       setIsLoading(false);
@@ -171,26 +167,23 @@ export default function LoginScreen() {
         console.log('🟢 Google Sign-In successful!');
         console.log('🟢 User Info:', result.userInfo);
         console.log('🟢 Backend Data:', result.backendData);
-        const isUserActive = (result as any).is_user_active;
+        
+        // Extract user active status from backend response
+        const isUserActive = result.backendData?.is_user_active;
         
         console.log('🔍 DEBUG LOGIN LOGIC:', {
           is_user_active: isUserActive,
-          'Logic: is_user_active=true should go to MainTab': isUserActive === true,
-          'Logic: is_user_active=false should go to Register': isUserActive === false
+          'Logic: Should go to Register if': '!isUserActive',
+          'Should go to Register': !isUserActive
         });
         
         // Update auth context with user data - tokens are automatically stored in SecureStore
-        login(result.backendData.user_infomation);
+        await login(result.backendData.user_infomation);
         
+        // Check if user needs to complete profile
         if (!isUserActive) {
-          // First time login (user_is_active = false) - navigate to register screen for additional info
-          console.log('🟢 First time login (user_is_active = false) - navigating to Register screen');
-          
-          // Extract Google user data for auto-fill
-          console.log('🔍 Login Screen - Backend response structure:', {
-            user_infomation: result.backendData?.user_infomation,
-            user_is_active: result.backendData?.is_user_active
-          });
+          // First time login or inactive user - navigate to register screen for additional info
+          console.log('🟢 First time login or inactive user - navigating to Register screen');
           
           const userInfo = result.backendData?.user_infomation as any;
           const googleUserData = {
@@ -201,17 +194,11 @@ export default function LoginScreen() {
           };
           
           console.log('🟢 Passing Google user data to Register:', googleUserData);
-          showToast(t('login.welcomeTitle'), 'success');
-          setTimeout(() => {
-            navigation.replace('Register', { googleUserData });
-          }, 1000);
+          navigation.replace('Register', { googleUserData });
         } else {
           // Returning user (user_is_active = true) - go directly to main app
-          console.log('🟢 Returning user (user_is_active = true) - navigating to MainTab');
-          showToast(t('login.welcomeBack'), 'success');
-          setTimeout(() => {
-            navigation.replace('MainTab');
-          }, 1000);
+          console.log('🟢 Returning user (user is active) - navigating to MainTab');
+          navigation.replace('MainTab');
         }
       } else {
         console.log('🔴 Google Sign-In failed:', result.error);
