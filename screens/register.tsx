@@ -1,9 +1,8 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
-    Alert,
     Animated,
     Dimensions,
     KeyboardAvoidingView,
@@ -251,10 +250,18 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         // Handle Google user profile creation (first login)
         console.log('🟡 Creating Google user profile...');
         
+        // Format date without timezone issues
+        const formatDateForAPI = (date: Date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+
         const createData: UserCreationRequestDto = {
           email: email.trim().toLowerCase(),
           full_name: fullName.trim(),
-          birth_date: dateOfBirth.toISOString().split('T')[0], // YYYY-MM-DD format
+          birth_date: formatDateForAPI(dateOfBirth), // YYYY-MM-DD format without timezone issues
           phone_number: phoneNumber.trim(),
           avatar_url: '', // Empty for now, can be updated later
           gender: gender === 'male', // Convert to boolean: true = male, false = female
@@ -291,16 +298,24 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         
         // Double check password match before sending (only for normal registration)
         if (password.trim() !== confirmPassword.trim()) {
-          Alert.alert(t('common.error'), 'Passwords do not match. Please check again.');
+          setErrors({...errors, confirmPassword: t('validation.passwordMismatch')});
           setIsLoading(false);
           return;
         }
+
+        // Format date without timezone issues
+        const formatDateForAPI = (date: Date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
 
         // Prepare request data according to backend format (snake_case)
         const registerData: RegisterRequest = {
           full_name: fullName.trim(),
           email: email.trim().toLowerCase(),
-          dob: dateOfBirth.toISOString().split('T')[0], // Convert to YYYY-MM-DD format
+          dob: formatDateForAPI(dateOfBirth), // Convert to YYYY-MM-DD format without timezone issues
           phone_number: phoneNumber.trim(),
           gender: gender === 'male', // Convert to boolean: true = male, false = female
           password: password.trim(),
@@ -328,12 +343,25 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
           // Auto navigate to OTP screen after 2 seconds
           setTimeout(() => {
             setShowLoadingModal(false);
+            
+            // Debug log before navigation
+            console.log('🔍 Register - Navigating to OTP with params:', {
+              email: email,
+              fullName: fullName.trim(),
+              phoneNumber: phoneNumber,
+              hasPassword: !!password.trim(),
+              passwordLength: password.trim().length,
+              dateOfBirth: formatDateForAPI(dateOfBirth),
+              gender: gender === 'male',
+              type: 'register'
+            });
+            
             navigation.navigate('OTP', { 
               email: email,
               fullName: fullName.trim(),
               phoneNumber: phoneNumber,
               password: password.trim(),
-              dateOfBirth: dateOfBirth.toISOString().split('T')[0], // YYYY-MM-DD format
+              dateOfBirth: formatDateForAPI(dateOfBirth), // YYYY-MM-DD format without timezone issues
               gender: gender === 'male', // Convert to boolean
               otpCode: response.otp_code,
               type: 'register' // To distinguish from forgot password flow
@@ -347,6 +375,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
       setShowLoadingModal(false); // Hide loading modal on error
       console.error('🔴 Registration/Update failed:', error);
       
+      // Show error under email field (most common registration errors are email-related)
       let errorMessage = googleUserData?.isGoogleLogin 
         ? 'Failed to create profile. Please try again.'
         : t('register.registerFailed');
@@ -355,7 +384,8 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         errorMessage = error.message;
       }
       
-      Alert.alert(t('common.error'), errorMessage);
+      // Set error under email field instead of showing alert
+      setErrors({...errors, email: errorMessage});
     }
   };  
 
@@ -371,11 +401,11 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+    // Use local date parts to avoid timezone issues - Vietnamese format dd/mm/yyyy
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${day}/${month}/${year}`;
   };
 
   const handleBackToLogin = () => {
@@ -390,8 +420,8 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
       setFullName('Nguyen Van Test');
       setEmail('test@example.com');
       setPhoneNumber('0123456789');
-      setPassword('123456');
-      setConfirmPassword('123456');
+      setPassword('Test123456');
+      setConfirmPassword('Test123456');
       setDateOfBirth(new Date(1995, 5, 15));
       setHasSelectedDate(true);
       setGender('male');
@@ -775,7 +805,31 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                             value={password}
                             onChangeText={(text) => {
                               setPassword(text);
-                              if (errors.password) setErrors({...errors, password: ''});
+                              // Real-time validation for password
+                              const newErrors = {...errors};
+                              
+                              if (text.trim()) {
+                                const passwordValidation = validatePassword(text);
+                                if (!passwordValidation.isValid) {
+                                  newErrors.password = passwordValidation.error;
+                                } else {
+                                  newErrors.password = '';
+                                }
+                              } else {
+                                // Clear error when field is empty (user is still typing)
+                                newErrors.password = '';
+                              }
+                              
+                              // Also check confirm password if it exists
+                              if (confirmPassword.trim() && text.trim()) {
+                                if (text !== confirmPassword) {
+                                  newErrors.confirmPassword = t('validation.passwordMismatch');
+                                } else {
+                                  newErrors.confirmPassword = '';
+                                }
+                              }
+                              
+                              setErrors(newErrors);
                             }}
                             onFocus={() => handleInputFocus('password')}
                             onBlur={handleInputBlur}
@@ -826,7 +880,17 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                             value={confirmPassword}
                             onChangeText={(text) => {
                               setConfirmPassword(text);
-                              if (errors.confirmPassword) setErrors({...errors, confirmPassword: ''});
+                              // Real-time validation for confirm password
+                              if (text.trim() && password.trim()) {
+                                if (password !== text) {
+                                  setErrors({...errors, confirmPassword: t('validation.passwordMismatch')});
+                                } else {
+                                  setErrors({...errors, confirmPassword: ''});
+                                }
+                              } else {
+                                // Clear error when field is empty (user is still typing)
+                                setErrors({...errors, confirmPassword: ''});
+                              }
                             }}
                             onFocus={() => handleInputFocus('confirmPassword')}
                             onBlur={handleInputBlur}
