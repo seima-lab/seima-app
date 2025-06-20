@@ -275,15 +275,32 @@
     "sentTo": "We sent a verification code to",
     "sentToReset": "We sent a password reset code to",
     "enterComplete": "Please enter the complete 6-digit code.",
+    "enterCompleteOtp": "Please enter the complete 6-digit code.",
     "verify": "Verify",
     "verifySuccess": "Account verified successfully! You can now sign in.",
     "verifySuccessReset": "Code verified successfully! You can now reset your password.",
     "verifyFailed": "Verification failed. Please check your code and try again.",
+    "invalidOrExpired": "The verification code has expired or is invalid. Please request a new one.",
+    "userNotFound": "User not found. Please check your email and try again.",
     "resendCode": "Resend Code",
     "resendSuccess": "Verification code has been sent again.",
     "resendFailed": "Failed to resend code. Please try again.",
-    "resendIn": "Resend code in",
+    "resendIn": "Resend code in {{seconds}}s",
+    "resendCooldown": "Please wait {{seconds}} seconds before requesting a new code.",
+    "tooManyRequests": "You're sending requests too quickly. Please wait a moment before trying again.",
     "helpText": "Didn't receive the code? Check your spam folder or contact support."
+  },
+  
+  "verifyOtp": {
+    "title": "Verify OTP",
+    "subtitle": "Enter the verification code",
+    "info": "We've sent a 6-digit verification code to your email address.",
+    "enterOtp": "Enter Verification Code",
+    "didntReceive": "Didn't receive the code?",
+    "resend": "Resend",
+    "resendIn": "Resend in {{seconds}}s",
+    "verify": "Verify Code",
+    "backToForgotPassword": "Back to Forgot Password"
   },
   
   "forgotPassword": {

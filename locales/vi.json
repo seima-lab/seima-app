@@ -311,20 +311,37 @@
   },
   
   "otp": {
-    "verifyAccount": "Xác minh tài khoản",
-    "verifyReset": "Xác minh đặt lại mật khẩu",
+    "verifyAccount": "Xác thực tài khoản",
+    "verifyReset": "Xác thực đặt lại mật khẩu",
     "sentTo": "Chúng tôi đã gửi mã xác minh đến",
     "sentToReset": "Chúng tôi đã gửi mã đặt lại mật khẩu đến",
     "enterComplete": "Vui lòng nhập đầy đủ mã 6 chữ số.",
+    "enterCompleteOtp": "Vui lòng nhập đầy đủ mã 6 chữ số.",
     "verify": "Xác minh",
-    "verifySuccess": "Xác minh tài khoản thành công! Bạn có thể đăng nhập ngay.",
-    "verifySuccessReset": "Xác minh mã thành công! Bạn có thể đặt lại mật khẩu ngay.",
+    "verifySuccess": "Tài khoản đã được xác thực thành công! Bạn có thể đăng nhập ngay.",
+    "verifySuccessReset": "Mã đã được xác minh thành công! Bạn có thể đặt lại mật khẩu ngay.",
     "verifyFailed": "Xác minh thất bại. Vui lòng kiểm tra mã và thử lại.",
+    "invalidOrExpired": "Mã xác minh đã hết hạn hoặc không hợp lệ. Vui lòng yêu cầu mã mới.",
+    "userNotFound": "Không tìm thấy người dùng. Vui lòng kiểm tra email và thử lại.",
     "resendCode": "Gửi lại mã",
     "resendSuccess": "Mã xác minh đã được gửi lại.",
     "resendFailed": "Gửi lại mã thất bại. Vui lòng thử lại.",
-    "resendIn": "Gửi lại mã sau",
-    "helpText": "Không nhận được mã? Kiểm tra thư mục spam hoặc liên hệ hỗ trợ."
+    "resendIn": "Gửi lại mã sau {{seconds}}s",
+    "resendCooldown": "Vui lòng đợi {{seconds}} giây trước khi yêu cầu mã mới.",
+    "tooManyRequests": "Bạn đang gửi yêu cầu quá nhanh. Vui lòng đợi một chút trước khi thử lại.",
+    "helpText": "Không nhận được mã? Kiểm tra hộp thư rác hoặc liên hệ hỗ trợ."
+  },
+  
+  "verifyOtp": {
+    "title": "Xác minh OTP",
+    "subtitle": "Nhập mã xác minh",
+    "info": "Chúng tôi đã gửi mã xác minh 6 chữ số đến địa chỉ email của bạn.",
+    "enterOtp": "Nhập mã xác minh",
+    "didntReceive": "Không nhận được mã?",
+    "resend": "Gửi lại",
+    "resendIn": "Gửi lại sau {{seconds}}s",
+    "verify": "Xác minh mã",
+    "backToForgotPassword": "Quay lại Quên mật khẩu"
   },
   
   "forgotPassword": {
@@ -489,9 +506,9 @@
     "selectCategory": "Chọn danh mục",
     "createBudget": "Tạo ngân sách",
     "updateBudget": "Cập nhật ngân sách",
-          "addSuccess": "Thêm ngân sách thành công!",
-      "updateSuccess": "Cập nhật ngân sách thành công!",
-      "budgetCreated": "Đã tạo ngân sách",
+    "addSuccess": "Thêm ngân sách thành công!",
+    "updateSuccess": "Cập nhật ngân sách thành công!",
+    "budgetCreated": "Đã tạo ngân sách",
     "editQuestion": "Bạn có muốn chỉnh sửa ngân sách?",
     "adjust": "Điều chỉnh",
     "validation": {

@@ -11,6 +11,10 @@ const ENDPOINTS = {
   RESEND_OTP: '/api/v1/auth/resend-otp',
   FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
   RESET_PASSWORD: '/api/v1/auth/reset-password',
+  RESEND_FORGOT_PASSWORD_OTP: '/api/v1/auth/resend-forgot-password-otp',
+  VERIFY_FORGOT_PASSWORD_OTP: '/api/v1/auth/verify-forgot-password-otp',
+  SET_NEW_PASSWORD_AFTER_VERIFICATION: '/api/v1/auth/set-new-password-after-verification',
+  CHANGE_PASSWORD: '/api/v1/auth/change-password',
   REFRESH_TOKEN: '/api/v1/auth/refresh',
   LOGOUT: '/api/v1/auth/logout',
   UPDATE_PROFILE: '/api/v1/users/update',
@@ -132,6 +136,31 @@ export interface ResetPasswordRequest {
   otp_code: string;
   new_password: string;
   confirm_password: string;
+}
+
+export interface ResendForgotPasswordOtpRequest {
+  email: string;
+}
+
+export interface VerifyForgotPasswordOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyForgotPasswordOtpResponse {
+  verification_token: string;
+}
+
+export interface SetNewPasswordAfterVerificationRequest {
+  email: string;
+  new_password: string;
+  verification_token: string;
+}
+
+export interface ChangePasswordRequest {
+  old_password: string;
+  new_password: string;
+  confirm_new_password: string;
 }
 
 export interface UserProfile {
@@ -278,7 +307,7 @@ export class AuthService {
   }
 
   // Verify OTP
-  async verifyOtp(request: VerifyOtpRequest): Promise<boolean> {
+  async verifyOtp(request: VerifyOtpRequest): Promise<{ success: boolean; status_code?: number; message?: string }> {
     try {
       console.log('🟡 Verifying OTP:', request);
       
@@ -320,17 +349,26 @@ export class AuthService {
       const result = await response.json();
       console.log('🟡 Verify OTP response:', result);
       
-      // Check both response status and result status
-      if (response.ok && result.status_code !== 500) {
-        console.log('🟢 OTP verification result: true');
-        return true;
+      // Only accept status_code === 200 for success
+      if (result.status_code === 200) {
+        console.log('🟢 OTP verification successful - status_code: 200');
+        return { success: true, status_code: result.status_code, message: result.message };
       }
       
-      console.log('🔴 OTP verification result: false');
-      throw new Error(result.message || 'OTP verification failed');
-    } catch (error) {
+      // Any other status_code is considered failure
+      console.log('🔴 OTP verification failed - status_code:', result.status_code || 'undefined');
+      return { 
+        success: false, 
+        status_code: result.status_code, 
+        message: result.message || 'OTP verification failed' 
+      };
+      
+    } catch (error: any) {
       console.error('🔴 AuthService - OTP Verification Error:', error);
-      throw error;
+      return { 
+        success: false, 
+        message: error.message || 'OTP verification failed' 
+      };
     }
   }
 
@@ -419,7 +457,7 @@ export class AuthService {
     }
   }
 
-  // Reset Password - Verify OTP and set new password
+  // Reset Password - Verify OTP and set new password (Legacy method)
   async resetPassword(request: ResetPasswordRequest): Promise<void> {
     try {
       console.log('🟡 AuthService - Resetting password for:', request.email);
@@ -444,6 +482,149 @@ export class AuthService {
     } catch (error: any) {
       console.log('🔴 AuthService - Reset password failed:', error);
       throw new Error(error.message || 'Failed to reset password');
+    }
+  }
+
+  // Resend Forgot Password OTP - New flow
+  async resendForgotPasswordOtp(request: ResendForgotPasswordOtpRequest): Promise<void> {
+    try {
+      console.log('🟡 AuthService - Resending forgot password OTP for:', request.email);
+      
+      const response = await fetch(this.buildUrl(ENDPOINTS.RESEND_FORGOT_PASSWORD_OTP), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      const result = await response.json();
+      console.log('🟢 Resend forgot password OTP response:', result);
+
+      // Check status_code in the JSON response (not HTTP status)
+      if (result.status_code && result.status_code !== 200) {
+        console.log('🔴 Error detected - status_code:', result.status_code, 'message:', result.message);
+        throw new Error(result.message || 'Failed to resend forgot password OTP');
+      }
+
+      // Only proceed if status_code is 200 (success)
+      if (!result.status_code || result.status_code !== 200) {
+        throw new Error(result.message || 'Failed to resend forgot password OTP');
+      }
+
+    } catch (error: any) {
+      console.log('🔴 AuthService - Resend forgot password OTP failed:', error);
+      throw new Error(error.message || 'Failed to resend forgot password OTP');
+    }
+  }
+
+  // Verify Forgot Password OTP - New flow
+  async verifyForgotPasswordOtp(request: VerifyForgotPasswordOtpRequest): Promise<VerifyForgotPasswordOtpResponse> {
+    try {
+      console.log('🟡 AuthService - Verifying forgot password OTP for:', request.email);
+      
+      const response = await fetch(this.buildUrl(ENDPOINTS.VERIFY_FORGOT_PASSWORD_OTP), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      const result = await response.json();
+      console.log('🟢 Verify forgot password OTP response (no user messages):', result);
+
+      // Check status_code in the JSON response (not HTTP status)
+      if (result.status_code && result.status_code !== 200) {
+        console.log('🔴 Error detected - status_code:', result.status_code, 'message:', result.message);
+        throw new Error(result.message || 'Failed to verify forgot password OTP');
+      }
+
+      // Only proceed if status_code is 200 (success)
+      if (!result.status_code || result.status_code !== 200) {
+        throw new Error(result.message || 'Failed to verify forgot password OTP');
+      }
+
+      // Return verification token from response (no success messages)
+      return {
+        verification_token: result.verification_token || result.data?.verification_token
+      };
+
+    } catch (error: any) {
+      console.log('🔴 AuthService - Verify forgot password OTP failed:', error);
+      throw new Error(error.message || 'Failed to verify forgot password OTP');
+    }
+  }
+
+  // Change Password
+  async changePassword(request: ChangePasswordRequest): Promise<void> {
+    try {
+      console.log('🟡 AuthService - Changing password...');
+      
+      const token = await this.getStoredToken();
+      if (!token) {
+        throw new Error('No access token available');
+      }
+      
+      const response = await fetch(this.buildUrl(ENDPOINTS.CHANGE_PASSWORD), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(request),
+      });
+
+      const result = await response.json();
+      console.log('🟢 Change password response:', result);
+
+      // Check status_code in the JSON response (not HTTP status)
+      if (result.status_code && result.status_code !== 200) {
+        console.log('🔴 Error detected - status_code:', result.status_code, 'message:', result.message);
+        throw new Error(result.message || 'Failed to change password');
+      }
+
+      // Only proceed if status_code is 200 (success)
+      if (!result.status_code || result.status_code !== 200) {
+        throw new Error(result.message || 'Failed to change password');
+      }
+
+    } catch (error: any) {
+      console.log('🔴 AuthService - Change password failed:', error);
+      throw new Error(error.message || 'Failed to change password');
+    }
+  }
+
+  // Set New Password After Verification - New flow
+  async setNewPasswordAfterVerification(request: SetNewPasswordAfterVerificationRequest): Promise<void> {
+    try {
+      console.log('🟡 AuthService - Setting new password after verification for:', request.email);
+      
+      const response = await fetch(this.buildUrl(ENDPOINTS.SET_NEW_PASSWORD_AFTER_VERIFICATION), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      const result = await response.json();
+      console.log('🟢 Set new password after verification response:', result);
+
+      // Check status_code in the JSON response (not HTTP status)
+      if (result.status_code && result.status_code !== 200) {
+        console.log('🔴 Error detected - status_code:', result.status_code, 'message:', result.message);
+        throw new Error(result.message || 'Failed to set new password');
+      }
+
+      // Only proceed if status_code is 200 (success)
+      if (!result.status_code || result.status_code !== 200) {
+        throw new Error(result.message || 'Failed to set new password');
+      }
+
+    } catch (error: any) {
+      console.log('🔴 AuthService - Set new password after verification failed:', error);
+      throw new Error(error.message || 'Failed to set new password');
     }
   }
 

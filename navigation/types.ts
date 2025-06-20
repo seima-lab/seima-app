@@ -7,9 +7,13 @@ export type RootStackParamList = {
     phoneNumber?: string;
     type?: 'register' | 'forgot-password';
   };
+  VerifyOTP: {
+    email: string;
+  };
   ResetPassword: {
     email?: string;
-    otp: string;
+    otp?: string;
+    verificationToken?: string;
   };
   Calendar: undefined;
   ChangePassword: undefined;

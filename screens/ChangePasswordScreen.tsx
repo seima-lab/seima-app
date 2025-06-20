@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Alert,
     Dimensions,
     KeyboardAvoidingView,
     Platform,
@@ -10,13 +9,15 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomToast from '../components/CustomToast';
 import LogoWithText from '../components/Login/LogoWithText';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { authService, ChangePasswordRequest } from '../services/authService';
 
 const { width } = Dimensions.get('window');
 
@@ -33,82 +34,108 @@ export default function ChangePasswordScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Error state
-  const [errors, setErrors] = useState({
-    newPassword: '',
-    confirmPassword: '',
+  // Real-time password validation states
+  const [passwordValidation, setPasswordValidation] = useState({
+    minLength: false,
+    hasLetter: false,
+    hasNumber: false,
+    passwordsMatch: false,
+    isDifferentFromCurrent: false
   });
 
-  const validatePassword = (password: string) => {
-    // Kiểm tra ít nhất 8 ký tự
-    if (password.length < 8) {
-      return { isValid: false, error: t('validation.passwordTooShort') };
-    }
-    
-    // Kiểm tra có ít nhất 1 chữ cái và 1 số
-    const hasLetter = /[a-zA-Z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    
-    if (!hasLetter || !hasNumber) {
-      return { isValid: false, error: t('validation.passwordInvalid') };
-    }
-    
-    return { isValid: true, error: '' };
+  // Toast state
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'error' | 'success' | 'warning' | 'info'>('error');
+
+  // Toast functions
+  const showToast = (message: string, type: 'error' | 'success' | 'warning' | 'info' = 'error') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
+
+  const hideToast = () => {
+    setToastVisible(false);
+  };
+
+  // Real-time password validation
+  const validatePasswordRealTime = (newPwd: string, confirmPwd: string = confirmPassword, currentPwd: string = currentPassword) => {
+    const validation = {
+      minLength: newPwd.length >= 8,
+      hasLetter: /[a-zA-Z]/.test(newPwd),
+      hasNumber: /\d/.test(newPwd),
+      passwordsMatch: newPwd === confirmPwd && newPwd.length > 0 && confirmPwd.length > 0,
+      isDifferentFromCurrent: newPwd !== currentPwd && newPwd.length > 0 && currentPwd.length > 0
+    };
+    setPasswordValidation(validation);
+    return validation;
+  };
+
+  const handleCurrentPasswordChange = (text: string) => {
+    setCurrentPassword(text);
+    validatePasswordRealTime(newPassword, confirmPassword, text);
+  };
+
+  const handleNewPasswordChange = (text: string) => {
+    setNewPassword(text);
+    validatePasswordRealTime(text, confirmPassword, currentPassword);
+  };
+
+  const handleConfirmPasswordChange = (text: string) => {
+    setConfirmPassword(text);
+    validatePasswordRealTime(newPassword, text, currentPassword);
   };
 
   const handleChangePassword = async () => {
-    // Current password validation
-    if (!currentPassword.trim()) {
-      Alert.alert(t('common.error'), t('validation.currentPasswordRequired'));
+    // Check if all validations pass
+    const validation = validatePasswordRealTime(newPassword, confirmPassword, currentPassword);
+    
+    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       return;
     }
     
-    // New password validation
-    if (!newPassword.trim()) {
-      Alert.alert(t('common.error'), t('validation.passwordRequired'));
-      return;
-    }
-    
-    if (newPassword.length < 6) {
-      Alert.alert(t('common.error'), t('validation.passwordTooShort'));
-      return;
-    }
-    
-    // Check if new password is different from current
-    if (currentPassword === newPassword) {
-      Alert.alert(t('common.error'), t('validation.samePassword'));
-      return;
-    }
-    
-    // Confirm password validation
-    if (!confirmPassword.trim()) {
-      Alert.alert(t('common.error'), t('validation.confirmPasswordRequired'));
-      return;
-    }
-    
-    if (newPassword !== confirmPassword) {
-      Alert.alert(t('common.error'), t('validation.passwordMismatch'));
+    if (!validation.minLength || !validation.hasLetter || !validation.hasNumber || 
+        !validation.passwordsMatch || !validation.isDifferentFromCurrent) {
       return;
     }
 
     setIsLoading(true);
     try {
-      // Simulate API call
-      console.log('Change password');
+      console.log('🟡 Changing password...');
       
+      const request: ChangePasswordRequest = {
+        old_password: currentPassword.trim(),
+        new_password: newPassword.trim(),
+        confirm_new_password: confirmPassword.trim()
+      };
+      
+      await authService.changePassword(request);
+      
+      showToast(t('changePassword.success'), 'success');
+      
+      // Navigate back after success
       setTimeout(() => {
-        setIsLoading(false);
-        Alert.alert(t('common.success'), t('changePassword.success'), [
-          {
-            text: t('common.confirm'),
-            onPress: () => navigation.goBack(),
-          },
-        ]);
+        navigation.goBack();
       }, 2000);
       
-    } catch (error) {
+    } catch (error: any) {
+      console.log('🔴 Change password failed:', error);
+      
+      let errorMessage = t('changePassword.failed');
+      if (error.message) {
+        if (error.message.includes('current password') || error.message.includes('old password')) {
+          errorMessage = 'Mật khẩu hiện tại không đúng';
+        } else if (error.message.includes('password')) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      showToast(errorMessage, 'error');
+    } finally {
       setIsLoading(false);
-      Alert.alert(t('common.error'), t('changePassword.failed'));
     }
   };
 
@@ -157,7 +184,7 @@ export default function ChangePasswordScreen() {
                 placeholderTextColor="#9ca3af"
                 secureTextEntry={!showCurrentPassword}
                 value={currentPassword}
-                onChangeText={setCurrentPassword}
+                onChangeText={handleCurrentPasswordChange}
                 autoCapitalize="none"
                 returnKeyType="next"
               />
@@ -175,7 +202,7 @@ export default function ChangePasswordScreen() {
 
             {/* New Password */}
             <Text style={styles.label}>{t('changePassword.newPassword')}</Text>
-            <View style={[styles.inputWrapper, errors.newPassword ? styles.inputError : null]}>
+            <View style={styles.inputWrapper}>
               <Icon name="lock" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
@@ -183,34 +210,7 @@ export default function ChangePasswordScreen() {
                 placeholderTextColor="#9ca3af"
                 secureTextEntry={!showNewPassword}
                 value={newPassword}
-                onChangeText={(text) => {
-                  setNewPassword(text);
-                  // Real-time validation for new password
-                  const newErrors = {...errors};
-                  
-                  if (text.trim()) {
-                    const passwordValidation = validatePassword(text);
-                    if (!passwordValidation.isValid) {
-                      newErrors.newPassword = passwordValidation.error;
-                    } else {
-                      newErrors.newPassword = '';
-                    }
-                  } else {
-                    // Clear error when field is empty (user is still typing)
-                    newErrors.newPassword = '';
-                  }
-                  
-                  // Also check confirm password if it exists
-                  if (confirmPassword.trim() && text.trim()) {
-                    if (text !== confirmPassword) {
-                      newErrors.confirmPassword = t('validation.passwordMismatch');
-                    } else {
-                      newErrors.confirmPassword = '';
-                    }
-                  }
-                  
-                  setErrors(newErrors);
-                }}
+                onChangeText={handleNewPasswordChange}
                 autoCapitalize="none"
                 returnKeyType="next"
               />
@@ -225,16 +225,68 @@ export default function ChangePasswordScreen() {
                 />
               </TouchableOpacity>
             </View>
-            {errors.newPassword ? (
-              <View style={styles.errorRow}>
-                <Icon name="error-outline" size={12} color="#EF4444" />
-                <Text style={styles.errorText}>{errors.newPassword}</Text>
+            
+            {/* New Password validation messages */}
+            {newPassword.length > 0 && (
+              <View style={styles.validationContainer}>
+                <View style={styles.validationRow}>
+                  <Icon 
+                    name={passwordValidation.minLength ? "check-circle" : "cancel"} 
+                    size={16} 
+                    color={passwordValidation.minLength ? "#10B981" : "#EF4444"} 
+                  />
+                  <Text style={[
+                    styles.validationText,
+                    { color: passwordValidation.minLength ? "#10B981" : "#EF4444" }
+                  ]}>
+                    Ít nhất 8 ký tự
+                  </Text>
+                </View>
+                <View style={styles.validationRow}>
+                  <Icon 
+                    name={passwordValidation.hasLetter ? "check-circle" : "cancel"} 
+                    size={16} 
+                    color={passwordValidation.hasLetter ? "#10B981" : "#EF4444"} 
+                  />
+                  <Text style={[
+                    styles.validationText,
+                    { color: passwordValidation.hasLetter ? "#10B981" : "#EF4444" }
+                  ]}>
+                    Chứa ít nhất 1 chữ cái
+                  </Text>
+                </View>
+                <View style={styles.validationRow}>
+                  <Icon 
+                    name={passwordValidation.hasNumber ? "check-circle" : "cancel"} 
+                    size={16} 
+                    color={passwordValidation.hasNumber ? "#10B981" : "#EF4444"} 
+                  />
+                  <Text style={[
+                    styles.validationText,
+                    { color: passwordValidation.hasNumber ? "#10B981" : "#EF4444" }
+                  ]}>
+                    Chứa ít nhất 1 chữ số
+                  </Text>
+                </View>
+                <View style={styles.validationRow}>
+                  <Icon 
+                    name={passwordValidation.isDifferentFromCurrent ? "check-circle" : "cancel"} 
+                    size={16} 
+                    color={passwordValidation.isDifferentFromCurrent ? "#10B981" : "#EF4444"} 
+                  />
+                  <Text style={[
+                    styles.validationText,
+                    { color: passwordValidation.isDifferentFromCurrent ? "#10B981" : "#EF4444" }
+                  ]}>
+                    Khác với mật khẩu hiện tại
+                  </Text>
+                </View>
               </View>
-            ) : null}
+            )}
 
             {/* Confirm New Password */}
             <Text style={styles.label}>{t('register.confirmPassword')}</Text>
-            <View style={[styles.inputWrapper, errors.confirmPassword ? styles.inputError : null]}>
+            <View style={styles.inputWrapper}>
               <Icon name="lock" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
@@ -242,20 +294,7 @@ export default function ChangePasswordScreen() {
                 placeholderTextColor="#9ca3af"
                 secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
-                onChangeText={(text) => {
-                  setConfirmPassword(text);
-                  // Real-time validation for confirm password
-                  if (text.trim() && newPassword.trim()) {
-                    if (newPassword !== text) {
-                      setErrors({...errors, confirmPassword: t('validation.passwordMismatch')});
-                    } else {
-                      setErrors({...errors, confirmPassword: ''});
-                    }
-                  } else {
-                    // Clear error when field is empty (user is still typing)
-                    setErrors({...errors, confirmPassword: ''});
-                  }
-                }}
+                onChangeText={handleConfirmPasswordChange}
                 autoCapitalize="none"
                 returnKeyType="done"
                 onSubmitEditing={handleChangePassword}
@@ -271,26 +310,31 @@ export default function ChangePasswordScreen() {
                 />
               </TouchableOpacity>
             </View>
-            {errors.confirmPassword ? (
-              <View style={styles.errorRow}>
-                <Icon name="error-outline" size={12} color="#EF4444" />
-                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+            
+            {/* Confirm password validation message */}
+            {confirmPassword.length > 0 && !passwordValidation.passwordsMatch && (
+              <View style={styles.validationContainer}>
+                <View style={styles.validationRow}>
+                  <Icon name="cancel" size={16} color="#EF4444" />
+                  <Text style={[styles.validationText, { color: "#EF4444" }]}>
+                    Mật khẩu xác nhận không khớp
+                  </Text>
+                </View>
               </View>
-            ) : null}
-
-            {/* Password Requirements */}
-            <View style={styles.requirementsContainer}>
-              <Text style={styles.requirementsTitle}>{t('changePassword.requirements')}</Text>
-              <Text style={styles.requirementText}>• Ít nhất 8 ký tự</Text>
-              <Text style={styles.requirementText}>• Phải có ít nhất 1 chữ cái và 1 số</Text>
-              <Text style={styles.requirementText}>• Khác với mật khẩu hiện tại</Text>
-            </View>
+            )}
 
             {/* Change Password Button */}
             <TouchableOpacity 
-              style={[styles.changeButton, isLoading && styles.changeButtonDisabled]}
+              style={[
+                styles.changeButton, 
+                (isLoading || !passwordValidation.minLength || !passwordValidation.hasLetter || 
+                 !passwordValidation.hasNumber || !passwordValidation.passwordsMatch || 
+                 !passwordValidation.isDifferentFromCurrent || !currentPassword.trim()) && styles.changeButtonDisabled
+              ]}
               onPress={handleChangePassword}
-              disabled={isLoading}
+              disabled={isLoading || !passwordValidation.minLength || !passwordValidation.hasLetter || 
+                       !passwordValidation.hasNumber || !passwordValidation.passwordsMatch || 
+                       !passwordValidation.isDifferentFromCurrent || !currentPassword.trim()}
             >
               <Text style={styles.changeButtonText}>
                 {isLoading ? t('common.loading') : t('changePassword.change')}
@@ -305,6 +349,14 @@ export default function ChangePasswordScreen() {
           </View>
         </View>
       </ScrollView>
+      
+      {/* Custom Toast */}
+      <CustomToast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={hideToast}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -467,6 +519,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#EF4444',
     marginLeft: 4,
+    flex: 1,
+  },
+  validationContainer: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  validationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  validationText: {
+    fontSize: 13,
+    marginLeft: 8,
     flex: 1,
   },
 }); 

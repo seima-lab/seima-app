@@ -2,19 +2,19 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -190,11 +190,11 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
       isValid = false;
     }
     
-    // Date of birth validation
-    if (!hasSelectedDate) {
-      newErrors.dateOfBirth = t('register.selectDateOfBirth');
-      isValid = false;
-    }
+    // Date of birth validation - Now optional
+    // if (!hasSelectedDate) {
+    //   newErrors.dateOfBirth = t('register.selectDateOfBirth');
+    //   isValid = false;
+    // }
     
     // Gender validation
     if (!gender) {
@@ -243,10 +243,16 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
     }
 
     const googleUserData = route?.params?.googleUserData;
+    const isGoogleUser = googleUserData?.isGoogleLogin && !googleUserData?.userIsActive;
+    
+    // Show loading modal immediately after validation
     setIsLoading(true);
+    setShowLoadingModal(true);
+    setIsLoadingSuccess(false);
+    setLoadingMessage(isGoogleUser ? 'Đang tạo hồ sơ của bạn...' : 'Đang gửi mã OTP đến email của bạn...');
 
     try {
-      if (googleUserData?.isGoogleLogin && !googleUserData?.userIsActive) {
+      if (isGoogleUser) {
         // Handle Google user profile creation (first login)
         console.log('🟡 Creating Google user profile...');
         
@@ -261,7 +267,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         const createData: UserCreationRequestDto = {
           email: email.trim().toLowerCase(),
           full_name: fullName.trim(),
-          birth_date: formatDateForAPI(dateOfBirth), // YYYY-MM-DD format without timezone issues
+          birth_date: hasSelectedDate ? formatDateForAPI(dateOfBirth) : '', // Send empty string if no date selected
           phone_number: phoneNumber.trim(),
           avatar_url: '', // Empty for now, can be updated later
           gender: gender === 'male', // Convert to boolean: true = male, false = female
@@ -274,23 +280,16 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         
         console.log('🟢 Google user created successfully');
         
-        setIsLoading(false);
+        // Show success state
+        setIsLoadingSuccess(true);
+        setLoadingMessage('Hồ sơ đã được tạo thành công');
         
-        // Show loading modal for Google profile creation
-        setShowLoadingModal(true);
-        setIsLoadingSuccess(false);
-        setLoadingMessage('Đang tạo hồ sơ của bạn...');
-        
-        // Simulate a small delay for better UX
+        // Auto navigate to main app after 2 seconds
         setTimeout(() => {
-          setIsLoadingSuccess(true);
-          
-          // Auto navigate to main app after 2 seconds
-          setTimeout(() => {
-            setShowLoadingModal(false);
-            navigation.replace('MainTab');
-          }, 2000);
-        }, 1000);
+          setShowLoadingModal(false);
+          setIsLoading(false);
+          navigation.replace('MainTab');
+        }, 2000);
         
       } else {
         // Handle normal registration flow
@@ -298,8 +297,9 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         
         // Double check password match before sending (only for normal registration)
         if (password.trim() !== confirmPassword.trim()) {
-          setErrors({...errors, confirmPassword: t('validation.passwordMismatch')});
+          setShowLoadingModal(false);
           setIsLoading(false);
+          setErrors({...errors, confirmPassword: t('validation.passwordMismatch')});
           return;
         }
 
@@ -315,7 +315,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         const registerData: RegisterRequest = {
           full_name: fullName.trim(),
           email: email.trim().toLowerCase(),
-          dob: formatDateForAPI(dateOfBirth), // Convert to YYYY-MM-DD format without timezone issues
+          dob: hasSelectedDate ? formatDateForAPI(dateOfBirth) : '', // Send empty string if no date selected
           phone_number: phoneNumber.trim(),
           gender: gender === 'male', // Convert to boolean: true = male, false = female
           password: password.trim(),
@@ -329,45 +329,38 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         
         console.log('🟢 Registration successful:', response);
         
-        setIsLoading(false);
+        // Show success state
+        setIsLoadingSuccess(true);
+        setLoadingMessage('Mã OTP đã được gửi thành công');
         
-        // Show loading modal for OTP sending
-        setShowLoadingModal(true);
-        setIsLoadingSuccess(false);
-        setLoadingMessage('Đang gửi mã OTP đến email của bạn...');
-        
-        // Simulate a small delay for better UX
+        // Auto navigate to OTP screen after 2 seconds
         setTimeout(() => {
-          setIsLoadingSuccess(true);
+          setShowLoadingModal(false);
+          setIsLoading(false);
           
-          // Auto navigate to OTP screen after 2 seconds
-          setTimeout(() => {
-            setShowLoadingModal(false);
-            
-            // Debug log before navigation
-            console.log('🔍 Register - Navigating to OTP with params:', {
-              email: email,
-              fullName: fullName.trim(),
-              phoneNumber: phoneNumber,
-              hasPassword: !!password.trim(),
-              passwordLength: password.trim().length,
-              dateOfBirth: formatDateForAPI(dateOfBirth),
-              gender: gender === 'male',
-              type: 'register'
-            });
-            
-            navigation.navigate('OTP', { 
-              email: email,
-              fullName: fullName.trim(),
-              phoneNumber: phoneNumber,
-              password: password.trim(),
-              dateOfBirth: formatDateForAPI(dateOfBirth), // YYYY-MM-DD format without timezone issues
-              gender: gender === 'male', // Convert to boolean
-              otpCode: response.otp_code,
-              type: 'register' // To distinguish from forgot password flow
-            });
-          }, 2000);
-        }, 1000);
+          // Debug log before navigation
+          console.log('🔍 Register - Navigating to OTP with params:', {
+            email: email,
+            fullName: fullName.trim(),
+            phoneNumber: phoneNumber,
+            hasPassword: !!password.trim(),
+            passwordLength: password.trim().length,
+            dateOfBirth: hasSelectedDate ? formatDateForAPI(dateOfBirth) : '',
+            gender: gender === 'male',
+            type: 'register'
+          });
+          
+          navigation.navigate('OTP', { 
+            email: email,
+            fullName: fullName.trim(),
+            phoneNumber: phoneNumber,
+            password: password.trim(),
+            dateOfBirth: hasSelectedDate ? formatDateForAPI(dateOfBirth) : '', // Send empty string if no date selected
+            gender: gender === 'male', // Convert to boolean
+            otpCode: response.otp_code,
+            type: 'register' // To distinguish from forgot password flow
+          });
+        }, 2000);
       }
       
     } catch (error: any) {
@@ -376,7 +369,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
       console.error('🔴 Registration/Update failed:', error);
       
       // Show error under email field (most common registration errors are email-related)
-      let errorMessage = googleUserData?.isGoogleLogin 
+      let errorMessage = isGoogleUser 
         ? 'Failed to create profile. Please try again.'
         : t('register.registerFailed');
         
@@ -612,7 +605,21 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                         value={email}
                         onChangeText={(text) => {
                           setEmail(text);
-                          if (errors.email) setErrors({...errors, email: ''});
+                          // Real-time email validation
+                          const newErrors = {...errors};
+                          
+                          if (text.trim()) {
+                            if (!validateEmail(text)) {
+                              newErrors.email = t('validation.invalidEmail');
+                            } else {
+                              newErrors.email = '';
+                            }
+                          } else {
+                            // Clear error when field is empty (user is still typing)
+                            newErrors.email = '';
+                          }
+                          
+                          setErrors(newErrors);
                         }}
                         onFocus={() => handleInputFocus('email')}
                         onBlur={handleInputBlur}
@@ -622,6 +629,8 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                       />
                       {email && validateEmail(email) ? (
                         <Icon name="check-circle" size={16} color="#10B981" />
+                      ) : email && !validateEmail(email) ? (
+                        <Icon name="error-outline" size={16} color="#EF4444" />
                       ) : null}
                     </View>
                     {errors.email ? (

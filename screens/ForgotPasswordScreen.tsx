@@ -107,10 +107,9 @@ export default function ForgotPasswordScreen() {
       // API success (200) - No toast, just hide loading and navigate
       setShowLoadingModal(false);
       
-      // Navigate to OTP screen (allow back navigation)
-      navigation.navigate('OTP', { 
-        email: email.trim().toLowerCase(),
-        type: 'forgot-password'
+      // Navigate to VerifyOTP screen (allow back navigation)
+      navigation.navigate('VerifyOTP', { 
+        email: email.trim().toLowerCase()
       });
       
     } catch (error: any) {

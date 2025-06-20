@@ -156,24 +156,22 @@ export default function OTPScreen({ route }: OTPScreenProps) {
       console.log('🟡 Final verify request:', verifyRequest);
       
       // Call verify OTP API
-      const verified = await authService.verifyOtp(verifyRequest);
+      const verifyResult = await authService.verifyOtp(verifyRequest);
       
-      console.log('🟢 OTP verification result:', verified);
+      console.log('🟢 OTP verification result:', verifyResult);
       
       setIsLoading(false);
       
-      if (verified) {
+      // Only proceed if status_code is exactly 200
+      if (verifyResult.success && verifyResult.status_code === 200) {
+        console.log('🟢 OTP verified successfully with status_code 200');
+        
         if (type === 'forgot-password') {
-          // Navigate to reset password screen
-          Alert.alert(t('common.success'), t('otp.verifySuccessReset'), [
-            {
-              text: t('common.confirm'),
-              onPress: () => navigation.navigate('ResetPassword', { 
-                email,
-                otpCode: otpCode 
-              }),
-            },
-          ]);
+          // Navigate directly to reset password screen without showing success alert
+          navigation.navigate('ResetPassword', { 
+            email,
+            otpCode: otpCode 
+          });
         } else {
           // Auto login after successful registration verification
           console.log('🟢 OTP verified successfully, attempting auto login...');
@@ -240,7 +238,23 @@ export default function OTPScreen({ route }: OTPScreenProps) {
           }
         }
       } else {
-        Alert.alert(t('common.error'), 'OTP verification failed. Please try again.');
+        // Status code is not 200 or success is false
+        console.log('🔴 OTP verification failed - status_code:', verifyResult.status_code);
+        
+        let errorMessage = verifyResult.message || t('otp.verifyFailed');
+        
+        // Handle specific status codes
+        if (verifyResult.status_code === 400) {
+          errorMessage = 'Invalid OTP code. Please check and try again.';
+        } else if (verifyResult.status_code === 404) {
+          errorMessage = 'OTP not found. Please request a new one.';
+        } else if (verifyResult.status_code === 429) {
+          errorMessage = 'Too many attempts. Please try again later.';
+        } else if (verifyResult.status_code === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+        
+        Alert.alert(t('common.error'), errorMessage);
       }
       
     } catch (error: any) {
@@ -249,13 +263,7 @@ export default function OTPScreen({ route }: OTPScreenProps) {
       
       let errorMessage = t('otp.verifyFailed');
       
-      if (error.message.includes('UNAUTHORIZED') || error.message.includes('Invalid')) {
-        errorMessage = 'Invalid OTP code. Please check and try again.';
-      } else if (error.message.includes('NOT_FOUND')) {
-        errorMessage = 'OTP not found. Please request a new one.';
-      } else if (error.message.includes('TOO_MANY_REQUESTS')) {
-        errorMessage = 'Too many attempts. Please try again later.';
-      } else if (error.message) {
+      if (error.message) {
         errorMessage = error.message;
       }
       
@@ -384,7 +392,7 @@ export default function OTPScreen({ route }: OTPScreenProps) {
           <View style={styles.resendContainer}>
             {!canResend ? (
               <Text style={styles.timerText}>
-                {t('otp.resendIn')} {formatTime(timer)}
+                {t('otp.resendIn', { seconds: timer })}
               </Text>
             ) : (
               <TouchableOpacity

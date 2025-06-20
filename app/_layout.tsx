@@ -1,7 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { ActivityIndicator, LogBox, View } from 'react-native';
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
@@ -30,6 +30,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import OTPScreen from '../screens/OTPScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import SetBudgetLimitScreen from '../screens/SetBudgetLimitScreen';
+import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import LoginScreen from '../screens/login';
 import RegisterScreen from '../screens/register';
 import UpdateProfileScreen from '../screens/update-profile';
@@ -81,6 +82,7 @@ function AuthNavigator() {
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="OTP" component={OTPScreen} />
+      <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       
       {/* Main app screens */}

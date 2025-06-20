@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -18,7 +18,7 @@ import LogoWithText from '../components/Login/LogoWithText';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
-import { authService, ResetPasswordRequest } from '../services/authService';
+import { authService, ResetPasswordRequest, SetNewPasswordAfterVerificationRequest } from '../services/authService';
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +27,7 @@ interface ResetPasswordScreenProps {
     params?: {
       email?: string;
       otpCode?: string;
+      verificationToken?: string;
     };
   };
 }
@@ -39,12 +40,21 @@ export default function ResetPasswordScreen({ route }: ResetPasswordScreenProps)
   
   const email = route?.params?.email || '';
   const otpCode = route?.params?.otpCode || '';
+  const verificationToken = route?.params?.verificationToken || '';
   
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Real-time password validation states
+  const [passwordValidation, setPasswordValidation] = useState({
+    minLength: false,
+    hasLetter: false,
+    hasNumber: false,
+    passwordsMatch: false
+  });
 
   // Toast state
   const [toastVisible, setToastVisible] = useState(false);
@@ -62,34 +72,37 @@ export default function ResetPasswordScreen({ route }: ResetPasswordScreenProps)
     setToastVisible(false);
   };
 
+  // Real-time password validation
+  const validatePasswordRealTime = (password: string, confirmPwd: string = confirmPassword) => {
+    const validation = {
+      minLength: password.length >= 8,
+      hasLetter: /[a-zA-Z]/.test(password),
+      hasNumber: /\d/.test(password),
+      passwordsMatch: password === confirmPwd && password.length > 0 && confirmPwd.length > 0
+    };
+    setPasswordValidation(validation);
+    return validation;
+  };
+
+  const handleNewPasswordChange = (text: string) => {
+    setNewPassword(text);
+    validatePasswordRealTime(text, confirmPassword);
+  };
+
+  const handleConfirmPasswordChange = (text: string) => {
+    setConfirmPassword(text);
+    validatePasswordRealTime(newPassword, text);
+  };
+
   const handleResetPassword = async () => {
-    // Password validation
-    if (!newPassword.trim()) {
-      showToast(t('validation.passwordRequired'), 'warning');
+    // Check if all validations pass
+    const validation = validatePasswordRealTime(newPassword, confirmPassword);
+    
+    if (!newPassword.trim() || !validation.minLength || !validation.hasLetter || !validation.hasNumber) {
       return;
     }
     
-    if (newPassword.length < 8) {
-      showToast(t('validation.passwordTooShort'), 'warning');
-      return;
-    }
-    
-    // Check if password contains at least 1 letter and 1 number
-    const hasLetter = /[a-zA-Z]/.test(newPassword);
-    const hasNumber = /\d/.test(newPassword);
-    if (!hasLetter || !hasNumber) {
-      showToast(t('validation.passwordInvalid'), 'warning');
-      return;
-    }
-    
-    // Confirm password validation
-    if (!confirmPassword.trim()) {
-      showToast(t('validation.confirmPasswordRequired'), 'warning');
-      return;
-    }
-    
-    if (newPassword !== confirmPassword) {
-      showToast(t('validation.passwordMismatch'), 'warning');
+    if (!confirmPassword.trim() || !validation.passwordsMatch) {
       return;
     }
 
@@ -97,14 +110,26 @@ export default function ResetPasswordScreen({ route }: ResetPasswordScreenProps)
     try {
       console.log('🟡 Resetting password for:', email);
       
-      const request: ResetPasswordRequest = {
-        email: email.trim().toLowerCase(),
-        otp_code: otpCode,
-        new_password: newPassword.trim(),
-        confirm_password: confirmPassword.trim()
-      };
-      
-      await authService.resetPassword(request);
+      if (verificationToken) {
+        // Use new API flow with verification token
+        const request: SetNewPasswordAfterVerificationRequest = {
+          email: email.trim().toLowerCase(),
+          new_password: newPassword.trim(),
+          verification_token: verificationToken
+        };
+        
+        await authService.setNewPasswordAfterVerification(request);
+      } else {
+        // Use legacy API flow
+        const request: ResetPasswordRequest = {
+          email: email.trim().toLowerCase(),
+          otp_code: otpCode,
+          new_password: newPassword.trim(),
+          confirm_password: confirmPassword.trim()
+        };
+        
+        await authService.resetPassword(request);
+      }
       
       showToast(t('resetPassword.success'), 'success');
       
@@ -174,7 +199,7 @@ export default function ResetPasswordScreen({ route }: ResetPasswordScreenProps)
                 placeholderTextColor="#9ca3af"
                 secureTextEntry={!showNewPassword}
                 value={newPassword}
-                onChangeText={setNewPassword}
+                onChangeText={handleNewPasswordChange}
                 autoCapitalize="none"
                 returnKeyType="next"
               />
@@ -189,6 +214,51 @@ export default function ResetPasswordScreen({ route }: ResetPasswordScreenProps)
                 />
               </TouchableOpacity>
             </View>
+            
+            {/* Password validation messages */}
+            {newPassword.length > 0 && (
+              <View style={styles.validationContainer}>
+                <View style={styles.validationRow}>
+                  <Icon 
+                    name={passwordValidation.minLength ? "check-circle" : "cancel"} 
+                    size={16} 
+                    color={passwordValidation.minLength ? "#10B981" : "#EF4444"} 
+                  />
+                  <Text style={[
+                    styles.validationText,
+                    { color: passwordValidation.minLength ? "#10B981" : "#EF4444" }
+                  ]}>
+                    {t('resetPassword.minLength')}
+                  </Text>
+                </View>
+                <View style={styles.validationRow}>
+                  <Icon 
+                    name={passwordValidation.hasLetter ? "check-circle" : "cancel"} 
+                    size={16} 
+                    color={passwordValidation.hasLetter ? "#10B981" : "#EF4444"} 
+                  />
+                  <Text style={[
+                    styles.validationText,
+                    { color: passwordValidation.hasLetter ? "#10B981" : "#EF4444" }
+                  ]}>
+                    Chứa ít nhất 1 chữ cái
+                  </Text>
+                </View>
+                <View style={styles.validationRow}>
+                  <Icon 
+                    name={passwordValidation.hasNumber ? "check-circle" : "cancel"} 
+                    size={16} 
+                    color={passwordValidation.hasNumber ? "#10B981" : "#EF4444"} 
+                  />
+                  <Text style={[
+                    styles.validationText,
+                    { color: passwordValidation.hasNumber ? "#10B981" : "#EF4444" }
+                  ]}>
+                    Chứa ít nhất 1 chữ số
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {/* Confirm Password */}
             <Text style={styles.label}>{t('register.confirmPassword')}</Text>
@@ -200,7 +270,7 @@ export default function ResetPasswordScreen({ route }: ResetPasswordScreenProps)
                 placeholderTextColor="#9ca3af"
                 secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                onChangeText={handleConfirmPasswordChange}
                 autoCapitalize="none"
                 returnKeyType="done"
                 onSubmitEditing={handleResetPassword}
@@ -216,19 +286,29 @@ export default function ResetPasswordScreen({ route }: ResetPasswordScreenProps)
                 />
               </TouchableOpacity>
             </View>
+            
+            {/* Confirm password validation message */}
+            {confirmPassword.length > 0 && !passwordValidation.passwordsMatch && (
+              <View style={styles.validationContainer}>
+                <View style={styles.validationRow}>
+                  <Icon name="cancel" size={16} color="#EF4444" />
+                  <Text style={[styles.validationText, { color: "#EF4444" }]}>
+                    Mật khẩu xác nhận không khớp
+                  </Text>
+                </View>
+              </View>
+            )}
 
-            {/* Password Requirements */}
-            <View style={styles.requirementsContainer}>
-              <Text style={styles.requirementsTitle}>{t('resetPassword.requirements')}</Text>
-              <Text style={styles.requirementText}>• {t('resetPassword.minLength')}</Text>
-              <Text style={styles.requirementText}>• {t('resetPassword.recommendation')}</Text>
-            </View>
+
 
             {/* Reset Password Button */}
             <TouchableOpacity 
-              style={[styles.resetButton, isLoading && styles.resetButtonDisabled]}
+              style={[
+                styles.resetButton, 
+                (isLoading || !passwordValidation.minLength || !passwordValidation.hasLetter || !passwordValidation.hasNumber || !passwordValidation.passwordsMatch) && styles.resetButtonDisabled
+              ]}
               onPress={handleResetPassword}
-              disabled={isLoading}
+              disabled={isLoading || !passwordValidation.minLength || !passwordValidation.hasLetter || !passwordValidation.hasNumber || !passwordValidation.passwordsMatch}
             >
               <Text style={styles.resetButtonText}>
                 {isLoading ? t('common.loading') : t('resetPassword.reset')}
@@ -382,5 +462,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1e90ff',
     fontWeight: '600',
+  },
+  validationContainer: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  validationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  validationText: {
+    fontSize: 13,
+    marginLeft: 8,
+    flex: 1,
   },
 }); 
