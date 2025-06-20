@@ -2,19 +2,21 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Alert,
+    Animated,
     Dimensions,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomToast from '../components/CustomToast';
 import LogoWithText from '../components/Login/LogoWithText';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
@@ -75,6 +77,24 @@ export default function OTPScreen({ route }: OTPScreenProps) {
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   
+  // Toast state
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'error' | 'success' | 'warning' | 'info'>('error');
+  
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  
+  // Resend modal states
+  const [showResendLoadingModal, setShowResendLoadingModal] = useState(false);
+  const [showResendSuccessModal, setShowResendSuccessModal] = useState(false);
+  
+  // Auto navigate timer
+  const [autoNavigateTimer, setAutoNavigateTimer] = useState(3);
+  
+  // Spinning animation
+  const spinValue = useRef(new Animated.Value(0)).current;
+  
   const inputRefs = useRef<TextInput[]>([]);
 
   // Prevent uncontrolled back navigation for forgot-password flow
@@ -122,7 +142,6 @@ export default function OTPScreen({ route }: OTPScreenProps) {
     const otpCode = otp.join('');
     
     if (otpCode.length !== 6) {
-      Alert.alert(t('common.error'), t('otp.enterComplete'));
       return;
     }
 
@@ -173,69 +192,8 @@ export default function OTPScreen({ route }: OTPScreenProps) {
             otpCode: otpCode 
           });
         } else {
-          // Auto login after successful registration verification
-          console.log('🟢 OTP verified successfully, attempting auto login...');
-          console.log('🔍 Debug - Password check:', {
-            hasPassword: !!password,
-            passwordLength: password.length,
-            passwordTrimmed: password.trim().length
-          });
-          
-          if (password && password.trim()) {
-            try {
-              console.log('🟡 Starting auto login process...');
-              
-              // Prepare login request
-              const loginRequest: EmailLoginRequest = {
-                email: email.trim().toLowerCase(),
-                password: password.trim()
-              };
-              
-              console.log('🟡 Auto login request:', { email: loginRequest.email, password: '[HIDDEN]' });
-              
-              // Call email login API
-              const loginResponse = await authService.emailLogin(loginRequest);
-              
-              console.log('🟢 Auto login successful:', loginResponse);
-              
-              // Create user profile for AuthContext
-              const userProfile = {
-                id: loginResponse.user_information.email,
-                email: loginResponse.user_information.email,
-                name: loginResponse.user_information.full_name,
-                picture: loginResponse.user_information.avatar_url
-              };
-              
-              console.log('🟡 Updating auth context with user profile...');
-              
-              // Update auth context with user data
-              await login(userProfile);
-              
-              console.log('🟢 Auto login complete, navigating to MainTab');
-              
-              // Navigate directly to main app
-              navigation.replace('MainTab');
-              
-            } catch (loginError: any) {
-              console.error('🔴 Auto login failed:', loginError);
-              // Fallback to login screen if auto login fails
-              Alert.alert(t('common.success'), 'Account verified successfully! Please login to continue.', [
-                {
-                  text: t('common.confirm'),
-                  onPress: () => navigation.replace('Login'),
-                },
-              ]);
-            }
-          } else {
-            // No password available, navigate to login
-            console.log('🔴 No password available for auto login, navigating to login screen');
-            Alert.alert(t('common.success'), 'Account verified successfully! Please login to continue.', [
-              {
-                text: t('common.confirm'),
-                onPress: () => navigation.replace('Login'),
-              },
-            ]);
-          }
+          // Show success modal for registration
+          setShowSuccessModal(true);
         }
       } else {
         // Status code is not 200 or success is false
@@ -245,16 +203,16 @@ export default function OTPScreen({ route }: OTPScreenProps) {
         
         // Handle specific status codes
         if (verifyResult.status_code === 400) {
-          errorMessage = 'Invalid OTP code. Please check and try again.';
+          errorMessage = 'Mã OTP không đúng. Vui lòng kiểm tra lại.';
         } else if (verifyResult.status_code === 404) {
-          errorMessage = 'OTP not found. Please request a new one.';
+          errorMessage = 'Không tìm thấy mã OTP. Vui lòng yêu cầu mã mới.';
         } else if (verifyResult.status_code === 429) {
-          errorMessage = 'Too many attempts. Please try again later.';
+          errorMessage = 'Quá nhiều lần thử. Vui lòng thử lại sau.';
         } else if (verifyResult.status_code === 500) {
-          errorMessage = 'Server error. Please try again later.';
+          errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
         }
         
-        Alert.alert(t('common.error'), errorMessage);
+        showToast(errorMessage, 'error');
       }
       
     } catch (error: any) {
@@ -267,14 +225,16 @@ export default function OTPScreen({ route }: OTPScreenProps) {
         errorMessage = error.message;
       }
       
-      Alert.alert(t('common.error'), errorMessage);
+      showToast(errorMessage, 'error');
     }
   };
 
   const handleResendOTP = async () => {
     if (!canResend) return;
     
+    setShowResendLoadingModal(true);
     setResendLoading(true);
+    
     try {
       console.log('🟡 Resending OTP to:', email);
       
@@ -284,28 +244,36 @@ export default function OTPScreen({ route }: OTPScreenProps) {
       console.log('🟢 OTP resent successfully');
       
       setResendLoading(false);
+      setShowResendLoadingModal(false);
       setTimer(60);
       setCanResend(false);
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
       
-      Alert.alert(t('common.success'), 'OTP has been resent to your email.');
+      // Show success modal
+      setShowResendSuccessModal(true);
+      
+      // Auto hide success modal after 2 seconds
+      setTimeout(() => {
+        setShowResendSuccessModal(false);
+      }, 2000);
       
     } catch (error: any) {
       setResendLoading(false);
+      setShowResendLoadingModal(false);
       console.error('🔴 Resend OTP failed:', error);
       
       let errorMessage = t('otp.resendFailed');
       
       if (error.message.includes('CONFLICT')) {
-        errorMessage = 'Email already verified or does not exist.';
+        errorMessage = t('otp.emailAlreadyVerified');
       } else if (error.message.includes('TOO_MANY_REQUESTS')) {
-        errorMessage = 'Too many requests. Please wait before requesting again.';
+        errorMessage = t('otp.tooManyRequests');
       } else if (error.message) {
         errorMessage = error.message;
       }
       
-      Alert.alert(t('common.error'), errorMessage);
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -331,6 +299,118 @@ export default function OTPScreen({ route }: OTPScreenProps) {
       ? t('otp.sentToReset') 
       : t('otp.sentTo');
   };
+
+  const showToast = (message: string, type: 'error' | 'success' | 'warning' | 'info' = 'error') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
+
+  const hideToast = () => {
+    setToastVisible(false);
+  };
+
+  const handleSuccessModalOk = async () => {
+    setShowSuccessModal(false);
+    
+    // Auto login after successful registration verification
+    console.log('🟢 OTP verified successfully, attempting auto login...');
+    console.log('🔍 Debug - Password check:', {
+      hasPassword: !!password,
+      passwordLength: password.length,
+      passwordTrimmed: password.trim().length
+    });
+    
+    if (password && password.trim()) {
+      try {
+        console.log('🟡 Starting auto login process...');
+        
+        // Prepare login request
+        const loginRequest: EmailLoginRequest = {
+          email: email.trim().toLowerCase(),
+          password: password.trim()
+        };
+        
+        console.log('🟡 Auto login request:', { email: loginRequest.email, password: '[HIDDEN]' });
+        
+        // Call email login API
+        const loginResponse = await authService.emailLogin(loginRequest);
+        
+        console.log('🟢 Auto login successful:', loginResponse);
+        
+        // Create user profile for AuthContext
+        const userProfile = {
+          id: loginResponse.user_information.email,
+          email: loginResponse.user_information.email,
+          name: loginResponse.user_information.full_name,
+          picture: loginResponse.user_information.avatar_url
+        };
+        
+        console.log('🟡 Updating auth context with user profile...');
+        
+        // Update auth context with user data
+        await login(userProfile);
+        
+        console.log('🟢 Auto login complete, navigating to MainTab');
+        
+        // Navigate directly to main app
+        navigation.replace('MainTab');
+        
+      } catch (loginError: any) {
+        console.error('🔴 Auto login failed:', loginError);
+        // Fallback to login screen if auto login fails
+        navigation.replace('Login');
+      }
+    } else {
+      // No password available, navigate to login
+      console.log('🔴 No password available for auto login, navigating to login screen');
+      navigation.replace('Login');
+    }
+  };
+
+  // Auto navigate countdown
+  useEffect(() => {
+    let interval: number;
+    if (showSuccessModal && autoNavigateTimer > 0) {
+      interval = setInterval(() => {
+        setAutoNavigateTimer(autoNavigateTimer - 1);
+      }, 1000);
+    } else if (showSuccessModal && autoNavigateTimer === 0) {
+      handleSuccessModalOk();
+    }
+    return () => clearInterval(interval);
+  }, [showSuccessModal, autoNavigateTimer]);
+
+  // Reset auto navigate timer when modal shows
+  useEffect(() => {
+    if (showSuccessModal) {
+      setAutoNavigateTimer(3);
+    }
+  }, [showSuccessModal]);
+
+  // Spinning animation effect
+  useEffect(() => {
+    if (showResendLoadingModal) {
+      const spinAnimation = Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      );
+      spinAnimation.start();
+      
+      return () => {
+        spinAnimation.stop();
+        spinValue.setValue(0);
+      };
+    }
+  }, [showResendLoadingModal, spinValue]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   return (
     <KeyboardAvoidingView 
@@ -422,6 +502,84 @@ export default function OTPScreen({ route }: OTPScreenProps) {
           <Text style={styles.helpText}>{t('otp.helpText')}</Text>
         </View>
       </ScrollView>
+      
+      {/* Resend Loading Modal */}
+      <Modal
+        visible={showResendLoadingModal}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.loadingIconContainer}>
+              <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                <Icon name="sync" size={40} color="#1e90ff" />
+              </Animated.View>
+            </View>
+            <Text style={styles.modalTitle}>{t('otp.sendingOtp')}</Text>
+            <Text style={styles.modalMessage}>
+              {t('otp.pleaseWait')}
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Resend Success Modal */}
+      <Modal
+        visible={showResendSuccessModal}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.successIconContainer}>
+              <Icon name="check-circle" size={40} color="#10B981" />
+            </View>
+            <Text style={styles.modalTitle}>{t('otp.otpSentSuccess')}</Text>
+            <Text style={styles.modalMessage}>
+              {t('otp.newOtpSent')}
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.successIconContainer}>
+              <Icon name="check-circle" size={60} color="#10B981" />
+            </View>
+            <Text style={styles.modalTitle}>{t('otp.success')}</Text>
+            <Text style={styles.modalMessage}>
+              {t('otp.accountCreatedSuccess')}
+            </Text>
+            <Text style={styles.timerText}>
+              {t('otp.autoNavigateIn', { seconds: autoNavigateTimer })}
+            </Text>
+            <TouchableOpacity 
+              style={styles.modalButton}
+              onPress={handleSuccessModalOk}
+            >
+              <Text style={styles.modalButtonText}>{t('common.okay')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      
+      <CustomToast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={hideToast}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -547,5 +705,48 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     maxWidth: 280,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    width: '80%',
+    alignItems: 'center',
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 280,
+  },
+  modalButton: {
+    padding: 12,
+    backgroundColor: '#1e90ff',
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  loadingIconContainer: {
+    marginBottom: 20,
   },
 }); 

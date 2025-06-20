@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Animated,
-  Dimensions,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Animated,
+    Dimensions,
+    Keyboard,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -235,149 +237,151 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
-        {/* Compact Logo */}
-        <View style={styles.logoContainer}>
-          <Logo />
-        </View>
-        
-        {/* Animated Login Card */}
-        <Animated.View style={[
-          styles.loginCard, 
-          { 
-            opacity: cardOpacity, 
-            transform: [{ translateY: cardTranslateY }] 
-          }
-        ]}> 
-            <Text style={styles.loginTitle}>{t('login.signInTitle')}</Text>
-            
-            {/* Auto-fill Test Data Checkbox */}
-            <TouchableOpacity 
-              style={styles.autoFillContainer}
-              onPress={() => handleAutoFillToggle(!autoFillTest)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.checkbox, autoFillTest && styles.checkboxChecked]}>
-                {autoFillTest && (
-                  <Icon name="check" size={14} color="#fff" />
-                )}
-              </View>
-              <Text style={styles.autoFillText}>{t('register.autoFillTest')}</Text>
-            </TouchableOpacity>
-            
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>{t('email')}</Text>
-              <View style={styles.inputWrapper}>
-                <Icon name="email" size={20} color="#9CA3AF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder={t('placeholders.enterEmail')}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="next"
-                />
-              </View>
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>{t('login.password')}</Text>
-              <View style={styles.inputWrapper}>
-                <Icon name="lock" size={20} color="#9CA3AF" style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.textInput, { flex: 1 }]}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder={t('placeholders.enterPassword')}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="done"
-                  onSubmitEditing={handleEmailLogin}
-                />
-                <TouchableOpacity 
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                >
-                  <Icon 
-                    name={showPassword ? "visibility" : "visibility-off"} 
-                    size={20} 
-                    color="#9CA3AF" 
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
+          {/* Compact Logo */}
+          <View style={styles.logoContainer}>
+            <Logo />
+          </View>
+          
+          {/* Animated Login Card */}
+          <Animated.View style={[
+            styles.loginCard, 
+            { 
+              opacity: cardOpacity, 
+              transform: [{ translateY: cardTranslateY }] 
+            }
+          ]}> 
+              <Text style={styles.loginTitle}>{t('login.signInTitle')}</Text>
+              
+              {/* Auto-fill Test Data Checkbox */}
+              <TouchableOpacity 
+                style={styles.autoFillContainer}
+                onPress={() => handleAutoFillToggle(!autoFillTest)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, autoFillTest && styles.checkboxChecked]}>
+                  {autoFillTest && (
+                    <Icon name="check" size={14} color="#fff" />
+                  )}
+                </View>
+                <Text style={styles.autoFillText}>{t('register.autoFillTest')}</Text>
+              </TouchableOpacity>
+              
+              {/* Email Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>{t('email')}</Text>
+                <View style={styles.inputWrapper}>
+                  <Icon name="email" size={20} color="#9CA3AF" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder={t('placeholders.enterEmail')}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="next"
                   />
-                </TouchableOpacity>
+                </View>
               </View>
-            </View>
 
-            {/* Remember Me */}
-            <TouchableOpacity 
-              style={styles.rememberMeContainer}
-              onPress={() => setRememberMe(!rememberMe)}
-            >
-              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                {rememberMe && <Icon name="check" size={14} color="#fff" />}
+              {/* Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>{t('login.password')}</Text>
+                <View style={styles.inputWrapper}>
+                  <Icon name="lock" size={20} color="#9CA3AF" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.textInput, { flex: 1 }]}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder={t('placeholders.enterPassword')}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    onSubmitEditing={handleEmailLogin}
+                  />
+                  <TouchableOpacity 
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeButton}
+                  >
+                    <Icon 
+                      name={showPassword ? "visibility" : "visibility-off"} 
+                      size={20} 
+                      color="#9CA3AF" 
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <Text style={styles.rememberMeText}>{t('login.rememberMe')}</Text>
+
+              {/* Remember Me */}
+              <TouchableOpacity 
+                style={styles.rememberMeContainer}
+                onPress={() => setRememberMe(!rememberMe)}
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && <Icon name="check" size={14} color="#fff" />}
+                </View>
+                <Text style={styles.rememberMeText}>{t('login.rememberMe')}</Text>
+              </TouchableOpacity>
+
+              {/* Login Button */}
+              <TouchableOpacity 
+                style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+                onPress={handleEmailLogin}
+                disabled={isLoading}
+              >
+                <Text style={styles.loginButtonText}>
+                  {isLoading ? t('common.loading') : t('login.signIn')}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Forgot Password */}
+              <TouchableOpacity style={styles.forgotPasswordButton} onPress={handleForgotPassword}>
+                <Text style={styles.forgotPasswordText}>{t('login.forgotPassword')}</Text>
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>{t('login.orContinueWith')}</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Google Login */}
+              <GoogleButton onPress={handleGoogleLogin} />
+          </Animated.View>
+
+          {/* Sign Up Link */}
+          <View style={styles.signupContainer}>
+            <Text style={styles.signupText}>
+              {t('login.noAccount')} 
+            </Text>
+            <TouchableOpacity onPress={handleSignUp}>
+              <Text style={styles.signupLink}>{t('login.signUp')}</Text>
             </TouchableOpacity>
-
-            {/* Login Button */}
-            <TouchableOpacity 
-              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-              onPress={handleEmailLogin}
-              disabled={isLoading}
-            >
-              <Text style={styles.loginButtonText}>
-                {isLoading ? t('common.loading') : t('login.signIn')}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Forgot Password */}
-            <TouchableOpacity style={styles.forgotPasswordButton} onPress={handleForgotPassword}>
-              <Text style={styles.forgotPasswordText}>{t('login.forgotPassword')}</Text>
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{t('login.orContinueWith')}</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Google Login */}
-            <GoogleButton onPress={handleGoogleLogin} />
-        </Animated.View>
-
-        {/* Sign Up Link */}
-        <View style={styles.signupContainer}>
-          <Text style={styles.signupText}>
-            {t('login.noAccount')} 
-          </Text>
-          <TouchableOpacity onPress={handleSignUp}>
-            <Text style={styles.signupLink}>{t('login.signUp')}</Text>
-          </TouchableOpacity>
+          </View>
+          
+          {/* Footer */}
+          <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
+            <Text style={styles.footerText}>
+              {t('login.termsText')}
+            </Text>
+          </View>
         </View>
-        
-        {/* Footer */}
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
-          <Text style={styles.footerText}>
-            {t('login.termsText')}
-          </Text>
-        </View>
+
+        {/* Custom Toast */}
+        <CustomToast
+          visible={toast.visible}
+          message={toast.message}
+          type={toast.type}
+          onHide={hideToast}
+          duration={4000}
+        />
       </View>
-
-      {/* Custom Toast */}
-      <CustomToast
-        visible={toast.visible}
-        message={toast.message}
-        type={toast.type}
-        onHide={hideToast}
-        duration={4000}
-      />
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
