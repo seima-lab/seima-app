@@ -329,7 +329,15 @@
     "resendIn": "Gửi lại mã sau {{seconds}}s",
     "resendCooldown": "Vui lòng đợi {{seconds}} giây trước khi yêu cầu mã mới.",
     "tooManyRequests": "Bạn đang gửi yêu cầu quá nhanh. Vui lòng đợi một chút trước khi thử lại.",
-    "helpText": "Không nhận được mã? Kiểm tra hộp thư rác hoặc liên hệ hỗ trợ."
+    "emailAlreadyVerified": "Email đã được xác minh hoặc không tồn tại.",
+    "helpText": "Không nhận được mã? Kiểm tra hộp thư rác hoặc liên hệ hỗ trợ.",
+    "sendingOtp": "Đang gửi OTP...",
+    "pleaseWait": "Vui lòng đợi trong khi chúng tôi gửi mã",
+    "otpSentSuccess": "Đã gửi OTP thành công!",
+    "newOtpSent": "Mã xác minh mới đã được gửi đến email của bạn",
+    "success": "Thành công!",
+    "accountCreatedSuccess": "Tài khoản của bạn đã được tạo thành công",
+    "autoNavigateIn": "Tự động chuyển trang sau {{seconds}}s"
   },
   
   "verifyOtp": {
@@ -425,6 +433,7 @@
     "cancel": "Hủy",
     "continue": "Tiếp tục",
     "ok": "Hiểu rồi!",
+    "okay": "Đồng ý",
     "retry": "Thử lại"
   },
   

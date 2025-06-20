@@ -288,7 +288,15 @@
     "resendIn": "Resend code in {{seconds}}s",
     "resendCooldown": "Please wait {{seconds}} seconds before requesting a new code.",
     "tooManyRequests": "You're sending requests too quickly. Please wait a moment before trying again.",
-    "helpText": "Didn't receive the code? Check your spam folder or contact support."
+    "emailAlreadyVerified": "Email has already been verified or does not exist.",
+    "helpText": "Didn't receive the code? Check your spam folder or contact support.",
+    "sendingOtp": "Sending OTP...",
+    "pleaseWait": "Please wait while we send the code",
+    "otpSentSuccess": "OTP Sent Successfully!",
+    "newOtpSent": "A new verification code has been sent to your email",
+    "success": "Success!",
+    "accountCreatedSuccess": "Your account has been created successfully",
+    "autoNavigateIn": "Automatically redirecting in {{seconds}}s"
   },
   
   "verifyOtp": {
@@ -384,6 +392,7 @@
     "cancel": "Cancel",
     "continue": "Continue",
     "ok": "Got it!",
+    "okay": "Okay",
     "retry": "Try Again"
   },
   
