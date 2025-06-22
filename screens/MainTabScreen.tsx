@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
 import BottomNavigation from '../components/BottomNavigation';
+import { getDefaultTab, getScreenForTab, TabType } from '../utils/mainTabUtils';
 import FinanceScreen from './FinanceScreen';
 import SettingScreen from './SettingScreen';
 import WalletScreen from './WalletScreen';
 
 const MainTabScreen = () => {
-  const [activeTab, setActiveTab] = useState<'Finance' | 'Wallet' | 'Setting'>('Finance');
+  const [activeTab, setActiveTab] = useState<TabType>(getDefaultTab());
 
   const renderScreen = () => {
-    switch (activeTab) {
+    const screenType = getScreenForTab(activeTab);
+    
+    switch (screenType) {
       case 'Finance':
         return <FinanceScreen />;
       case 'Wallet':

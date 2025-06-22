@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -7,6 +6,7 @@ import '../../i18n';
 interface GoogleButtonProps {
   onPress?: () => void;
   style?: ViewStyle;
+  disabled?: boolean;
 }
 
 // Official Google Logo SVG Component
@@ -31,19 +31,23 @@ const GoogleLogo = ({ size = 20 }: { size?: number }) => (
   </Svg>
 );
 
-export default function GoogleButton({ onPress, style }: GoogleButtonProps) {
+export default function GoogleButton({ onPress, style, disabled = false }: GoogleButtonProps) {
   const { t } = useTranslation();
   
   return (
     <TouchableOpacity 
-      style={[styles.googleButton, style]} 
-      onPress={onPress} 
-      activeOpacity={0.8}
+      style={[styles.googleButton, disabled && styles.googleButtonDisabled, style]} 
+      onPress={disabled ? undefined : onPress} 
+      activeOpacity={disabled ? 1 : 0.8}
+      disabled={disabled}
+      testID="google-login-button"
     >
       <View style={styles.iconContainer}>
         <GoogleLogo size={20} />
       </View>
-      <Text style={styles.googleButtonText}>{t('login.continueWithGoogle')}</Text>
+      <Text style={[styles.googleButtonText, disabled && styles.googleButtonTextDisabled]}>
+        {t('login.continueWithGoogle')}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -69,6 +73,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  googleButtonDisabled: {
+    opacity: 0.6,
+    backgroundColor: '#F9FAFB',
+  },
   iconContainer: {
     width: 20,
     height: 20,
@@ -80,5 +88,8 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     fontWeight: '500',
     fontSize: 16,
+  },
+  googleButtonTextDisabled: {
+    color: '#9CA3AF',
   },
 }); 

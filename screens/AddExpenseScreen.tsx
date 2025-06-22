@@ -1,6 +1,6 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
@@ -28,6 +28,22 @@ import { categoryService, CategoryType, LocalCategory } from '../services/catego
 import { CreateTransactionRequest, transactionService, TransactionType } from '../services/transactionService';
 import { WalletResponse, walletService } from '../services/walletService';
 
+// Cache for categories and wallets to avoid repeated API calls
+interface DataCache {
+  expenseCategories: LocalCategory[] | null;
+  incomeCategories: LocalCategory[] | null;
+  wallets: WalletResponse[] | null;
+  lastFetchTime: number;
+}
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+let dataCache: DataCache = {
+  expenseCategories: null,
+  incomeCategories: null,
+  wallets: null,
+  lastFetchTime: 0
+};
+
 export default function AddExpenseScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -47,77 +63,97 @@ export default function AddExpenseScreen() {
   const [wallets, setWallets] = useState<WalletResponse[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<number | null>(null);
   const [showWalletPicker, setShowWalletPicker] = useState(false);
-  const [loadingWallets, setLoadingWallets] = useState(true);
   
   // Categories state
-  const [categories, setCategories] = useState<LocalCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [expenseCategories, setExpenseCategories] = useState<LocalCategory[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<LocalCategory[]>([]);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Transaction saving state
   const [saving, setSaving] = useState(false);
 
-  // Load categories and wallets when component mounts or tab changes
-  useEffect(() => {
-    loadCategories();
-    loadWallets();
-  }, [activeTab]);
+  // Memoized current categories based on active tab
+  const currentCategories = useMemo(() => {
+    return activeTab === 'expense' ? expenseCategories : incomeCategories;
+  }, [activeTab, expenseCategories, incomeCategories]);
 
-  const loadWallets = async () => {
-    if (!user) {
-      setLoadingWallets(false);
-      return;
+  // Check if cache is still valid
+  const isCacheValid = useCallback(() => {
+    return Date.now() - dataCache.lastFetchTime < CACHE_DURATION;
+  }, []);
+
+  // Load data from cache if available and valid
+  const loadFromCache = useCallback(() => {
+    if (isCacheValid()) {
+      console.log('📦 Loading from cache...');
+      
+      if (dataCache.expenseCategories) {
+        setExpenseCategories(dataCache.expenseCategories);
+      }
+      if (dataCache.incomeCategories) {
+        setIncomeCategories(dataCache.incomeCategories);
+      }
+      if (dataCache.wallets) {
+        setWallets(dataCache.wallets);
+        // Auto-select default wallet
+        if (!selectedWallet && dataCache.wallets.length > 0) {
+          const defaultWallet = dataCache.wallets.find(wallet => wallet.isDefault);
+          setSelectedWallet(defaultWallet ? defaultWallet.walletId : dataCache.wallets[0].walletId);
+        }
+      }
+      
+      return true;
+    }
+    return false;
+  }, [isCacheValid, selectedWallet]);
+
+  // Optimized wallet loading with caching
+  const loadWallets = useCallback(async (useCache = true) => {
+    if (!user) return [];
+
+    // Try cache first
+    if (useCache && dataCache.wallets && isCacheValid()) {
+      console.log('💳 Using cached wallets');
+      return dataCache.wallets;
     }
 
-    setLoadingWallets(true);
-    
     try {
-      console.log('🔄 Loading wallets for user:', user.id);
+      console.log('🔄 Loading wallets from API...');
       
       const userId = parseInt(user.id) || 1;
       const userWallets = await walletService.getAllWallets(userId);
       
-      console.log('💳 Loaded wallets:', userWallets);
+      console.log('💳 Loaded wallets:', userWallets.length);
       
-      setWallets(userWallets);
+      // Cache the results
+      dataCache.wallets = userWallets;
+      dataCache.lastFetchTime = Date.now();
       
-      // Auto-select default wallet or first wallet
-      if (userWallets.length > 0 && !selectedWallet) {
-        const defaultWallet = userWallets.find(wallet => wallet.isDefault);
-        setSelectedWallet(defaultWallet ? defaultWallet.walletId : userWallets[0].walletId);
-      }
+      return userWallets;
       
     } catch (err: any) {
       console.error('❌ Failed to load wallets:', err);
-      Alert.alert(
-        t('common.error'),
-        'Failed to load wallets. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setLoadingWallets(false);
+      throw err;
     }
-  };
+  }, [user, isCacheValid]);
 
-  const loadCategories = async () => {
-    if (!user) {
-      setError('User not authenticated');
-      setLoading(false);
-      return;
+  // Optimized categories loading with caching
+  const loadCategoriesByType = useCallback(async (categoryType: CategoryType, useCache = true) => {
+    if (!user) return [];
+
+    // Check cache first
+    const cacheKey = categoryType === CategoryType.EXPENSE ? 'expenseCategories' : 'incomeCategories';
+    if (useCache && dataCache[cacheKey] && isCacheValid()) {
+      console.log(`📊 Using cached ${categoryType} categories`);
+      return dataCache[cacheKey]!;
     }
 
-    setLoading(true);
-    setError(null);
-    
     try {
-      console.log('🔄 Loading categories for AddExpense:', { activeTab, userId: user.id });
+      console.log(`🔄 Loading ${categoryType} categories from API...`);
       
-      // Convert tab to CategoryType
-      const categoryType = activeTab === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME;
-      
-      // For now, using hardcoded userId and groupId - you should get these from user context
       const userId = parseInt(user.id) || 1;
-      const groupId = 1; // You might want to get this from user context or app state
+      const groupId = 1;
       
       // Fetch categories from API
       const apiCategories = await categoryService.getAllCategoriesByTypeAndUser(
@@ -126,16 +162,12 @@ export default function AddExpenseScreen() {
         groupId
       );
       
-      console.log('📊 API categories received for AddExpense:', apiCategories);
-      console.log('📊 Categories count:', apiCategories.length);
-      console.log('📊 Active tab:', activeTab, 'CategoryType:', categoryType);
+      console.log(`📊 API categories received for ${categoryType}:`, apiCategories.length);
       
       // Convert API categories to local format
       const localCategories = apiCategories.map(apiCategory => 
         categoryService.convertToLocalCategory(apiCategory)
       );
-      
-      console.log('📊 Local categories after conversion:', localCategories);
       
       // Add edit category option at the end
       const editCategory: LocalCategory = {
@@ -147,24 +179,17 @@ export default function AddExpenseScreen() {
       
       const categoriesWithEdit = [...localCategories, editCategory];
       
-      console.log('🔄 Converted categories for AddExpense:', categoriesWithEdit);
+      // Cache the results
+      dataCache[cacheKey] = categoriesWithEdit;
+      dataCache.lastFetchTime = Date.now();
       
-      setCategories(categoriesWithEdit);
-      
-      // Auto-select first category if none selected
-      if (!selectedCategory && localCategories.length > 0) {
-        setSelectedCategory(localCategories[0].key);
-      }
+      return categoriesWithEdit;
       
     } catch (err: any) {
-      console.error('❌ Failed to load categories in AddExpense:', err);
-      setError(err.message || 'Failed to load categories');
+      console.error(`❌ Failed to load ${categoryType} categories:`, err);
       
-      // Fallback to default categories
-      const categoryType = activeTab === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME;
+      // Return default categories as fallback
       const defaultCategories = categoryService.getDefaultCategories(categoryType);
-      
-      // Add edit category option
       const editCategory: LocalCategory = {
         key: 'edit',
         label: 'Edit Categories',
@@ -172,92 +197,164 @@ export default function AddExpenseScreen() {
         color: '#1e90ff'
       };
       
-      setCategories([...defaultCategories, editCategory]);
+      const fallbackCategories = [...defaultCategories, editCategory];
       
-      if (!selectedCategory && defaultCategories.length > 0) {
-        setSelectedCategory(defaultCategories[0].key);
+      // Don't cache fallback data
+      return fallbackCategories;
+    }
+  }, [user, isCacheValid]);
+
+  // Load all data in parallel
+  const loadAllData = useCallback(async (useCache = true) => {
+    if (!user) {
+      setInitialLoading(false);
+      return;
+    }
+
+    setError(null);
+    
+    try {
+      // Load from cache first if available
+      if (useCache && loadFromCache()) {
+        setInitialLoading(false);
+        return;
       }
+
+      console.log('🚀 Loading all data in parallel...');
+      
+      // Load all data in parallel for better performance
+      const [expenseCats, incomeCats, userWallets] = await Promise.all([
+        loadCategoriesByType(CategoryType.EXPENSE, useCache),
+        loadCategoriesByType(CategoryType.INCOME, useCache),
+        loadWallets(useCache)
+      ]);
+
+      // Update state
+      setExpenseCategories(expenseCats);
+      setIncomeCategories(incomeCats);
+      setWallets(userWallets);
+
+      // Auto-select first category and default wallet
+      if (!selectedCategory) {
+        const currentCats = activeTab === 'expense' ? expenseCats : incomeCats;
+        if (currentCats.length > 0 && currentCats[0].key !== 'edit') {
+          setSelectedCategory(currentCats[0].key);
+        }
+      }
+
+      if (!selectedWallet && userWallets.length > 0) {
+        const defaultWallet = userWallets.find(wallet => wallet.isDefault);
+        setSelectedWallet(defaultWallet ? defaultWallet.walletId : userWallets[0].walletId);
+      }
+
+      console.log('✅ All data loaded successfully');
+      
+    } catch (err: any) {
+      console.error('❌ Failed to load data:', err);
+      setError(err.message || 'Failed to load data');
       
       Alert.alert(
         t('common.error'),
-        'Failed to load categories from server. Using default categories.',
-        [{ text: 'OK' }]
+        'Failed to load data from server. Please check your connection and try again.',
+        [
+          { text: 'Retry', onPress: () => loadAllData(false) },
+          { text: 'Cancel' }
+        ]
       );
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
     }
-  };
+  }, [user, loadFromCache, loadCategoriesByType, loadWallets, selectedCategory, selectedWallet, activeTab, t]);
 
-  const handleTabChange = (newTab: 'expense' | 'income') => {
+  // Initial load
+  useEffect(() => {
+    loadAllData(true);
+  }, []);
+
+  // Optimized tab change handler
+  const handleTabChange = useCallback((newTab: 'expense' | 'income') => {
     if (newTab !== activeTab) {
       setActiveTab(newTab);
-      setSelectedCategory(''); // Reset selected category when switching tabs
-    }
-  };
-
-  const openDatePicker = () => {
-    setTempDate(date);
-    setShowDate(true);
-  };
-
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDate(false);
-      if (event.type === 'set' && selectedDate) {
-        setDate(selectedDate);
-      }
-    } else {
-      // iOS - update temp date for confirmation
-      if (selectedDate) {
-        setTempDate(selectedDate);
+      
+      // Auto-select first category for the new tab
+      const newCategories = newTab === 'expense' ? expenseCategories : incomeCategories;
+      if (newCategories.length > 0 && newCategories[0].key !== 'edit') {
+        setSelectedCategory(newCategories[0].key);
+      } else {
+        setSelectedCategory('');
       }
     }
-  };
+  }, [activeTab, expenseCategories, incomeCategories]);
 
-  const handleConfirmDate = () => {
-    setDate(tempDate);
-    setShowDate(false);
-  };
-
-  const handleCancelDate = () => {
-    setTempDate(date); // Reset to original date
-    setShowDate(false);
-  };
-
-  const adjustDate = (days: number) => {
-    const newDate = new Date(date);
-    newDate.setDate(newDate.getDate() + days);
-    setDate(newDate);
-  };
-
-  const formatDate = (date: Date) => {
+  // Optimized date handlers with useMemo for date formatting
+  const formattedDate = useMemo(() => {
     return date.toLocaleDateString('vi-VN', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       weekday: 'short'
     });
-  };
+  }, [date]);
 
-  const handleCameraPress = () => {
-    // TODO: Implement camera functionality for receipt scanning
+  const openDatePicker = useCallback(() => {
+    setTempDate(date);
+    setShowDate(true);
+  }, [date]);
+
+  const handleDateChange = useCallback((event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDate(false);
+      if (event.type === 'set' && selectedDate) {
+        setDate(selectedDate);
+      }
+    } else {
+      if (selectedDate) {
+        setTempDate(selectedDate);
+      }
+    }
+  }, []);
+
+  const handleConfirmDate = useCallback(() => {
+    setDate(tempDate);
+    setShowDate(false);
+  }, [tempDate]);
+
+  const handleCancelDate = useCallback(() => {
+    setTempDate(date);
+    setShowDate(false);
+  }, [date]);
+
+  const adjustDate = useCallback((days: number) => {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() + days);
+    setDate(newDate);
+  }, [date]);
+
+  const handleCameraPress = useCallback(() => {
     console.log('Camera pressed - will implement receipt scanning');
     Alert.alert(
       'Camera Feature',
       'Receipt scanning feature will be implemented in a future update.',
       [{ text: 'OK' }]
     );
-  };
+  }, []);
 
-  const handleCategoryPress = (category: LocalCategory) => {
+  const handleCategoryPress = useCallback((category: LocalCategory) => {
     if (category.key === 'edit') {
       navigation.navigate('EditCategoryScreen', { type: activeTab });
     } else {
       setSelectedCategory(category.key);
     }
-  };
+  }, [navigation, activeTab]);
 
-  const handleSaveTransaction = async () => {
+  // Optimized wallet selection
+  const handleWalletSelect = useCallback((walletId: number) => {
+    setSelectedWallet(walletId);
+    setShowWalletPicker(false);
+  }, []);
+
+  // Optimized save transaction with better error handling
+  const handleSaveTransaction = useCallback(async () => {
     // Validate inputs
     if (!amount.trim()) {
       Alert.alert(t('common.error'), 'Please enter an amount');
@@ -280,7 +377,7 @@ export default function AddExpenseScreen() {
     }
 
     // Find the selected category to get its ID
-    const selectedCategoryData = categories.find(cat => cat.key === selectedCategory);
+    const selectedCategoryData = currentCategories.find(cat => cat.key === selectedCategory);
     if (!selectedCategoryData || selectedCategoryData.key === 'edit') {
       Alert.alert(t('common.error'), 'Invalid category selected');
       return;
@@ -293,15 +390,15 @@ export default function AddExpenseScreen() {
       const transactionData: CreateTransactionRequest = {
         user_id: parseInt(user.id) || 1,
         wallet_id: selectedWallet || 1,
-        category_id: parseInt(selectedCategoryData.key), // Assuming category key is the ID
-        group_id: 1, // Default group ID
+        category_id: parseInt(selectedCategoryData.key),
+        group_id: 1,
         transaction_type: activeTab === 'expense' ? TransactionType.EXPENSE : TransactionType.INCOME,
         amount: parseFloat(amount),
-        currency_code: 'VND', // Default currency
-        transaction_date: date.toISOString().split('T')[0], // YYYY-MM-DD format
+        currency_code: 'VND',
+        transaction_date: date.toISOString().split('T')[0],
         description: note.trim() || undefined,
-        receipt_image: null, // TODO: Implement image upload
-        payee_payer_name: undefined, // Optional field
+        receipt_image: null,
+        payee_payer_name: undefined,
       };
 
       console.log('💰 Saving transaction:', transactionData);
@@ -327,9 +424,11 @@ export default function AddExpenseScreen() {
               setAmount('');
               setNote('');
               setDate(new Date());
-              // Keep selected category for convenience
               
-              // Navigate back or to main screen
+              // Invalidate wallet cache to refresh balances
+              dataCache.wallets = null;
+              
+              // Navigate back
               navigation.goBack();
             }
           }
@@ -347,9 +446,10 @@ export default function AddExpenseScreen() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [amount, selectedCategory, selectedWallet, user, currentCategories, activeTab, date, note, t, navigation]);
 
-  const renderCategoryItem = ({ item }: { item: LocalCategory }) => (
+  // Memoized category item renderer for better performance
+  const renderCategoryItem = useCallback(({ item }: { item: LocalCategory }) => (
     <TouchableOpacity
       style={[
         styles.category,
@@ -360,7 +460,38 @@ export default function AddExpenseScreen() {
       <Icon name={item.icon} size={28} color={item.color} />
       <Text style={styles.categoryText}>{item.label}</Text>
     </TouchableOpacity>
-  );
+  ), [selectedCategory, handleCategoryPress]);
+
+  // Memoized wallet item renderer
+  const renderWalletItem = useCallback((wallet: WalletResponse) => (
+    <TouchableOpacity
+      key={wallet.walletId}
+      style={styles.dropdownItem}
+      onPress={() => handleWalletSelect(wallet.walletId)}
+    >
+      <Text style={styles.dropdownItemText}>{wallet.walletName}</Text>
+      <Text style={styles.dropdownItemBalance}>
+        {wallet.balance.toLocaleString('vi-VN')} VND
+      </Text>
+    </TouchableOpacity>
+  ), [handleWalletSelect]);
+
+  // Memoized selected wallet display
+  const selectedWalletDisplay = useMemo(() => {
+    if (!selectedWallet) return 'Chọn ví';
+    const wallet = wallets.find(w => w.walletId === selectedWallet);
+    return wallet?.walletName || 'Chọn ví';
+  }, [selectedWallet, wallets]);
+
+  // Early return if still loading initially
+  if (initialLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#1e90ff" />
+        <Text style={styles.loadingText}>{t('common.loading')}...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView 
@@ -397,7 +528,6 @@ export default function AddExpenseScreen() {
                 <Text style={[styles.tabText, activeTab === 'income' && styles.tabTextActive]}>{t('incomeLabel')}</Text>
               </TouchableOpacity>
             </View>
-            {/* Camera Icon - Only show for expense tab */}
             {activeTab === 'expense' && (
               <TouchableOpacity style={styles.cameraBtn} onPress={handleCameraPress}>
                 <Icon name="camera" size={24} color="#1e90ff" />
@@ -419,7 +549,7 @@ export default function AddExpenseScreen() {
                 style={styles.dateValue}
                 onPress={openDatePicker}
               >
-                <Text style={styles.dateText}>{formatDate(date)}</Text>
+                <Text style={styles.dateText}>{formattedDate}</Text>
               </Pressable>
               <TouchableOpacity 
                 style={styles.dateArrow}
@@ -480,46 +610,21 @@ export default function AddExpenseScreen() {
           {/* Wallet Selection */}
           <View style={styles.row}>
             <Text style={styles.label}>Ví</Text>
-            {loadingWallets ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#1e90ff" />
-              </View>
-            ) : (
-              <View style={styles.dropdownContainer}>
-                <TouchableOpacity 
-                  style={styles.dropdown}
-                  onPress={() => setShowWalletPicker(!showWalletPicker)}
-                >
-                  <Text style={styles.dropdownText}>
-                    {selectedWallet 
-                      ? wallets.find(w => w.walletId === selectedWallet)?.walletName || 'Chọn ví'
-                      : 'Chọn ví'
-                    }
-                  </Text>
-                  <Icon name="chevron-down" size={20} color="#666" />
-                </TouchableOpacity>
-                
-                {showWalletPicker && wallets.length > 0 && (
-                  <View style={styles.dropdownList}>
-                    {wallets.map((wallet) => (
-                      <TouchableOpacity
-                        key={wallet.walletId}
-                        style={styles.dropdownItem}
-                        onPress={() => {
-                          setSelectedWallet(wallet.walletId);
-                          setShowWalletPicker(false);
-                        }}
-                      >
-                        <Text style={styles.dropdownItemText}>{wallet.walletName}</Text>
-                        <Text style={styles.dropdownItemBalance}>
-                          {wallet.balance.toLocaleString('vi-VN')} VND
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity 
+                style={styles.dropdown}
+                onPress={() => setShowWalletPicker(!showWalletPicker)}
+              >
+                <Text style={styles.dropdownText}>{selectedWalletDisplay}</Text>
+                <Icon name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+              
+              {showWalletPicker && wallets.length > 0 && (
+                <View style={styles.dropdownList}>
+                  {wallets.map(renderWalletItem)}
+                </View>
+              )}
+            </View>
           </View>
 
           {/* Amount */}
@@ -540,33 +645,46 @@ export default function AddExpenseScreen() {
             </View>
           </View>
 
+          {/* Note */}
+          <View style={styles.row}>
+            <Text style={styles.label}>{t('note')}</Text>
+            <TextInput
+              style={[styles.input, styles.noteInput]}
+              placeholder={t('enterNote')}
+              value={note}
+              onChangeText={setNote}
+              placeholderTextColor="#aaa"
+              returnKeyType="done"
+              multiline
+              numberOfLines={2}
+            />
+          </View>
+
           {/* Categories */}
           <Text style={[styles.label, styles.categoryTitle]}>{t('category')}</Text>
           
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#1e90ff" />
-              <Text style={styles.loadingText}>{t('common.loading')}...</Text>
-            </View>
-          ) : error ? (
+          {error ? (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={loadCategories}>
+              <TouchableOpacity style={styles.retryButton} onPress={() => loadAllData(false)}>
                 <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <FlatList
-              data={categories}
+              data={currentCategories}
               numColumns={3}
               keyExtractor={item => item.key}
               renderItem={renderCategoryItem}
               scrollEnabled={false}
               contentContainerStyle={styles.categoriesContainer}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={9}
+              windowSize={10}
             />
           )}
 
-          {/* Button */}
+          {/* Save Button */}
           <TouchableOpacity 
             style={[
               styles.button, 
@@ -588,8 +706,6 @@ export default function AddExpenseScreen() {
           </TouchableOpacity>
         </SafeAreaView>
       </ScrollView>
-
-
     </KeyboardAvoidingView>
   );
 }
@@ -599,18 +715,16 @@ const styles = StyleSheet.create({
     flex: 1, 
     backgroundColor: '#fff', 
   },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   scrollContainer: {
     flex: 1,
   },
   safeArea: {
     paddingHorizontal: 16,
     paddingTop: 8,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 200,
   },
   loadingText: {
     marginTop: 16,
@@ -756,6 +870,8 @@ const styles = StyleSheet.create({
   },
   noteInput: {
     flex: 1,
+    minHeight: 50,
+    textAlignVertical: 'top',
   },
   amountContainer: {
     flex: 1,
