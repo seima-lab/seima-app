@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+    Alert,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
@@ -17,11 +18,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigationService } from '../navigation/NavigationService';
+import { CreateWalletRequest, walletService } from '../services/walletService';
 
 interface Props {
   route?: {
     params?: {
       editMode?: boolean;
+      walletId?: number;
       walletData?: any;
     };
   };
@@ -32,16 +35,17 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
   const editMode = route?.params?.editMode || false;
+  const walletId = route?.params?.walletId;
   const walletData = route?.params?.walletData;
 
   const [balance, setBalance] = useState(walletData?.balance || '');
   const [walletName, setWalletName] = useState(walletData?.name || '');
   const [walletType, setWalletType] = useState(walletData?.type || t('wallet.walletTypes.cash'));
   const [bankName, setBankName] = useState(walletData?.bankName || '');
-  const [description, setDescription] = useState(walletData?.description || '');
   const [isDefault, setIsDefault] = useState(walletData?.isDefault || false);
   const [excludeFromTotal, setExcludeFromTotal] = useState(walletData?.excludeFromTotal || false);
   const [showWalletTypes, setShowWalletTypes] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Add keyboard event listeners for debugging
   useEffect(() => {
@@ -80,9 +84,16 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
 
   const walletTypes = [
     t('wallet.walletTypes.cash'),
-    t('wallet.walletTypes.ewallet'),
     t('wallet.walletTypes.bank')
   ];
+
+  // Map wallet type to walletTypeId
+  const getWalletTypeId = (type: string): number => {
+    if (type === t('wallet.walletTypes.bank')) {
+      return 2;
+    }
+    return 1; // cash
+  };
 
   const handleWalletTypeSelect = (type: string) => {
     setWalletType(type);
@@ -92,18 +103,89 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
     }
   };
 
-  const handleSave = () => {
-    // Add save logic here
-    console.log('Save wallet:', {
-      balance,
-      walletName,
-      walletType,
-      bankName,
-      description,
-      isDefault,
-      excludeFromTotal,
-    });
-    navigation.goBack();
+  const validateForm = (): boolean => {
+    if (!walletName.trim()) {
+      Alert.alert(t('common.error'), 'Please enter wallet name');
+      return false;
+    }
+
+    if (!balance.trim() || isNaN(parseFloat(balance))) {
+      Alert.alert(t('common.error'), 'Please enter a valid balance');
+      return false;
+    }
+
+    if (parseFloat(balance) < 0) {
+      Alert.alert(t('common.error'), 'Balance cannot be negative');
+      return false;
+    }
+
+    if (walletType === t('wallet.walletTypes.bank') && !bankName.trim()) {
+      Alert.alert(t('common.error'), 'Please enter bank name');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
+    setSaving(true);
+
+    try {
+             // Prepare wallet data in snake_case format
+       const walletRequest: CreateWalletRequest = {
+         wallet_name: walletName.trim(),
+         balance: parseFloat(balance),
+         wallet_type_id: getWalletTypeId(walletType),
+         is_default: isDefault,
+         exclude_from_total: excludeFromTotal,
+         bank_name: bankName.trim() || undefined,
+         icon_url: undefined // Set to undefined instead of null
+       };
+
+      console.log('💾 Saving wallet:', walletRequest);
+
+      let result;
+      if (editMode && walletId) {
+        // Update existing wallet
+        result = await walletService.updateWallet(walletId, walletRequest);
+        console.log('✅ Wallet updated successfully:', result);
+        
+        Alert.alert(
+          t('common.success'),
+          'Wallet updated successfully!',
+          [{ text: 'OK', onPress: () => {
+            walletService.markForRefresh();
+            navigation.goBack();
+          }}]
+        );
+      } else {
+        // Create new wallet
+        result = await walletService.createWallet(walletRequest);
+        console.log('✅ Wallet created successfully:', result);
+        
+        Alert.alert(
+          t('common.success'),
+          'Wallet created successfully!',
+          [{ text: 'OK', onPress: () => {
+            walletService.markForRefresh();
+            navigation.goBack();
+          }}]
+        );
+      }
+
+    } catch (error: any) {
+      console.error('❌ Failed to save wallet:', error);
+      
+      Alert.alert(
+        t('common.error'),
+        error.message || 'Failed to save wallet. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const renderWalletTypeDropdown = () => (
@@ -139,8 +221,6 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   const getFieldLabel = () => {
     if (walletType === t('wallet.walletTypes.bank')) {
       return t('wallet.bankName');
-    } else if (walletType === t('wallet.walletTypes.ewallet')) {
-      return t('wallet.eWalletName');
     }
     return '';
   };
@@ -148,8 +228,6 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   const getFieldPlaceholder = () => {
     if (walletType === t('wallet.walletTypes.bank')) {
       return t('wallet.placeholders.enterBankName');
-    } else if (walletType === t('wallet.walletTypes.ewallet')) {
-      return t('wallet.placeholders.enterEWalletName');
     }
     return '';
   };
@@ -169,8 +247,8 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
           <Text style={styles.headerTitle}>
             {editMode ? t('wallet.editWalletTitle') : t('wallet.addWalletTitle')}
           </Text>
-          <TouchableOpacity onPress={handleSave}>
-            <Icon name="check" size={24} color="#333" />
+          <TouchableOpacity onPress={handleSave} disabled={saving}>
+            <Icon name="check" size={24} color={saving ? "#ccc" : "#333"} />
           </TouchableOpacity>
         </View>
 
@@ -182,7 +260,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
           {/* Balance Field */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>
-              {t('wallet.balanceRequired')}
+              {t('wallet.balanceRequired')} <Text style={styles.required}>*</Text>
             </Text>
             <View style={styles.inputContainer}>
               <TextInput
@@ -199,6 +277,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
                 }}
                 autoCorrect={false}
                 returnKeyType="next"
+                editable={!saving}
               />
               <Text style={styles.currency}>{t('currency')}</Text>
             </View>
@@ -206,7 +285,9 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
 
           {/* Wallet Name Field */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('wallet.walletName')}</Text>
+            <Text style={styles.sectionLabel}>
+              {t('wallet.walletName')} <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
               style={styles.textInput}
               placeholder={t('wallet.placeholders.enterWalletName')}
@@ -220,40 +301,33 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
               }}
               autoCorrect={false}
               returnKeyType="next"
+              editable={!saving}
             />
           </View>
 
           {/* Wallet Type Field */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('wallet.walletType')}</Text>
+            <Text style={styles.sectionLabel}>
+              {t('wallet.walletType')} <Text style={styles.required}>*</Text>
+            </Text>
             {renderWalletTypeDropdown()}
           </View>
 
-          {/* Bank/E-wallet Name Field - Conditional */}
-          {(walletType === t('wallet.walletTypes.ewallet') || walletType === t('wallet.walletTypes.bank')) && (
+          {/* Bank Name Field - Conditional */}
+          {walletType === t('wallet.walletTypes.bank') && (
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>
-                {getFieldLabel()}
+                {getFieldLabel()} <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
                 style={styles.textInput}
                 placeholder={getFieldPlaceholder()}
                 value={bankName}
                 onChangeText={setBankName}
+                editable={!saving}
               />
             </View>
           )}
-
-          {/* Description Field */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('wallet.description')}</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder={t('wallet.placeholders.enterDescription')}
-              value={description}
-              onChangeText={setDescription}
-            />
-          </View>
 
           {/* Default Wallet Toggle */}
           <View style={styles.toggleSection}>
@@ -268,6 +342,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
               onValueChange={setIsDefault}
               trackColor={{ false: '#d1d5db', true: '#1e90ff' }}
               thumbColor={isDefault ? '#fff' : '#f4f3f4'}
+              disabled={saving}
             />
           </View>
 
@@ -284,12 +359,19 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
               onValueChange={setExcludeFromTotal}
               trackColor={{ false: '#d1d5db', true: '#9ca3af' }}
               thumbColor={excludeFromTotal ? '#fff' : '#f4f3f4'}
+              disabled={saving}
             />
           </View>
 
           {/* Save Button */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>{t('wallet.save')}</Text>
+          <TouchableOpacity 
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]} 
+            onPress={handleSave}
+            disabled={saving}
+          >
+            <Text style={styles.saveButtonText}>
+              {saving ? 'Saving...' : (editMode ? t('wallet.update') : t('wallet.save'))}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -350,6 +432,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
   },
   currency: {
     fontSize: 16,
@@ -363,7 +451,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -385,6 +473,11 @@ const styles = StyleSheet.create({
     borderColor: '#e5e5e5',
     zIndex: 1000,
     marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   dropdownItem: {
     paddingHorizontal: 16,
@@ -427,6 +520,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 24,
     marginBottom: 32,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#ccc',
   },
   saveButtonText: {
     color: '#fff',

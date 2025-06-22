@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Animated,
-    Dimensions,
-    Keyboard,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  Animated,
+  Dimensions,
+  Keyboard,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -23,10 +24,10 @@ import { useNavigationService } from '../navigation/NavigationService';
 import { authService } from '../services/authService';
 import { configureGoogleSignIn, signInWithGoogle } from '../services/googleSignIn';
 import {
-    createUserProfileFromEmail,
-    mapAuthErrorToMessage,
-    prepareEmailLoginRequest,
-    validateLoginForm
+  createUserProfileFromEmail,
+  mapAuthErrorToMessage,
+  prepareEmailLoginRequest,
+  validateLoginForm
 } from '../utils/authUtils';
 
 const { height } = Dimensions.get('window');
@@ -52,6 +53,9 @@ export default function LoginScreen() {
     message: '',
     type: 'error' as 'error' | 'success' | 'warning' | 'info'
   });
+  
+  // Account activation modal state
+  const [showActivationModal, setShowActivationModal] = useState(false);
   
   // Card animation
   const cardAnim = useRef(new Animated.Value(0)).current;
@@ -86,7 +90,7 @@ export default function LoginScreen() {
     // Validate form using pure function
     const validation = validateLoginForm(email, password);
     if (!validation.isValid) {
-      showToast(validation.error!, 'warning');
+      showToast(t(validation.error!), 'warning');
       return;
     }
 
@@ -128,7 +132,14 @@ export default function LoginScreen() {
       
       // Map error to user-friendly message using pure function
       const errorMessageKey = mapAuthErrorToMessage(error);
-      showToast(errorMessageKey, 'error');
+      
+      if (errorMessageKey === 'SHOW_ACTIVATION_MODAL') {
+        console.log('🟡 DEBUG - Showing activation modal');
+        setShowActivationModal(true);
+      } else {
+        const translatedMessage = t(errorMessageKey);
+        showToast(translatedMessage, 'error');
+      }
     }
   };
 
@@ -182,11 +193,11 @@ export default function LoginScreen() {
         }
       } else {
         console.log('🔴 Google Sign-In failed:', result.error);
-        showToast(result.error || 'login.loginFailed', 'error');
+        showToast(result.error || t('login.loginFailed'), 'error');
       }
     } catch (err) {
       console.log('🔴 LoginScreen - Google Sign-In error:', err);
-      showToast('login.loginFailed', 'error');
+      showToast(t('login.loginFailed'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -212,6 +223,63 @@ export default function LoginScreen() {
       setEmail('');
       setPassword('');
     }
+  };
+
+  const handleActivateAccount = async () => {
+    setShowActivationModal(false);
+    setIsLoading(true);
+    
+    try {
+      // Get pending registration data
+      console.log('🟡 Getting pending registration data...');
+      const pendingData = await authService.getPendingRegistration();
+      
+      if (!pendingData) {
+        console.log('🔴 No pending registration data found, fallback to resend OTP');
+        // Fallback: resend OTP if no pending data
+        await authService.resendOtp(email.trim().toLowerCase());
+        console.log('🟢 OTP resent successfully for activation');
+        
+        navigation.navigate('OTP', {
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+          type: 'register'
+        });
+      } else {
+        console.log('🟢 Found pending registration data, navigating to OTP with full data');
+        // Use pending registration data to navigate to OTP
+        navigation.navigate('OTP', {
+          email: pendingData.email,
+          fullName: pendingData.full_name,
+          phoneNumber: pendingData.phone_number,
+          password: pendingData.password,
+          dateOfBirth: pendingData.dob,
+          gender: pendingData.gender,
+          type: 'register'
+        });
+      }
+      
+    } catch (error: any) {
+      console.error('🔴 Failed to handle account activation:', error);
+      
+      let errorMessage = 'Không thể kích hoạt tài khoản. Vui lòng thử lại.';
+      
+      if (error.message) {
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Lỗi kết nối. Vui lòng kiểm tra internet và thử lại.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      showToast(errorMessage, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelActivation = () => {
+    setShowActivationModal(false);
   };
 
   return (
@@ -350,6 +418,45 @@ export default function LoginScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Account Activation Modal */}
+        <Modal
+          visible={showActivationModal}
+          transparent={true}
+          animationType="fade"
+          statusBarTranslucent={true}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalIconContainer}>
+                <Icon name="error-outline" size={50} color="#FFA500" />
+              </View>
+              <Text style={styles.modalTitle}>Tài khoản chưa được kích hoạt</Text>
+              <Text style={styles.modalMessage}>
+                Tài khoản của bạn chưa được kích hoạt. Vui lòng kích hoạt tài khoản để tiếp tục.
+              </Text>
+              
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={handleCancelActivation}
+                >
+                  <Text style={styles.cancelButtonText}>Huỷ</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.activateButton, isLoading && styles.loginButtonDisabled]}
+                  onPress={handleActivateAccount}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.activateButtonText}>
+                    {isLoading ? 'Đang gửi...' : 'Kích hoạt'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Custom Toast */}
         <CustomToast
@@ -537,6 +644,64 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 20,
+    width: '80%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  modalIconContainer: {
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 16,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#FFA500',
+  },
+  activateButton: {
+    backgroundColor: '#1e90ff',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activateButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

@@ -160,10 +160,20 @@ export class SecureApiService {
           break;
       }
 
-      if (response.data) {
+      // For DELETE requests, success means API didn't throw an error
+      if (method === 'DELETE') {
+        console.log('✅ DELETE request completed successfully');
+        return undefined as T;
+      }
+      
+      // For other methods, check if we have data
+      if (response.data !== undefined) {
         return response.data;
       }
-      throw new Error(response.message || 'API request failed');
+      
+      // If no data but also no error from API, it might be success
+      console.log('⚠️ No data in response but request succeeded');
+      return undefined as T;
 
     } catch (error: any) {
       // If token expired, try to refresh and retry

@@ -188,6 +188,76 @@ export interface AuthResponse {
   user_infomation: UserProfile; // ✅ đúng tên JSON trả về
 }
 
+// Pending Registration Management
+interface PendingRegistrationData {
+  full_name: string;
+  email: string;
+  dob: string;
+  phone_number: string;
+  gender: boolean;
+  password: string;
+  confirm_password: string;
+  timestamp: number; // When the data was stored
+}
+
+const PENDING_REGISTRATION_KEY = 'pending_registration_data';
+const PENDING_REGISTRATION_EXPIRY = 4 * 60 * 1000; // 4 minutes in milliseconds
+
+export class PendingRegistrationService {
+  static async storePendingRegistration(data: RegisterRequest): Promise<void> {
+    try {
+      const pendingData: PendingRegistrationData = {
+        ...data,
+        timestamp: Date.now()
+      };
+      
+      await SecureStore.setItemAsync(PENDING_REGISTRATION_KEY, JSON.stringify(pendingData));
+      console.log('🟢 Pending registration data stored');
+    } catch (error) {
+      console.error('🔴 Error storing pending registration:', error);
+    }
+  }
+
+  static async getPendingRegistration(): Promise<PendingRegistrationData | null> {
+    try {
+      const storedData = await SecureStore.getItemAsync(PENDING_REGISTRATION_KEY);
+      if (!storedData) {
+        return null;
+      }
+
+      const pendingData: PendingRegistrationData = JSON.parse(storedData);
+      const now = Date.now();
+      const isExpired = (now - pendingData.timestamp) > PENDING_REGISTRATION_EXPIRY;
+
+      if (isExpired) {
+        console.log('🟡 Pending registration data expired, removing...');
+        await this.clearPendingRegistration();
+        return null;
+      }
+
+      console.log('🟢 Retrieved valid pending registration data');
+      return pendingData;
+    } catch (error) {
+      console.error('🔴 Error retrieving pending registration:', error);
+      return null;
+    }
+  }
+
+  static async clearPendingRegistration(): Promise<void> {
+    try {
+      await SecureStore.deleteItemAsync(PENDING_REGISTRATION_KEY);
+      console.log('🟢 Pending registration data cleared');
+    } catch (error) {
+      console.error('🔴 Error clearing pending registration:', error);
+    }
+  }
+
+  static async hasPendingRegistration(): Promise<boolean> {
+    const data = await this.getPendingRegistration();
+    return data !== null;
+  }
+}
+
 // Authentication Service
 export class AuthService {
   private static instance: AuthService;
@@ -267,12 +337,30 @@ export class AuthService {
       const result = await response.json();
       console.log('🟡 Email login response:', result);
       
+      // Check for success case
       if (response.ok && result.data) {
         // Store tokens
         await this.storeTokens(result.data.access_token, result.data.refresh_token);
         return result.data;
       }
       
+      // Handle error cases based on status_code in response body
+      if (result.status_code) {
+        console.log('🔍 Backend status_code:', result.status_code, 'message:', result.message);
+        
+        if (result.status_code === 401) {
+          // Invalid credentials
+          throw new Error(result.message || 'Invalid email or password');
+        } else if (result.status_code === 403) {
+          // Account not active  
+          throw new Error(result.message || 'Account is not active');
+        } else {
+          // Other errors
+          throw new Error(result.message || 'Login failed');
+        }
+      }
+      
+      // Fallback error
       throw new Error(result.message || 'Login failed');
     } catch (error) {
       console.log('🔴 AuthService - Email Login Error:', error);
@@ -1021,6 +1109,23 @@ export class AuthService {
       console.error('🔴 Error checking refresh token expiry:', error);
       return { isExpired: true, isNearExpiry: false };
     }
+  }
+
+  // Wrapper methods for PendingRegistrationService
+  async getPendingRegistration() {
+    return await PendingRegistrationService.getPendingRegistration();
+  }
+
+  async storePendingRegistration(data: RegisterRequest) {
+    return await PendingRegistrationService.storePendingRegistration(data);
+  }
+
+  async clearPendingRegistration() {
+    return await PendingRegistrationService.clearPendingRegistration();
+  }
+
+  async hasPendingRegistration() {
+    return await PendingRegistrationService.hasPendingRegistration();
   }
 }
 
