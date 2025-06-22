@@ -2,19 +2,19 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -328,6 +328,10 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         const response = await authService.register(registerData);
         
         console.log('🟢 Registration successful:', response);
+        
+        // Store pending registration data for 4 minutes
+        await authService.storePendingRegistration(registerData);
+        console.log('🟢 Pending registration data stored');
         
         // Show success state
         setIsLoadingSuccess(true);

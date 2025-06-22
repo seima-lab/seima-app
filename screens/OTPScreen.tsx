@@ -313,6 +313,14 @@ export default function OTPScreen({ route }: OTPScreenProps) {
   const handleSuccessModalOk = async () => {
     setShowSuccessModal(false);
     
+    // Clear pending registration data since verification was successful
+    try {
+      await authService.clearPendingRegistration();
+      console.log('🟢 Pending registration data cleared after successful verification');
+    } catch (error) {
+      console.error('🔴 Failed to clear pending registration data:', error);
+    }
+    
     // Auto login after successful registration verification
     console.log('🟢 OTP verified successfully, attempting auto login...');
     console.log('🔍 Debug - Password check:', {

@@ -3,20 +3,20 @@ import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -98,8 +98,8 @@ export default function AddExpenseScreen() {
         setWallets(dataCache.wallets);
         // Auto-select default wallet
         if (!selectedWallet && dataCache.wallets.length > 0) {
-          const defaultWallet = dataCache.wallets.find(wallet => wallet.isDefault);
-          setSelectedWallet(defaultWallet ? defaultWallet.walletId : dataCache.wallets[0].walletId);
+          const defaultWallet = dataCache.wallets.find(wallet => wallet.is_default);
+          setSelectedWallet(defaultWallet ? defaultWallet.id : dataCache.wallets[0].id);
         }
       }
       
@@ -121,8 +121,8 @@ export default function AddExpenseScreen() {
     try {
       console.log('🔄 Loading wallets from API...');
       
-      const userId = parseInt(user.id) || 1;
-      const userWallets = await walletService.getAllWallets(userId);
+      // Remove userId parameter as the service now uses authentication
+      const userWallets = await walletService.getAllWallets();
       
       console.log('💳 Loaded wallets:', userWallets.length);
       
@@ -243,8 +243,8 @@ export default function AddExpenseScreen() {
       }
 
       if (!selectedWallet && userWallets.length > 0) {
-        const defaultWallet = userWallets.find(wallet => wallet.isDefault);
-        setSelectedWallet(defaultWallet ? defaultWallet.walletId : userWallets[0].walletId);
+        const defaultWallet = userWallets.find(wallet => wallet.is_default);
+        setSelectedWallet(defaultWallet ? defaultWallet.id : userWallets[0].id);
       }
 
       console.log('✅ All data loaded successfully');
@@ -425,11 +425,14 @@ export default function AddExpenseScreen() {
               setNote('');
               setDate(new Date());
               
-              // Invalidate wallet cache to refresh balances
+              // Mark wallets for refresh
+              walletService.markForRefresh();
+              
+              // Invalidate wallet cache to force refresh balances
               dataCache.wallets = null;
               
-              // Navigate back
-              navigation.goBack();
+              // Navigate to MainTab
+              navigation.navigate('MainTab');
             }
           }
         ]
@@ -457,30 +460,20 @@ export default function AddExpenseScreen() {
       ]}
       onPress={() => handleCategoryPress(item)}
     >
-      <Icon name={item.icon} size={28} color={item.color} />
-      <Text style={styles.categoryText}>{item.label}</Text>
+      <Icon name={item.icon} size={24} color={item.color} />
+      <Text style={styles.categoryText} numberOfLines={2} ellipsizeMode="tail">
+        {item.label}
+      </Text>
     </TouchableOpacity>
   ), [selectedCategory, handleCategoryPress]);
 
-  // Memoized wallet item renderer
-  const renderWalletItem = useCallback((wallet: WalletResponse) => (
-    <TouchableOpacity
-      key={wallet.walletId}
-      style={styles.dropdownItem}
-      onPress={() => handleWalletSelect(wallet.walletId)}
-    >
-      <Text style={styles.dropdownItemText}>{wallet.walletName}</Text>
-      <Text style={styles.dropdownItemBalance}>
-        {wallet.balance.toLocaleString('vi-VN')} VND
-      </Text>
-    </TouchableOpacity>
-  ), [handleWalletSelect]);
+
 
   // Memoized selected wallet display
   const selectedWalletDisplay = useMemo(() => {
     if (!selectedWallet) return 'Chọn ví';
-    const wallet = wallets.find(w => w.walletId === selectedWallet);
-    return wallet?.walletName || 'Chọn ví';
+    const wallet = wallets.find(w => w.id === selectedWallet);
+    return wallet?.wallet_name || 'Chọn ví';
   }, [selectedWallet, wallets]);
 
   // Early return if still loading initially
@@ -620,9 +613,25 @@ export default function AddExpenseScreen() {
               </TouchableOpacity>
               
               {showWalletPicker && wallets.length > 0 && (
-                <View style={styles.dropdownList}>
-                  {wallets.map(renderWalletItem)}
-                </View>
+                <>
+                  {/* Invisible overlay to close dropdown when tapping outside */}
+                  <TouchableOpacity
+                    style={styles.dropdownOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowWalletPicker(false)}
+                  />
+                  <View style={styles.dropdownList}>
+                    {wallets.map(wallet => (
+                      <TouchableOpacity
+                        key={wallet.id}
+                        style={styles.dropdownItem}
+                        onPress={() => handleWalletSelect(wallet.id)}
+                      >
+                        <Text style={styles.dropdownItemText}>{wallet.wallet_name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
               )}
             </View>
           </View>
@@ -648,16 +657,17 @@ export default function AddExpenseScreen() {
           {/* Note */}
           <View style={styles.row}>
             <Text style={styles.label}>{t('note')}</Text>
-            <TextInput
-              style={[styles.input, styles.noteInput]}
-              placeholder={t('enterNote')}
-              value={note}
-              onChangeText={setNote}
-              placeholderTextColor="#aaa"
-              returnKeyType="done"
-              multiline
-              numberOfLines={2}
-            />
+            <View style={styles.noteContainer}>
+              <TextInput
+                style={[styles.input, styles.noteInput]}
+                placeholder="Note"
+                value={note}
+                onChangeText={setNote}
+                multiline={true}
+                numberOfLines={4}
+                placeholderTextColor="#aaa"
+              />
+            </View>
           </View>
 
           {/* Categories */}
@@ -673,13 +683,13 @@ export default function AddExpenseScreen() {
           ) : (
             <FlatList
               data={currentCategories}
-              numColumns={3}
+              numColumns={4}
               keyExtractor={item => item.key}
               renderItem={renderCategoryItem}
               scrollEnabled={false}
               contentContainerStyle={styles.categoriesContainer}
               removeClippedSubviews={true}
-              maxToRenderPerBatch={9}
+              maxToRenderPerBatch={12}
               windowSize={10}
             />
           )}
@@ -868,9 +878,19 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
     color: '#333',
   },
-  noteInput: {
+  noteContainer: {
     flex: 1,
-    minHeight: 50,
+  },
+  noteInput: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#eee',
+    color: '#333',
+    minHeight: 80,
     textAlignVertical: 'top',
   },
   amountContainer: {
@@ -899,24 +919,25 @@ const styles = StyleSheet.create({
   category: {
     flex: 1,
     alignItems: 'center',
-    padding: 12,
-    margin: 4,
-    borderRadius: 10,
+    padding: 8,
+    margin: 3,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#eee',
     backgroundColor: '#fff',
-    minHeight: 80,
+    minHeight: 70,
+    maxWidth: '22%',
   },
   categoryActive: {
     borderColor: '#1e90ff',
     backgroundColor: '#e6f2ff',
   },
   categoryText: { 
-    fontSize: 12, 
+    fontSize: 10, 
     color: '#333', 
-    marginTop: 6,
+    marginTop: 4,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 12,
   },
   button: {
     backgroundColor: '#1e90ff',
@@ -1043,6 +1064,14 @@ const styles = StyleSheet.create({
   dropdownContainer: {
     flex: 1,
     position: 'relative',
+  },
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: -1000,
+    right: -1000,
+    bottom: -1000,
+    zIndex: 999,
   },
   dropdown: {
     backgroundColor: '#f8f8f8',

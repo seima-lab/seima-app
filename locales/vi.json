@@ -265,7 +265,7 @@
     "signUp": "Đăng ký",
     "termsText": "Bằng cách tiếp tục, bạn đồng ý với Điều khoản Dịch vụ và Chính sách Quyền riêng tư của chúng tôi",
     "loginFailed": "Ôi! Có gì đó không đúng. Bạn kiểm tra lại thông tin và thử lại nhé 🔄",
-    "invalidCredentials": "Hmm, email hoặc mật khẩu có vẻ chưa đúng. Bạn kiểm tra lại nhé! 🤔",
+    "invalidCredentials": "Email hoặc mật khẩu sai vui lòng thử lại",
     "accountNotActive": "Tài khoản của bạn cần xác minh trước. Bạn kiểm tra email nhé! 📧",
     "googleAccountOnly": "Tài khoản này được tạo bằng Google. Bạn vui lòng dùng nút đăng nhập Google! 🔑",
     "welcomeTitle": "Chào mừng đến với Seima! 🎉",

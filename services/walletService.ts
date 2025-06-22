@@ -1,39 +1,71 @@
-import { apiService } from './apiService';
+import { secureApiService } from './secureApiService';
+
+/**
+ * Wallet Service for managing user wallets
+ * 
+ * Updated to work with new Java API that uses authentication to identify current user
+ * No need to pass userId in URLs - backend gets user from JWT token
+ * 
+ * Usage Examples:
+ * 
+ * // Get all wallets for current user
+ * const wallets = await walletService.getAllWallets();
+ * 
+ * // Create a new wallet
+ * const newWallet = await walletService.createWallet({
+ *   walletName: "My Cash Wallet",
+ *   balance: 1000000,
+ *   walletTypeId: 1,
+ *   isDefault: true,
+ *   description: "Main cash wallet"
+ * });
+ * 
+ * // Get default wallet
+ * const defaultWallet = await walletService.getDefaultWallet();
+ * 
+ * // Get total balance
+ * const totalBalance = await walletService.getTotalBalance();
+ * 
+ * All methods automatically include Authorization header from stored JWT token
+ * and handle token refresh if needed.
+ */
 
 // Request interface for creating/updating wallets - matches Java DTO
 export interface CreateWalletRequest {
-  walletName: string; // @NotBlank - required
+  wallet_name: string; // @NotBlank - required
   balance: number; // @NotNull @Min(0) - required, cannot be negative
-  description?: string; // optional
-  walletTypeId: number; // @NotNull - required
-  isDefault?: boolean; // optional, default false
-  excludeFromTotal?: boolean; // optional, default false
-  bankName?: string; // optional
-  iconUrl?: string; // optional
+  wallet_type_id: number; // @NotNull - required
+  is_default?: boolean; // optional, default false
+  exclude_from_total?: boolean; // optional, default false
+  bank_name?: string; // optional
+  icon_url?: string; // optional
 }
 
 // Response interface matching the backend WalletResponse
 export interface WalletResponse {
-  walletId: number;
-  userId: number;
-  walletName: string;
-  walletTypeId: number;
-  walletType?: string; // Type name for display
-  balance: number;
-  currentBalance: number;
-  initialBalance: number;
+  id: number;
+  user_id?: number;
+  wallet_name: string;
+  wallet_type_id?: number;
+  wallet_type_name?: string; // Type name for display
+  balance?: number;
+  current_balance: number;
+  initial_balance?: number;
   description?: string;
-  isDefault: boolean;
-  isActive: boolean;
-  excludeFromTotal: boolean;
-  bankName?: string;
-  iconUrl?: string;
-  createdAt: string;
-  updatedAt: string;
+  is_default: boolean;
+  is_active?: boolean;
+  is_delete?: boolean;
+  exclude_from_total?: boolean;
+  bank_name?: string;
+  icon_url?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export class WalletService {
   private static instance: WalletService;
+  private baseUrl = '/api/v1/wallets';
+  private _shouldRefresh = false; // Flag to indicate when wallets should be refreshed
 
   public static getInstance(): WalletService {
     if (!WalletService.instance) {
@@ -43,74 +75,42 @@ export class WalletService {
   }
 
   /**
-   * Create a new wallet for a user
-   * POST /api/v1/users/{userId}/wallets
+   * Mark that wallets should be refreshed on next access
    */
-  async createWallet(userId: number, request: CreateWalletRequest): Promise<WalletResponse> {
-    try {
-      console.log('🔄 Creating wallet for user:', userId, request);
-      
-      const response = await apiService.post<WalletResponse>(
-        `/api/v1/users/${userId}/wallets`, 
-        request
-      );
-      
-      if (response.data) {
-        console.log('✅ Wallet created successfully:', response.data);
-        return response.data;
-      }
-      
-      throw new Error(response.message || 'Failed to create wallet');
-      
-    } catch (error: any) {
-      console.error('❌ Failed to create wallet:', error);
-      throw new Error(error.message || 'Failed to create wallet');
-    }
+  markForRefresh(): void {
+    this._shouldRefresh = true;
+    console.log('🔄 WalletService marked for refresh');
   }
 
   /**
-   * Get a specific wallet by ID
-   * GET /api/v1/users/{userId}/wallets/{id}
+   * Check if wallets should be refreshed
    */
-  async getWallet(userId: number, walletId: number): Promise<WalletResponse> {
-    try {
-      console.log('🔄 Getting wallet:', walletId, 'for user:', userId);
-      
-      const response = await apiService.get<WalletResponse>(
-        `/api/v1/users/${userId}/wallets/${walletId}`
-      );
-      
-      if (response.data) {
-        console.log('✅ Wallet retrieved successfully:', response.data);
-        return response.data;
-      }
-      
-      throw new Error(response.message || 'Failed to get wallet');
-      
-    } catch (error: any) {
-      console.error('❌ Failed to get wallet:', error);
-      throw new Error(error.message || 'Failed to get wallet');
-    }
+  shouldRefresh(): boolean {
+    return this._shouldRefresh;
   }
 
   /**
-   * Get all wallets for a user
-   * GET /api/v1/users/{userId}/wallets
+   * Clear the refresh flag
    */
-  async getAllWallets(userId: number): Promise<WalletResponse[]> {
+  clearRefreshFlag(): void {
+    this._shouldRefresh = false;
+  }
+
+  /**
+   * Get all wallets for the current authenticated user
+   * GET /api/v1/wallets
+   */
+  async getAllWallets(): Promise<WalletResponse[]> {
     try {
-      console.log('🔄 Getting all wallets for user:', userId);
+      console.log('🔄 Getting all wallets for current user');
       
-      const response = await apiService.get<WalletResponse[]>(
-        `/api/v1/users/${userId}/wallets`
+      const data = await secureApiService.makeAuthenticatedRequest<WalletResponse[]>(
+        this.baseUrl, 
+        'GET'
       );
       
-      if (response.data) {
-        console.log('✅ Wallets retrieved successfully:', response.data);
-        return response.data;
-      }
-      
-      throw new Error(response.message || 'Failed to get wallets');
+      console.log('✅ Wallets retrieved successfully:', data);
+      return data;
       
     } catch (error: any) {
       console.error('❌ Failed to get wallets:', error);
@@ -119,28 +119,66 @@ export class WalletService {
   }
 
   /**
-   * Update a wallet
-   * PUT /api/v1/users/{userId}/wallets/{id}
+   * Get a specific wallet by ID for the current user
+   * GET /api/v1/wallets/{id}
    */
-  async updateWallet(
-    userId: number, 
-    walletId: number, 
-    request: CreateWalletRequest
-  ): Promise<WalletResponse> {
+  async getWallet(walletId: number): Promise<WalletResponse> {
     try {
-      console.log('🔄 Updating wallet:', walletId, 'for user:', userId, request);
+      console.log('🔄 Getting wallet:', walletId);
       
-      const response = await apiService.put<WalletResponse>(
-        `/api/v1/users/${userId}/wallets/${walletId}`, 
+      const data = await secureApiService.makeAuthenticatedRequest<WalletResponse>(
+        `${this.baseUrl}/${walletId}`,
+        'GET'
+      );
+      
+      console.log('✅ Wallet retrieved successfully:', data);
+      return data;
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get wallet:', error);
+      throw new Error(error.message || 'Failed to get wallet');
+    }
+  }
+
+  /**
+   * Create a new wallet for the current user
+   * POST /api/v1/wallets
+   */
+  async createWallet(request: CreateWalletRequest): Promise<WalletResponse> {
+    try {
+      console.log('🔄 Creating wallet:', request);
+      
+      const data = await secureApiService.makeAuthenticatedRequest<WalletResponse>(
+        this.baseUrl,
+        'POST',
         request
       );
       
-      if (response.data) {
-        console.log('✅ Wallet updated successfully:', response.data);
-        return response.data;
-      }
+      console.log('✅ Wallet created successfully:', data);
+      return data;
       
-      throw new Error(response.message || 'Failed to update wallet');
+    } catch (error: any) {
+      console.error('❌ Failed to create wallet:', error);
+      throw new Error(error.message || 'Failed to create wallet');
+    }
+  }
+
+  /**
+   * Update a wallet for the current user
+   * PUT /api/v1/wallets/{id}
+   */
+  async updateWallet(walletId: number, request: CreateWalletRequest): Promise<WalletResponse> {
+    try {
+      console.log('🔄 Updating wallet:', walletId, request);
+      
+      const data = await secureApiService.makeAuthenticatedRequest<WalletResponse>(
+        `${this.baseUrl}/${walletId}`,
+        'PUT',
+        request
+      );
+      
+      console.log('✅ Wallet updated successfully:', data);
+      return data;
       
     } catch (error: any) {
       console.error('❌ Failed to update wallet:', error);
@@ -149,21 +187,23 @@ export class WalletService {
   }
 
   /**
-   * Delete a wallet
-   * DELETE /api/v1/users/{userId}/wallets/{id}
+   * Delete a wallet for the current user
+   * DELETE /api/v1/wallets/{id}
    */
-  async deleteWallet(userId: number, walletId: number): Promise<void> {
+  async deleteWallet(walletId: number): Promise<void> {
     try {
-      console.log('🔄 Deleting wallet:', walletId, 'for user:', userId);
+      console.log('🔄 Deleting wallet:', walletId);
       
-      const response = await apiService.delete<void>(
-        `/api/v1/users/${userId}/wallets/${walletId}`
+      const result = await secureApiService.makeAuthenticatedRequest<void>(
+        `${this.baseUrl}/${walletId}`,
+        'DELETE'
       );
       
-      console.log('✅ Wallet deleted successfully');
+      console.log('✅ Wallet deleted successfully, result:', result);
       
     } catch (error: any) {
       console.error('❌ Failed to delete wallet:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
       throw new Error(error.message || 'Failed to delete wallet');
     }
   }
@@ -171,10 +211,10 @@ export class WalletService {
   /**
    * Get user's default wallet
    */
-  async getDefaultWallet(userId: number): Promise<WalletResponse | null> {
+  async getDefaultWallet(): Promise<WalletResponse | null> {
     try {
-      const wallets = await this.getAllWallets(userId);
-      const defaultWallet = wallets.find(wallet => wallet.isDefault);
+      const wallets = await this.getAllWallets();
+      const defaultWallet = wallets.find(wallet => wallet.is_default);
       return defaultWallet || null;
     } catch (error: any) {
       console.error('❌ Failed to get default wallet:', error);
@@ -183,12 +223,12 @@ export class WalletService {
   }
 
   /**
-   * Get wallets by type
+   * Get wallets by type for current user
    */
-  async getWalletsByType(userId: number, walletTypeId: number): Promise<WalletResponse[]> {
+  async getWalletsByType(walletTypeId: number): Promise<WalletResponse[]> {
     try {
-      const wallets = await this.getAllWallets(userId);
-      return wallets.filter(wallet => wallet.walletTypeId === walletTypeId);
+      const wallets = await this.getAllWallets();
+      return wallets.filter(wallet => wallet.wallet_type_id === walletTypeId);
     } catch (error: any) {
       console.error('❌ Failed to get wallets by type:', error);
       throw new Error(error.message || 'Failed to get wallets by type');
@@ -196,15 +236,31 @@ export class WalletService {
   }
 
   /**
-   * Get active wallets only
+   * Get active wallets only for current user
    */
-  async getActiveWallets(userId: number): Promise<WalletResponse[]> {
+  async getActiveWallets(): Promise<WalletResponse[]> {
     try {
-      const wallets = await this.getAllWallets(userId);
-      return wallets.filter(wallet => wallet.isActive);
+      const wallets = await this.getAllWallets();
+      return wallets.filter(wallet => wallet.is_active);
     } catch (error: any) {
       console.error('❌ Failed to get active wallets:', error);
       throw new Error(error.message || 'Failed to get active wallets');
+    }
+  }
+
+  /**
+   * Get total balance from all wallets (excluding those marked as exclude_from_total)
+   */
+  async getTotalBalance(): Promise<number> {
+    try {
+      const wallets = await this.getAllWallets();
+      const includedWallets = wallets.filter(wallet => 
+        wallet.is_active && !wallet.exclude_from_total
+      );
+      return includedWallets.reduce((total, wallet) => total + wallet.current_balance, 0);
+    } catch (error: any) {
+      console.error('❌ Failed to get total balance:', error);
+      throw new Error(error.message || 'Failed to get total balance');
     }
   }
 }

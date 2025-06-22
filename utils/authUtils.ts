@@ -55,23 +55,36 @@ export const prepareEmailLoginRequest = (email: string, password: string) => {
 /**
  * Maps API error to user-friendly error message key
  * @param error - Error object from API
- * @returns Translation key for error message
+ * @returns Translation key for error message or special key for modal activation
  */
 export const mapAuthErrorToMessage = (error: any): string => {
   const errorMessage = error?.message || '';
   
-  if (errorMessage.includes('Invalid email or password') || errorMessage.includes('UNAUTHORIZED')) {
+  console.log('🔍 DEBUG mapAuthErrorToMessage - Error message:', errorMessage);
+  
+  // Priority order is important to avoid false positives
+  
+  // Case 1: Invalid credentials (HIGHEST PRIORITY - must be first)
+  if (errorMessage.includes('Invalid email or password')) {
+    console.log('🟢 DEBUG - Detected invalid credentials');
     return 'login.invalidCredentials';
   }
   
-  if (errorMessage.includes('Account is not active')) {
-    return 'login.accountNotActive';
+  // Case 2: Account not verified (REQUIRES MODAL)
+  if (errorMessage.includes('Your account is not verified') || 
+      errorMessage.includes('Account is not active')) {
+    console.log('🟢 DEBUG - Detected account not verified/active - should show modal');
+    return 'SHOW_ACTIVATION_MODAL'; // Special key to trigger modal
   }
   
+  // Case 3: Google account errors
   if (errorMessage.includes('Google login')) {
+    console.log('🟢 DEBUG - Detected Google login error');
     return 'login.googleAccountOnly';
   }
   
+  // Default fallback
+  console.log('🔴 DEBUG - Using fallback error message for:', errorMessage);
   return 'login.loginFailed';
 };
 
