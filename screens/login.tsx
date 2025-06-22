@@ -20,8 +20,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
-import { authService, EmailLoginRequest } from '../services/authService';
+import { authService } from '../services/authService';
 import { configureGoogleSignIn, signInWithGoogle } from '../services/googleSignIn';
+import {
+    createUserProfileFromEmail,
+    mapAuthErrorToMessage,
+    prepareEmailLoginRequest,
+    validateLoginForm
+} from '../utils/authUtils';
 
 const { height } = Dimensions.get('window');
 
@@ -76,29 +82,11 @@ export default function LoginScreen() {
     setToast(prev => ({ ...prev, visible: false }));
   };
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
   const handleEmailLogin = async () => {
-    if (!email.trim()) {
-      showToast(t('validation.emailRequired'), 'warning');
-      return;
-    }
-    
-    if (!validateEmail(email)) {
-      showToast(t('validation.invalidEmail'), 'warning');
-      return;
-    }
-    
-    if (!password.trim()) {
-      showToast(t('validation.passwordRequired'), 'warning');
-      return;
-    }
-    
-    if (password.length < 6) {
-      showToast(t('validation.passwordTooShort'), 'warning');
+    // Validate form using pure function
+    const validation = validateLoginForm(email, password);
+    if (!validation.isValid) {
+      showToast(validation.error!, 'warning');
       return;
     }
 
@@ -106,11 +94,8 @@ export default function LoginScreen() {
     try {
       console.log('🟡 Starting email login...');
       
-      // Prepare login request
-      const loginRequest: EmailLoginRequest = {
-        email: email.trim().toLowerCase(),
-        password: password.trim()
-      };
+      // Prepare login request using pure function
+      const loginRequest = prepareEmailLoginRequest(email, password);
       
       console.log('🟡 Login request:', { email: loginRequest.email, password: '[HIDDEN]' });
       
@@ -119,13 +104,13 @@ export default function LoginScreen() {
       
       console.log('🟢 Email login successful:', response);
       
-      // Create user profile for AuthContext (using snake_case from API)
-      const userProfile = {
-        id: response.user_information.email, // Use email as ID
-        email: response.user_information.email,
-        name: response.user_information.full_name,
-        picture: response.user_information.avatar_url
-      };
+      // Add null check for response
+      if (!response || !response.user_information) {
+        throw new Error('Invalid response from server');
+      }
+      
+      // Create user profile using pure function
+      const userProfile = createUserProfileFromEmail(response.user_information);
       
       // Update auth context with user data
       await login(userProfile);
@@ -139,23 +124,11 @@ export default function LoginScreen() {
       
     } catch (error: any) {
       setIsLoading(false);
-      // Log error for debugging (won't show on screen)
       console.log('🔴 Email login failed:', error);
       
-      // Handle specific error cases
-      let errorMessage = t('login.loginFailed');
-      
-      if (error.message.includes('Invalid email or password') || error.message.includes('UNAUTHORIZED')) {
-        errorMessage = t('login.invalidCredentials');
-      } else if (error.message.includes('Account is not active')) {
-        errorMessage = t('login.accountNotActive');
-      } else if (error.message.includes('Google login')) {
-        errorMessage = t('login.googleAccountOnly');
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      showToast(errorMessage, 'error');
+      // Map error to user-friendly message using pure function
+      const errorMessageKey = mapAuthErrorToMessage(error);
+      showToast(errorMessageKey, 'error');
     }
   };
 
@@ -164,6 +137,11 @@ export default function LoginScreen() {
     try {
       console.log('🟢 LoginScreen - Starting Google Sign-In...');
       const result = await signInWithGoogle();
+      
+      // Add null check for result
+      if (!result) {
+        throw new Error('Google Sign-In returned no result');
+      }
       
       if (result.success && result.backendData) {
         console.log('🟢 Google Sign-In successful!');
@@ -204,11 +182,11 @@ export default function LoginScreen() {
         }
       } else {
         console.log('🔴 Google Sign-In failed:', result.error);
-        showToast(result.error || t('login.loginFailed'), 'error');
+        showToast(result.error || 'login.loginFailed', 'error');
       }
     } catch (err) {
       console.log('🔴 LoginScreen - Google Sign-In error:', err);
-      showToast(t('login.loginFailed'), 'error');
+      showToast('login.loginFailed', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -306,6 +284,7 @@ export default function LoginScreen() {
                   <TouchableOpacity 
                     onPress={() => setShowPassword(!showPassword)}
                     style={styles.eyeButton}
+                    testID="password-toggle"
                   >
                     <Icon 
                       name={showPassword ? "visibility" : "visibility-off"} 
@@ -351,7 +330,7 @@ export default function LoginScreen() {
               </View>
 
               {/* Google Login */}
-              <GoogleButton onPress={handleGoogleLogin} />
+              <GoogleButton onPress={handleGoogleLogin} disabled={isLoading} />
           </Animated.View>
 
           {/* Sign Up Link */}
