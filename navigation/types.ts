@@ -69,7 +69,7 @@ export type RootStackParamList = {
       key: string;
       label: string;
       icon: string;
-      color: string;
+      color?: string;
     };
   };
   AddWalletScreen: {

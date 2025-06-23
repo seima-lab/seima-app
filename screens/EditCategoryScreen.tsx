@@ -1,5 +1,5 @@
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -13,11 +13,105 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import IconBack from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 import { categoryService, CategoryType, LocalCategory } from '../services/categoryService';
+
+// Icon configurations for different categories (matching AddEditCategoryScreen)
+const EXPENSE_ICONS = [
+  // Based on the Vietnamese categories in the image
+  { name: 'silverware-fork-knife', color: '#ff9500' }, // Ăn uống - cam
+  { name: 'food-apple', color: '#ff9500' },
+  { name: 'hamburger', color: '#ff9500' },
+  { name: 'coffee', color: '#ff9500' },
+  { name: 'cake', color: '#ff9500' },
+  
+  { name: 'minus-circle', color: '#32d74b' }, // Chi tiêu hàng ngày - xanh lá
+  { name: 'cart', color: '#32d74b' },
+  { name: 'shopping', color: '#32d74b' },
+  
+  { name: 'tshirt-crew', color: '#007aff' }, // Quần áo - xanh dương
+  { name: 'hanger', color: '#007aff' },
+  { name: 'tshirt-v', color: '#007aff' }, // dress -> tshirt-v
+  
+  { name: 'lipstick', color: '#ff2d92' }, // Mỹ phẩm - hồng
+  { name: 'face-woman', color: '#ff2d92' },
+  { name: 'spray', color: '#ff2d92' }, // perfume -> spray
+  
+  { name: 'glass-wine', color: '#ffcc02' }, // Phí giao lưu - vàng
+  { name: 'account-group', color: '#ffcc02' },
+  { name: 'party-popper', color: '#ffcc02' },
+  
+  { name: 'hospital-box', color: '#30d158' }, // Y tế - xanh lá
+  { name: 'pill', color: '#30d158' }, // pills -> pill
+  { name: 'stethoscope', color: '#30d158' },
+  { name: 'medical-bag', color: '#30d158' },
+  
+  { name: 'book-open', color: '#ff2d92' }, // Giáo dục - hồng
+  { name: 'school', color: '#ff2d92' },
+  { name: 'pencil', color: '#ff2d92' },
+  
+  { name: 'lightning-bolt', color: '#00c7be' }, // Tiền điện - xanh ngọc
+  { name: 'flash', color: '#00c7be' },
+  { name: 'power-plug', color: '#00c7be' },
+  
+  { name: 'car', color: '#9370db' }, // Đi lại - tím
+  { name: 'bus', color: '#9370db' },
+  { name: 'train', color: '#9370db' },
+  { name: 'airplane', color: '#9370db' },
+  { name: 'motorbike', color: '#9370db' }, // motorcycle -> motorbike
+  { name: 'taxi', color: '#9370db' },
+  
+  { name: 'phone', color: '#00c7be' }, // Phí liên lạc - xanh ngọc
+  { name: 'wifi', color: '#00c7be' },
+  { name: 'cellphone', color: '#00c7be' },
+  
+  { name: 'home', color: '#ff9500' }, // Tiền nhà - cam
+  { name: 'home-outline', color: '#ff9500' }, // house -> home-outline
+  { name: 'key', color: '#ff9500' },
+  
+  { name: 'gamepad-variant', color: '#ff375f' }, // Đi chơi - đỏ
+  { name: 'movie', color: '#ff375f' },
+  { name: 'music', color: '#ff375f' },
+  { name: 'ticket', color: '#ff375f' },
+  
+  // Other common icons
+  { name: 'gift', color: '#bf5af2' },
+  { name: 'tools', color: '#ff9500' },
+  { name: 'water', color: '#00c7be' },
+];
+
+const INCOME_ICONS = [
+  // Work & Salary
+  { name: 'cash', color: '#32d74b' },
+  { name: 'briefcase', color: '#708090' },
+  { name: 'office-building', color: '#708090' },
+  { name: 'laptop', color: '#ff375f' },
+  
+  // Investment & Business
+  { name: 'chart-line', color: '#007aff' },
+  { name: 'bank', color: '#ff2d92' },
+  { name: 'percent', color: '#00c7be' },
+  { name: 'store', color: '#30d158' },
+  
+  // Gifts & Rewards
+  { name: 'gift', color: '#bf5af2' },
+  { name: 'hand-heart', color: '#ff2d92' },
+  { name: 'star', color: '#ffcc02' },
+  { name: 'trophy', color: '#ffd700' },
+  
+  // Property & Rental
+  { name: 'home-account', color: '#ffcc02' },
+  { name: 'apartment', color: '#daa520' },
+  { name: 'key', color: '#32d74b' },
+  
+  // Additional Income Sources
+  { name: 'piggy-bank', color: '#32d74b' },
+  { name: 'cash-plus', color: '#00ff00' },
+  { name: 'credit-card', color: '#4682b4' },
+  { name: 'wallet', color: '#8b4513' },
+];
 
 export default function EditCategoryScreen() {
   const { t } = useTranslation();
@@ -31,6 +125,19 @@ export default function EditCategoryScreen() {
   const [categories, setCategories] = useState<LocalCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Get color for an icon based on category type
+  const getIconColor = (iconName: string, categoryType: 'expense' | 'income', dbColor?: string): string => {
+    // If color exists in database, use it
+    if (dbColor) {
+      return dbColor;
+    }
+    
+    // Otherwise, use default color mapping
+    const iconSet = categoryType === 'expense' ? EXPENSE_ICONS : INCOME_ICONS;
+    const iconConfig = iconSet.find(icon => icon.name === iconName);
+    return iconConfig ? iconConfig.color : '#666'; // Default color if not found
+  };
 
   // Load categories when component mounts or tab changes
   useEffect(() => {
@@ -174,7 +281,7 @@ export default function EditCategoryScreen() {
           key: item.key,
           label: item.label,
           icon: item.icon,
-          color: item.color
+          color: getIconColor(item.icon, activeTab, item.color) // Truyền màu chính xác
         }
       });
     }
@@ -211,7 +318,7 @@ export default function EditCategoryScreen() {
           </TouchableOpacity>
         )}
         <View style={styles.categoryContent}>
-          <Icon name={item.icon} size={24} color={item.color} />
+          <Icon name={item.icon} size={24} color={getIconColor(item.icon, activeTab, item.color)} />
           <Text style={styles.categoryLabel}>
             {item.label}
             {item.is_system_defined && <Text style={styles.systemBadge}> (System)</Text>}
@@ -224,7 +331,14 @@ export default function EditCategoryScreen() {
 
   // Prepare data for FlatList
   const listData: LocalCategory[] = [
-    { key: 'add_category', label: t('addCategory'), icon: 'plus', color: '#007aff' },
+    { 
+      key: 'add_category', 
+      label: t('addCategory'), 
+      icon: 'plus', 
+      color: '#007aff',
+      category_id: -1,
+      is_system_defined: false
+    },
     ...categories
   ];
 
@@ -254,7 +368,7 @@ export default function EditCategoryScreen() {
           style={styles.backButton} 
           onPress={() => navigation.goBack()}
         >
-          <IconBack name="arrow-back" size={24} color="#007aff" />
+          <Icon name="arrow-left" size={24} color="#007aff" />
         </TouchableOpacity>
         
         <View style={styles.headerCenter}>

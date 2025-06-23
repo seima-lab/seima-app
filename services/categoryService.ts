@@ -397,15 +397,16 @@ export class CategoryService {
     try {
       console.log('🔄 Fetching categories:', { categoryType, userId, groupId });
       
-            // Map CategoryType to integer values for backend
-      const categoryTypeValue = categoryType === CategoryType.EXPENSE ? 1 : 2;
+            // Map CategoryType to integer values for backend (INCOME=0, EXPENSE=1)
+      const categoryTypeValue = categoryType === CategoryType.EXPENSE ? 1 : 0;
       
       console.log('🔄 Fetching categories with params:', {
         categoryType: categoryTypeValue,
         categoryTypeString: categoryType,
         userId,
         groupId,
-        expectedResponse: categoryType === CategoryType.INCOME ? 'Should get income categories' : 'Should get expense categories'
+        expectedResponse: categoryType === CategoryType.INCOME ? 'Should get income categories' : 'Should get expense categories',
+        fullUrl: `/api/v1/categories?categoryType=${categoryTypeValue}&userId=${userId}&groupId=${groupId}`
       });
       
       const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(
@@ -431,29 +432,72 @@ export class CategoryService {
             console.log('📊 Extracted categories count:', categories.length);
       console.log('📊 Categories:', categories);
       
-      // If no categories found and it's income, provide fallback immediately
-      if (categories.length === 0 && categoryType === CategoryType.INCOME) {
-        console.log('⚠️ No income categories found from API, using default fallback categories');
-        const defaultIncomeCategories = this.getDefaultCategories(CategoryType.INCOME);
-        console.log('📊 Default income categories:', defaultIncomeCategories);
-        
-        // Convert default categories to API format for consistency
-        return defaultIncomeCategories.map(defaultCat => ({
-          category_id: parseInt(defaultCat.key) || Math.floor(Math.random() * 1000),
-          user_id: userId,
-          group_id: groupId,
-          category_name: defaultCat.label,
-          category_type: CategoryType.INCOME,
-          category_icon_url: defaultCat.key,
-          parent_category_id: null,
-          is_system_defined: true
-        }));
+      // Debug: Log each category details to understand the data structure
+      if (categories.length > 0) {
+        console.log('📊 Category details:');
+        categories.forEach((cat, index) => {
+          console.log(`  [${index}] ID: ${cat.category_id}, Name: ${cat.category_name}, Type: ${cat.category_type}, Icon: ${cat.category_icon_url}`);
+        });
       }
       
+      // Return real API categories (with proper DB IDs)
       return categories;
+      
     } catch (error) {
       console.error('❌ Error fetching categories:', error);
-      throw error;
+      
+      // Only use fallback if there's a network/API error, not when API returns empty array
+      console.log(`🔧 API error, using fallback categories for ${categoryType}`);
+      const defaultCategories = this.getDefaultCategories(categoryType);
+      
+      // Use negative IDs for fallback to avoid conflicts with real DB IDs
+      const baseId = categoryType === CategoryType.INCOME ? -1000 : -2000;
+      return defaultCategories.map((defaultCat, index) => ({
+        category_id: baseId - index, // Negative IDs: -1000, -1001, -2000, -2001
+        user_id: userId,
+        group_id: groupId,
+        category_name: defaultCat.label,
+        category_type: categoryType,
+        category_icon_url: defaultCat.key,
+        parent_category_id: null,
+        is_system_defined: true
+      }));
+    }
+  }
+
+  // Get all categories for a user (both income and expense)
+  async getAllCategoriesForUser(
+    userId: number,
+    groupId: number | null
+  ): Promise<CategoryResponse[]> {
+    try {
+      console.log('🔄 Fetching ALL categories for user:', { userId, groupId });
+      
+      // Pass null for categoryType to fetch all types.
+      const endpoint = `/api/v1/categories?categoryType=null&userId=${userId}&groupId=${groupId}`;
+      console.log('🚀 Calling endpoint:', endpoint);
+
+      const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(endpoint);
+      
+      console.log('📊 All Categories response:', response);
+      
+      // Handle different response structures
+      let categories: CategoryResponse[] = [];
+      
+      if (response.data && Array.isArray(response.data)) {
+        categories = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        categories = response.data.data;
+      } else if (response && Array.isArray(response)) {
+        categories = response;
+      }
+      
+      console.log('📊 Extracted ALL categories count:', categories.length);
+      return categories;
+    } catch (error) {
+      console.error('❌ Error fetching all categories:', error);
+      // If this fails, we can't really fall back, so we throw
+      throw new Error('Failed to fetch categories. Please try again.');
     }
   }
 

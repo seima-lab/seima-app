@@ -51,6 +51,7 @@
   "categoryNamePlaceholder": "Please enter category name",
   "icon": "Icon",
   "color": "Color",
+  "preview": "Preview",
   "save": "Save",
   "pleaseEnterCategoryName": "Please enter category name",
   "addCategorySuccess": "Category added successfully",

@@ -19,8 +19,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import IconBack from 'react-native-vector-icons/MaterialIcons';
 
+import CustomToast from '../components/CustomToast';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { categoryService, CategoryService, CategoryType, LocalCategory } from '../services/categoryService';
@@ -28,6 +28,114 @@ import { ocrService, TransactionOcrResponse } from '../services/ocrService';
 import { secureApiService } from '../services/secureApiService';
 import { CreateTransactionRequest, transactionService, TransactionType } from '../services/transactionService';
 import { WalletResponse, walletService } from '../services/walletService';
+
+// Icon configurations for different categories (matching EditCategoryScreen)
+const EXPENSE_ICONS = [
+  // Based on the Vietnamese categories in the image
+  { name: 'silverware-fork-knife', color: '#ff9500' }, // Ăn uống - cam
+  { name: 'food-apple', color: '#ff9500' },
+  { name: 'hamburger', color: '#ff9500' },
+  { name: 'coffee', color: '#ff9500' },
+  { name: 'cake', color: '#ff9500' },
+  
+  { name: 'minus-circle', color: '#32d74b' }, // Chi tiêu hàng ngày - xanh lá
+  { name: 'cart', color: '#32d74b' },
+  { name: 'shopping', color: '#32d74b' },
+  
+  { name: 'tshirt-crew', color: '#007aff' }, // Quần áo - xanh dương
+  { name: 'hanger', color: '#007aff' },
+  { name: 'tshirt-v', color: '#007aff' }, // dress -> tshirt-v
+  
+  { name: 'lipstick', color: '#ff2d92' }, // Mỹ phẩm - hồng
+  { name: 'face-woman', color: '#ff2d92' },
+  { name: 'spray', color: '#ff2d92' }, // perfume -> spray
+  
+  { name: 'glass-wine', color: '#ffcc02' }, // Phí giao lưu - vàng
+  { name: 'account-group', color: '#ffcc02' },
+  { name: 'party-popper', color: '#ffcc02' },
+  
+  { name: 'hospital-box', color: '#30d158' }, // Y tế - xanh lá
+  { name: 'pill', color: '#30d158' }, // pills -> pill
+  { name: 'stethoscope', color: '#30d158' },
+  { name: 'medical-bag', color: '#30d158' },
+  
+  { name: 'book-open', color: '#ff2d92' }, // Giáo dục - hồng
+  { name: 'school', color: '#ff2d92' },
+  { name: 'pencil', color: '#ff2d92' },
+  
+  { name: 'lightning-bolt', color: '#00c7be' }, // Tiền điện - xanh ngọc
+  { name: 'flash', color: '#00c7be' },
+  { name: 'power-plug', color: '#00c7be' },
+  
+  { name: 'car', color: '#9370db' }, // Đi lại - tím
+  { name: 'bus', color: '#9370db' },
+  { name: 'train', color: '#9370db' },
+  { name: 'airplane', color: '#9370db' },
+  { name: 'motorbike', color: '#9370db' }, // motorcycle -> motorbike
+  { name: 'taxi', color: '#9370db' },
+  
+  { name: 'phone', color: '#00c7be' }, // Phí liên lạc - xanh ngọc
+  { name: 'wifi', color: '#00c7be' },
+  { name: 'cellphone', color: '#00c7be' },
+  
+  { name: 'home', color: '#ff9500' }, // Tiền nhà - cam
+  { name: 'home-outline', color: '#ff9500' }, // house -> home-outline
+  { name: 'key', color: '#ff9500' },
+  
+  { name: 'gamepad-variant', color: '#ff375f' }, // Đi chơi - đỏ
+  { name: 'movie', color: '#ff375f' },
+  { name: 'music', color: '#ff375f' },
+  { name: 'ticket', color: '#ff375f' },
+  
+  // Other common icons
+  { name: 'gift', color: '#bf5af2' },
+  { name: 'tools', color: '#ff9500' },
+  { name: 'water', color: '#00c7be' },
+];
+
+const INCOME_ICONS = [
+  // Work & Salary
+  { name: 'cash', color: '#32d74b' },
+  { name: 'briefcase', color: '#708090' },
+  { name: 'office-building', color: '#708090' },
+  { name: 'laptop', color: '#ff375f' },
+  
+  // Investment & Business
+  { name: 'chart-line', color: '#007aff' },
+  { name: 'bank', color: '#ff2d92' },
+  { name: 'percent', color: '#00c7be' },
+  { name: 'store', color: '#30d158' },
+  
+  // Gifts & Rewards
+  { name: 'gift', color: '#bf5af2' },
+  { name: 'hand-heart', color: '#ff2d92' },
+  { name: 'star', color: '#ffcc02' },
+  { name: 'trophy', color: '#ffd700' },
+  
+  // Property & Rental
+  { name: 'home-account', color: '#ffcc02' },
+  { name: 'apartment', color: '#daa520' },
+  { name: 'key', color: '#32d74b' },
+  
+  // Additional Income Sources
+  { name: 'piggy-bank', color: '#32d74b' },
+  { name: 'cash-plus', color: '#00ff00' },
+  { name: 'credit-card', color: '#4682b4' },
+  { name: 'wallet', color: '#8b4513' },
+];
+
+// Get color for an icon based on category type (matching EditCategoryScreen)
+const getIconColor = (iconName: string, categoryType: 'expense' | 'income', dbColor?: string): string => {
+  // If color exists in database, use it
+  if (dbColor) {
+    return dbColor;
+  }
+  
+  // Otherwise, use default color mapping
+  const iconSet = categoryType === 'expense' ? EXPENSE_ICONS : INCOME_ICONS;
+  const iconConfig = iconSet.find(icon => icon.name === iconName);
+  return iconConfig ? iconConfig.color : '#666'; // Default color if not found
+};
 
 export default function AddExpenseScreen() {
   const { t } = useTranslation();
@@ -57,6 +165,21 @@ export default function AddExpenseScreen() {
   const [showWalletPicker, setShowWalletPicker] = useState(false);
   const [showImageOptions, setShowImageOptions] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'error' | 'success' | 'warning' | 'info'>('error');
+
+  // Debug selectedCategory changes
+  useEffect(() => {
+    console.log('🔄 selectedCategory changed:', {
+      selectedCategory: selectedCategory,
+      activeTab: activeTab,
+      expenseCategories: expenseCategories.length,
+      incomeCategories: incomeCategories.length
+    });
+  }, [selectedCategory, activeTab]);
 
   // Load data when component mounts
   useEffect(() => {
@@ -100,27 +223,82 @@ export default function AddExpenseScreen() {
 
       // Now load categories using userId from /me API
       const userId = userProfile.user_id;
-      const groupId = 1; // Default group ID
+      // Per user's direction, groupId should be 0 to fetch all user-specific categories
+      const groupId = 0; 
       
-      console.log('🔄 Loading categories with userId:', userId);
+      console.log('🔄 Loading categories for both tabs with userId:', userId);
       
+      // Fetch categories separately for each tab with correct categoryType values
       const [expenseCats, incomeCats] = await Promise.all([
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId, groupId),
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId, groupId),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId, groupId), // categoryType=1
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId, groupId),  // categoryType=0
       ]);
 
-      console.log('✅ Expense categories loaded:', expenseCats.length);
-      console.log('✅ Income categories loaded:', incomeCats.length);
+      console.log('✅ Categories loaded:', {
+        expenseCount: expenseCats.length,
+        incomeCount: incomeCats.length,
+      });
+      
+      console.log('📊 Raw expense categories from API:', expenseCats.map(cat => ({
+        category_id: cat.category_id,
+        category_name: cat.category_name,
+        category_type: cat.category_type
+      })));
+      
+      console.log('📊 Raw income categories from API:', incomeCats.map(cat => ({
+        category_id: cat.category_id,
+        category_name: cat.category_name,
+        category_type: cat.category_type
+      })));
+
+      // IMPORTANT: Check if income categories are empty
+      if (incomeCats.length === 0) {
+        console.error('❌ INCOME CATEGORIES ARE EMPTY after API call with categoryType=0!');
+        console.error('Please check if backend has income categories with categoryType=0.');
+      }
 
       // Convert to local format
       const categoryServiceInstance = CategoryService.getInstance();
       setExpenseCategories(expenseCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
       setIncomeCategories(incomeCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
 
-      // Set default category
-      const defaultCategories = activeTab === 'expense' ? expenseCats : incomeCats;
-      if (defaultCategories.length > 0) {
-        setSelectedCategory(defaultCategories[0].category_id.toString());
+      console.log('🔄 Converted expense categories:', expenseCats.map(cat => {
+        const converted = categoryServiceInstance.convertToLocalCategory(cat);
+        return {
+          original_id: cat.category_id,
+          converted_key: converted.key,
+          converted_category_id: converted.category_id,
+          label: converted.label
+        };
+      }));
+
+      console.log('🔄 Converted income categories:', incomeCats.map(cat => {
+        const converted = categoryServiceInstance.convertToLocalCategory(cat);
+        return {
+          original_id: cat.category_id,
+          converted_key: converted.key,
+          converted_category_id: converted.category_id,
+          label: converted.label
+        };
+      }));
+
+      // Set default category based on current active tab
+      if (activeTab === 'expense' && expenseCats.length > 0) {
+        const defaultCategoryId = expenseCats[0].category_id.toString();
+        console.log('🔍 Setting default expense category:', {
+          activeTab: activeTab,
+          defaultCategoryId: defaultCategoryId,
+          defaultCategory: expenseCats[0]
+        });
+        setSelectedCategory(defaultCategoryId);
+      } else if (activeTab === 'income' && incomeCats.length > 0) {
+        const defaultCategoryId = incomeCats[0].category_id.toString();
+        console.log('🔍 Setting default income category:', {
+          activeTab: activeTab,
+          defaultCategoryId: defaultCategoryId,
+          defaultCategory: incomeCats[0]
+        });
+        setSelectedCategory(defaultCategoryId);
       }
 
       console.log('✅ All data loaded successfully');
@@ -144,26 +322,55 @@ export default function AddExpenseScreen() {
   };
 
   const handleTabChange = (tab: 'expense' | 'income') => {
+    console.log('🔄 Tab change started:', {
+      from: activeTab,
+      to: tab,
+      expenseCategories: expenseCategories.length,
+      incomeCategories: incomeCategories.length
+    });
+    
     setActiveTab(tab);
     // Reset category selection when switching tabs
     const categories = tab === 'expense' ? expenseCategories : incomeCategories;
+    
+    console.log('🔍 Categories for new tab:', {
+      tab: tab,
+      categoriesCount: categories.length,
+      categories: categories.map(cat => ({
+        key: cat.key,
+        label: cat.label,
+        category_id: cat.category_id
+      }))
+    });
+    
     if (categories.length > 0) {
-      setSelectedCategory(categories[0].key);
+      const newCategoryKey = categories[0].key;
+      console.log('🔍 Tab change category selection:', {
+        newTab: tab,
+        newCategoryKey: newCategoryKey,
+        firstCategory: categories[0]
+      });
+      setSelectedCategory(newCategoryKey);
+    } else {
+      console.log('⚠️ No categories found for tab:', tab);
+      setSelectedCategory('');
     }
   };
 
   const requestPermissions = async () => {
     try {
+      console.log('🔐 Requesting camera and photo library permissions...');
       // Request both camera and media library permissions
       const [cameraPermission, libraryPermission] = await Promise.all([
         ImagePicker.requestCameraPermissionsAsync(),
         ImagePicker.requestMediaLibraryPermissionsAsync(false) // false = request read and write permissions
       ]);
       
-      console.log('Camera permission:', cameraPermission);
-      console.log('Library permission:', libraryPermission);
+      console.log('📷 Camera permission status:', cameraPermission.status);
+      console.log('🖼️ Library permission status:', libraryPermission.status);
       
       if (cameraPermission.status !== 'granted') {
+        console.log('❌ Camera permission not granted');
         Alert.alert(
           'Camera Permission Required',
           'Please allow camera access in settings to take photos.',
@@ -173,6 +380,7 @@ export default function AddExpenseScreen() {
       }
       
       if (libraryPermission.status !== 'granted') {
+        console.log('❌ Photo library permission not granted');
         Alert.alert(
           'Photo Library Permission Required',
           'Please allow photo library access in settings to select images.',
@@ -181,9 +389,10 @@ export default function AddExpenseScreen() {
         return false;
       }
       
+      console.log('✅ All permissions granted successfully');
       return true;
     } catch (error) {
-      console.error('Error requesting permissions:', error);
+      console.error('❌ Error requesting permissions:', error);
       Alert.alert(
         'Permission Error',
         'Failed to request permissions. Please check your device settings.',
@@ -195,9 +404,14 @@ export default function AddExpenseScreen() {
 
   const takePhoto = async () => {
     try {
+      console.log('📷 Starting camera capture...');
       const hasPermission = await requestPermissions();
-      if (!hasPermission) return;
+      if (!hasPermission) {
+        console.log('❌ Camera permission denied');
+        return;
+      }
 
+      console.log('📷 Launching camera...');
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false, // Allow taking full photo without cropping
@@ -205,41 +419,40 @@ export default function AddExpenseScreen() {
         cameraType: ImagePicker.CameraType.back,
       });
 
+      console.log('📷 Camera result:', result);
+
       if (!result.canceled && result.assets && result.assets[0]) {
         const imageUri = result.assets[0].uri;
+        console.log('✅ Photo taken successfully:', imageUri);
         setSelectedImage(imageUri);
         setShowImageOptions(false);
-        console.log('Photo taken:', imageUri);
         
-        // Ask user if they want to scan the invoice for auto-fill
+        // Auto-scan for expense tab without asking
         if (activeTab === 'expense') {
-          Alert.alert(
-            'Scan Invoice?',
-            'Would you like to automatically extract information from this receipt?',
-            [
-              { 
-                text: 'Skip', 
-                style: 'cancel' 
-              },
-              { 
-                text: 'Scan', 
-                onPress: () => scanInvoice(imageUri) 
-              }
-            ]
-          );
+          console.log('🔄 Auto-scanning photo for expense...');
+          scanInvoice(imageUri);
+        } else {
+          console.log('ℹ️ Skipping scan for income tab');
         }
+      } else {
+        console.log('📷 Camera capture cancelled or failed');
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
+      console.error('❌ Error taking photo:', error);
       Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
 
   const pickFromGallery = async () => {
     try {
+      console.log('🖼️ Starting gallery picker...');
       const hasPermission = await requestPermissions();
-      if (!hasPermission) return;
+      if (!hasPermission) {
+        console.log('❌ Gallery permission denied');
+        return;
+      }
 
+      console.log('🖼️ Launching image library...');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false, // Allow selecting full image without cropping
@@ -249,41 +462,40 @@ export default function AddExpenseScreen() {
         legacy: Platform.OS === 'android', // Use legacy picker on Android for better file access
       });
 
+      console.log('🖼️ Gallery result:', result);
+
       if (!result.canceled && result.assets && result.assets[0]) {
         const imageUri = result.assets[0].uri;
+        console.log('✅ Image selected successfully:', imageUri);
         setSelectedImage(imageUri);
         setShowImageOptions(false);
-        console.log('Image selected:', imageUri);
         
-        // Ask user if they want to scan the invoice for auto-fill
+        // Auto-scan for expense tab without asking
         if (activeTab === 'expense') {
-          Alert.alert(
-            'Scan Invoice?',
-            'Would you like to automatically extract information from this receipt?',
-            [
-              { 
-                text: 'Skip', 
-                style: 'cancel' 
-              },
-              { 
-                text: 'Scan', 
-                onPress: () => scanInvoice(imageUri) 
-              }
-            ]
-          );
+          console.log('🔄 Auto-scanning gallery image for expense...');
+          scanInvoice(imageUri);
+        } else {
+          console.log('ℹ️ Skipping scan for income tab');
         }
+      } else {
+        console.log('🖼️ Gallery selection cancelled or failed');
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      console.error('❌ Error picking image:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
 
   const pickFromGalleryWithCrop = async () => {
     try {
+      console.log('✂️ Starting gallery picker with crop...');
       const hasPermission = await requestPermissions();
-      if (!hasPermission) return;
+      if (!hasPermission) {
+        console.log('❌ Gallery permission denied for crop');
+        return;
+      }
 
+      console.log('✂️ Launching image library with crop editor...');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true, // Allow editing/cropping
@@ -293,37 +505,33 @@ export default function AddExpenseScreen() {
         presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
       });
 
+      console.log('✂️ Gallery with crop result:', result);
+
       if (!result.canceled && result.assets && result.assets[0]) {
         const imageUri = result.assets[0].uri;
+        console.log('✅ Cropped image selected successfully:', imageUri);
         setSelectedImage(imageUri);
         setShowImageOptions(false);
-        console.log('Cropped image selected:', imageUri);
         
-        // Ask user if they want to scan the invoice for auto-fill
+        // Auto-scan for expense tab without asking
         if (activeTab === 'expense') {
-          Alert.alert(
-            'Scan Invoice?',
-            'Would you like to automatically extract information from this receipt?',
-            [
-              { 
-                text: 'Skip', 
-                style: 'cancel' 
-              },
-              { 
-                text: 'Scan', 
-                onPress: () => scanInvoice(imageUri) 
-              }
-            ]
-          );
+          console.log('🔄 Auto-scanning cropped image for expense...');
+          scanInvoice(imageUri);
+        } else {
+          console.log('ℹ️ Skipping scan for income tab');
         }
+      } else {
+        console.log('✂️ Gallery with crop cancelled or failed');
       }
     } catch (error) {
-      console.error('Error picking image with crop:', error);
+      console.error('❌ Error picking image with crop:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
 
   const scanInvoice = async (imageUri: string) => {
+    console.log('🤖 Starting OCR scan process...');
+    console.log('📸 Image URI:', imageUri);
     setIsScanning(true);
     try {
       console.log('🔄 Scanning invoice for OCR...');
@@ -332,58 +540,84 @@ export default function AddExpenseScreen() {
       let file: File | Blob;
       
       if (Platform.OS === 'web') {
+        console.log('🌐 Platform: Web - Converting URI to blob...');
         // For web, convert URI to blob
         const response = await fetch(imageUri);
         file = await response.blob();
+        console.log('✅ Blob created for web:', file.size, 'bytes');
       } else {
+        console.log('📱 Platform: Mobile - Creating file object...');
         // For mobile, create a file-like object
         const filename = imageUri.split('/').pop() || 'receipt.jpg';
+        console.log('📝 Original filename:', filename);
+        
         file = {
           uri: imageUri,
           type: 'image/jpeg',
           name: filename,
         } as any;
+        
+        console.log('✅ File object created for mobile:', {
+          uri: (file as any).uri,
+          type: (file as any).type,
+          name: (file as any).name
+        });
       }
       
+      console.log('🚀 Calling OCR service...');
       const ocrResult: TransactionOcrResponse = await ocrService.scanInvoice(file);
+      console.log('📊 OCR Result received:', ocrResult);
       
       // Auto-fill form with OCR results
       if (ocrResult.total_amount) {
+        console.log('💰 Setting amount:', ocrResult.total_amount);
         setAmount(ocrResult.total_amount.toString());
+      } else {
+        console.log('⚠️ No amount found in OCR result');
       }
       
       if (ocrResult.transaction_date) {
+        console.log('📅 Setting date:', ocrResult.transaction_date);
         const parsedDate = new Date(ocrResult.transaction_date);
         if (!isNaN(parsedDate.getTime())) {
           setDate(parsedDate);
+          console.log('✅ Date set successfully:', parsedDate);
+        } else {
+          console.log('❌ Invalid date format:', ocrResult.transaction_date);
         }
+      } else {
+        console.log('⚠️ No date found in OCR result');
       }
       
       if (ocrResult.description_invoice) {
+        console.log('📝 Setting note:', ocrResult.description_invoice);
         setNote(ocrResult.description_invoice);
+      } else {
+        console.log('⚠️ No description found in OCR result');
       }
       
       // Update the receipt image URL from OCR response
       if (ocrResult.receipt_image_url) {
+        console.log('🖼️ Updating image URL:', ocrResult.receipt_image_url);
         setSelectedImage(ocrResult.receipt_image_url);
+      } else {
+        console.log('ℹ️ No receipt image URL in OCR result, keeping original');
       }
       
-      Alert.alert(
-        'Invoice Scanned Successfully!', 
-        'Form has been auto-filled with extracted information. Please verify the details.',
-        [{ text: 'OK' }]
-      );
-      
-      console.log('✅ Invoice scanned and form auto-filled:', ocrResult);
+      console.log('✅ Invoice scanned and form auto-filled successfully');
       
     } catch (error: any) {
       console.error('❌ Failed to scan invoice:', error);
-      Alert.alert(
-        'OCR Error', 
-        'Failed to extract text from invoice. You can still add the transaction manually.',
-        [{ text: 'OK' }]
-      );
+      console.error('🔍 Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      setToastMessage('Failed to extract text from invoice');
+      setToastType('error');
+      setShowToast(true);
     } finally {
+      console.log('🏁 OCR scan process completed');
       setIsScanning(false);
     }
   };
@@ -407,6 +641,19 @@ export default function AddExpenseScreen() {
 
       const amountValue = parseFloat(amount);
       const categoryId = parseInt(selectedCategory);
+
+      console.log('🔍 Form debug info:', {
+        selectedCategory: selectedCategory,
+        parsedCategoryId: categoryId,
+        activeTab: activeTab,
+        transactionType: activeTab === 'expense' ? TransactionType.EXPENSE : TransactionType.INCOME,
+        currentCategories: getCurrentCategories().map(cat => ({
+          key: cat.key,
+          label: cat.label,
+          category_id: cat.category_id
+        })),
+        selectedCategoryDetails: getCurrentCategories().find(cat => cat.key === selectedCategory)
+      });
 
       const transactionData: CreateTransactionRequest = {
         user_id: userId, // Use real userId from /me API
@@ -496,7 +743,19 @@ export default function AddExpenseScreen() {
   };
 
   const getCurrentCategories = () => {
-    return activeTab === 'expense' ? expenseCategories : incomeCategories;
+    const categories = activeTab === 'expense' ? expenseCategories : incomeCategories;
+    
+    // Add "Edit" item at the end of the categories list
+    const editItem: LocalCategory = {
+      key: 'edit_categories',
+      label: 'Edit',
+      icon: 'pencil',
+      color: '#1e90ff',
+      category_id: -1,
+      is_system_defined: false
+    };
+    
+    return [...categories, editItem];
   };
 
   const getSelectedWalletName = () => {
@@ -506,12 +765,42 @@ export default function AddExpenseScreen() {
 
   const renderCategoryItem = ({ item }: { item: LocalCategory }) => {
     const isSelected = selectedCategory === item.key;
+    
+    // Handle Edit item specially
+    if (item.key === 'edit_categories') {
+      return (
+        <TouchableOpacity
+          style={[styles.categoryItem, styles.editCategoryItem]}
+          onPress={() => {
+            console.log('🔧 Navigating to EditCategoryScreen for tab:', activeTab);
+            (navigation as any).navigate('EditCategoryScreen', {
+              type: activeTab
+            });
+          }}
+        >
+          <Icon name={item.icon} size={24} color={item.color} />
+          <Text style={[styles.categoryText, styles.editCategoryText]} numberOfLines={2}>
+            {item.label}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    
+    // Regular category item - use intelligent color mapping
     return (
       <TouchableOpacity
         style={[styles.categoryItem, isSelected && styles.categoryItemSelected]}
-        onPress={() => setSelectedCategory(item.key)}
+        onPress={() => {
+          console.log('🎯 User selected category:', {
+            selected_key: item.key,
+            selected_category_id: item.category_id,
+            selected_label: item.label,
+            previous_selectedCategory: selectedCategory
+          });
+          setSelectedCategory(item.key);
+        }}
       >
-        <Icon name={item.icon} size={24} color={item.color} />
+        <Icon name={item.icon} size={24} color={getIconColor(item.icon, activeTab, item.color)} />
         <Text style={styles.categoryText} numberOfLines={2}>{item.label}</Text>
       </TouchableOpacity>
     );
@@ -549,7 +838,7 @@ export default function AddExpenseScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <IconBack name="arrow-back" size={24} color="#1e90ff" />
+            <Icon name="arrow-left" size={24} color="#007aff" />
           </TouchableOpacity>
           
           <View style={styles.tabContainer}>
@@ -571,16 +860,16 @@ export default function AddExpenseScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Camera Icon - Only show for expense tab */}
-          {activeTab === 'expense' && (
+                    {/* Camera Icon - Only show for expense tab */}
+            {activeTab === 'expense' && (
             <TouchableOpacity
               style={styles.cameraButton}
               onPress={() => setShowImageOptions(true)}
             >
-              <Icon name="camera" size={24} color="#1e90ff" />
-            </TouchableOpacity>
-          )}
-        </View>
+                <Icon name="camera" size={24} color="#007aff" />
+              </TouchableOpacity>
+            )}
+          </View>
 
         {/* Date */}
         <View style={styles.row}>
@@ -756,7 +1045,7 @@ export default function AddExpenseScreen() {
                 style={styles.imageOptionItem}
                 onPress={takePhoto}
               >
-                <Icon name="camera" size={24} color="#1e90ff" />
+                <Icon name="camera" size={24} color="#007aff" />
                 <Text style={styles.imageOptionText}>Take Photo</Text>
               </TouchableOpacity>
               
@@ -764,7 +1053,7 @@ export default function AddExpenseScreen() {
                 style={styles.imageOptionItem}
                 onPress={pickFromGallery}
               >
-                <Icon name="image" size={24} color="#1e90ff" />
+                <Icon name="image" size={24} color="#007aff" />
                 <Text style={styles.imageOptionText}>Photo Library</Text>
               </TouchableOpacity>
               
@@ -772,7 +1061,7 @@ export default function AddExpenseScreen() {
                 style={styles.imageOptionItem}
                 onPress={pickFromGalleryWithCrop}
               >
-                <Icon name="crop" size={24} color="#1e90ff" />
+                <Icon name="crop" size={24} color="#007aff" />
                 <Text style={styles.imageOptionText}>Photo Library (with Crop)</Text>
               </TouchableOpacity>
               
@@ -787,6 +1076,15 @@ export default function AddExpenseScreen() {
           </TouchableOpacity>
         </Modal>
       )}
+      
+      {/* Custom Toast */}
+      <CustomToast
+        visible={showToast}
+        message={toastMessage}
+        type={toastType}
+        onHide={() => setShowToast(false)}
+        duration={4000}
+      />
     </SafeAreaView>
   );
 }
@@ -834,7 +1132,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabActive: {
-    backgroundColor: '#1e90ff',
+    backgroundColor: '#007aff',
   },
   tabText: {
     color: '#666',
@@ -872,7 +1170,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 16,
-    color: '#1e90ff',
+    color: '#007aff',
     fontWeight: '500',
   },
   amountContainer: {
@@ -916,7 +1214,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   categoryItemSelected: {
-    borderColor: '#1e90ff',
+    borderColor: '#007aff',
     backgroundColor: '#e6f2ff',
   },
   categoryText: {
@@ -926,7 +1224,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   saveButton: {
-    backgroundColor: '#1e90ff',
+    backgroundColor: '#007aff',
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
@@ -1099,5 +1397,14 @@ const styles = StyleSheet.create({
   },
   imageOptionCancelText: {
     color: '#666',
+  },
+
+  editCategoryItem: {
+    borderColor: '#007aff',
+    backgroundColor: '#e6f2ff',
+  },
+  editCategoryText: {
+    color: '#007aff',
+    fontWeight: '600',
   },
 });
