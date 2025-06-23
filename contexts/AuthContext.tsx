@@ -33,9 +33,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (newToken) {
           console.log('🟢 Token refreshed successfully');
           setIsAuthenticated(true);
-          // You can fetch user profile here if you have an endpoint
-          // const userProfile = await authService.getCurrentUserInfo();
-          // setUser(userProfile);
+          // Fetch user profile
+          try {
+            const userProfile = await authService.getCurrentUserProfile();
+            setUser(userProfile);
+            console.log('🟢 User profile loaded:', userProfile.email);
+          } catch (profileError) {
+            console.error('⚠️ Failed to load user profile:', profileError);
+            // Still keep authenticated if token is valid, just without user data
+          }
         } else {
           console.log('🔴 Token refresh failed, clearing auth');
           await authService.clearTokens();

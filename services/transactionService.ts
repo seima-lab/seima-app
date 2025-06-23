@@ -18,7 +18,7 @@ export interface CreateTransactionRequest {
   currency_code: string;
   transaction_date: string; // ISO date string
   description?: string;
-  receipt_image?: File | null; // For multipart form data
+  receipt_image_url?: string | null; // Changed from receipt_image to receipt_image_url
   payee_payer_name?: string;
 }
 
@@ -49,36 +49,10 @@ export class TransactionService {
     try {
       console.log('🔄 Creating expense transaction:', request);
       
-      // Create FormData for multipart/form-data
-      const formData = new FormData();
-      
-      // Add all fields to FormData
-      formData.append('user_id', request.user_id.toString());
-      formData.append('wallet_id', request.wallet_id.toString());
-      formData.append('category_id', request.category_id.toString());
-      if (request.group_id) {
-        formData.append('group_id', request.group_id.toString());
-      }
-      formData.append('transaction_type', request.transaction_type);
-      formData.append('amount', request.amount.toString());
-      formData.append('currency_code', request.currency_code);
-      formData.append('transaction_date', request.transaction_date);
-      
-      if (request.description) {
-        formData.append('description', request.description);
-      }
-      
-      if (request.receipt_image) {
-        formData.append('receipt_image', request.receipt_image);
-      }
-      
-      if (request.payee_payer_name) {
-        formData.append('payee_payer_name', request.payee_payer_name);
-      }
-
-      const response = await apiService.postFormData<TransactionResponse>(
+      // Send as JSON instead of FormData to match backend expectation
+      const response = await apiService.post<TransactionResponse>(
         '/api/v1/transactions/expense', 
-        formData
+        request
       );
       
       if (response.data) {
@@ -101,36 +75,10 @@ export class TransactionService {
     try {
       console.log('🔄 Creating income transaction:', request);
       
-      // Create FormData for multipart/form-data
-      const formData = new FormData();
-      
-      // Add all fields to FormData
-      formData.append('user_id', request.user_id.toString());
-      formData.append('wallet_id', request.wallet_id.toString());
-      formData.append('category_id', request.category_id.toString());
-      if (request.group_id) {
-        formData.append('group_id', request.group_id.toString());
-      }
-      formData.append('transaction_type', request.transaction_type);
-      formData.append('amount', request.amount.toString());
-      formData.append('currency_code', request.currency_code);
-      formData.append('transaction_date', request.transaction_date);
-      
-      if (request.description) {
-        formData.append('description', request.description);
-      }
-      
-      if (request.receipt_image) {
-        formData.append('receipt_image', request.receipt_image);
-      }
-      
-      if (request.payee_payer_name) {
-        formData.append('payee_payer_name', request.payee_payer_name);
-      }
-
-      const response = await apiService.postFormData<TransactionResponse>(
+      // Send as JSON instead of FormData to match backend expectation
+      const response = await apiService.post<TransactionResponse>(
         '/api/v1/transactions/income', 
-        formData
+        request
       );
       
       if (response.data) {
