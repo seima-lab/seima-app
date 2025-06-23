@@ -1,897 +1,879 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { NavigationProp, useNavigation } from '@react-navigation/native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import IconBack from 'react-native-vector-icons/MaterialIcons';
+
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
-import type { RootStackParamList } from '../navigation/types';
-import { categoryService, CategoryType, LocalCategory } from '../services/categoryService';
+import { categoryService, CategoryService, CategoryType, LocalCategory } from '../services/categoryService';
+import { ocrService, TransactionOcrResponse } from '../services/ocrService';
+import { secureApiService } from '../services/secureApiService';
 import { CreateTransactionRequest, transactionService, TransactionType } from '../services/transactionService';
 import { WalletResponse, walletService } from '../services/walletService';
 
-// Cache for categories and wallets to avoid repeated API calls
-interface DataCache {
-  expenseCategories: LocalCategory[] | null;
-  incomeCategories: LocalCategory[] | null;
-  wallets: WalletResponse[] | null;
-  lastFetchTime: number;
-}
-
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
-let dataCache: DataCache = {
-  expenseCategories: null,
-  incomeCategories: null,
-  wallets: null,
-  lastFetchTime: 0
-};
-
 export default function AddExpenseScreen() {
   const { t } = useTranslation();
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const { user } = useAuth();
-  const insets = useSafeAreaInsets();
-  
+  const navigation = useNavigation();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+
   // State
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
-  const [date, setDate] = useState(new Date());
-  const [showDate, setShowDate] = useState(false);
-  const [tempDate, setTempDate] = useState<Date>(new Date());
-  const [note, setNote] = useState('');
+  
+  // Form data
   const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [date, setDate] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  
-  // Wallet selection state
-  const [wallets, setWallets] = useState<WalletResponse[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<number | null>(null);
-  const [showWalletPicker, setShowWalletPicker] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
-  // Categories state
+  // Data
+  const [wallets, setWallets] = useState<WalletResponse[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<LocalCategory[]>([]);
   const [incomeCategories, setIncomeCategories] = useState<LocalCategory[]>([]);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
-  // Transaction saving state
-  const [saving, setSaving] = useState(false);
+  // UI state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showWalletPicker, setShowWalletPicker] = useState(false);
+  const [showImageOptions, setShowImageOptions] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
 
-  // Memoized current categories based on active tab
-  const currentCategories = useMemo(() => {
-    return activeTab === 'expense' ? expenseCategories : incomeCategories;
-  }, [activeTab, expenseCategories, incomeCategories]);
-
-  // Check if cache is still valid
-  const isCacheValid = useCallback(() => {
-    return Date.now() - dataCache.lastFetchTime < CACHE_DURATION;
-  }, []);
-
-  // Load data from cache if available and valid
-  const loadFromCache = useCallback(() => {
-    if (isCacheValid()) {
-      console.log('📦 Loading from cache...');
-      
-      if (dataCache.expenseCategories) {
-        setExpenseCategories(dataCache.expenseCategories);
-      }
-      if (dataCache.incomeCategories) {
-        setIncomeCategories(dataCache.incomeCategories);
-      }
-      if (dataCache.wallets) {
-        setWallets(dataCache.wallets);
-        // Auto-select default wallet
-        if (!selectedWallet && dataCache.wallets.length > 0) {
-          const defaultWallet = dataCache.wallets.find(wallet => wallet.is_default);
-          setSelectedWallet(defaultWallet ? defaultWallet.id : dataCache.wallets[0].id);
-        }
-      }
-      
-      return true;
-    }
-    return false;
-  }, [isCacheValid, selectedWallet]);
-
-  // Optimized wallet loading with caching
-  const loadWallets = useCallback(async (useCache = true) => {
-    if (!user) return [];
-
-    // Try cache first
-    if (useCache && dataCache.wallets && isCacheValid()) {
-      console.log('💳 Using cached wallets');
-      return dataCache.wallets;
-    }
-
-    try {
-      console.log('🔄 Loading wallets from API...');
-      
-      // Remove userId parameter as the service now uses authentication
-      const userWallets = await walletService.getAllWallets();
-      
-      console.log('💳 Loaded wallets:', userWallets.length);
-      
-      // Cache the results
-      dataCache.wallets = userWallets;
-      dataCache.lastFetchTime = Date.now();
-      
-      return userWallets;
-      
-    } catch (err: any) {
-      console.error('❌ Failed to load wallets:', err);
-      throw err;
-    }
-  }, [user, isCacheValid]);
-
-  // Optimized categories loading with caching
-  const loadCategoriesByType = useCallback(async (categoryType: CategoryType, useCache = true) => {
-    if (!user) return [];
-
-    // Check cache first
-    const cacheKey = categoryType === CategoryType.EXPENSE ? 'expenseCategories' : 'incomeCategories';
-    if (useCache && dataCache[cacheKey] && isCacheValid()) {
-      console.log(`📊 Using cached ${categoryType} categories`);
-      return dataCache[cacheKey]!;
-    }
-
-    try {
-      console.log(`🔄 Loading ${categoryType} categories from API...`);
-      
-      const userId = parseInt(user.id) || 1;
-      const groupId = 1;
-      
-      // Fetch categories from API
-      const apiCategories = await categoryService.getAllCategoriesByTypeAndUser(
-        categoryType,
-        userId,
-        groupId
-      );
-      
-      console.log(`📊 API categories received for ${categoryType}:`, apiCategories.length);
-      
-      // Convert API categories to local format
-      const localCategories = apiCategories.map(apiCategory => 
-        categoryService.convertToLocalCategory(apiCategory)
-      );
-      
-      // Add edit category option at the end
-      const editCategory: LocalCategory = {
-        key: 'edit',
-        label: 'Edit Categories',
-        icon: 'pencil',
-        color: '#1e90ff'
-      };
-      
-      const categoriesWithEdit = [...localCategories, editCategory];
-      
-      // Cache the results
-      dataCache[cacheKey] = categoriesWithEdit;
-      dataCache.lastFetchTime = Date.now();
-      
-      return categoriesWithEdit;
-      
-    } catch (err: any) {
-      console.error(`❌ Failed to load ${categoryType} categories:`, err);
-      
-      // Return default categories as fallback
-      const defaultCategories = categoryService.getDefaultCategories(categoryType);
-      const editCategory: LocalCategory = {
-        key: 'edit',
-        label: 'Edit Categories',
-        icon: 'pencil',
-        color: '#1e90ff'
-      };
-      
-      const fallbackCategories = [...defaultCategories, editCategory];
-      
-      // Don't cache fallback data
-      return fallbackCategories;
-    }
-  }, [user, isCacheValid]);
-
-  // Load all data in parallel
-  const loadAllData = useCallback(async (useCache = true) => {
-    if (!user) {
-      setInitialLoading(false);
+  // Load data when component mounts
+  useEffect(() => {
+    console.log('🔍 AddExpenseScreen - Auth Status:', { 
+      authLoading, 
+      isAuthenticated, 
+      hasUser: !!user 
+    });
+    
+    // Wait for auth check to complete
+    if (authLoading) {
       return;
     }
-
-    setError(null);
     
+    // Load data directly using /me API to get user info
+    loadData();
+  }, [authLoading]);
+
+  const loadData = async () => {
+    setIsLoading(true);
     try {
-      // Load from cache first if available
-      if (useCache && loadFromCache()) {
-        setInitialLoading(false);
-        return;
+      console.log('🔄 Loading wallets and user profile...');
+      
+      // Load wallets and user profile in parallel
+      const [walletsData, userProfile] = await Promise.all([
+        walletService.getAllWallets(),
+        secureApiService.getCurrentUserProfile() // Use /me API
+      ]);
+      
+      console.log('✅ Wallets loaded:', walletsData.length);
+      console.log('✅ User profile loaded:', userProfile);
+
+      setWallets(walletsData);
+
+      // Set default wallet selection
+      if (walletsData.length > 0) {
+        const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+        setSelectedWallet(defaultWallet.id);
+        console.log('✅ Default wallet selected:', defaultWallet.wallet_name);
       }
 
-      console.log('🚀 Loading all data in parallel...');
+      // Now load categories using userId from /me API
+      const userId = userProfile.user_id;
+      const groupId = 1; // Default group ID
       
-      // Load all data in parallel for better performance
-      const [expenseCats, incomeCats, userWallets] = await Promise.all([
-        loadCategoriesByType(CategoryType.EXPENSE, useCache),
-        loadCategoriesByType(CategoryType.INCOME, useCache),
-        loadWallets(useCache)
+      console.log('🔄 Loading categories with userId:', userId);
+      
+      const [expenseCats, incomeCats] = await Promise.all([
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId, groupId),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId, groupId),
       ]);
 
-      // Update state
-      setExpenseCategories(expenseCats);
-      setIncomeCategories(incomeCats);
-      setWallets(userWallets);
+      console.log('✅ Expense categories loaded:', expenseCats.length);
+      console.log('✅ Income categories loaded:', incomeCats.length);
 
-      // Auto-select first category and default wallet
-      if (!selectedCategory) {
-        const currentCats = activeTab === 'expense' ? expenseCats : incomeCats;
-        if (currentCats.length > 0 && currentCats[0].key !== 'edit') {
-          setSelectedCategory(currentCats[0].key);
-        }
-      }
+      // Convert to local format
+      const categoryServiceInstance = CategoryService.getInstance();
+      setExpenseCategories(expenseCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
+      setIncomeCategories(incomeCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
 
-      if (!selectedWallet && userWallets.length > 0) {
-        const defaultWallet = userWallets.find(wallet => wallet.is_default);
-        setSelectedWallet(defaultWallet ? defaultWallet.id : userWallets[0].id);
+      // Set default category
+      const defaultCategories = activeTab === 'expense' ? expenseCats : incomeCats;
+      if (defaultCategories.length > 0) {
+        setSelectedCategory(defaultCategories[0].category_id.toString());
       }
 
       console.log('✅ All data loaded successfully');
+
+    } catch (error: any) {
+      console.error('Error loading data:', error);
       
-    } catch (err: any) {
-      console.error('❌ Failed to load data:', err);
-      setError(err.message || 'Failed to load data');
+      // Handle authentication errors specifically
+      if (error.message?.includes('Authentication failed') || 
+          error.message?.includes('Please login again') ||
+          error.message?.includes('User not authenticated')) {
+        Alert.alert('Authentication Required', 'Please login first.', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+      } else {
+        Alert.alert('Error', 'Failed to load data. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTabChange = (tab: 'expense' | 'income') => {
+    setActiveTab(tab);
+    // Reset category selection when switching tabs
+    const categories = tab === 'expense' ? expenseCategories : incomeCategories;
+    if (categories.length > 0) {
+      setSelectedCategory(categories[0].key);
+    }
+  };
+
+  const requestPermissions = async () => {
+    try {
+      // Request both camera and media library permissions
+      const [cameraPermission, libraryPermission] = await Promise.all([
+        ImagePicker.requestCameraPermissionsAsync(),
+        ImagePicker.requestMediaLibraryPermissionsAsync(false) // false = request read and write permissions
+      ]);
+      
+      console.log('Camera permission:', cameraPermission);
+      console.log('Library permission:', libraryPermission);
+      
+      if (cameraPermission.status !== 'granted') {
+        Alert.alert(
+          'Camera Permission Required',
+          'Please allow camera access in settings to take photos.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+      
+      if (libraryPermission.status !== 'granted') {
+        Alert.alert(
+          'Photo Library Permission Required',
+          'Please allow photo library access in settings to select images.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+      Alert.alert(
+        'Permission Error',
+        'Failed to request permissions. Please check your device settings.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) return;
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false, // Allow taking full photo without cropping
+        quality: 0.8,
+        cameraType: ImagePicker.CameraType.back,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setSelectedImage(imageUri);
+        setShowImageOptions(false);
+        console.log('Photo taken:', imageUri);
+        
+        // Ask user if they want to scan the invoice for auto-fill
+        if (activeTab === 'expense') {
+          Alert.alert(
+            'Scan Invoice?',
+            'Would you like to automatically extract information from this receipt?',
+            [
+              { 
+                text: 'Skip', 
+                style: 'cancel' 
+              },
+              { 
+                text: 'Scan', 
+                onPress: () => scanInvoice(imageUri) 
+              }
+            ]
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const pickFromGallery = async () => {
+    try {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) return;
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false, // Allow selecting full image without cropping
+        quality: 0.8,
+        allowsMultipleSelection: false,
+        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
+        legacy: Platform.OS === 'android', // Use legacy picker on Android for better file access
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setSelectedImage(imageUri);
+        setShowImageOptions(false);
+        console.log('Image selected:', imageUri);
+        
+        // Ask user if they want to scan the invoice for auto-fill
+        if (activeTab === 'expense') {
+          Alert.alert(
+            'Scan Invoice?',
+            'Would you like to automatically extract information from this receipt?',
+            [
+              { 
+                text: 'Skip', 
+                style: 'cancel' 
+              },
+              { 
+                text: 'Scan', 
+                onPress: () => scanInvoice(imageUri) 
+              }
+            ]
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const pickFromGalleryWithCrop = async () => {
+    try {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) return;
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true, // Allow editing/cropping
+        aspect: [4, 3],
+        quality: 0.8,
+        allowsMultipleSelection: false,
+        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setSelectedImage(imageUri);
+        setShowImageOptions(false);
+        console.log('Cropped image selected:', imageUri);
+        
+        // Ask user if they want to scan the invoice for auto-fill
+        if (activeTab === 'expense') {
+          Alert.alert(
+            'Scan Invoice?',
+            'Would you like to automatically extract information from this receipt?',
+            [
+              { 
+                text: 'Skip', 
+                style: 'cancel' 
+              },
+              { 
+                text: 'Scan', 
+                onPress: () => scanInvoice(imageUri) 
+              }
+            ]
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error picking image with crop:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const scanInvoice = async (imageUri: string) => {
+    setIsScanning(true);
+    try {
+      console.log('🔄 Scanning invoice for OCR...');
+      
+      // Convert image URI to File/Blob for web or create proper format for mobile
+      let file: File | Blob;
+      
+      if (Platform.OS === 'web') {
+        // For web, convert URI to blob
+        const response = await fetch(imageUri);
+        file = await response.blob();
+      } else {
+        // For mobile, create a file-like object
+        const filename = imageUri.split('/').pop() || 'receipt.jpg';
+        file = {
+          uri: imageUri,
+          type: 'image/jpeg',
+          name: filename,
+        } as any;
+      }
+      
+      const ocrResult: TransactionOcrResponse = await ocrService.scanInvoice(file);
+      
+      // Auto-fill form with OCR results
+      if (ocrResult.total_amount) {
+        setAmount(ocrResult.total_amount.toString());
+      }
+      
+      if (ocrResult.transaction_date) {
+        const parsedDate = new Date(ocrResult.transaction_date);
+        if (!isNaN(parsedDate.getTime())) {
+          setDate(parsedDate);
+        }
+      }
+      
+      if (ocrResult.description_invoice) {
+        setNote(ocrResult.description_invoice);
+      }
+      
+      // Update the receipt image URL from OCR response
+      if (ocrResult.receipt_image_url) {
+        setSelectedImage(ocrResult.receipt_image_url);
+      }
       
       Alert.alert(
-        t('common.error'),
-        'Failed to load data from server. Please check your connection and try again.',
-        [
-          { text: 'Retry', onPress: () => loadAllData(false) },
-          { text: 'Cancel' }
-        ]
+        'Invoice Scanned Successfully!', 
+        'Form has been auto-filled with extracted information. Please verify the details.',
+        [{ text: 'OK' }]
+      );
+      
+      console.log('✅ Invoice scanned and form auto-filled:', ocrResult);
+      
+    } catch (error: any) {
+      console.error('❌ Failed to scan invoice:', error);
+      Alert.alert(
+        'OCR Error', 
+        'Failed to extract text from invoice. You can still add the transaction manually.',
+        [{ text: 'OK' }]
       );
     } finally {
-      setInitialLoading(false);
+      setIsScanning(false);
     }
-  }, [user, loadFromCache, loadCategoriesByType, loadWallets, selectedCategory, selectedWallet, activeTab, t]);
+  };
 
-  // Initial load
-  useEffect(() => {
-    loadAllData(true);
-  }, []);
+  const removeImage = () => {
+    setSelectedImage(null);
+  };
 
-  // Optimized tab change handler
-  const handleTabChange = useCallback((newTab: 'expense' | 'income') => {
-    if (newTab !== activeTab) {
-      setActiveTab(newTab);
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
+    setIsSaving(true);
+    try {
+      console.log('🔄 Getting user profile for transaction...');
       
-      // Auto-select first category for the new tab
-      const newCategories = newTab === 'expense' ? expenseCategories : incomeCategories;
-      if (newCategories.length > 0 && newCategories[0].key !== 'edit') {
-        setSelectedCategory(newCategories[0].key);
-      } else {
-        setSelectedCategory('');
-      }
-    }
-  }, [activeTab, expenseCategories, incomeCategories]);
+      // Get user profile to get real userId
+      const userProfile = await secureApiService.getCurrentUserProfile();
+      const userId = userProfile.user_id;
+      
+      console.log('✅ User ID for transaction:', userId);
 
-  // Optimized date handlers with useMemo for date formatting
-  const formattedDate = useMemo(() => {
+      const amountValue = parseFloat(amount);
+      const categoryId = parseInt(selectedCategory);
+
+      const transactionData: CreateTransactionRequest = {
+        user_id: userId, // Use real userId from /me API
+        wallet_id: selectedWallet!,
+        category_id: categoryId,
+        group_id: undefined,
+        transaction_type: activeTab === 'expense' ? TransactionType.EXPENSE : TransactionType.INCOME,
+        amount: amountValue,
+        currency_code: 'VND',
+        transaction_date: date.toISOString(),
+        description: note.trim() || undefined,
+        receipt_image_url: selectedImage || null,
+        payee_payer_name: undefined,
+      };
+
+      console.log('🔄 Saving transaction:', transactionData);
+
+      if (activeTab === 'expense') {
+        await transactionService.createExpense(transactionData);
+      } else {
+        await transactionService.createIncome(transactionData);
+      }
+
+      Alert.alert('Success', 'Transaction saved successfully!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+
+    } catch (error: any) {
+      console.error('Error saving transaction:', error);
+      
+      // Handle authentication errors specifically  
+      if (error.message?.includes('Authentication failed') || 
+          error.message?.includes('Please login again') ||
+          error.message?.includes('User not authenticated')) {
+        Alert.alert('Authentication Required', 'Please login first.', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+      } else {
+        Alert.alert('Error', 'Failed to save transaction. Please try again.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const validateForm = () => {
+    if (!amount.trim()) {
+      Alert.alert('Error', 'Please enter an amount');
+      return false;
+    }
+    
+    const amountValue = parseFloat(amount);
+    if (isNaN(amountValue) || amountValue <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return false;
+    }
+    
+    if (!selectedCategory) {
+      Alert.alert('Error', 'Please select a category');
+      return false;
+    }
+    
+    if (!selectedWallet) {
+      Alert.alert('Error', 'Please select a wallet');
+      return false;
+    }
+    
+    return true;
+  };
+
+  const formatDate = (date: Date) => {
     return date.toLocaleDateString('vi-VN', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       weekday: 'short'
     });
-  }, [date]);
+  };
 
-  const openDatePicker = useCallback(() => {
-    setTempDate(date);
-    setShowDate(true);
-  }, [date]);
-
-  const handleDateChange = useCallback((event: any, selectedDate?: Date) => {
+  const handleDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
-      setShowDate(false);
-      if (event.type === 'set' && selectedDate) {
-        setDate(selectedDate);
-      }
-    } else {
-      if (selectedDate) {
-        setTempDate(selectedDate);
-      }
+      setShowDatePicker(false);
     }
-  }, []);
-
-  const handleConfirmDate = useCallback(() => {
-    setDate(tempDate);
-    setShowDate(false);
-  }, [tempDate]);
-
-  const handleCancelDate = useCallback(() => {
-    setTempDate(date);
-    setShowDate(false);
-  }, [date]);
-
-  const adjustDate = useCallback((days: number) => {
-    const newDate = new Date(date);
-    newDate.setDate(newDate.getDate() + days);
-    setDate(newDate);
-  }, [date]);
-
-  const handleCameraPress = useCallback(() => {
-    console.log('Camera pressed - will implement receipt scanning');
-    Alert.alert(
-      'Camera Feature',
-      'Receipt scanning feature will be implemented in a future update.',
-      [{ text: 'OK' }]
-    );
-  }, []);
-
-  const handleCategoryPress = useCallback((category: LocalCategory) => {
-    if (category.key === 'edit') {
-      navigation.navigate('EditCategoryScreen', { type: activeTab });
-    } else {
-      setSelectedCategory(category.key);
+    if (selectedDate) {
+      setDate(selectedDate);
     }
-  }, [navigation, activeTab]);
+  };
 
-  // Optimized wallet selection
-  const handleWalletSelect = useCallback((walletId: number) => {
-    setSelectedWallet(walletId);
-    setShowWalletPicker(false);
-  }, []);
+  const getCurrentCategories = () => {
+    return activeTab === 'expense' ? expenseCategories : incomeCategories;
+  };
 
-  // Optimized save transaction with better error handling
-  const handleSaveTransaction = useCallback(async () => {
-    // Validate inputs
-    if (!amount.trim()) {
-      Alert.alert(t('common.error'), 'Please enter an amount');
-      return;
-    }
-
-    if (!selectedCategory) {
-      Alert.alert(t('common.error'), 'Please select a category');
-      return;
-    }
-
-    if (!selectedWallet) {
-      Alert.alert(t('common.error'), 'Please select a wallet');
-      return;
-    }
-
-    if (!user) {
-      Alert.alert(t('common.error'), 'User not authenticated');
-      return;
-    }
-
-    // Find the selected category to get its ID
-    const selectedCategoryData = currentCategories.find(cat => cat.key === selectedCategory);
-    if (!selectedCategoryData || selectedCategoryData.key === 'edit') {
-      Alert.alert(t('common.error'), 'Invalid category selected');
-      return;
-    }
-
-    setSaving(true);
-
-    try {
-      // Prepare transaction data
-      const transactionData: CreateTransactionRequest = {
-        user_id: parseInt(user.id) || 1,
-        wallet_id: selectedWallet || 1,
-        category_id: parseInt(selectedCategoryData.key),
-        group_id: 1,
-        transaction_type: activeTab === 'expense' ? TransactionType.EXPENSE : TransactionType.INCOME,
-        amount: parseFloat(amount),
-        currency_code: 'VND',
-        transaction_date: date.toISOString().split('T')[0],
-        description: note.trim() || undefined,
-        receipt_image: null,
-        payee_payer_name: undefined,
-      };
-
-      console.log('💰 Saving transaction:', transactionData);
-
-      // Call the appropriate API method
-      let savedTransaction;
-      if (activeTab === 'expense') {
-        savedTransaction = await transactionService.createExpense(transactionData);
-      } else {
-        savedTransaction = await transactionService.createIncome(transactionData);
-      }
-
-      console.log('✅ Transaction saved successfully:', savedTransaction);
-
-      Alert.alert(
-        t('common.success'),
-        `${activeTab === 'expense' ? 'Expense' : 'Income'} saved successfully!`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Reset form
-              setAmount('');
-              setNote('');
-              setDate(new Date());
-              
-              // Mark wallets for refresh
-              walletService.markForRefresh();
-              
-              // Invalidate wallet cache to force refresh balances
-              dataCache.wallets = null;
-              
-              // Navigate to MainTab
-              navigation.navigate('MainTab');
-            }
-          }
-        ]
-      );
-
-    } catch (error: any) {
-      console.error('❌ Failed to save transaction:', error);
-      
-      Alert.alert(
-        t('common.error'),
-        error.message || 'Failed to save transaction. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setSaving(false);
-    }
-  }, [amount, selectedCategory, selectedWallet, user, currentCategories, activeTab, date, note, t, navigation]);
-
-  // Memoized category item renderer for better performance
-  const renderCategoryItem = useCallback(({ item }: { item: LocalCategory }) => (
-    <TouchableOpacity
-      style={[
-        styles.category,
-        selectedCategory === item.key && styles.categoryActive
-      ]}
-      onPress={() => handleCategoryPress(item)}
-    >
-      <Icon name={item.icon} size={24} color={item.color} />
-      <Text style={styles.categoryText} numberOfLines={2} ellipsizeMode="tail">
-        {item.label}
-      </Text>
-    </TouchableOpacity>
-  ), [selectedCategory, handleCategoryPress]);
-
-
-
-  // Memoized selected wallet display
-  const selectedWalletDisplay = useMemo(() => {
-    if (!selectedWallet) return 'Chọn ví';
+  const getSelectedWalletName = () => {
     const wallet = wallets.find(w => w.id === selectedWallet);
-    return wallet?.wallet_name || 'Chọn ví';
-  }, [selectedWallet, wallets]);
+    return wallet ? wallet.wallet_name : 'Select Wallet';
+  };
 
-  // Early return if still loading initially
-  if (initialLoading) {
+  const renderCategoryItem = ({ item }: { item: LocalCategory }) => {
+    const isSelected = selectedCategory === item.key;
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#1e90ff" />
-        <Text style={styles.loadingText}>{t('common.loading')}...</Text>
-      </View>
+      <TouchableOpacity
+        style={[styles.categoryItem, isSelected && styles.categoryItemSelected]}
+        onPress={() => setSelectedCategory(item.key)}
+      >
+        <Icon name={item.icon} size={24} color={item.color} />
+        <Text style={styles.categoryText} numberOfLines={2}>{item.label}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  if (authLoading || isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#1e90ff" />
+          <Text style={styles.loadingText}>
+            {authLoading ? 'Checking authentication...' : 'Loading...'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show scanning overlay when OCR is processing
+  if (isScanning) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#1e90ff" />
+          <Text style={styles.loadingText}>Scanning invoice...</Text>
+          <Text style={styles.subLoadingText}>Extracting text from your receipt</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="#fff" 
-        translucent={false}
-      />
-      
-      <ScrollView 
-        style={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.headerRow}> 
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <IconBack name="arrow-back" size={22} color="#1e90ff" />
-            </TouchableOpacity>
-            <View style={styles.tabSwitch}>
-              <TouchableOpacity
-                style={[styles.tabItem, activeTab === 'expense' && styles.tabItemActive]}
-                onPress={() => handleTabChange('expense')}
-              >
-                <Text style={[styles.tabText, activeTab === 'expense' && styles.tabTextActive]}>{t('expense')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tabItem, activeTab === 'income' && styles.tabItemActive]}
-                onPress={() => handleTabChange('income')}
-              >
-                <Text style={[styles.tabText, activeTab === 'income' && styles.tabTextActive]}>{t('incomeLabel')}</Text>
-              </TouchableOpacity>
-            </View>
-            {activeTab === 'expense' && (
-              <TouchableOpacity style={styles.cameraBtn} onPress={handleCameraPress}>
-                <Icon name="camera" size={24} color="#1e90ff" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Date */}
-          <View style={styles.row}>
-            <Text style={styles.label}>{t('date')}</Text>
-            <View style={styles.dateContainer}>
-              <TouchableOpacity 
-                style={styles.dateArrow}
-                onPress={() => adjustDate(-1)}
-              >
-                <IconBack name="chevron-left" size={20} color="#333" />
-              </TouchableOpacity>
-              <Pressable 
-                style={styles.dateValue}
-                onPress={openDatePicker}
-              >
-                <Text style={styles.dateText}>{formattedDate}</Text>
-              </Pressable>
-              <TouchableOpacity 
-                style={styles.dateArrow}
-                onPress={() => adjustDate(1)}
-              >
-                <IconBack name="chevron-right" size={20} color="#333" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Date Picker - Platform specific */}
-          {Platform.OS === 'ios' ? (
-            <Modal
-              visible={showDate}
-              transparent
-              animationType="slide"
-              onRequestClose={handleCancelDate}
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <IconBack name="arrow-back" size={24} color="#1e90ff" />
+          </TouchableOpacity>
+          
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'expense' && styles.tabActive]}
+              onPress={() => handleTabChange('expense')}
             >
-              <View style={styles.modalOverlay}>
-                <View style={styles.iosModalContent}>
-                  <View style={styles.iosModalHeader}>
-                    <TouchableOpacity onPress={handleCancelDate}>
-                      <Text style={styles.iosModalButtonCancel}>{t('cancel')}</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.iosModalTitle}>Select Date</Text>
-                    <TouchableOpacity onPress={handleConfirmDate}>
-                      <Text style={styles.iosModalButtonConfirm}>{t('common.confirm')}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <DateTimePicker
-                    value={tempDate}
-                    mode="date"
-                    display="spinner"
-                    onChange={handleDateChange}
-                    maximumDate={new Date()}
-                    minimumDate={new Date(1900, 0, 1)}
-                    themeVariant="light"
-                    style={styles.iosDatePicker}
-                    textColor="#000"
-                  />
-                </View>
-              </View>
-            </Modal>
+              <Text style={[styles.tabText, activeTab === 'expense' && styles.tabTextActive]}>
+                {t('expense')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'income' && styles.tabActive]}
+              onPress={() => handleTabChange('income')}
+            >
+              <Text style={[styles.tabText, activeTab === 'income' && styles.tabTextActive]}>
+                {t('incomeLabel')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Camera Icon - Only show for expense tab */}
+          {activeTab === 'expense' && (
+            <TouchableOpacity
+              style={styles.cameraButton}
+              onPress={() => setShowImageOptions(true)}
+            >
+              <Icon name="camera" size={24} color="#1e90ff" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Date */}
+        <View style={styles.row}>
+          <Text style={styles.label}>{t('date')}</Text>
+          <TouchableOpacity
+            style={styles.input}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={styles.dateText}>{formatDate(date)}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Wallet */}
+        <View style={styles.row}>
+          <Text style={styles.label}>Wallet</Text>
+          <TouchableOpacity
+            style={styles.input}
+            onPress={() => setShowWalletPicker(!showWalletPicker)}
+          >
+            <Text style={styles.inputText}>{getSelectedWalletName()}</Text>
+            <Icon name="chevron-down" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Wallet Picker - Moved outside of main content to be an overlay */}
+
+        {/* Amount */}
+        <View style={styles.row}>
+          <Text style={styles.label}>Amount</Text>
+          <View style={styles.amountContainer}>
+            <TextInput
+              style={styles.amountInput}
+              placeholder="0"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="numeric"
+            />
+            <Text style={styles.currency}>VND</Text>
+          </View>
+        </View>
+
+        {/* Note */}
+        <View style={styles.row}>
+          <Text style={styles.label}>{t('note')}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter note"
+            value={note}
+            onChangeText={setNote}
+            multiline
+          />
+        </View>
+
+        {/* Receipt Image - Only show for expense tab */}
+        {activeTab === 'expense' && selectedImage && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Receipt</Text>
+            <View style={styles.imageContainer}>
+              <Image source={{ uri: selectedImage }} style={styles.receiptImage} />
+              <TouchableOpacity 
+                style={styles.removeImageButton}
+                onPress={removeImage}
+              >
+                <Icon name="close" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Categories */}
+        <Text style={styles.sectionTitle}>Category</Text>
+        <FlatList
+          data={getCurrentCategories()}
+          renderItem={renderCategoryItem}
+          keyExtractor={(item) => item.key}
+          numColumns={4}
+          scrollEnabled={false}
+          contentContainerStyle={styles.categoriesContainer}
+        />
+
+        {/* Save Button */}
+        <TouchableOpacity
+          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <ActivityIndicator size="small" color="#fff" />
           ) : (
-            showDate && (
+            <Text style={styles.saveButtonText}>
+              {activeTab === 'expense' ? 'Add Expense' : 'Add Income'}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* Date Picker */}
+      {showDatePicker && (
+        <Modal visible={showDatePicker} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <Text style={styles.modalButton}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Select Date</Text>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <Text style={styles.modalButton}>Done</Text>
+                </TouchableOpacity>
+              </View>
               <DateTimePicker
                 value={date}
                 mode="date"
-                display="default"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 onChange={handleDateChange}
                 maximumDate={new Date()}
-                minimumDate={new Date(1900, 0, 1)}
-                themeVariant="light"
               />
-            )
-          )}
+            </View>
+          </View>
+        </Modal>
+      )}
 
-          {/* Wallet Selection */}
-          <View style={styles.row}>
-            <Text style={styles.label}>Ví</Text>
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity 
-                style={styles.dropdown}
-                onPress={() => setShowWalletPicker(!showWalletPicker)}
+      {/* Wallet Picker Modal */}
+      {showWalletPicker && (
+        <Modal visible={showWalletPicker} transparent animationType="fade">
+          <TouchableOpacity 
+            style={styles.walletModalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowWalletPicker(false)}
+          >
+            <View style={styles.walletPickerContainer}>
+              <Text style={styles.walletPickerTitle}>Select Wallet</Text>
+              {wallets.map((wallet) => (
+                <TouchableOpacity
+                  key={wallet.id}
+                  style={[
+                    styles.walletPickerItem,
+                    selectedWallet === wallet.id && styles.walletPickerItemSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedWallet(wallet.id);
+                    setShowWalletPicker(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.walletPickerItemText,
+                    selectedWallet === wallet.id && styles.walletPickerItemTextSelected
+                  ]}>
+                    {wallet.wallet_name}
+                  </Text>
+                  {wallet.is_default && (
+                    <Text style={styles.walletPickerDefault}>Default</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
+      {/* Image Options Modal */}
+      {showImageOptions && (
+        <Modal visible={showImageOptions} transparent animationType="fade">
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowImageOptions(false)}
+          >
+            <View style={styles.imageOptionsContainer}>
+              <Text style={styles.imageOptionsTitle}>Add Receipt Photo</Text>
+              
+              <TouchableOpacity
+                style={styles.imageOptionItem}
+                onPress={takePhoto}
               >
-                <Text style={styles.dropdownText}>{selectedWalletDisplay}</Text>
-                <Icon name="chevron-down" size={20} color="#666" />
+                <Icon name="camera" size={24} color="#1e90ff" />
+                <Text style={styles.imageOptionText}>Take Photo</Text>
               </TouchableOpacity>
               
-              {showWalletPicker && wallets.length > 0 && (
-                <>
-                  {/* Invisible overlay to close dropdown when tapping outside */}
-                  <TouchableOpacity
-                    style={styles.dropdownOverlay}
-                    activeOpacity={1}
-                    onPress={() => setShowWalletPicker(false)}
-                  />
-                  <View style={styles.dropdownList}>
-                    {wallets.map(wallet => (
-                      <TouchableOpacity
-                        key={wallet.id}
-                        style={styles.dropdownItem}
-                        onPress={() => handleWalletSelect(wallet.id)}
-                      >
-                        <Text style={styles.dropdownItemText}>{wallet.wallet_name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </>
-              )}
-            </View>
-          </View>
-
-          {/* Amount */}
-          <View style={styles.row}>
-            <Text style={styles.label}>{activeTab === 'expense' ? t('expense') : t('incomeLabel')}</Text>
-            <View style={styles.amountContainer}>
-              <TextInput
-                style={[styles.input, styles.amountInput]}
-                placeholder="0"
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="numeric"
-                placeholderTextColor="#aaa"
-                returnKeyType="done"
-                blurOnSubmit={false}
-              />
-              <Text style={styles.currencyText}>{t('currency')}</Text>
-            </View>
-          </View>
-
-          {/* Note */}
-          <View style={styles.row}>
-            <Text style={styles.label}>{t('note')}</Text>
-            <View style={styles.noteContainer}>
-              <TextInput
-                style={[styles.input, styles.noteInput]}
-                placeholder="Note"
-                value={note}
-                onChangeText={setNote}
-                multiline={true}
-                numberOfLines={4}
-                placeholderTextColor="#aaa"
-              />
-            </View>
-          </View>
-
-          {/* Categories */}
-          <Text style={[styles.label, styles.categoryTitle]}>{t('category')}</Text>
-          
-          {error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={() => loadAllData(false)}>
-                <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+              <TouchableOpacity
+                style={styles.imageOptionItem}
+                onPress={pickFromGallery}
+              >
+                <Icon name="image" size={24} color="#1e90ff" />
+                <Text style={styles.imageOptionText}>Photo Library</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.imageOptionItem}
+                onPress={pickFromGalleryWithCrop}
+              >
+                <Icon name="crop" size={24} color="#1e90ff" />
+                <Text style={styles.imageOptionText}>Photo Library (with Crop)</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.imageOptionItem, styles.imageOptionCancel]}
+                onPress={() => setShowImageOptions(false)}
+              >
+                <Icon name="close" size={24} color="#666" />
+                <Text style={[styles.imageOptionText, styles.imageOptionCancelText]}>Cancel</Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            <FlatList
-              data={currentCategories}
-              numColumns={4}
-              keyExtractor={item => item.key}
-              renderItem={renderCategoryItem}
-              scrollEnabled={false}
-              contentContainerStyle={styles.categoriesContainer}
-              removeClippedSubviews={true}
-              maxToRenderPerBatch={12}
-              windowSize={10}
-            />
-          )}
-
-          {/* Save Button */}
-          <TouchableOpacity 
-            style={[
-              styles.button, 
-              (!amount.trim() || !selectedCategory || !selectedWallet || saving) && styles.buttonDisabled
-            ]} 
-            onPress={handleSaveTransaction}
-            disabled={!amount.trim() || !selectedCategory || !selectedWallet || saving}
-          >
-            {saving ? (
-              <View style={styles.buttonLoadingContainer}>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={[styles.buttonText, styles.buttonLoadingText]}>Saving...</Text>
-              </View>
-            ) : (
-              <Text style={styles.buttonText}>
-                {activeTab === 'expense' ? t('addExpenseButton') : t('addIncomeButton')}
-              </Text>
-            )}
           </TouchableOpacity>
-        </SafeAreaView>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </Modal>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#fff', 
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
   },
   centerContent: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  safeArea: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#8e8e93',
+    marginTop: 10,
+    color: '#666',
   },
-  errorContainer: {
-    backgroundColor: '#fff2f2',
-    padding: 16,
-    marginVertical: 16,
-    borderRadius: 8,
-    borderColor: '#fecaca',
-    borderWidth: 1,
-  },
-  errorText: {
-    color: '#dc2626',
+  subLoadingText: {
+    marginTop: 5,
     fontSize: 14,
+    color: '#999',
     textAlign: 'center',
-    marginBottom: 8,
   },
-  retryButton: {
-    backgroundColor: '#1e90ff',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    alignSelf: 'center',
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    marginBottom: 20,
-    paddingVertical: 8,
-  },
-  backBtn: {
-    position: 'absolute',
-    left: 0,
-    width: 38,
-    height: 38,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  cameraBtn: {
-    position: 'absolute',
-    right: 0,
-    width: 38,
-    height: 38,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  tabSwitch: {
-    flexDirection: 'row',
-    backgroundColor: '#ededed',
-    borderRadius: 16,
-    width: 200,
-    height: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabItem: {
+  content: {
     flex: 1,
-    height: 32,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 2,
+    padding: 16,
   },
-  tabItemActive: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  tabContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginLeft: 16,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabActive: {
     backgroundColor: '#1e90ff',
-    shadowColor: '#1e90ff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
   },
   tabText: {
-    color: '#1e90ff',
-    fontWeight: '600',
-    fontSize: 15,
+    color: '#666',
+    fontWeight: '500',
   },
   tabTextActive: {
     color: '#fff',
   },
-  row: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 16,
-    paddingVertical: 4,
-  },
-  label: { 
-    fontSize: 16, 
-    color: '#333', 
-    fontWeight: '500', 
-    width: 80,
-    marginRight: 12,
-  },
-  dateContainer: {
-    flex: 1,
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 16,
+  },
+  label: {
+    width: 80,
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  input: {
+    flex: 1,
     backgroundColor: '#f8f8f8',
     borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#eee',
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-  },
-  dateArrow: {
-    padding: 8,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  dateValue: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+  inputText: {
+    fontSize: 16,
+    color: '#333',
   },
   dateText: {
     fontSize: 16,
     color: '#1e90ff',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#eee',
-    color: '#333',
-  },
-  noteContainer: {
-    flex: 1,
-  },
-  noteInput: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#eee',
-    color: '#333',
-    minHeight: 80,
-    textAlignVertical: 'top',
+    fontWeight: '500',
   },
   amountContainer: {
     flex: 1,
@@ -900,226 +882,222 @@ const styles = StyleSheet.create({
   },
   amountInput: {
     flex: 1,
-  },
-  currencyText: { 
-    marginLeft: 8, 
-    color: '#666',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  categoryTitle: {
-    marginTop: 8,
-    marginBottom: 12,
-    width: 'auto',
-  },
-  categoriesContainer: { 
-    marginTop: 8,
-    paddingBottom: 20,
-  },
-  category: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 8,
-    margin: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#eee',
-    backgroundColor: '#fff',
-    minHeight: 70,
-    maxWidth: '22%',
-  },
-  categoryActive: {
-    borderColor: '#1e90ff',
-    backgroundColor: '#e6f2ff',
-  },
-  categoryText: { 
-    fontSize: 10, 
-    color: '#333', 
-    marginTop: 4,
-    textAlign: 'center',
-    lineHeight: 12,
-  },
-  button: {
-    backgroundColor: '#1e90ff',
-    borderRadius: 25,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-    shadowColor: '#1e90ff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  buttonDisabled: {
-    backgroundColor: '#cccccc',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  buttonText: { 
-    color: '#fff', 
-    fontSize: 18, 
-    fontWeight: 'bold' 
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    width: 320,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 16,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
-    marginHorizontal: 6,
-  },
-  modalButtonConfirm: {
-    backgroundColor: '#1e90ff',
-  },
-  modalButtonText: {
-    fontSize: 16,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  modalButtonTextConfirm: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  iosDatePicker: {
-    backgroundColor: '#fff',
-    marginVertical: 10,
-    width: '100%',
-    height: 200,
-  },
-  iosModalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 20,
-    width: '100%',
-    position: 'absolute',
-    bottom: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  iosModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
-  iosModalTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
-  },
-  iosModalButtonCancel: {
-    fontSize: 17,
-    color: '#ff3b30',
-    fontWeight: '400',
-  },
-  iosModalButtonConfirm: {
-    fontSize: 17,
-    color: '#1e90ff',
-    fontWeight: '600',
-  },
-  buttonLoadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonLoadingText: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  // Wallet dropdown styles
-  dropdownContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  dropdownOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: -1000,
-    right: -1000,
-    bottom: -1000,
-    zIndex: 999,
-  },
-  dropdown: {
     backgroundColor: '#f8f8f8',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#eee',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dropdownText: {
     fontSize: 16,
-    color: '#333',
-    flex: 1,
   },
-  dropdownList: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
+  currency: {
+    marginLeft: 8,
+    color: '#666',
+    fontSize: 16,
+  },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 12,
+  },
+  categoriesContainer: {
+    paddingBottom: 20,
+  },
+  categoryItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 12,
+    margin: 4,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#eee',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 1000,
-    maxHeight: 200,
+    backgroundColor: '#fff',
   },
-  dropdownItem: {
-    paddingHorizontal: 12,
+  categoryItemSelected: {
+    borderColor: '#1e90ff',
+    backgroundColor: '#e6f2ff',
+  },
+  categoryText: {
+    fontSize: 12,
+    color: '#333',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  saveButton: {
+    backgroundColor: '#1e90ff',
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  modalButton: {
+    fontSize: 16,
+    color: '#1e90ff',
+  },
+  walletModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  walletPickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 320,
+    maxHeight: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  walletPickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  walletPickerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  dropdownItemText: {
+  walletPickerItemSelected: {
+    backgroundColor: '#e6f2ff',
+  },
+  walletPickerItemText: {
     fontSize: 16,
     color: '#333',
+    flex: 1,
+  },
+  walletPickerItemTextSelected: {
+    color: '#1e90ff',
+    fontWeight: '600',
+  },
+  walletPickerDefault: {
+    fontSize: 12,
+    color: '#1e90ff',
+    backgroundColor: '#e6f2ff',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
     fontWeight: '500',
   },
-  dropdownItemBalance: {
-    fontSize: 14,
+  // Camera button styles
+  cameraButton: {
+    marginLeft: 12,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  // Image styles
+  imageContainer: {
+    position: 'relative',
+    flex: 1,
+  },
+  receiptImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#ff4444',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Image options modal styles
+  imageOptionsContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: '80%',
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  imageOptionsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  imageOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  imageOptionCancel: {
+    borderBottomWidth: 0,
+  },
+  imageOptionText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 12,
+    flex: 1,
+  },
+  imageOptionCancelText: {
     color: '#666',
-    marginTop: 2,
   },
 });

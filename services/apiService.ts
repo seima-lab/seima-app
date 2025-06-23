@@ -144,6 +144,10 @@ export class ApiService {
       const token = await SecureStore.getItemAsync('access_token');
       if (token) {
         defaultHeaders['Authorization'] = `Bearer ${token}`;
+        console.log(`🔐 Token added to FormData headers for POST ${url}`);
+        console.log(`🔐 Token preview: ${token.substring(0, 20)}...`);
+      } else {
+        console.log(`⚠️ No token found for FormData POST ${url}`);
       }
 
       // Merge additional headers
@@ -163,6 +167,7 @@ export class ApiService {
       config.signal = controller.signal;
 
       console.log(`🌐 API FormData Request: POST ${url}`);
+      console.log(`📋 FormData headers:`, defaultHeaders);
 
       const response = await fetch(url, config);
       clearTimeout(timeoutId);
