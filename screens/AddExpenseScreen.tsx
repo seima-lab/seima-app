@@ -1,21 +1,21 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -29,73 +29,120 @@ import { secureApiService } from '../services/secureApiService';
 import { CreateTransactionRequest, transactionService, TransactionType } from '../services/transactionService';
 import { WalletResponse, walletService } from '../services/walletService';
 
-// Icon configurations for different categories (matching EditCategoryScreen)
+// Icon configurations for different categories - COMPLETE DATABASE MAPPING
 const EXPENSE_ICONS = [
-  // Based on the Vietnamese categories in the image
-  { name: 'silverware-fork-knife', color: '#ff9500' }, // Ăn uống - cam
+  // Food & Dining
+  { name: 'silverware-fork-knife', color: '#ff9500' },
+  { name: 'coffee', color: '#8b4513' },
+  { name: 'hamburger', color: '#ff6b35' },
   { name: 'food-apple', color: '#ff9500' },
-  { name: 'hamburger', color: '#ff9500' },
-  { name: 'coffee', color: '#ff9500' },
   { name: 'cake', color: '#ff9500' },
   
-  { name: 'minus-circle', color: '#32d74b' }, // Chi tiêu hàng ngày - xanh lá
-  { name: 'cart', color: '#32d74b' },
+  // Daily & Shopping
+  { name: 'bottle-soda', color: '#32d74b' },
   { name: 'shopping', color: '#32d74b' },
+  { name: 'cart', color: '#228b22' },
+  { name: 'store', color: '#32d74b' },
+  { name: 'minus-circle', color: '#32d74b' },
   
-  { name: 'tshirt-crew', color: '#007aff' }, // Quần áo - xanh dương
+  // Clothing & Fashion
+  { name: 'tshirt-crew', color: '#007aff' },
+  { name: 'shoe-heel', color: '#1e90ff' },
   { name: 'hanger', color: '#007aff' },
-  { name: 'tshirt-v', color: '#007aff' }, // dress -> tshirt-v
+  { name: 'tshirt-v', color: '#4169e1' },
   
-  { name: 'lipstick', color: '#ff2d92' }, // Mỹ phẩm - hồng
-  { name: 'face-woman', color: '#ff2d92' },
-  { name: 'spray', color: '#ff2d92' }, // perfume -> spray
+  // Beauty & Cosmetic
+  { name: 'lipstick', color: '#ff2d92' },
+  { name: 'face-woman', color: '#dda0dd' },
+  { name: 'spray', color: '#ff69b4' },
   
-  { name: 'glass-wine', color: '#ffcc02' }, // Phí giao lưu - vàng
-  { name: 'account-group', color: '#ffcc02' },
+  // Entertainment & Social
+  { name: 'glass-cocktail', color: '#ffcc02' },
+  { name: 'gamepad-variant', color: '#ff8c00' },
+  { name: 'movie', color: '#ffd700' },
+  { name: 'music', color: '#ffa500' },
   { name: 'party-popper', color: '#ffcc02' },
+  { name: 'glass-wine', color: '#ffcc02' },
+  { name: 'account-group', color: '#696969' },
   
-  { name: 'hospital-box', color: '#30d158' }, // Y tế - xanh lá
-  { name: 'pill', color: '#30d158' }, // pills -> pill
+  // Health & Medical
+  { name: 'pill', color: '#30d158' },
+  { name: 'hospital-box', color: '#228b22' },
+  { name: 'pharmacy', color: '#32cd32' },
+  { name: 'dumbbell', color: '#00ff7f' },
+  { name: 'doctor', color: '#30d158' },
   { name: 'stethoscope', color: '#30d158' },
   { name: 'medical-bag', color: '#30d158' },
   
-  { name: 'book-open', color: '#ff2d92' }, // Giáo dục - hồng
-  { name: 'school', color: '#ff2d92' },
-  { name: 'pencil', color: '#ff2d92' },
+  // Education & Learning
+  { name: 'book-open-variant', color: '#ff375f' },
+  { name: 'school', color: '#ff375f' },
+  { name: 'book-open-page-variant', color: '#dc143c' },
+  { name: 'book-open', color: '#ff375f' },
+  { name: 'book', color: '#ff375f' },
+  { name: 'pencil', color: '#b22222' },
   
-  { name: 'lightning-bolt', color: '#00c7be' }, // Tiền điện - xanh ngọc
+  // Utilities
   { name: 'flash', color: '#00c7be' },
+  { name: 'water', color: '#00bfff' },
+  { name: 'wifi', color: '#00c7be' },
+  { name: 'fire', color: '#ff4500' },
+  { name: 'home-lightning-bolt', color: '#00c7be' },
+  { name: 'lightning-bolt', color: '#00c7be' },
   { name: 'power-plug', color: '#00c7be' },
   
-  { name: 'car', color: '#9370db' }, // Đi lại - tím
-  { name: 'bus', color: '#9370db' },
+  // Transportation
   { name: 'train', color: '#9370db' },
-  { name: 'airplane', color: '#9370db' },
-  { name: 'motorbike', color: '#9370db' }, // motorcycle -> motorbike
+  { name: 'car', color: '#9370db' },
+  { name: 'bus', color: '#9370db' },
   { name: 'taxi', color: '#9370db' },
+  { name: 'gas-station', color: '#ff6347' },
+  { name: 'parking', color: '#9370db' },
+  { name: 'airplane', color: '#9370db' },
+  { name: 'motorbike', color: '#9370db' },
   
-  { name: 'phone', color: '#00c7be' }, // Phí liên lạc - xanh ngọc
-  { name: 'wifi', color: '#00c7be' },
+  // Communication
   { name: 'cellphone', color: '#00c7be' },
+  { name: 'phone', color: '#00c7be' },
   
-  { name: 'home', color: '#ff9500' }, // Tiền nhà - cam
-  { name: 'home-outline', color: '#ff9500' }, // house -> home-outline
+  // Housing
+  { name: 'home-city', color: '#ff9500' },
+  { name: 'home', color: '#ff9500' },
+  { name: 'apartment', color: '#ff9500' },
+  { name: 'home-outline', color: '#ff9500' },
   { name: 'key', color: '#ff9500' },
   
-  { name: 'gamepad-variant', color: '#ff375f' }, // Đi chơi - đỏ
-  { name: 'movie', color: '#ff375f' },
-  { name: 'music', color: '#ff375f' },
-  { name: 'ticket', color: '#ff375f' },
+  // Work & Office
+  { name: 'briefcase', color: '#708090' },
+  { name: 'office-building', color: '#708090' },
   
-  // Other common icons
-  { name: 'gift', color: '#bf5af2' },
+  // Additional common
+  { name: 'dots-horizontal', color: '#666' },
+  { name: 'bank-transfer', color: '#4682b4' },
+  { name: 'bank', color: '#4682b4' },
+  { name: 'credit-card-off', color: '#ff6b6b' },
+  { name: 'shield-account', color: '#32cd32' },
+  { name: 'credit-card-multiple', color: '#ff7f50' },
   { name: 'tools', color: '#ff9500' },
-  { name: 'water', color: '#00c7be' },
+  { name: 'wrench', color: '#ff9500' },
+  { name: 'dog', color: '#8b4513' },
+  { name: 'baby', color: '#ffb6c1' },
+  { name: 'beach', color: '#00ced1' },
+  { name: 'calendar-heart', color: '#ff69b4' },
+  { name: 'soccer', color: '#32d74b' },
+  { name: 'palette', color: '#9370db' },
+  { name: 'heart', color: '#ff1493' },
+  { name: 'file-document', color: '#696969' },
+  { name: 'alert-circle', color: '#ff4500' },
+  { name: 'cash-minus', color: '#ff6b6b' },
+  { name: 'gift', color: '#bf5af2' },
+  { name: 'ticket', color: '#ff375f' },
 ];
 
 const INCOME_ICONS = [
   // Work & Salary
   { name: 'cash', color: '#32d74b' },
+  { name: 'cash-plus', color: '#00ff00' },
   { name: 'briefcase', color: '#708090' },
   { name: 'office-building', color: '#708090' },
   { name: 'laptop', color: '#ff375f' },
@@ -116,12 +163,22 @@ const INCOME_ICONS = [
   { name: 'home-account', color: '#ffcc02' },
   { name: 'apartment', color: '#daa520' },
   { name: 'key', color: '#32d74b' },
+  { name: 'home', color: '#ff9500' },
+  
+  // Sales & Commission
+  { name: 'cart', color: '#228b22' },
   
   // Additional Income Sources
   { name: 'piggy-bank', color: '#32d74b' },
-  { name: 'cash-plus', color: '#00ff00' },
   { name: 'credit-card', color: '#4682b4' },
   { name: 'wallet', color: '#8b4513' },
+  { name: 'cash-minus', color: '#ff6b6b' },
+  
+  // Additional common icons
+  { name: 'dots-horizontal', color: '#666' },
+  { name: 'bank-transfer', color: '#4682b4' },
+  { name: 'credit-card-multiple', color: '#ff7f50' },
+  { name: 'shield-account', color: '#32cd32' },
 ];
 
 // Get color for an icon based on category type (matching EditCategoryScreen)
@@ -141,11 +198,12 @@ export default function AddExpenseScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-
+  
   // State
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   
   // Form data
   const [amount, setAmount] = useState('');
@@ -197,6 +255,17 @@ export default function AddExpenseScreen() {
     // Load data directly using /me API to get user info
     loadData();
   }, [authLoading]);
+
+  // Refresh categories when screen is focused (for updated categories)
+  useFocusEffect(
+    useCallback(() => {
+      // Only refresh if we have initially loaded data (not on first mount)
+      if (hasInitiallyLoaded) {
+        console.log('🔄 AddExpenseScreen focused - refreshing categories only');
+        refreshCategories();
+      }
+    }, [hasInitiallyLoaded])
+  );
 
   const loadData = async () => {
     setIsLoading(true);
@@ -302,6 +371,7 @@ export default function AddExpenseScreen() {
       }
 
       console.log('✅ All data loaded successfully');
+      setHasInitiallyLoaded(true);
 
     } catch (error: any) {
       console.error('Error loading data:', error);
@@ -318,6 +388,50 @@ export default function AddExpenseScreen() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const refreshCategories = async () => {
+    try {
+      console.log('🔄 Refreshing categories only...');
+      
+      // Get user profile
+      const userProfile = await secureApiService.getCurrentUserProfile();
+      const userId = userProfile.user_id;
+      const groupId = 0; 
+      
+      console.log('🔄 Loading categories for both tabs with userId:', userId);
+      
+      // Fetch categories separately for each tab with correct categoryType values
+      const [expenseCats, incomeCats] = await Promise.all([
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId, groupId),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId, groupId),
+      ]);
+
+      console.log('✅ Categories refreshed:', {
+        expenseCount: expenseCats.length,
+        incomeCount: incomeCats.length,
+      });
+
+      // Convert to local format
+      const categoryServiceInstance = CategoryService.getInstance();
+      setExpenseCategories(expenseCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
+      setIncomeCategories(incomeCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
+
+      // Update selected category if current one is invalid
+      const currentCategories = activeTab === 'expense' ? expenseCats : incomeCats;
+      const isCurrentCategoryValid = currentCategories.some(cat => cat.category_id.toString() === selectedCategory);
+      
+      if (!isCurrentCategoryValid && currentCategories.length > 0) {
+        const newCategoryId = currentCategories[0].category_id.toString();
+        console.log('🔄 Updating selected category after refresh:', newCategoryId);
+        setSelectedCategory(newCategoryId);
+      }
+
+      console.log('✅ Categories refreshed successfully');
+
+    } catch (error: any) {
+      console.error('❌ Error refreshing categories:', error);
     }
   };
 
@@ -474,7 +588,7 @@ export default function AddExpenseScreen() {
         if (activeTab === 'expense') {
           console.log('🔄 Auto-scanning gallery image for expense...');
           scanInvoice(imageUri);
-        } else {
+      } else {
           console.log('ℹ️ Skipping scan for income tab');
         }
       } else {
@@ -519,8 +633,8 @@ export default function AddExpenseScreen() {
           scanInvoice(imageUri);
         } else {
           console.log('ℹ️ Skipping scan for income tab');
-        }
-      } else {
+      }
+    } else {
         console.log('✂️ Gallery with crop cancelled or failed');
       }
     } catch (error) {
@@ -770,7 +884,7 @@ export default function AddExpenseScreen() {
     if (item.key === 'edit_categories') {
       return (
         <TouchableOpacity
-          style={[styles.categoryItem, styles.editCategoryItem]}
+          style={styles.categoryItem}
           onPress={() => {
             console.log('🔧 Navigating to EditCategoryScreen for tab:', activeTab);
             (navigation as any).navigate('EditCategoryScreen', {
@@ -778,8 +892,8 @@ export default function AddExpenseScreen() {
             });
           }}
         >
-          <Icon name={item.icon} size={24} color={item.color} />
-          <Text style={[styles.categoryText, styles.editCategoryText]} numberOfLines={2}>
+          <Icon name={item.icon} size={24} color="#666" />
+          <Text style={styles.categoryText} numberOfLines={2}>
             {item.label}
           </Text>
         </TouchableOpacity>
@@ -810,18 +924,18 @@ export default function AddExpenseScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#1e90ff" />
+        <ActivityIndicator size="large" color="#1e90ff" />
           <Text style={styles.loadingText}>
             {authLoading ? 'Checking authentication...' : 'Loading...'}
           </Text>
-        </View>
+      </View>
       </SafeAreaView>
     );
   }
 
   // Show scanning overlay when OCR is processing
   if (isScanning) {
-    return (
+  return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color="#1e90ff" />
@@ -839,26 +953,26 @@ export default function AddExpenseScreen() {
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Icon name="arrow-left" size={24} color="#007aff" />
-          </TouchableOpacity>
+            </TouchableOpacity>
           
           <View style={styles.tabContainer}>
-            <TouchableOpacity
+              <TouchableOpacity
               style={[styles.tab, activeTab === 'expense' && styles.tabActive]}
-              onPress={() => handleTabChange('expense')}
-            >
+                onPress={() => handleTabChange('expense')}
+              >
               <Text style={[styles.tabText, activeTab === 'expense' && styles.tabTextActive]}>
                 {t('expense')}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+              </TouchableOpacity>
+              <TouchableOpacity
               style={[styles.tab, activeTab === 'income' && styles.tabActive]}
-              onPress={() => handleTabChange('income')}
-            >
+                onPress={() => handleTabChange('income')}
+              >
               <Text style={[styles.tabText, activeTab === 'income' && styles.tabTextActive]}>
                 {t('incomeLabel')}
               </Text>
-            </TouchableOpacity>
-          </View>
+              </TouchableOpacity>
+            </View>
 
                     {/* Camera Icon - Only show for expense tab */}
             {activeTab === 'expense' && (
@@ -871,57 +985,57 @@ export default function AddExpenseScreen() {
             )}
           </View>
 
-        {/* Date */}
-        <View style={styles.row}>
-          <Text style={styles.label}>{t('date')}</Text>
-          <TouchableOpacity
+          {/* Date */}
+          <View style={styles.row}>
+            <Text style={styles.label}>{t('date')}</Text>
+              <TouchableOpacity 
             style={styles.input}
             onPress={() => setShowDatePicker(true)}
           >
             <Text style={styles.dateText}>{formatDate(date)}</Text>
-          </TouchableOpacity>
-        </View>
+              </TouchableOpacity>
+          </View>
 
         {/* Wallet */}
-        <View style={styles.row}>
+          <View style={styles.row}>
           <Text style={styles.label}>Wallet</Text>
-          <TouchableOpacity
+              <TouchableOpacity 
             style={styles.input}
-            onPress={() => setShowWalletPicker(!showWalletPicker)}
-          >
+                onPress={() => setShowWalletPicker(!showWalletPicker)}
+              >
             <Text style={styles.inputText}>{getSelectedWalletName()}</Text>
-            <Icon name="chevron-down" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
+                <Icon name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+          </View>
 
         {/* Wallet Picker - Moved outside of main content to be an overlay */}
 
-        {/* Amount */}
-        <View style={styles.row}>
+          {/* Amount */}
+          <View style={styles.row}>
           <Text style={styles.label}>Amount</Text>
-          <View style={styles.amountContainer}>
-            <TextInput
+            <View style={styles.amountContainer}>
+              <TextInput
               style={styles.amountInput}
-              placeholder="0"
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="numeric"
-            />
+                placeholder="0"
+                value={amount}
+                onChangeText={setAmount}
+                keyboardType="numeric"
+              />
             <Text style={styles.currency}>VND</Text>
+            </View>
           </View>
-        </View>
 
-        {/* Note */}
-        <View style={styles.row}>
-          <Text style={styles.label}>{t('note')}</Text>
-          <TextInput
+          {/* Note */}
+          <View style={styles.row}>
+            <Text style={styles.label}>{t('note')}</Text>
+              <TextInput
             style={styles.input}
             placeholder="Enter note"
-            value={note}
-            onChangeText={setNote}
+                value={note}
+                onChangeText={setNote}
             multiline
-          />
-        </View>
+              />
+          </View>
 
         {/* Receipt Image - Only show for expense tab */}
         {activeTab === 'expense' && selectedImage && (
@@ -941,29 +1055,29 @@ export default function AddExpenseScreen() {
 
         {/* Categories */}
         <Text style={styles.sectionTitle}>Category</Text>
-        <FlatList
+            <FlatList
           data={getCurrentCategories()}
-          renderItem={renderCategoryItem}
+              renderItem={renderCategoryItem}
           keyExtractor={(item) => item.key}
           numColumns={4}
-          scrollEnabled={false}
-          contentContainerStyle={styles.categoriesContainer}
-        />
+              scrollEnabled={false}
+              contentContainerStyle={styles.categoriesContainer}
+            />
 
-        {/* Save Button */}
-        <TouchableOpacity
+          {/* Save Button */}
+          <TouchableOpacity 
           style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={isSaving}
         >
           {isSaving ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
+                <ActivityIndicator size="small" color="#fff" />
+            ) : (
             <Text style={styles.saveButtonText}>
               {activeTab === 'expense' ? 'Add Expense' : 'Add Income'}
-            </Text>
-          )}
-        </TouchableOpacity>
+              </Text>
+            )}
+          </TouchableOpacity>
       </ScrollView>
 
       {/* Date Picker */}
@@ -1090,9 +1204,9 @@ export default function AddExpenseScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff', 
   },
   centerContent: {
     flex: 1,
@@ -1141,16 +1255,16 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#fff',
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  row: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
     marginBottom: 16,
   },
-  label: {
+  label: { 
     width: 80,
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    fontSize: 16, 
+    color: '#333', 
+    fontWeight: '500', 
   },
   input: {
     flex: 1,
@@ -1189,7 +1303,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   currency: {
-    marginLeft: 8,
+    marginLeft: 8, 
     color: '#666',
     fontSize: 16,
   },
@@ -1200,7 +1314,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 12,
   },
-  categoriesContainer: {
+  categoriesContainer: { 
     paddingBottom: 20,
   },
   categoryItem: {
@@ -1217,9 +1331,9 @@ const styles = StyleSheet.create({
     borderColor: '#007aff',
     backgroundColor: '#e6f2ff',
   },
-  categoryText: {
+  categoryText: { 
     fontSize: 12,
-    color: '#333',
+    color: '#333', 
     marginTop: 4,
     textAlign: 'center',
   },
@@ -1234,7 +1348,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccc',
   },
   saveButtonText: {
-    color: '#fff',
+    color: '#fff', 
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1397,14 +1511,5 @@ const styles = StyleSheet.create({
   },
   imageOptionCancelText: {
     color: '#666',
-  },
-
-  editCategoryItem: {
-    borderColor: '#007aff',
-    backgroundColor: '#e6f2ff',
-  },
-  editCategoryText: {
-    color: '#007aff',
-    fontWeight: '600',
   },
 });

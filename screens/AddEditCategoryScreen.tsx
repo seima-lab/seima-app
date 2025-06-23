@@ -2,6 +2,8 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+    ActivityIndicator,
+    Alert,
     FlatList,
     KeyboardAvoidingView,
     Platform,
@@ -11,80 +13,131 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import type { RootStackParamList } from '../navigation/types';
+import { ApiService } from '../services/apiService';
+import { categoryService, CategoryType } from '../services/categoryService';
+import { secureApiService } from '../services/secureApiService';
 
-// Icon configurations for different categories
+// Icon configurations for different categories - COMPLETE DATABASE MAPPING
 const EXPENSE_ICONS = [
-  // Based on the Vietnamese categories in the image
-  { name: 'silverware-fork-knife', color: '#ff9500' }, // Ăn uống - cam
+  // Food & Dining
+  { name: 'silverware-fork-knife', color: '#ff9500' },
+  { name: 'coffee', color: '#8b4513' },
+  { name: 'hamburger', color: '#ff6b35' },
   { name: 'food-apple', color: '#ff9500' },
-  { name: 'hamburger', color: '#ff9500' },
-  { name: 'coffee', color: '#ff9500' },
   { name: 'cake', color: '#ff9500' },
   
-  { name: 'minus-circle', color: '#32d74b' }, // Chi tiêu hàng ngày - xanh lá
-  { name: 'cart', color: '#32d74b' },
+  // Daily & Shopping
+  { name: 'bottle-soda', color: '#32d74b' },
   { name: 'shopping', color: '#32d74b' },
+  { name: 'cart', color: '#228b22' },
+  { name: 'store', color: '#32d74b' },
+  { name: 'minus-circle', color: '#32d74b' },
   
-  { name: 'tshirt-crew', color: '#007aff' }, // Quần áo - xanh dương
+  // Clothing & Fashion
+  { name: 'tshirt-crew', color: '#007aff' },
+  { name: 'shoe-heel', color: '#1e90ff' },
   { name: 'hanger', color: '#007aff' },
-  { name: 'tshirt-v', color: '#007aff' }, // dress -> tshirt-v
+  { name: 'tshirt-v', color: '#4169e1' },
   
-  { name: 'lipstick', color: '#ff2d92' }, // Mỹ phẩm - hồng
-  { name: 'face-woman', color: '#ff2d92' },
-  { name: 'spray', color: '#ff2d92' }, // perfume -> spray
+  // Beauty & Cosmetic
+  { name: 'lipstick', color: '#ff2d92' },
+  { name: 'face-woman', color: '#dda0dd' },
+  { name: 'spray', color: '#ff69b4' },
   
-  { name: 'glass-wine', color: '#ffcc02' }, // Phí giao lưu - vàng
-  { name: 'account-group', color: '#ffcc02' },
+  // Entertainment & Social
+  { name: 'glass-cocktail', color: '#ffcc02' },
+  { name: 'gamepad-variant', color: '#ff8c00' },
+  { name: 'movie', color: '#ffd700' },
+  { name: 'music', color: '#ffa500' },
   { name: 'party-popper', color: '#ffcc02' },
+  { name: 'glass-wine', color: '#ffcc02' },
+  { name: 'account-group', color: '#696969' },
   
-  { name: 'hospital-box', color: '#30d158' }, // Y tế - xanh lá
-  { name: 'pill', color: '#30d158' }, // pills -> pill
+  // Health & Medical
+  { name: 'pill', color: '#30d158' },
+  { name: 'hospital-box', color: '#228b22' },
+  { name: 'pharmacy', color: '#32cd32' },
+  { name: 'dumbbell', color: '#00ff7f' },
+  { name: 'doctor', color: '#30d158' },
   { name: 'stethoscope', color: '#30d158' },
   { name: 'medical-bag', color: '#30d158' },
   
-  { name: 'book-open', color: '#ff2d92' }, // Giáo dục - hồng
-  { name: 'school', color: '#ff2d92' },
-  { name: 'pencil', color: '#ff2d92' },
+  // Education & Learning
+  { name: 'book-open-variant', color: '#ff375f' },
+  { name: 'school', color: '#ff375f' },
+  { name: 'book-open-page-variant', color: '#dc143c' },
+  { name: 'book-open', color: '#ff375f' },
+  { name: 'book', color: '#ff375f' },
+  { name: 'pencil', color: '#b22222' },
   
-  { name: 'lightning-bolt', color: '#00c7be' }, // Tiền điện - xanh ngọc
+  // Utilities
   { name: 'flash', color: '#00c7be' },
+  { name: 'water', color: '#00bfff' },
+  { name: 'wifi', color: '#00c7be' },
+  { name: 'fire', color: '#ff4500' },
+  { name: 'home-lightning-bolt', color: '#00c7be' },
+  { name: 'lightning-bolt', color: '#00c7be' },
   { name: 'power-plug', color: '#00c7be' },
   
-  { name: 'car', color: '#9370db' }, // Đi lại - tím
-  { name: 'bus', color: '#9370db' },
+  // Transportation
   { name: 'train', color: '#9370db' },
-  { name: 'airplane', color: '#9370db' },
-  { name: 'motorbike', color: '#9370db' }, // motorcycle -> motorbike
+  { name: 'car', color: '#9370db' },
+  { name: 'bus', color: '#9370db' },
   { name: 'taxi', color: '#9370db' },
+  { name: 'gas-station', color: '#ff6347' },
+  { name: 'parking', color: '#9370db' },
+  { name: 'airplane', color: '#9370db' },
+  { name: 'motorbike', color: '#9370db' },
   
-  { name: 'phone', color: '#00c7be' }, // Phí liên lạc - xanh ngọc
-  { name: 'wifi', color: '#00c7be' },
+  // Communication
   { name: 'cellphone', color: '#00c7be' },
+  { name: 'phone', color: '#00c7be' },
   
-  { name: 'home', color: '#ff9500' }, // Tiền nhà - cam
-  { name: 'home-outline', color: '#ff9500' }, // house -> home-outline
+  // Housing
+  { name: 'home-city', color: '#ff9500' },
+  { name: 'home', color: '#ff9500' },
+  { name: 'apartment', color: '#ff9500' },
+  { name: 'home-outline', color: '#ff9500' },
   { name: 'key', color: '#ff9500' },
   
-  { name: 'gamepad-variant', color: '#ff375f' }, // Đi chơi - đỏ
-  { name: 'movie', color: '#ff375f' },
-  { name: 'music', color: '#ff375f' },
-  { name: 'ticket', color: '#ff375f' },
+  // Work & Office
+  { name: 'briefcase', color: '#708090' },
+  { name: 'office-building', color: '#708090' },
   
-  // Other common icons
-  { name: 'gift', color: '#bf5af2' },
+  // Additional common
+  { name: 'dots-horizontal', color: '#666' },
+  { name: 'bank-transfer', color: '#4682b4' },
+  { name: 'bank', color: '#4682b4' },
+  { name: 'credit-card-off', color: '#ff6b6b' },
+  { name: 'shield-account', color: '#32cd32' },
+  { name: 'credit-card-multiple', color: '#ff7f50' },
   { name: 'tools', color: '#ff9500' },
-  { name: 'water', color: '#00c7be' },
+  { name: 'wrench', color: '#ff9500' },
+  { name: 'dog', color: '#8b4513' },
+  { name: 'baby', color: '#ffb6c1' },
+  { name: 'beach', color: '#00ced1' },
+  { name: 'calendar-heart', color: '#ff69b4' },
+  { name: 'soccer', color: '#32d74b' },
+  { name: 'palette', color: '#9370db' },
+  { name: 'heart', color: '#ff1493' },
+  { name: 'file-document', color: '#696969' },
+  { name: 'alert-circle', color: '#ff4500' },
+  { name: 'cash-minus', color: '#ff6b6b' },
+  { name: 'gift', color: '#bf5af2' },
+  { name: 'ticket', color: '#ff375f' },
 ];
 
 const INCOME_ICONS = [
   // Work & Salary
   { name: 'cash', color: '#32d74b' },
+  { name: 'cash-plus', color: '#00ff00' },
   { name: 'briefcase', color: '#708090' },
   { name: 'office-building', color: '#708090' },
   { name: 'laptop', color: '#ff375f' },
@@ -105,12 +158,22 @@ const INCOME_ICONS = [
   { name: 'home-account', color: '#ffcc02' },
   { name: 'apartment', color: '#daa520' },
   { name: 'key', color: '#32d74b' },
+  { name: 'home', color: '#ff9500' },
+  
+  // Sales & Commission
+  { name: 'cart', color: '#228b22' },
   
   // Additional Income Sources
   { name: 'piggy-bank', color: '#32d74b' },
-  { name: 'cash-plus', color: '#00ff00' },
   { name: 'credit-card', color: '#4682b4' },
   { name: 'wallet', color: '#8b4513' },
+  { name: 'cash-minus', color: '#ff6b6b' },
+  
+  // Additional common icons
+  { name: 'dots-horizontal', color: '#666' },
+  { name: 'bank-transfer', color: '#4682b4' },
+  { name: 'credit-card-multiple', color: '#ff7f50' },
+  { name: 'shield-account', color: '#32cd32' },
 ];
 
 // Additional color options for customization
@@ -137,28 +200,34 @@ export default function AddEditCategoryScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'AddEditCategoryScreen'>>();
   const { mode, type, category } = route.params;
+  const { user } = useAuth();
   
-  console.log('🎨 AddEditCategoryScreen params:', {
-    mode,
-    type,
-    category
-  });
+  const availableIcons = type === 'expense' ? EXPENSE_ICONS : INCOME_ICONS;
+  
+  // Safe icon selection with fallback
+  const getInitialIcon = () => {
+    if (category?.icon) {
+      const foundIcon = availableIcons.find(icon => icon.name === category.icon);
+      if (foundIcon) {
+        return category.icon;
+      } else {
+        console.log('⚠️ Using fallback icon for:', category.icon);
+        return availableIcons[0].name;
+      }
+    }
+    return type === 'expense' ? EXPENSE_ICONS[0].name : INCOME_ICONS[0].name;
+  };
   
   const [categoryName, setCategoryName] = useState(category?.label || '');
-  const [selectedIcon, setSelectedIcon] = useState(category?.icon || (type === 'expense' ? EXPENSE_ICONS[0].name : INCOME_ICONS[0].name));
+  const [selectedIcon, setSelectedIcon] = useState(getInitialIcon());
   const [selectedColor, setSelectedColor] = useState(
     category?.color || 
     getIconColor(
-      category?.icon || (type === 'expense' ? EXPENSE_ICONS[0].name : INCOME_ICONS[0].name), 
+      getInitialIcon(), 
       type
     )
   );
-  
-  console.log('🎨 Initial state:', {
-    selectedIcon,
-    selectedColor,
-    calculatedColor: getIconColor(selectedIcon, type, category?.color)
-  });
+  const [isSaving, setIsSaving] = useState(false);
   
   const title = mode === 'add' ? t('createNew') : t('editCategory');
   
@@ -167,22 +236,128 @@ export default function AddEditCategoryScreen() {
     return type === 'expense' ? EXPENSE_ICONS : INCOME_ICONS;
   };
   
-  const handleSave = () => {
+  const handleSave = async () => {
+    console.log('💾 === SAVE CATEGORY START ===');
+    console.log('📊 Current Form State:');
+    console.log('  - categoryName:', `"${categoryName}"`, '(trimmed:', `"${categoryName.trim()}"`, ')');
+    console.log('  - selectedIcon:', selectedIcon);
+    console.log('  - selectedColor:', selectedColor);
+    console.log('  - type (tab):', type);
+    console.log('  - mode:', mode);
+    
     if (!categoryName.trim()) {
-      alert(t('pleaseEnterCategoryName'));
+      console.log('❌ Validation failed: Category name is empty');
+      Alert.alert(t('common.error'), t('pleaseEnterCategoryName'));
       return;
     }
+
+    if (!user) {
+      console.log('❌ Validation failed: User not authenticated');
+      Alert.alert(t('common.error'), 'User not authenticated');
+      return;
+    }
+
+    console.log('👤 User Info:');
+    console.log('  - user.id:', user.id, '(type:', typeof user.id, ')');
+    console.log('  - parsed user_id:', parseInt(user.id), '(type:', typeof parseInt(user.id), ')');
+
+    setIsSaving(true);
     
-    // TODO: Implement save logic
-    console.log('Save category:', {
-      name: categoryName,
-      icon: selectedIcon,
-      color: selectedColor,
-      type,
-      mode
-    });
-    
-    navigation.goBack();
+    try {
+      // Get user profile to get real userId
+      const userProfile = await secureApiService.getCurrentUserProfile();
+      const userId = userProfile.user_id;
+      
+      if (mode === 'add') {
+        // Create new category using API - Format exactly as shown by user
+        const createRequest = {
+          category_name: categoryName.trim(),
+          category_type: type === 'expense' ? 1 : 0,
+          category_icon_url: selectedIcon || "",
+          is_system_defined: 0,
+          user_id: userId
+        };
+
+        console.log('🔄 Creating category with ApiService');
+        
+        const apiService = ApiService.getInstance();
+        const result = await apiService.post('/api/v1/categories', createRequest);
+        
+        console.log('✅ Category created successfully:');
+        console.log('📥 API Response:', JSON.stringify(result, null, 2));
+        
+        Alert.alert(
+          t('common.success'), 
+          'Category created successfully!',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => navigation.goBack()
+            }
+          ]
+        );
+        
+      } else {
+        // Edit existing category using API PUT
+        if (!category?.key) {
+          throw new Error('Category ID not found for editing');
+        }
+        
+        const categoryId = parseInt(category.key);
+        console.log('🔧 Editing category ID:', categoryId);
+        
+        // Use CreateCategoryRequest format as per backend API specification
+        const updateRequest = {
+          category_name: categoryName.trim(),
+          category_type: type === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME,
+          category_icon_url: selectedIcon || "",
+          is_system_defined: false,
+          user_id: userId,
+          group_id: 0 // Same as create - groupId = 0 for user-specific categories
+        };
+        
+        console.log('🔄 Updating category with request:', updateRequest);
+        
+        await categoryService.updateCategory(categoryId, updateRequest);
+        
+        console.log('✅ Category updated successfully');
+        
+        Alert.alert(
+          t('common.success'),
+          'Category updated successfully!',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => navigation.goBack()
+            }
+          ]
+        );
+      }
+      
+    } catch (error: any) {
+      console.error('❌ === SAVE CATEGORY ERROR ===');
+      console.error('Error details:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      console.error('Error name:', error.name);
+      
+      let errorMessage = 'Failed to save category';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      console.error('Final error message to user:', errorMessage);
+      
+      Alert.alert(
+        t('common.error'),
+        errorMessage,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      console.log('🏁 === SAVE CATEGORY END ===');
+      console.log('Setting isSaving to false');
+      setIsSaving(false);
+    }
   };
 
   const renderIconItem = ({ item }: { item: { name: string; color: string } }) => {
@@ -211,8 +386,6 @@ export default function AddEditCategoryScreen() {
       </TouchableOpacity>
     );
   };
-
-
 
   return (
     <KeyboardAvoidingView 
@@ -273,8 +446,16 @@ export default function AddEditCategoryScreen() {
 
         {/* Save Button */}
         <View style={styles.bottomContainer}>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>{t('save')}</Text>
+          <TouchableOpacity 
+            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} 
+            onPress={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.saveButtonText}>{t('save')}</Text>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -369,5 +550,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     fontWeight: '600',
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#C7C7CC',
   },
 }); 

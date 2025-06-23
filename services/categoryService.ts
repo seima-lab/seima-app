@@ -454,15 +454,15 @@ export class CategoryService {
       const baseId = categoryType === CategoryType.INCOME ? -1000 : -2000;
       return defaultCategories.map((defaultCat, index) => ({
         category_id: baseId - index, // Negative IDs: -1000, -1001, -2000, -2001
-        user_id: userId,
-        group_id: groupId,
-        category_name: defaultCat.label,
+          user_id: userId,
+          group_id: groupId,
+          category_name: defaultCat.label,
         category_type: categoryType,
-        category_icon_url: defaultCat.key,
-        parent_category_id: null,
-        is_system_defined: true
-      }));
-    }
+          category_icon_url: defaultCat.key,
+          parent_category_id: null,
+          is_system_defined: true
+        }));
+      }
   }
 
   // Get all categories for a user (both income and expense)
@@ -548,8 +548,8 @@ export class CategoryService {
     }
   }
 
-  // Update category
-  async updateCategory(categoryId: number, request: UpdateCategoryRequest): Promise<CategoryResponse> {
+  // Update category - Use CreateCategoryRequest format as per backend API
+  async updateCategory(categoryId: number, request: CreateCategoryRequest): Promise<CategoryResponse> {
     try {
       console.log('🔄 Updating category:', { categoryId, request });
       
