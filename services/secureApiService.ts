@@ -187,8 +187,23 @@ export class SecureApiService {
           return this.makeAuthenticatedRequest<T>(endpoint, method, data);
         } else {
           // Refresh failed, user needs to login again
+          console.log('🔴 Token refresh failed, clearing tokens and triggering logout');
           await authService.clearTokens();
-          throw new Error('Authentication failed. Please login again.');
+          
+          // Import NavigationService dynamically to avoid circular dependency
+          const NavigationServiceModule = await import('../navigation/NavigationService');
+          
+          // Use timeout to ensure this runs after current call stack
+          setTimeout(() => {
+            try {
+              // Force navigation to login screen
+              NavigationServiceModule.NavigationService.resetToLogin();
+            } catch (navError) {
+              console.error('🔴 Navigation error:', navError);
+            }
+          }, 100);
+          
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
         }
       }
       

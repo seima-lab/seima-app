@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface LogoutModalProps {
   visible: boolean;
@@ -38,7 +38,7 @@ const LogoutModal: React.FC<LogoutModalProps> = ({
         <View style={styles.container}>
           {/* Icon */}
           <View style={styles.iconContainer}>
-            <Icon name="logout" size={48} color="#FF6B35" />
+            <Icon name="exit-to-app" size={48} color="#FF6B35" />
           </View>
           
           {/* Title */}
@@ -57,7 +57,7 @@ const LogoutModal: React.FC<LogoutModalProps> = ({
               onPress={onCancel}
               activeOpacity={0.8}
             >
-              <Icon name="arrow-back" size={20} color="#4A90E2" />
+              <Icon name="arrow-left" size={20} color="#4A90E2" />
               <Text style={styles.cancelText}>Ở lại</Text>
             </TouchableOpacity>
             
@@ -66,7 +66,7 @@ const LogoutModal: React.FC<LogoutModalProps> = ({
               onPress={onConfirm}
               activeOpacity={0.8}
             >
-              <Icon name="logout" size={20} color="white" />
+              <Icon name="exit-to-app" size={20} color="white" />
               <Text style={styles.confirmText}>Đăng xuất</Text>
             </TouchableOpacity>
           </View>

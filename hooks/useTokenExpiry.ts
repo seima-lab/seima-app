@@ -45,10 +45,19 @@ export const useTokenExpiry = () => {
     // Single recursive timer
     const tick = (remaining: number) => {
       if (remaining <= 0) {
-        console.log('🔴 Time up - logout');
+        console.log('🔴 Time up - automatic logout');
         modalShownRef.current = false;
         setShowModal(false);
-        logout();
+        
+        // Logout and force navigation
+        logout().then(async () => {
+          try {
+            const NavigationServiceModule = await import('../navigation/NavigationService');
+            NavigationServiceModule.NavigationService.resetToLogin();
+          } catch (navError) {
+            console.error('🔴 Navigation backup failed:', navError);
+          }
+        });
         return;
       }
       
@@ -107,8 +116,17 @@ export const useTokenExpiry = () => {
       const { isExpired, isNearExpiry } = await authService.checkTokenExpiry();
       
       if (isExpired) {
-        console.log('🔴 Token expired');
-        logout();
+        console.log('🔴 Token expired - automatic logout');
+        // Clear auth state and force navigation to login
+        await logout();
+        
+        // Also use NavigationService as backup to ensure navigation
+        try {
+          const NavigationServiceModule = await import('../navigation/NavigationService');
+          NavigationServiceModule.NavigationService.resetToLogin();
+        } catch (navError) {
+          console.error('🔴 Navigation backup failed:', navError);
+        }
         return;
       }
       

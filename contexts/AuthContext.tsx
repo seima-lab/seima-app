@@ -77,8 +77,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setIsAuthenticated(false);
       console.log('🟢 Logout successful');
+      
+      // Force navigation reset to login screen
+      // This will be handled by the AuthNavigator re-render
     } catch (error) {
       console.error('🔴 Logout error:', error);
+      // Even if logout API fails, clear local state
+      setUser(null);
+      setIsAuthenticated(false);
     }
   };
 

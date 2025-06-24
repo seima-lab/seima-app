@@ -188,10 +188,17 @@ const ICON_MAPPING: { [key: string]: string } = {
   // Default fallback
   'default_expense': 'cash-minus',
   'default_income': 'cash-plus',
+
+  // Direct icon name mappings (when icon is saved directly as icon name)
+  'briefcase': 'briefcase',
+  
+  // Handle invalid/legacy icon names
+  'go_out': 'exit-to-app', // Map invalid go_out to valid exit-to-app
+  'bug-report': 'bug', // Map invalid bug-report to valid bug
 };
 
 // Color mapping cho từng category key (backend trả về)
-const COLOR_MAPPING: { [key: string]: string } = {
+export const COLOR_MAPPING: { [key: string]: string } = {
   // Food & Dining - Orange tones
   'food': '#ff9500',
   'restaurant': '#ff9500',
@@ -330,6 +337,7 @@ const COLOR_MAPPING: { [key: string]: string } = {
   // Default fallback colors
   'default_expense': '#ff375f',
   'default_income': '#32d74b',
+  
 };
 
 // API response structure
@@ -595,25 +603,61 @@ export class CategoryService {
 
   // Convert API response to local category format for UI
   convertToLocalCategory(apiCategory: CategoryResponse): LocalCategory {
-    // Extract icon key from category name or icon URL
-    const iconKey = this.extractIconKey(apiCategory.category_name, apiCategory.category_icon_url);
+    // List of known valid MaterialCommunityIcons (partial list of most common ones)
+    const validIcons = [
+      'cash', 'cash-plus', 'cash-minus', 'credit-card', 'bank', 'wallet',
+      'silverware-fork-knife', 'coffee', 'hamburger', 'food-apple', 'cake',
+      'bottle-soda', 'shopping', 'cart', 'store', 'minus-circle',
+      'tshirt-crew', 'shoe-heel', 'hanger', 'tshirt-v',
+      'lipstick', 'face-woman', 'spray',
+      'glass-cocktail', 'gamepad-variant', 'movie', 'music', 'party-popper',
+      'pill', 'hospital-box', 'dumbbell', 'doctor', 'stethoscope',
+      'book-open-variant', 'school', 'book-open-page-variant', 'graduation-cap',
+      'briefcase', 'office-building', 'laptop',
+      'flash', 'water', 'wifi', 'fire', 'home-lightning-bolt',
+      'train', 'car', 'bus', 'taxi', 'gas-station', 'airplane',
+      'cellphone', 'phone',
+      'home-city', 'home', 'apartment', 'home-outline', 'key',
+      'gift', 'hand-heart', 'star', 'trophy',
+      'chart-line', 'piggy-bank', 'bank-transfer', 'percent',
+      'dots-horizontal', 'shield-account', 'tools', 'wrench',
+      'exit-to-app', 'arrow-left', 'close', 'pencil'
+    ];
     
-    console.log('🔄 Converting category:', {
+    let finalIcon = 'cash-minus'; // default fallback
+    
+    // Use category_icon_url if it exists and is valid
+    if (apiCategory.category_icon_url && apiCategory.category_icon_url.trim()) {
+      const iconName = apiCategory.category_icon_url.trim();
+      
+      // Check if it's a valid icon
+      if (validIcons.includes(iconName)) {
+        finalIcon = iconName;
+      } else {
+        // Log invalid icon for debugging
+        console.warn('⚠️ Invalid icon name from database:', iconName, 'for category:', apiCategory.category_name);
+        // Use mapping or fallback
+        finalIcon = ICON_MAPPING[iconName] || (apiCategory.category_type === CategoryType.EXPENSE ? 'cash-minus' : 'cash-plus');
+      }
+    } else {
+      // Fallback to default icons based on category type
+      finalIcon = apiCategory.category_type === CategoryType.EXPENSE ? 'cash-minus' : 'cash-plus';
+    }
+    
+    console.log('🔄 Converting category (validated mapping):', {
       category_name: apiCategory.category_name,
       category_icon_url: apiCategory.category_icon_url,
-      extracted_key: iconKey,
-      mapped_icon: ICON_MAPPING[iconKey],
-      mapped_color: COLOR_MAPPING[iconKey]
+      category_type: apiCategory.category_type,
+      final_icon: finalIcon,
+      is_valid: validIcons.includes(finalIcon),
+      note: 'Color will be determined by iconUtils.getIconColor()'
     });
-    
-    const finalIcon = ICON_MAPPING[iconKey] || (apiCategory.category_type === CategoryType.EXPENSE ? ICON_MAPPING['default_expense'] : ICON_MAPPING['default_income']);
-    const finalColor = COLOR_MAPPING[iconKey] || (apiCategory.category_type === CategoryType.EXPENSE ? '#ff375f' : '#32d74b');
     
     return {
       key: apiCategory.category_id.toString(),
       label: apiCategory.category_name,
       icon: finalIcon,
-      color: finalColor,
+      color: '', // Don't set color here, let iconUtils handle it
       category_id: apiCategory.category_id,
       is_system_defined: apiCategory.is_system_defined,
     };
@@ -636,90 +680,7 @@ export class CategoryService {
     };
   }
 
-  // Extract icon key from category icon URL (which is actually just a key)
-  private extractIconKey(categoryName: string, iconUrlKey: string): string {
-    console.log('🔍 Extracting icon key:', { categoryName, iconUrlKey });
-    
-    // Backend trả về category_icon_url là key thuần túy (ví dụ: 'food', 'daily', 'clothes')
-    // Priority 1: Sử dụng trực tiếp iconUrlKey nếu có trong mapping
-    if (iconUrlKey && iconUrlKey.trim()) {
-      const cleanKey = iconUrlKey.toLowerCase().trim();
-      if (ICON_MAPPING[cleanKey]) {
-        console.log('✅ Found direct mapping:', cleanKey, '->', ICON_MAPPING[cleanKey]);
-        return cleanKey;
-      }
-    }
-    
-    // Priority 2: Thử match theo tên category (normalize spaces to underscores)
-    const nameKey = categoryName.toLowerCase().replace(/\s+/g, '_').trim();
-    if (ICON_MAPPING[nameKey]) {
-      console.log('✅ Found name mapping:', nameKey, '->', ICON_MAPPING[nameKey]);
-      return nameKey;
-    }
-    
-    // Priority 3: Thử các mapping phổ biến từ tên category
-    const commonMappings: { [key: string]: string } = {
-      'food': 'food',
-      'ăn': 'food',
-      'thức ăn': 'food',
-      'đồ ăn': 'food',
-      'drink': 'daily',
-      'uống': 'daily',
-      'đồ uống': 'daily',
-      'clothing': 'clothes',
-      'quần áo': 'clothes',
-      'thời trang': 'clothes',
-      'beauty': 'cosmetic',
-      'làm đẹp': 'cosmetic',
-      'mỹ phẩm': 'cosmetic',
-      'party': 'social',
-      'giải trí': 'social',
-      'vui chơi': 'social',
-      'medical': 'health',
-      'y tế': 'health',
-      'sức khỏe': 'health',
-      'study': 'education',
-      'học tập': 'education',
-      'giáo dục': 'education',
-      'electricity': 'electric',
-      'điện': 'electric',
-      'tiện ích': 'electric',
-      'vehicle': 'transport',
-      'xe cộ': 'transport',
-      'di chuyển': 'transport',
-      'giao thông': 'transport',
-      'phone': 'phone',
-      'điện thoại': 'phone',
-      'liên lạc': 'phone',
-      'house': 'rent',
-      'nhà ở': 'rent',
-      'thuê nhà': 'rent',
-      'income': 'salary',
-      'thu nhập': 'salary',
-      'lương': 'salary',
-      'wage': 'salary',
-      'profit': 'investment',
-      'lợi nhuận': 'investment',
-      'đầu tư': 'investment',
-    };
-    
-    const categoryLower = categoryName.toLowerCase();
-    for (const [key, value] of Object.entries(commonMappings)) {
-      if (categoryLower.includes(key)) {
-        return value;
-      }
-    }
-    
-    // Priority 4: Nếu không match được gì, thử dùng chính iconUrlKey làm fallback
-    if (iconUrlKey && iconUrlKey.trim()) {
-      console.log('🔄 Using iconUrlKey as fallback:', iconUrlKey.toLowerCase().trim());
-      return iconUrlKey.toLowerCase().trim();
-    }
-    
-    // Priority 5: Final fallback
-    console.log('⚠️ No mapping found, using default');
-    return 'default_expense';
-  }
+
 
   // Get default categories for specific type (fallback when API fails)
   getDefaultCategories(categoryType: CategoryType): LocalCategory[] {
@@ -755,4 +716,5 @@ export class CategoryService {
 }
 
 // Export singleton instance
-export const categoryService = CategoryService.getInstance(); 
+export const categoryService = CategoryService.getInstance();
+
