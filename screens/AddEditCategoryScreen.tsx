@@ -1,19 +1,18 @@
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -23,177 +22,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { ApiService } from '../services/apiService';
 import { categoryService, CategoryType } from '../services/categoryService';
 import { secureApiService } from '../services/secureApiService';
-
-// Icon configurations for different categories - COMPLETE DATABASE MAPPING
-const EXPENSE_ICONS = [
-  // Food & Dining
-  { name: 'silverware-fork-knife', color: '#ff9500' },
-  { name: 'coffee', color: '#8b4513' },
-  { name: 'hamburger', color: '#ff6b35' },
-  { name: 'food-apple', color: '#ff9500' },
-  { name: 'cake', color: '#ff9500' },
-  
-  // Daily & Shopping
-  { name: 'bottle-soda', color: '#32d74b' },
-  { name: 'shopping', color: '#32d74b' },
-  { name: 'cart', color: '#228b22' },
-  { name: 'store', color: '#32d74b' },
-  { name: 'minus-circle', color: '#32d74b' },
-  
-  // Clothing & Fashion
-  { name: 'tshirt-crew', color: '#007aff' },
-  { name: 'shoe-heel', color: '#1e90ff' },
-  { name: 'hanger', color: '#007aff' },
-  { name: 'tshirt-v', color: '#4169e1' },
-  
-  // Beauty & Cosmetic
-  { name: 'lipstick', color: '#ff2d92' },
-  { name: 'face-woman', color: '#dda0dd' },
-  { name: 'spray', color: '#ff69b4' },
-  
-  // Entertainment & Social
-  { name: 'glass-cocktail', color: '#ffcc02' },
-  { name: 'gamepad-variant', color: '#ff8c00' },
-  { name: 'movie', color: '#ffd700' },
-  { name: 'music', color: '#ffa500' },
-  { name: 'party-popper', color: '#ffcc02' },
-  { name: 'glass-wine', color: '#ffcc02' },
-  { name: 'account-group', color: '#696969' },
-  
-  // Health & Medical
-  { name: 'pill', color: '#30d158' },
-  { name: 'hospital-box', color: '#228b22' },
-  { name: 'pharmacy', color: '#32cd32' },
-  { name: 'dumbbell', color: '#00ff7f' },
-  { name: 'doctor', color: '#30d158' },
-  { name: 'stethoscope', color: '#30d158' },
-  { name: 'medical-bag', color: '#30d158' },
-  
-  // Education & Learning
-  { name: 'book-open-variant', color: '#ff375f' },
-  { name: 'school', color: '#ff375f' },
-  { name: 'book-open-page-variant', color: '#dc143c' },
-  { name: 'book-open', color: '#ff375f' },
-  { name: 'book', color: '#ff375f' },
-  { name: 'pencil', color: '#b22222' },
-  
-  // Utilities
-  { name: 'flash', color: '#00c7be' },
-  { name: 'water', color: '#00bfff' },
-  { name: 'wifi', color: '#00c7be' },
-  { name: 'fire', color: '#ff4500' },
-  { name: 'home-lightning-bolt', color: '#00c7be' },
-  { name: 'lightning-bolt', color: '#00c7be' },
-  { name: 'power-plug', color: '#00c7be' },
-  
-  // Transportation
-  { name: 'train', color: '#9370db' },
-  { name: 'car', color: '#9370db' },
-  { name: 'bus', color: '#9370db' },
-  { name: 'taxi', color: '#9370db' },
-  { name: 'gas-station', color: '#ff6347' },
-  { name: 'parking', color: '#9370db' },
-  { name: 'airplane', color: '#9370db' },
-  { name: 'motorbike', color: '#9370db' },
-  
-  // Communication
-  { name: 'cellphone', color: '#00c7be' },
-  { name: 'phone', color: '#00c7be' },
-  
-  // Housing
-  { name: 'home-city', color: '#ff9500' },
-  { name: 'home', color: '#ff9500' },
-  { name: 'apartment', color: '#ff9500' },
-  { name: 'home-outline', color: '#ff9500' },
-  { name: 'key', color: '#ff9500' },
-  
-  // Work & Office
-  { name: 'briefcase', color: '#708090' },
-  { name: 'office-building', color: '#708090' },
-  
-  // Additional common
-  { name: 'dots-horizontal', color: '#666' },
-  { name: 'bank-transfer', color: '#4682b4' },
-  { name: 'bank', color: '#4682b4' },
-  { name: 'credit-card-off', color: '#ff6b6b' },
-  { name: 'shield-account', color: '#32cd32' },
-  { name: 'credit-card-multiple', color: '#ff7f50' },
-  { name: 'tools', color: '#ff9500' },
-  { name: 'wrench', color: '#ff9500' },
-  { name: 'dog', color: '#8b4513' },
-  { name: 'baby', color: '#ffb6c1' },
-  { name: 'beach', color: '#00ced1' },
-  { name: 'calendar-heart', color: '#ff69b4' },
-  { name: 'soccer', color: '#32d74b' },
-  { name: 'palette', color: '#9370db' },
-  { name: 'heart', color: '#ff1493' },
-  { name: 'file-document', color: '#696969' },
-  { name: 'alert-circle', color: '#ff4500' },
-  { name: 'cash-minus', color: '#ff6b6b' },
-  { name: 'gift', color: '#bf5af2' },
-  { name: 'ticket', color: '#ff375f' },
-];
-
-const INCOME_ICONS = [
-  // Work & Salary
-  { name: 'cash', color: '#32d74b' },
-  { name: 'cash-plus', color: '#00ff00' },
-  { name: 'briefcase', color: '#708090' },
-  { name: 'office-building', color: '#708090' },
-  { name: 'laptop', color: '#ff375f' },
-  
-  // Investment & Business
-  { name: 'chart-line', color: '#007aff' },
-  { name: 'bank', color: '#ff2d92' },
-  { name: 'percent', color: '#00c7be' },
-  { name: 'store', color: '#30d158' },
-  
-  // Gifts & Rewards
-  { name: 'gift', color: '#bf5af2' },
-  { name: 'hand-heart', color: '#ff2d92' },
-  { name: 'star', color: '#ffcc02' },
-  { name: 'trophy', color: '#ffd700' },
-  
-  // Property & Rental
-  { name: 'home-account', color: '#ffcc02' },
-  { name: 'apartment', color: '#daa520' },
-  { name: 'key', color: '#32d74b' },
-  { name: 'home', color: '#ff9500' },
-  
-  // Sales & Commission
-  { name: 'cart', color: '#228b22' },
-  
-  // Additional Income Sources
-  { name: 'piggy-bank', color: '#32d74b' },
-  { name: 'credit-card', color: '#4682b4' },
-  { name: 'wallet', color: '#8b4513' },
-  { name: 'cash-minus', color: '#ff6b6b' },
-  
-  // Additional common icons
-  { name: 'dots-horizontal', color: '#666' },
-  { name: 'bank-transfer', color: '#4682b4' },
-  { name: 'credit-card-multiple', color: '#ff7f50' },
-  { name: 'shield-account', color: '#32cd32' },
-];
-
-// Additional color options for customization
-const CUSTOM_COLORS = [
-  '#ff375f', '#ff9500', '#ffcc02', '#32d74b', '#00c7be',
-  '#007aff', '#bf5af2', '#ff2d92', '#8e8e93', '#000000'
-];
-
-// Get color for an icon based on category type (matching other screens)
-const getIconColor = (iconName: string, categoryType: 'expense' | 'income', dbColor?: string): string => {
-  // If color exists in database, use it
-  if (dbColor) {
-    return dbColor;
-  }
-  
-  // Otherwise, use default color mapping
-  const iconSet = categoryType === 'expense' ? EXPENSE_ICONS : INCOME_ICONS;
-  const iconConfig = iconSet.find(icon => icon.name === iconName);
-  return iconConfig ? iconConfig.color : '#666'; // Default color if not found
-};
+import { getIconColor, getIconsForCategoryType } from '../utils/iconUtils';
 
 export default function AddEditCategoryScreen() {
   const { t } = useTranslation();
@@ -202,20 +31,45 @@ export default function AddEditCategoryScreen() {
   const { mode, type, category } = route.params;
   const { user } = useAuth();
   
-  const availableIcons = type === 'expense' ? EXPENSE_ICONS : INCOME_ICONS;
+  // Add ref for FlatList
+  const iconFlatListRef = useRef<FlatList>(null);
+  
+  // Get available icons from centralized utility
+  const getAvailableIcons = () => {
+    return getIconsForCategoryType(type);
+  };
   
   // Safe icon selection with fallback
   const getInitialIcon = () => {
+    console.log('🔍 GetInitialIcon debug:', {
+      categoryIcon: category?.icon,
+      mode: mode,
+      type: type
+    });
+    
     if (category?.icon) {
-      const foundIcon = availableIcons.find(icon => icon.name === category.icon);
+      const availableIcons = getIconsForCategoryType(type);
+      console.log('📊 Available icons count:', availableIcons.length);
+      console.log('📊 Looking for icon:', category.icon);
+      console.log('📊 First 10 available icons:', availableIcons.slice(0, 10).map(i => i.name));
+      
+      const foundIcon = availableIcons.find((icon: { name: string; color: string }) => icon.name === category.icon);
       if (foundIcon) {
+        console.log('✅ Found matching icon:', category.icon);
         return category.icon;
       } else {
-        console.log('⚠️ Using fallback icon for:', category.icon);
-        return availableIcons[0].name;
+        console.log('❌ Icon not found in available icons:', category.icon);
+        console.log('🔍 All available icon names:', availableIcons.map(i => i.name));
+        // Instead of using first icon, try to find a similar one
+        const fallbackIcon = availableIcons[0]?.name || 'help-circle';
+        console.log('⚠️ Using fallback icon:', fallbackIcon);
+        return fallbackIcon;
       }
     }
-    return type === 'expense' ? EXPENSE_ICONS[0].name : INCOME_ICONS[0].name;
+    const availableIcons = getIconsForCategoryType(type);
+    const defaultIcon = availableIcons[0]?.name || 'help-circle';
+    console.log('ℹ️ No category icon, using default:', defaultIcon);
+    return defaultIcon;
   };
   
   const [categoryName, setCategoryName] = useState(category?.label || '');
@@ -228,13 +82,161 @@ export default function AddEditCategoryScreen() {
     )
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [isFlatListReady, setIsFlatListReady] = useState(false);
   
   const title = mode === 'add' ? t('createNew') : t('editCategory');
   
-  // Get icons based on category type
-  const getAvailableIcons = () => {
-    return type === 'expense' ? EXPENSE_ICONS : INCOME_ICONS;
-  };
+  // Auto-scroll to selected icon when in edit mode and FlatList is ready
+  useEffect(() => {
+    let timerId: number | null = null;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    console.log('🔍 [Auto-scroll Debug]', {
+      mode,
+      categoryIcon: category?.icon,
+      isFlatListReady,
+      hasRef: !!iconFlatListRef.current
+    });
+
+    const attemptScroll = () => {
+      if (mode === 'edit' && category?.icon && iconFlatListRef.current && isFlatListReady) {
+        const availableIcons = getIconsForCategoryType(type);
+        const selectedIndex = availableIcons.findIndex(icon => icon.name === category.icon);
+        
+        console.log('📍 [Auto-scroll] Found icon:', {
+          searchingFor: category.icon,
+          foundAtIndex: selectedIndex,
+          totalIcons: availableIcons.length,
+          retryCount
+        });
+        
+        if (selectedIndex !== -1) {
+          const rowHeight = 90; // Icon height + margins
+          const totalRows = Math.ceil(availableIcons.length / 4);
+          const targetRow = Math.floor(selectedIndex / 4);
+          
+          console.log(`🎯 [Auto-scroll] Target: row ${targetRow + 1}/${totalRows}, index ${selectedIndex}`);
+          
+          // For icons in the last 6 rows, use different approach
+          if (targetRow >= totalRows - 6) {
+            console.log(`📍 Handling bottom section (row ${targetRow + 1}/${totalRows})`);
+            
+            try {
+              // For bottom section, try to scroll to a visible item near the end first
+              const safeScrollIndex = Math.max(0, selectedIndex - 8); // Scroll to 8 items before target
+              
+              console.log(`🎯 Step 1: Scrolling to safe index ${safeScrollIndex} first`);
+              iconFlatListRef.current.scrollToIndex({
+                index: safeScrollIndex,
+                animated: false, // Non-animated first step
+                viewPosition: 0,
+              });
+              
+              // Then scroll to actual target with delay
+              setTimeout(() => {
+                if (iconFlatListRef.current) {
+                  console.log(`🎯 Step 2: Scrolling to target index ${selectedIndex}`);
+                  iconFlatListRef.current.scrollToIndex({
+                    index: selectedIndex,
+                    animated: true,
+                    viewPosition: 0.7, // Show item near bottom of view
+                    viewOffset: -50, // Add some offset
+                  });
+                }
+              }, 100);
+              
+              // Final backup: scrollToEnd
+              setTimeout(() => {
+                if (iconFlatListRef.current) {
+                  console.log(`🔄 Final backup: scrollToEnd`);
+                  iconFlatListRef.current.scrollToEnd({ animated: true });
+                }
+              }, 500);
+              
+            } catch (error) {
+              console.log('❌ Bottom section scroll failed:', error);
+              // Last resort: manual offset calculation
+              const containerHeight = 500;
+              const totalContentHeight = totalRows * rowHeight;
+              const maxScrollOffset = Math.max(0, totalContentHeight - containerHeight + 100);
+              
+              iconFlatListRef.current.scrollToOffset({
+                offset: maxScrollOffset,
+                animated: true,
+              });
+            }
+            return;
+          }
+          
+          // Calculate precise offset
+          const offset = targetRow * rowHeight - 100; // Show some context above
+          
+          console.log(`✅ [Safe Scroll] Attempting scroll to offset: ${offset} for index: ${selectedIndex}`);
+          
+          // Multiple fallback approaches for normal sections
+          try {
+            // First attempt: scrollToIndex with better positioning
+            console.log(`🎯 Normal section: scrollToIndex ${selectedIndex} with viewPosition 0.3`);
+            iconFlatListRef.current.scrollToIndex({
+              index: selectedIndex,
+              animated: true,
+              viewPosition: 0.3, // Show item closer to top
+              viewOffset: 0,
+            });
+            console.log('✅ scrollToIndex succeeded');
+          } catch (error) {
+            console.log('❌ scrollToIndex failed, trying scrollToOffset');
+            
+            // Fallback 1: scrollToOffset
+            try {
+              iconFlatListRef.current.scrollToOffset({
+                offset: Math.max(0, offset),
+                animated: true,
+              });
+              console.log('✅ scrollToOffset succeeded');
+            } catch (error2) {
+              console.log('❌ scrollToOffset failed, trying scrollToItem');
+              
+              // Fallback 2: scrollToItem
+              try {
+                const item = availableIcons[selectedIndex];
+                if (item) {
+                  iconFlatListRef.current.scrollToItem({
+                    item: item,
+                    animated: true,
+                    viewPosition: 0.3,
+                  });
+                  console.log('✅ scrollToItem succeeded');
+                }
+              } catch (error3) {
+                console.log('❌ All scroll methods failed');
+                
+                // Final fallback: retry with delay
+                if (retryCount < maxRetries) {
+                  retryCount++;
+                  console.log(`🔄 Retrying scroll (attempt ${retryCount}/${maxRetries})`);
+                  timerId = setTimeout(attemptScroll, 1000);
+                }
+              }
+            }
+          }
+        } else {
+          console.log('❌ [Auto-scroll] Icon not found in available icons');
+        }
+      }
+    };
+
+    // Initial delay to ensure FlatList is ready
+    timerId = setTimeout(attemptScroll, 500); // Increased delay for better reliability
+
+    // Cleanup function
+    return () => {
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+    };
+  }, [mode, category?.icon, type, isFlatListReady]);
   
   const handleSave = async () => {
     console.log('💾 === SAVE CATEGORY START ===');
@@ -272,7 +274,7 @@ export default function AddEditCategoryScreen() {
         // Create new category using API - Format exactly as shown by user
         const createRequest = {
           category_name: categoryName.trim(),
-          category_type: type === 'expense' ? 1 : 0,
+          category_type: type === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME,
           category_icon_url: selectedIcon || "",
           is_system_defined: 0,
           user_id: userId
@@ -362,7 +364,8 @@ export default function AddEditCategoryScreen() {
 
   const renderIconItem = ({ item }: { item: { name: string; color: string } }) => {
     const isSelected = selectedIcon === item.name;
-    const iconColor = isSelected ? selectedColor : getIconColor(item.name, type, item.color);
+    // Always use the original icon color, never change it when selected
+    const iconColor = getIconColor(item.name, type);
     
     return (
       <TouchableOpacity
@@ -372,9 +375,9 @@ export default function AddEditCategoryScreen() {
         ]}
         onPress={() => {
           setSelectedIcon(item.name);
-          // Chỉ cập nhật màu nếu đang ở mode 'add' hoặc không có màu từ database
-          if (mode === 'add' || !category?.color) {
-            setSelectedColor(getIconColor(item.name, type, item.color));
+          // Chỉ cập nhật màu khi ở mode 'add', không đổi màu khi edit
+          if (mode === 'add') {
+            setSelectedColor(getIconColor(item.name, type));
           }
         }}
       >
@@ -411,10 +414,8 @@ export default function AddEditCategoryScreen() {
           <View style={styles.placeholder} />
         </View>
 
-        <ScrollView 
+        <View 
           style={styles.content} 
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
         >
           {/* Name Input */}
           <View style={styles.section}>
@@ -433,16 +434,116 @@ export default function AddEditCategoryScreen() {
           {/* Icon Selection */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('icon')}</Text>
-            <FlatList
-              data={getAvailableIcons()}
-              renderItem={renderIconItem}
-              keyExtractor={item => item.name}
-              numColumns={4}
-              scrollEnabled={false}
-              contentContainerStyle={styles.iconGrid}
-            />
+            <View style={styles.iconContainer}>
+              <FlatList
+                data={getIconsForCategoryType(type)}
+                renderItem={renderIconItem}
+                keyExtractor={item => item.name}
+                numColumns={4}
+                scrollEnabled={true}
+                showsVerticalScrollIndicator={true}
+                contentContainerStyle={[
+                  styles.iconGrid,
+                  { minHeight: '100%' } // Ensure content can fill container
+                ]}
+                removeClippedSubviews={false} // Important for scrollToIndex to work
+                initialNumToRender={20} // Render more items initially
+                maxToRenderPerBatch={20}
+                windowSize={10}
+                ref={iconFlatListRef}
+                getItemLayout={(data, index) => {
+                  // More precise calculation based on actual styles
+                  const itemSize = 80; // aspectRatio: 1, with flex: 1
+                  const itemMargin = 4; // margin: 4 around each item  
+                  const itemTotalSize = itemSize + (itemMargin * 2); // Total space per item including margins
+                  const row = Math.floor(index / 4);
+                  const col = index % 4;
+                  
+                  // For FlatList with numColumns, we need to calculate based on rows
+                  const rowHeight = itemTotalSize;
+                  
+                  return {
+                    length: rowHeight,
+                    offset: rowHeight * row,
+                    index,
+                  };
+                }}
+                onLayout={(event) => {
+                  const { height, width } = event.nativeEvent.layout;
+                  console.log('📐 FlatList onLayout:', { height, width });
+                  console.log('📐 Setting FlatList ready to true');
+                  
+                  // Debug: Check if FlatList can actually scroll
+                  setTimeout(() => {
+                    if (iconFlatListRef.current) {
+                      const availableIcons = getIconsForCategoryType(type);
+                      const totalRows = Math.ceil(availableIcons.length / 4);
+                      const totalContentHeight = totalRows * 88; // Approximate row height
+                      console.log(`📊 FlatList scroll capability:`, {
+                        containerHeight: height,
+                        totalContentHeight,
+                        canScroll: totalContentHeight > height,
+                        totalIcons: availableIcons.length,
+                        totalRows
+                      });
+                    }
+                  }, 100);
+                  
+                  setIsFlatListReady(true);
+                }}
+                onScrollToIndexFailed={(info) => {
+                  console.log('❌ ScrollToIndex failed in FlatList callback:', info);
+                  
+                  // Enhanced fallback logic
+                  setTimeout(() => {
+                    if (!iconFlatListRef.current) {
+                      console.log('❌ FlatList ref not available for fallback');
+                      return;
+                    }
+                    
+                    const availableIcons = getIconsForCategoryType(type);
+                    const rowHeight = 90;
+                    const totalRows = Math.ceil(availableIcons.length / 4);
+                    const targetRow = Math.floor(info.index / 4);
+                    
+                    console.log(`🔄 Fallback for index ${info.index}: row ${targetRow + 1}/${totalRows}`);
+                    
+                    // For bottom rows, use enhanced bottom logic
+                    if (targetRow >= totalRows - 6) {
+                      console.log('📍 Fallback: handling bottom section');
+                      
+                      const containerHeight = 500;
+                      const totalContentHeight = totalRows * rowHeight;
+                      const maxScrollOffset = Math.max(0, totalContentHeight - containerHeight + 50);
+                      const targetOffset = Math.min(maxScrollOffset, targetRow * rowHeight - 100);
+                      
+                      console.log(`📍 Fallback: scrollToOffset ${targetOffset}`);
+                      iconFlatListRef.current.scrollToOffset({
+                        offset: targetOffset,
+                        animated: true,
+                      });
+                      
+                      // Backup scrollToEnd
+                      setTimeout(() => {
+                        if (iconFlatListRef.current) {
+                          iconFlatListRef.current.scrollToEnd({ animated: true });
+                        }
+                      }, 200);
+                    } else {
+                      // Calculate offset with some padding
+                      const offset = Math.max(0, targetRow * rowHeight - 50);
+                      console.log(`📍 Fallback: scrollToOffset ${offset}`);
+                      iconFlatListRef.current.scrollToOffset({
+                        offset: offset,
+                        animated: true,
+                      });
+                    }
+                  }, 50);
+                }}
+              />
+            </View>
           </View>
-        </ScrollView>
+        </View>
 
         {/* Save Button */}
         <View style={styles.bottomContainer}>
@@ -516,7 +617,8 @@ const styles = StyleSheet.create({
     borderColor: '#C6C6C8',
   },
   iconGrid: {
-    paddingTop: 8,
+    padding: 4,
+    paddingBottom: 50,
   },
   iconItem: {
     flex: 1,
@@ -553,5 +655,13 @@ const styles = StyleSheet.create({
   },
   saveButtonDisabled: {
     backgroundColor: '#C7C7CC',
+  },
+  iconContainer: {
+    height: 500, // Much larger height to accommodate 27 rows of icons
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    overflow: 'hidden', // Ensure proper clipping
   },
 }); 

@@ -5,17 +5,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -29,170 +29,8 @@ import { secureApiService } from '../services/secureApiService';
 import { CreateTransactionRequest, transactionService, TransactionType } from '../services/transactionService';
 import { WalletResponse, walletService } from '../services/walletService';
 
-// Icon configurations for different categories - COMPLETE DATABASE MAPPING
-const EXPENSE_ICONS = [
-  // Food & Dining
-  { name: 'silverware-fork-knife', color: '#ff9500' },
-  { name: 'coffee', color: '#8b4513' },
-  { name: 'hamburger', color: '#ff6b35' },
-  { name: 'food-apple', color: '#ff9500' },
-  { name: 'cake', color: '#ff9500' },
-  
-  // Daily & Shopping
-  { name: 'bottle-soda', color: '#32d74b' },
-  { name: 'shopping', color: '#32d74b' },
-  { name: 'cart', color: '#228b22' },
-  { name: 'store', color: '#32d74b' },
-  { name: 'minus-circle', color: '#32d74b' },
-  
-  // Clothing & Fashion
-  { name: 'tshirt-crew', color: '#007aff' },
-  { name: 'shoe-heel', color: '#1e90ff' },
-  { name: 'hanger', color: '#007aff' },
-  { name: 'tshirt-v', color: '#4169e1' },
-  
-  // Beauty & Cosmetic
-  { name: 'lipstick', color: '#ff2d92' },
-  { name: 'face-woman', color: '#dda0dd' },
-  { name: 'spray', color: '#ff69b4' },
-  
-  // Entertainment & Social
-  { name: 'glass-cocktail', color: '#ffcc02' },
-  { name: 'gamepad-variant', color: '#ff8c00' },
-  { name: 'movie', color: '#ffd700' },
-  { name: 'music', color: '#ffa500' },
-  { name: 'party-popper', color: '#ffcc02' },
-  { name: 'glass-wine', color: '#ffcc02' },
-  { name: 'account-group', color: '#696969' },
-  
-  // Health & Medical
-  { name: 'pill', color: '#30d158' },
-  { name: 'hospital-box', color: '#228b22' },
-  { name: 'pharmacy', color: '#32cd32' },
-  { name: 'dumbbell', color: '#00ff7f' },
-  { name: 'doctor', color: '#30d158' },
-  { name: 'stethoscope', color: '#30d158' },
-  { name: 'medical-bag', color: '#30d158' },
-  
-  // Education & Learning
-  { name: 'book-open-variant', color: '#ff375f' },
-  { name: 'school', color: '#ff375f' },
-  { name: 'book-open-page-variant', color: '#dc143c' },
-  { name: 'book-open', color: '#ff375f' },
-  { name: 'book', color: '#ff375f' },
-  { name: 'pencil', color: '#b22222' },
-  
-  // Utilities
-  { name: 'flash', color: '#00c7be' },
-  { name: 'water', color: '#00bfff' },
-  { name: 'wifi', color: '#00c7be' },
-  { name: 'fire', color: '#ff4500' },
-  { name: 'home-lightning-bolt', color: '#00c7be' },
-  { name: 'lightning-bolt', color: '#00c7be' },
-  { name: 'power-plug', color: '#00c7be' },
-  
-  // Transportation
-  { name: 'train', color: '#9370db' },
-  { name: 'car', color: '#9370db' },
-  { name: 'bus', color: '#9370db' },
-  { name: 'taxi', color: '#9370db' },
-  { name: 'gas-station', color: '#ff6347' },
-  { name: 'parking', color: '#9370db' },
-  { name: 'airplane', color: '#9370db' },
-  { name: 'motorbike', color: '#9370db' },
-  
-  // Communication
-  { name: 'cellphone', color: '#00c7be' },
-  { name: 'phone', color: '#00c7be' },
-  
-  // Housing
-  { name: 'home-city', color: '#ff9500' },
-  { name: 'home', color: '#ff9500' },
-  { name: 'apartment', color: '#ff9500' },
-  { name: 'home-outline', color: '#ff9500' },
-  { name: 'key', color: '#ff9500' },
-  
-  // Work & Office
-  { name: 'briefcase', color: '#708090' },
-  { name: 'office-building', color: '#708090' },
-  
-  // Additional common
-  { name: 'dots-horizontal', color: '#666' },
-  { name: 'bank-transfer', color: '#4682b4' },
-  { name: 'bank', color: '#4682b4' },
-  { name: 'credit-card-off', color: '#ff6b6b' },
-  { name: 'shield-account', color: '#32cd32' },
-  { name: 'credit-card-multiple', color: '#ff7f50' },
-  { name: 'tools', color: '#ff9500' },
-  { name: 'wrench', color: '#ff9500' },
-  { name: 'dog', color: '#8b4513' },
-  { name: 'baby', color: '#ffb6c1' },
-  { name: 'beach', color: '#00ced1' },
-  { name: 'calendar-heart', color: '#ff69b4' },
-  { name: 'soccer', color: '#32d74b' },
-  { name: 'palette', color: '#9370db' },
-  { name: 'heart', color: '#ff1493' },
-  { name: 'file-document', color: '#696969' },
-  { name: 'alert-circle', color: '#ff4500' },
-  { name: 'cash-minus', color: '#ff6b6b' },
-  { name: 'gift', color: '#bf5af2' },
-  { name: 'ticket', color: '#ff375f' },
-];
-
-const INCOME_ICONS = [
-  // Work & Salary
-  { name: 'cash', color: '#32d74b' },
-  { name: 'cash-plus', color: '#00ff00' },
-  { name: 'briefcase', color: '#708090' },
-  { name: 'office-building', color: '#708090' },
-  { name: 'laptop', color: '#ff375f' },
-  
-  // Investment & Business
-  { name: 'chart-line', color: '#007aff' },
-  { name: 'bank', color: '#ff2d92' },
-  { name: 'percent', color: '#00c7be' },
-  { name: 'store', color: '#30d158' },
-  
-  // Gifts & Rewards
-  { name: 'gift', color: '#bf5af2' },
-  { name: 'hand-heart', color: '#ff2d92' },
-  { name: 'star', color: '#ffcc02' },
-  { name: 'trophy', color: '#ffd700' },
-  
-  // Property & Rental
-  { name: 'home-account', color: '#ffcc02' },
-  { name: 'apartment', color: '#daa520' },
-  { name: 'key', color: '#32d74b' },
-  { name: 'home', color: '#ff9500' },
-  
-  // Sales & Commission
-  { name: 'cart', color: '#228b22' },
-  
-  // Additional Income Sources
-  { name: 'piggy-bank', color: '#32d74b' },
-  { name: 'credit-card', color: '#4682b4' },
-  { name: 'wallet', color: '#8b4513' },
-  { name: 'cash-minus', color: '#ff6b6b' },
-  
-  // Additional common icons
-  { name: 'dots-horizontal', color: '#666' },
-  { name: 'bank-transfer', color: '#4682b4' },
-  { name: 'credit-card-multiple', color: '#ff7f50' },
-  { name: 'shield-account', color: '#32cd32' },
-];
-
-// Get color for an icon based on category type (matching EditCategoryScreen)
-const getIconColor = (iconName: string, categoryType: 'expense' | 'income', dbColor?: string): string => {
-  // If color exists in database, use it
-  if (dbColor) {
-    return dbColor;
-  }
-  
-  // Otherwise, use default color mapping
-  const iconSet = categoryType === 'expense' ? EXPENSE_ICONS : INCOME_ICONS;
-  const iconConfig = iconSet.find(icon => icon.name === iconName);
-  return iconConfig ? iconConfig.color : '#666'; // Default color if not found
-};
+// Import centralized icon color utility
+import { getIconColor } from '../utils/iconUtils';
 
 export default function AddExpenseScreen() {
   const { t } = useTranslation();
@@ -222,6 +60,7 @@ export default function AddExpenseScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showWalletPicker, setShowWalletPicker] = useState(false);
   const [showImageOptions, setShowImageOptions] = useState(false);
+  const [showCreateWalletModal, setShowCreateWalletModal] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   
   // Toast state
@@ -256,13 +95,13 @@ export default function AddExpenseScreen() {
     loadData();
   }, [authLoading]);
 
-  // Refresh categories when screen is focused (for updated categories)
+  // Refresh data when screen is focused (for updated categories and wallets)
   useFocusEffect(
     useCallback(() => {
       // Only refresh if we have initially loaded data (not on first mount)
       if (hasInitiallyLoaded) {
-        console.log('🔄 AddExpenseScreen focused - refreshing categories only');
-        refreshCategories();
+        console.log('🔄 AddExpenseScreen focused - refreshing categories and wallets');
+        refreshData();
       }
     }, [hasInitiallyLoaded])
   );
@@ -435,6 +274,38 @@ export default function AddExpenseScreen() {
     }
   };
 
+  const refreshData = async () => {
+    try {
+      console.log('🔄 Refreshing categories and wallets...');
+      
+      // Refresh wallets and categories in parallel
+      const [walletsData] = await Promise.all([
+        walletService.getAllWallets(),
+        refreshCategories(),
+      ]);
+      
+      console.log('✅ Wallets refreshed:', walletsData.length);
+      setWallets(walletsData);
+
+      // Update wallet selection if current one is invalid or if no wallet selected
+      if (!selectedWallet || !walletsData.some(w => w.id === selectedWallet)) {
+        if (walletsData.length > 0) {
+          const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+          setSelectedWallet(defaultWallet.id);
+          console.log('🔄 Updated selected wallet after refresh:', defaultWallet.wallet_name);
+        } else {
+          setSelectedWallet(null);
+          console.log('🔄 No wallets available after refresh');
+        }
+      }
+
+      console.log('✅ Data refreshed successfully');
+
+    } catch (error: any) {
+      console.error('❌ Error refreshing data:', error);
+    }
+  };
+
   const handleTabChange = (tab: 'expense' | 'income') => {
     console.log('🔄 Tab change started:', {
       from: activeTab,
@@ -473,33 +344,67 @@ export default function AddExpenseScreen() {
 
   const requestPermissions = async () => {
     try {
-      console.log('🔐 Requesting camera and photo library permissions...');
-      // Request both camera and media library permissions
-      const [cameraPermission, libraryPermission] = await Promise.all([
-        ImagePicker.requestCameraPermissionsAsync(),
-        ImagePicker.requestMediaLibraryPermissionsAsync(false) // false = request read and write permissions
+      console.log('🔐 Checking current permission status...');
+      
+      // First check current permissions without requesting
+      const [cameraStatus, libraryStatus] = await Promise.all([
+        ImagePicker.getCameraPermissionsAsync(),
+        ImagePicker.getMediaLibraryPermissionsAsync(false)
       ]);
       
-      console.log('📷 Camera permission status:', cameraPermission.status);
-      console.log('🖼️ Library permission status:', libraryPermission.status);
+      console.log('📷 Current camera permission:', cameraStatus.status);
+      console.log('🖼️ Current library permission:', libraryStatus.status);
       
-      if (cameraPermission.status !== 'granted') {
-        console.log('❌ Camera permission not granted');
-        Alert.alert(
-          'Camera Permission Required',
-          'Please allow camera access in settings to take photos.',
-          [{ text: 'OK' }]
-        );
+      // Request permissions if not granted
+      let finalCameraStatus = cameraStatus;
+      let finalLibraryStatus = libraryStatus;
+      
+      if (cameraStatus.status !== 'granted') {
+        console.log('🔐 Requesting camera permission...');
+        finalCameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+        console.log('📷 Camera permission result:', finalCameraStatus.status);
+      }
+      
+      if (libraryStatus.status !== 'granted') {
+        console.log('🔐 Requesting library permission...');
+        finalLibraryStatus = await ImagePicker.requestMediaLibraryPermissionsAsync(false);
+        console.log('🖼️ Library permission result:', finalLibraryStatus.status);
+      }
+      
+      // Check final results
+      if (finalCameraStatus.status !== 'granted') {
+        console.log('❌ Camera permission denied:', finalCameraStatus.status);
+        if (finalCameraStatus.canAskAgain === false) {
+          Alert.alert(
+            'Camera Permission Required',
+            'Camera access is required. Please enable it in device settings.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert(
+            'Camera Permission Required',
+            'Please allow camera access to take photos.',
+            [{ text: 'OK' }]
+          );
+        }
         return false;
       }
       
-      if (libraryPermission.status !== 'granted') {
-        console.log('❌ Photo library permission not granted');
-        Alert.alert(
-          'Photo Library Permission Required',
-          'Please allow photo library access in settings to select images.',
-          [{ text: 'OK' }]
-        );
+      if (finalLibraryStatus.status !== 'granted') {
+        console.log('❌ Photo library permission denied:', finalLibraryStatus.status);
+        if (finalLibraryStatus.canAskAgain === false) {
+          Alert.alert(
+            'Photo Library Permission Required',
+            'Photo library access is required. Please enable it in device settings.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert(
+            'Photo Library Permission Required',
+            'Please allow photo library access to select images.',
+            [{ text: 'OK' }]
+          );
+        }
         return false;
       }
       
@@ -516,10 +421,117 @@ export default function AddExpenseScreen() {
     }
   };
 
+  const requestCameraPermission = async () => {
+    try {
+      console.log('🔐 Checking camera permission...');
+      
+      // First check current permission
+      const currentStatus = await ImagePicker.getCameraPermissionsAsync();
+      console.log('📷 Current camera permission:', {
+        status: currentStatus.status,
+        canAskAgain: currentStatus.canAskAgain,
+        granted: currentStatus.granted,
+        expires: currentStatus.expires
+      });
+      
+      if (currentStatus.status === 'granted') {
+        console.log('✅ Camera permission already granted');
+        
+        // For debugging: Check if permission expires (for "Only this time")
+        if (currentStatus.expires && currentStatus.expires !== 'never') {
+          console.log('⏰ Permission expires at:', new Date(currentStatus.expires));
+          const now = Date.now();
+          if (now > currentStatus.expires) {
+            console.log('⚠️ Permission has expired, requesting again...');
+          } else {
+            console.log('✅ Permission still valid');
+            return true;
+          }
+        } else {
+          console.log('♾️ Permission granted permanently');
+          return true;
+        }
+      }
+      
+      // Request permission if not granted or expired
+      console.log('🔐 Requesting camera permission...');
+      const result = await ImagePicker.requestCameraPermissionsAsync();
+      console.log('📷 Camera permission result:', {
+        status: result.status,
+        canAskAgain: result.canAskAgain,
+        granted: result.granted,
+        expires: result.expires
+      });
+      
+      if (result.status !== 'granted') {
+        if (result.canAskAgain === false) {
+          Alert.alert(
+            'Camera Permission Required',
+            'Camera access is required. Please enable it in device settings.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert(
+            'Camera Permission Required',
+            'Please allow camera access to take photos.',
+            [{ text: 'OK' }]
+          );
+        }
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error requesting camera permission:', error);
+      return false;
+    }
+  };
+
+  const requestLibraryPermission = async () => {
+    try {
+      console.log('🔐 Checking library permission...');
+      
+      // First check current permission
+      const currentStatus = await ImagePicker.getMediaLibraryPermissionsAsync(false);
+      console.log('🖼️ Current library permission:', currentStatus.status);
+      
+      if (currentStatus.status === 'granted') {
+        return true;
+      }
+      
+      // Request permission if not granted
+      console.log('🔐 Requesting library permission...');
+      const result = await ImagePicker.requestMediaLibraryPermissionsAsync(false);
+      console.log('🖼️ Library permission result:', result.status);
+      
+      if (result.status !== 'granted') {
+        if (result.canAskAgain === false) {
+          Alert.alert(
+            'Photo Library Permission Required',
+            'Photo library access is required. Please enable it in device settings.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert(
+            'Photo Library Permission Required',
+            'Please allow photo library access to select images.',
+            [{ text: 'OK' }]
+          );
+        }
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error requesting library permission:', error);
+      return false;
+    }
+  };
+
   const takePhoto = async () => {
     try {
       console.log('📷 Starting camera capture...');
-      const hasPermission = await requestPermissions();
+      const hasPermission = await requestCameraPermission();
       if (!hasPermission) {
         console.log('❌ Camera permission denied');
         return;
@@ -546,7 +558,7 @@ export default function AddExpenseScreen() {
           console.log('🔄 Auto-scanning photo for expense...');
           scanInvoice(imageUri);
         } else {
-          console.log('ℹ️ Skipping scan for income tab');
+          console.log('ℹ️ Photo saved for income tab (no auto-scan)');
         }
       } else {
         console.log('📷 Camera capture cancelled or failed');
@@ -560,7 +572,7 @@ export default function AddExpenseScreen() {
   const pickFromGallery = async () => {
     try {
       console.log('🖼️ Starting gallery picker...');
-      const hasPermission = await requestPermissions();
+      const hasPermission = await requestLibraryPermission();
       if (!hasPermission) {
         console.log('❌ Gallery permission denied');
         return;
@@ -588,8 +600,8 @@ export default function AddExpenseScreen() {
         if (activeTab === 'expense') {
           console.log('🔄 Auto-scanning gallery image for expense...');
           scanInvoice(imageUri);
-      } else {
-          console.log('ℹ️ Skipping scan for income tab');
+        } else {
+          console.log('ℹ️ Photo saved for income tab (no auto-scan)');
         }
       } else {
         console.log('🖼️ Gallery selection cancelled or failed');
@@ -603,7 +615,7 @@ export default function AddExpenseScreen() {
   const pickFromGalleryWithCrop = async () => {
     try {
       console.log('✂️ Starting gallery picker with crop...');
-      const hasPermission = await requestPermissions();
+      const hasPermission = await requestLibraryPermission();
       if (!hasPermission) {
         console.log('❌ Gallery permission denied for crop');
         return;
@@ -632,8 +644,8 @@ export default function AddExpenseScreen() {
           console.log('🔄 Auto-scanning cropped image for expense...');
           scanInvoice(imageUri);
         } else {
-          console.log('ℹ️ Skipping scan for income tab');
-      }
+          console.log('ℹ️ Photo saved for income tab (no auto-scan)');
+        }
     } else {
         console.log('✂️ Gallery with crop cancelled or failed');
       }
@@ -825,6 +837,40 @@ export default function AddExpenseScreen() {
       return false;
     }
     
+    // Check if amount exceeds 16 digits
+    const digitsOnly = amount.replace(/[^0-9]/g, '');
+    if (digitsOnly.length > 16) {
+      Alert.alert('Error', 'Amount cannot exceed 16 digits');
+      return false;
+    }
+    
+    // Check if amount is too large for JavaScript number precision
+    if (amountValue > Number.MAX_SAFE_INTEGER) {
+      Alert.alert('Error', 'Amount is too large');
+      return false;
+    }
+    
+    // Validate note (optional but with constraints if provided)
+    if (note.trim().length > 500) {
+      Alert.alert('Error', 'Note cannot exceed 500 characters');
+      return false;
+    }
+    
+    // Check for potentially malicious content in note
+    const suspiciousPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /on\w+\s*=/i,
+      /<iframe/i,
+      /<object/i,
+      /<embed/i
+    ];
+    
+    if (suspiciousPatterns.some(pattern => pattern.test(note))) {
+      Alert.alert('Error', 'Note contains invalid characters');
+      return false;
+    }
+    
     if (!selectedCategory) {
       Alert.alert('Error', 'Please select a category');
       return false;
@@ -873,8 +919,82 @@ export default function AddExpenseScreen() {
   };
 
   const getSelectedWalletName = () => {
+    if (wallets.length === 0) {
+      return 'Tạo ví mới';
+    }
     const wallet = wallets.find(w => w.id === selectedWallet);
     return wallet ? wallet.wallet_name : 'Select Wallet';
+  };
+
+  const handleWalletPickerPress = () => {
+    if (wallets.length === 0) {
+      // No wallets available, show create wallet modal
+      setShowCreateWalletModal(true);
+    } else {
+      // Has wallets, show wallet picker
+      setShowWalletPicker(true);
+    }
+  };
+
+  const handleCreateWallet = () => {
+    setShowCreateWalletModal(false);
+    (navigation as any).navigate('AddWalletScreen');
+  };
+
+  // Debug function to test permission status
+  const debugPermissionStatus = async () => {
+    try {
+      console.log('🔍 === DEBUG PERMISSION STATUS ===');
+      console.log('🕐 Current time:', new Date().toISOString());
+      
+      const cameraStatus = await ImagePicker.getCameraPermissionsAsync();
+      const libraryStatus = await ImagePicker.getMediaLibraryPermissionsAsync(false);
+      
+      console.log('📷 Camera Permission:', {
+        status: cameraStatus.status,
+        canAskAgain: cameraStatus.canAskAgain,
+        granted: cameraStatus.granted,
+        expires: cameraStatus.expires,
+        expiresDate: cameraStatus.expires && cameraStatus.expires !== 'never' ? new Date(cameraStatus.expires) : 'never'
+      });
+      
+      console.log('🖼️ Library Permission:', {
+        status: libraryStatus.status,
+        canAskAgain: libraryStatus.canAskAgain,
+        granted: libraryStatus.granted,
+        expires: libraryStatus.expires,
+        expiresDate: libraryStatus.expires && libraryStatus.expires !== 'never' ? new Date(libraryStatus.expires) : 'never'
+      });
+      
+      Alert.alert(
+        'Permission Debug',
+        `Camera: ${cameraStatus.status}\nLibrary: ${libraryStatus.status}\n\nWould you like to test permission request?`,
+        [
+          { text: 'Cancel' },
+          { 
+            text: 'Test Camera', 
+            onPress: async () => {
+              console.log('🧪 Testing camera permission request...');
+              const result = await ImagePicker.requestCameraPermissionsAsync();
+              console.log('🧪 Force camera request result:', result);
+              Alert.alert('Camera Test', `Result: ${result.status}`);
+            }
+          },
+          { 
+            text: 'Test Library', 
+            onPress: async () => {
+              console.log('🧪 Testing library permission request...');
+              const result = await ImagePicker.requestMediaLibraryPermissionsAsync(false);
+              console.log('🧪 Force library request result:', result);
+              Alert.alert('Library Test', `Result: ${result.status}`);
+            }
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('❌ Error checking permission status:', error);
+    }
   };
 
   const renderCategoryItem = ({ item }: { item: LocalCategory }) => {
@@ -914,7 +1034,7 @@ export default function AddExpenseScreen() {
           setSelectedCategory(item.key);
         }}
       >
-        <Icon name={item.icon} size={24} color={getIconColor(item.icon, activeTab, item.color)} />
+        <Icon name={item.icon} size={24} color={getIconColor(item.icon, activeTab)} />
         <Text style={styles.categoryText} numberOfLines={2}>{item.label}</Text>
       </TouchableOpacity>
     );
@@ -974,13 +1094,21 @@ export default function AddExpenseScreen() {
               </TouchableOpacity>
             </View>
 
-                    {/* Camera Icon - Only show for expense tab */}
-            {activeTab === 'expense' && (
+                    {/* Camera Icon - Available for both expense and income tabs */}
             <TouchableOpacity
               style={styles.cameraButton}
               onPress={() => setShowImageOptions(true)}
             >
                 <Icon name="camera" size={24} color="#007aff" />
+              </TouchableOpacity>
+
+            {/* Debug Permission Button - Only show in development */}
+            {__DEV__ && (
+              <TouchableOpacity
+                style={[styles.cameraButton, { backgroundColor: '#ff9500' }]}
+                onPress={debugPermissionStatus}
+              >
+                <Icon name="bug" size={24} color="#fff" />
               </TouchableOpacity>
             )}
           </View>
@@ -1001,7 +1129,7 @@ export default function AddExpenseScreen() {
           <Text style={styles.label}>Wallet</Text>
               <TouchableOpacity 
             style={styles.input}
-                onPress={() => setShowWalletPicker(!showWalletPicker)}
+                onPress={handleWalletPickerPress}
               >
             <Text style={styles.inputText}>{getSelectedWalletName()}</Text>
                 <Icon name="chevron-down" size={20} color="#666" />
@@ -1018,8 +1146,25 @@ export default function AddExpenseScreen() {
               style={styles.amountInput}
                 placeholder="0"
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(text) => {
+                  // Remove any non-digit characters except decimal point
+                  const cleanText = text.replace(/[^0-9.]/g, '');
+                  
+                  // Ensure only one decimal point
+                  const parts = cleanText.split('.');
+                  let formattedText = parts[0];
+                  if (parts.length > 1) {
+                    formattedText += '.' + parts.slice(1).join('');
+                  }
+                  
+                  // Limit to 16 digits total (including decimal places)
+                  const digitsOnly = formattedText.replace(/\./g, '');
+                  if (digitsOnly.length <= 16) {
+                    setAmount(formattedText);
+                  }
+                }}
                 keyboardType="numeric"
+                maxLength={18} // 16 digits + 1 decimal point + 1 extra buffer
               />
             <Text style={styles.currency}>VND</Text>
             </View>
@@ -1028,19 +1173,32 @@ export default function AddExpenseScreen() {
           {/* Note */}
           <View style={styles.row}>
             <Text style={styles.label}>{t('note')}</Text>
+            <View style={styles.noteContainer}>
               <TextInput
-            style={styles.input}
-            placeholder="Enter note"
+                style={styles.noteInput}
+                placeholder="Enter note (optional)"
                 value={note}
-                onChangeText={setNote}
-            multiline
+                onChangeText={(text) => {
+                  // Trim leading/trailing whitespace and limit length
+                  const trimmedText = text.trimStart();
+                  if (trimmedText.length <= 500) {
+                    setNote(trimmedText);
+                  }
+                }}
+                multiline
+                maxLength={500}
+                textAlignVertical="top"
               />
+              <Text style={styles.characterCount}>{note.length}/500</Text>
+            </View>
           </View>
 
-        {/* Receipt Image - Only show for expense tab */}
-        {activeTab === 'expense' && selectedImage && (
+        {/* Receipt Image - Available for both expense and income tabs */}
+        {selectedImage && (
           <View style={styles.row}>
-            <Text style={styles.label}>Receipt</Text>
+            <Text style={styles.label}>
+              {activeTab === 'expense' ? 'Receipt' : 'Photo'}
+            </Text>
             <View style={styles.imageContainer}>
               <Image source={{ uri: selectedImage }} style={styles.receiptImage} />
               <TouchableOpacity 
@@ -1153,7 +1311,9 @@ export default function AddExpenseScreen() {
             onPress={() => setShowImageOptions(false)}
           >
             <View style={styles.imageOptionsContainer}>
-              <Text style={styles.imageOptionsTitle}>Add Receipt Photo</Text>
+              <Text style={styles.imageOptionsTitle}>
+                {activeTab === 'expense' ? 'Add Receipt Photo' : 'Add Photo'}
+              </Text>
               
               <TouchableOpacity
                 style={styles.imageOptionItem}
@@ -1188,6 +1348,36 @@ export default function AddExpenseScreen() {
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
+        </Modal>
+      )}
+
+      {/* Create Wallet Modal */}
+      {showCreateWalletModal && (
+        <Modal visible={showCreateWalletModal} transparent animationType="fade">
+          <View style={styles.createWalletModalOverlay}>
+            <View style={styles.createWalletContainer}>
+              <Text style={styles.createWalletTitle}>Không có ví nào</Text>
+              <Text style={styles.createWalletMessage}>
+                Hiện tại bạn đang chưa có ví nào. Bạn có muốn tạo ví không?
+              </Text>
+              
+              <View style={styles.createWalletButtons}>
+                <TouchableOpacity
+                  style={[styles.createWalletButton, styles.createWalletButtonCancel]}
+                  onPress={() => setShowCreateWalletModal(false)}
+                >
+                  <Text style={styles.createWalletButtonTextCancel}>Không</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.createWalletButton, styles.createWalletButtonConfirm]}
+                  onPress={handleCreateWallet}
+                >
+                  <Text style={styles.createWalletButtonTextConfirm}>Có</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </Modal>
       )}
       
@@ -1306,6 +1496,26 @@ const styles = StyleSheet.create({
     marginLeft: 8, 
     color: '#666',
     fontSize: 16,
+  },
+  noteContainer: {
+    flex: 1,
+  },
+  noteInput: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#eee',
+    fontSize: 16,
+    minHeight: 80,
+    maxHeight: 120,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'right',
+    marginTop: 4,
   },
 
   sectionTitle: {
@@ -1511,5 +1721,69 @@ const styles = StyleSheet.create({
   },
   imageOptionCancelText: {
     color: '#666',
+  },
+  // Create Wallet Modal styles
+  createWalletModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  createWalletContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: '80%',
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+    padding: 20,
+  },
+  createWalletTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  createWalletMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  createWalletButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  createWalletButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  createWalletButtonCancel: {
+    backgroundColor: '#f0f0f0',
+  },
+  createWalletButtonConfirm: {
+    backgroundColor: '#007aff',
+  },
+  createWalletButtonTextCancel: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  createWalletButtonTextConfirm: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

@@ -34,6 +34,13 @@ export default function ChangePasswordScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Track which fields have been touched
+  const [fieldsTouched, setFieldsTouched] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmPassword: false
+  });
+  
   // Real-time password validation states
   const [passwordValidation, setPasswordValidation] = useState({
     minLength: false,
@@ -74,16 +81,19 @@ export default function ChangePasswordScreen() {
 
   const handleCurrentPasswordChange = (text: string) => {
     setCurrentPassword(text);
+    setFieldsTouched(prev => ({ ...prev, currentPassword: true }));
     validatePasswordRealTime(newPassword, confirmPassword, text);
   };
 
   const handleNewPasswordChange = (text: string) => {
     setNewPassword(text);
+    setFieldsTouched(prev => ({ ...prev, newPassword: true }));
     validatePasswordRealTime(text, confirmPassword, currentPassword);
   };
 
   const handleConfirmPasswordChange = (text: string) => {
     setConfirmPassword(text);
+    setFieldsTouched(prev => ({ ...prev, confirmPassword: true }));
     validatePasswordRealTime(newPassword, text, currentPassword);
   };
 
@@ -91,12 +101,25 @@ export default function ChangePasswordScreen() {
     // Check if all validations pass
     const validation = validatePasswordRealTime(newPassword, confirmPassword, currentPassword);
     
-    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+    // Check required fields
+    if (!currentPassword.trim()) {
+      showToast('Vui lòng nhập mật khẩu hiện tại', 'error');
+      return;
+    }
+    
+    if (!newPassword.trim()) {
+      showToast('Vui lòng nhập mật khẩu mới', 'error');
+      return;
+    }
+    
+    if (!confirmPassword.trim()) {
+      showToast('Vui lòng xác nhận mật khẩu mới', 'error');
       return;
     }
     
     if (!validation.minLength || !validation.hasLetter || !validation.hasNumber || 
         !validation.passwordsMatch || !validation.isDifferentFromCurrent) {
+      showToast('Vui lòng đảm bảo tất cả yêu cầu mật khẩu được đáp ứng', 'error');
       return;
     }
 
@@ -175,8 +198,11 @@ export default function ChangePasswordScreen() {
           
           <View style={styles.form}>
             {/* Current Password */}
-            <Text style={styles.label}>{t('changePassword.currentPassword')}</Text>
-            <View style={styles.inputWrapper}>
+            <Text style={styles.label}>{t('changePassword.currentPassword')} *</Text>
+            <View style={[
+              styles.inputWrapper,
+              fieldsTouched.currentPassword && !currentPassword.trim() && styles.inputError
+            ]}>
               <Icon name="lock-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
@@ -199,10 +225,21 @@ export default function ChangePasswordScreen() {
                 />
               </TouchableOpacity>
             </View>
+            
+            {/* Current Password Error */}
+            {fieldsTouched.currentPassword && !currentPassword.trim() && (
+              <View style={styles.errorRow}>
+                <Icon name="error" size={16} color="#EF4444" />
+                <Text style={styles.errorText}>Mật khẩu hiện tại là bắt buộc</Text>
+              </View>
+            )}
 
             {/* New Password */}
-            <Text style={styles.label}>{t('changePassword.newPassword')}</Text>
-            <View style={styles.inputWrapper}>
+            <Text style={styles.label}>{t('changePassword.newPassword')} *</Text>
+            <View style={[
+              styles.inputWrapper,
+              fieldsTouched.newPassword && !newPassword.trim() && styles.inputError
+            ]}>
               <Icon name="lock" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
@@ -225,6 +262,14 @@ export default function ChangePasswordScreen() {
                 />
               </TouchableOpacity>
             </View>
+            
+            {/* New Password Error */}
+            {fieldsTouched.newPassword && !newPassword.trim() && (
+              <View style={styles.errorRow}>
+                <Icon name="error" size={16} color="#EF4444" />
+                <Text style={styles.errorText}>Mật khẩu mới là bắt buộc</Text>
+              </View>
+            )}
             
             {/* New Password validation messages */}
             {newPassword.length > 0 && (
@@ -285,8 +330,11 @@ export default function ChangePasswordScreen() {
             )}
 
             {/* Confirm New Password */}
-            <Text style={styles.label}>{t('register.confirmPassword')}</Text>
-            <View style={styles.inputWrapper}>
+            <Text style={styles.label}>{t('register.confirmPassword')} *</Text>
+            <View style={[
+              styles.inputWrapper,
+              fieldsTouched.confirmPassword && !confirmPassword.trim() && styles.inputError
+            ]}>
               <Icon name="lock" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
@@ -310,6 +358,14 @@ export default function ChangePasswordScreen() {
                 />
               </TouchableOpacity>
             </View>
+            
+            {/* Confirm Password Error */}
+            {fieldsTouched.confirmPassword && !confirmPassword.trim() && (
+              <View style={styles.errorRow}>
+                <Icon name="error" size={16} color="#EF4444" />
+                <Text style={styles.errorText}>Xác nhận mật khẩu là bắt buộc</Text>
+              </View>
+            )}
             
             {/* Confirm password validation message */}
             {confirmPassword.length > 0 && !passwordValidation.passwordsMatch && (

@@ -2,14 +2,14 @@ import { NavigationProp, RouteProp, useFocusEffect, useNavigation, useRoute } fr
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -18,158 +18,7 @@ import '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 import { categoryService, CategoryType, LocalCategory } from '../services/categoryService';
 import { secureApiService } from '../services/secureApiService';
-
-// Icon configurations for different categories - COMPLETE DATABASE MAPPING
-const EXPENSE_ICONS = [
-  // Food & Dining
-  { name: 'silverware-fork-knife', color: '#ff9500' },
-  { name: 'coffee', color: '#8b4513' },
-  { name: 'hamburger', color: '#ff6b35' },
-  { name: 'food-apple', color: '#ff9500' },
-  { name: 'cake', color: '#ff9500' },
-  
-  // Daily & Shopping
-  { name: 'bottle-soda', color: '#32d74b' },
-  { name: 'shopping', color: '#32d74b' },
-  { name: 'cart', color: '#228b22' },
-  { name: 'store', color: '#32d74b' },
-  { name: 'minus-circle', color: '#32d74b' },
-  
-  // Clothing & Fashion
-  { name: 'tshirt-crew', color: '#007aff' },
-  { name: 'shoe-heel', color: '#1e90ff' },
-  { name: 'hanger', color: '#007aff' },
-  { name: 'tshirt-v', color: '#4169e1' },
-  
-  // Beauty & Cosmetic
-  { name: 'lipstick', color: '#ff2d92' },
-  { name: 'face-woman', color: '#dda0dd' },
-  { name: 'spray', color: '#ff69b4' },
-  
-  // Entertainment & Social
-  { name: 'glass-cocktail', color: '#ffcc02' },
-  { name: 'gamepad-variant', color: '#ff8c00' },
-  { name: 'movie', color: '#ffd700' },
-  { name: 'music', color: '#ffa500' },
-  { name: 'party-popper', color: '#ffcc02' },
-  { name: 'glass-wine', color: '#ffcc02' },
-  { name: 'account-group', color: '#696969' },
-  
-  // Health & Medical
-  { name: 'pill', color: '#30d158' },
-  { name: 'hospital-box', color: '#228b22' },
-  { name: 'pharmacy', color: '#32cd32' },
-  { name: 'dumbbell', color: '#00ff7f' },
-  { name: 'doctor', color: '#30d158' },
-  { name: 'stethoscope', color: '#30d158' },
-  { name: 'medical-bag', color: '#30d158' },
-  
-  // Education & Learning
-  { name: 'book-open-variant', color: '#ff375f' },
-  { name: 'school', color: '#ff375f' },
-  { name: 'book-open-page-variant', color: '#dc143c' },
-  { name: 'book-open', color: '#ff375f' },
-  { name: 'book', color: '#ff375f' },
-  { name: 'pencil', color: '#b22222' },
-  
-  // Utilities
-  { name: 'flash', color: '#00c7be' },
-  { name: 'water', color: '#00bfff' },
-  { name: 'wifi', color: '#00c7be' },
-  { name: 'fire', color: '#ff4500' },
-  { name: 'home-lightning-bolt', color: '#00c7be' },
-  { name: 'lightning-bolt', color: '#00c7be' },
-  { name: 'power-plug', color: '#00c7be' },
-  
-  // Transportation
-  { name: 'train', color: '#9370db' },
-  { name: 'car', color: '#9370db' },
-  { name: 'bus', color: '#9370db' },
-  { name: 'taxi', color: '#9370db' },
-  { name: 'gas-station', color: '#ff6347' },
-  { name: 'parking', color: '#9370db' },
-  { name: 'airplane', color: '#9370db' },
-  { name: 'motorbike', color: '#9370db' },
-  
-  // Communication
-  { name: 'cellphone', color: '#00c7be' },
-  { name: 'phone', color: '#00c7be' },
-  
-  // Housing
-  { name: 'home-city', color: '#ff9500' },
-  { name: 'home', color: '#ff9500' },
-  { name: 'apartment', color: '#ff9500' },
-  { name: 'home-outline', color: '#ff9500' },
-  { name: 'key', color: '#ff9500' },
-  
-  // Work & Office
-  { name: 'briefcase', color: '#708090' },
-  { name: 'office-building', color: '#708090' },
-  
-  // Additional common
-  { name: 'dots-horizontal', color: '#666' },
-  { name: 'bank-transfer', color: '#4682b4' },
-  { name: 'bank', color: '#4682b4' },
-  { name: 'credit-card-off', color: '#ff6b6b' },
-  { name: 'shield-account', color: '#32cd32' },
-  { name: 'credit-card-multiple', color: '#ff7f50' },
-  { name: 'tools', color: '#ff9500' },
-  { name: 'wrench', color: '#ff9500' },
-  { name: 'dog', color: '#8b4513' },
-  { name: 'baby', color: '#ffb6c1' },
-  { name: 'beach', color: '#00ced1' },
-  { name: 'calendar-heart', color: '#ff69b4' },
-  { name: 'soccer', color: '#32d74b' },
-  { name: 'palette', color: '#9370db' },
-  { name: 'heart', color: '#ff1493' },
-  { name: 'file-document', color: '#696969' },
-  { name: 'alert-circle', color: '#ff4500' },
-  { name: 'cash-minus', color: '#ff6b6b' },
-  { name: 'gift', color: '#bf5af2' },
-  { name: 'ticket', color: '#ff375f' },
-];
-
-const INCOME_ICONS = [
-  // Work & Salary
-  { name: 'cash', color: '#32d74b' },
-  { name: 'cash-plus', color: '#00ff00' },
-  { name: 'briefcase', color: '#708090' },
-  { name: 'office-building', color: '#708090' },
-  { name: 'laptop', color: '#ff375f' },
-  
-  // Investment & Business
-  { name: 'chart-line', color: '#007aff' },
-  { name: 'bank', color: '#ff2d92' },
-  { name: 'percent', color: '#00c7be' },
-  { name: 'store', color: '#30d158' },
-  
-  // Gifts & Rewards
-  { name: 'gift', color: '#bf5af2' },
-  { name: 'hand-heart', color: '#ff2d92' },
-  { name: 'star', color: '#ffcc02' },
-  { name: 'trophy', color: '#ffd700' },
-  
-  // Property & Rental
-  { name: 'home-account', color: '#ffcc02' },
-  { name: 'apartment', color: '#daa520' },
-  { name: 'key', color: '#32d74b' },
-  { name: 'home', color: '#ff9500' },
-  
-  // Sales & Commission
-  { name: 'cart', color: '#228b22' },
-  
-  // Additional Income Sources
-  { name: 'piggy-bank', color: '#32d74b' },
-  { name: 'credit-card', color: '#4682b4' },
-  { name: 'wallet', color: '#8b4513' },
-  { name: 'cash-minus', color: '#ff6b6b' },
-  
-  // Additional common icons
-  { name: 'dots-horizontal', color: '#666' },
-  { name: 'bank-transfer', color: '#4682b4' },
-  { name: 'credit-card-multiple', color: '#ff7f50' },
-  { name: 'shield-account', color: '#32cd32' },
-];
+import { getIconColor } from '../utils/iconUtils';
 
 export default function EditCategoryScreen() {
   const { t } = useTranslation();
@@ -185,18 +34,14 @@ export default function EditCategoryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
 
-  // Get color for an icon based on category type
-  const getIconColor = (iconName: string, categoryType: 'expense' | 'income', dbColor?: string): string => {
-    // If color exists in database, use it
-    if (dbColor) {
-      return dbColor;
+  // Sync activeTab with route params when navigating back
+  useEffect(() => {
+    const routeType = route.params.type;
+    if (routeType !== activeTab) {
+      console.log('🔄 Syncing activeTab with route params:', { routeType, currentActiveTab: activeTab });
+      setActiveTab(routeType);
     }
-    
-    // Otherwise, use default color mapping
-    const iconSet = categoryType === 'expense' ? EXPENSE_ICONS : INCOME_ICONS;
-    const iconConfig = iconSet.find(icon => icon.name === iconName);
-    return iconConfig ? iconConfig.color : '#666'; // Default color if not found
-  };
+  }, [route.params.type]);
 
   // Load categories when component mounts or tab changes
   useEffect(() => {
@@ -215,9 +60,11 @@ export default function EditCategoryScreen() {
     
     try {
       console.log('🔄 Loading categories for:', { activeTab, userId: user.id });
+      console.log('🎯 Route params type vs activeTab:', { routeType: route.params.type, activeTab });
       
       // Convert tab to CategoryType
       const categoryType = activeTab === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME;
+      console.log('🔍 CategoryType resolved:', { activeTab, categoryType });
       
       // Use same logic as AddExpenseScreen: get userId from /me API and set groupId = 0
       const userProfile = await secureApiService.getCurrentUserProfile();
@@ -270,9 +117,11 @@ export default function EditCategoryScreen() {
       // Only refresh if we have initially loaded data (not on first mount)
       if (hasInitiallyLoaded) {
         console.log('🔄 EditCategoryScreen focused - refreshing categories');
+        console.log('🎯 Current activeTab before refresh:', activeTab);
+        console.log('🎯 Route params type:', route.params.type);
         loadCategories();
       }
-    }, [hasInitiallyLoaded])
+    }, [hasInitiallyLoaded, activeTab])
   );
 
   const handleAddCategory = () => {
@@ -374,7 +223,7 @@ export default function EditCategoryScreen() {
           key: item.key,
           label: item.label,
           icon: item.icon,
-          color: getIconColor(item.icon, activeTab, item.color) // Truyền màu chính xác
+          color: getIconColor(item.icon, activeTab) // Use centralized color from iconUtils
         }
       });
     }
@@ -382,6 +231,7 @@ export default function EditCategoryScreen() {
 
   const handleTabChange = (newTab: 'expense' | 'income') => {
     if (newTab !== activeTab) {
+      console.log('🔄 Tab change:', { from: activeTab, to: newTab });
       setActiveTab(newTab);
       setIsEditMode(false); // Reset edit mode when switching tabs
     }
@@ -411,7 +261,7 @@ export default function EditCategoryScreen() {
           </TouchableOpacity>
         )}
         <View style={styles.categoryContent}>
-          <Icon name={item.icon} size={24} color={getIconColor(item.icon, activeTab, item.color)} />
+          <Icon name={item.icon} size={24} color={getIconColor(item.icon, activeTab)} />
           <Text style={styles.categoryLabel}>
             {item.label}
             {item.is_system_defined && <Text style={styles.systemBadge}> (System)</Text>}

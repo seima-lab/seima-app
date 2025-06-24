@@ -68,24 +68,37 @@ function AuthNavigator() {
     );
   }
 
+  // Determine screens based on authentication state
+  if (!isAuthenticated) {
+    // Unauthenticated stack - only auth screens
+    return (
+      <Stack.Navigator 
+        initialRouteName="Login"
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="OTP" component={OTPScreen} />
+        <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+      </Stack.Navigator>
+    );
+  }
+
+  // Authenticated stack - all app screens
   return (
     <Stack.Navigator 
-      key={isAuthenticated ? 'authenticated' : 'unauthenticated'}
-      initialRouteName={isAuthenticated ? "MainTab" : "Login"}
+      initialRouteName="MainTab"
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
       }}
     >
-      {/* Auth screens */}
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-      <Stack.Screen name="OTP" component={OTPScreen} />
-      <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
-      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-      
-      {/* Main app screens */}
+      {/* Main app screens - only available when authenticated */}
       <Stack.Screen name="MainTab" component={MainTabScreen} />
       <Stack.Screen name="AddExpenseScreen" component={AddExpenseScreen} />
       <Stack.Screen name="EditCategoryScreen" component={EditCategoryScreen} />
