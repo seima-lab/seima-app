@@ -479,12 +479,16 @@
     "title": "Lịch",
     "income": "Thu nhập",
     "expense": "Chi tiêu",
-    "total": "Tổng",
+    "total": "Tổng cộng",
     "noTransactions": "Không có giao dịch nào trong ngày này",
+    "noTransactionsThisMonth": "Không có giao dịch nào trong tháng này",
+    "transactionsFor": "Giao dịch của",
     "addEntry": "Thêm",
     "calendar": "Lịch",
     "reports": "Báo cáo",
-    "other": "Khác"
+    "other": "Khác",
+    "confirmDeleteTransaction": "Bạn có chắc chắn muốn xóa giao dịch này?",
+    "transactionDeleted": "Đã xóa giao dịch thành công"
   },
   
   "budget": {

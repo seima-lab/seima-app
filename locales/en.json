@@ -439,11 +439,10 @@
     "income": "Income",
     "expense": "Expense", 
     "total": "Total",
-    "noTransactions": "No transactions on this day",
-    "addEntry": "Add Entry",
-    "calendar": "Calendar",
-    "reports": "Reports",
-    "other": "Other"
+    "transactionsFor": "Transactions for",
+    "noTransactionsThisMonth": "No transactions this month",
+    "confirmDeleteTransaction": "Are you sure you want to delete this transaction?",
+    "transactionDeleted": "Transaction deleted successfully"
   },
   
   "budget": {

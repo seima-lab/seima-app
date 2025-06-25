@@ -9,6 +9,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
   updateUserProfile: (updatedUser: UserProfile) => void;
+  refreshTransactions: () => void;
+  transactionRefreshTrigger: number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [transactionRefreshTrigger, setTransactionRefreshTrigger] = useState(0);
 
   // Check authentication status on app start
   const checkAuthStatus = async () => {
@@ -94,11 +97,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(updatedUser);
   };
 
+  const refreshTransactions = () => {
+    console.log('🔄 Triggering transaction refresh');
+    setTransactionRefreshTrigger(prev => prev + 1);
+  };
+
   useEffect(() => {
     checkAuthStatus();
   }, []);
 
-  const value = {
+  const value: AuthContextType = {
     user,
     isLoading,
     isAuthenticated,
@@ -106,6 +114,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     checkAuthStatus,
     updateUserProfile,
+    refreshTransactions,
+    transactionRefreshTrigger,
   };
 
   return (
