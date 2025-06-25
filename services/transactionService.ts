@@ -167,6 +167,34 @@ export class TransactionService {
   }
 
   /**
+   * Update a transaction by ID
+   * @param transactionId - The ID of the transaction to update
+   * @param request - The updated transaction data
+   */
+  async updateTransaction(transactionId: number, request: CreateTransactionRequest): Promise<TransactionResponse> {
+    try {
+      console.log('🔄 Updating transaction with ID:', transactionId);
+      console.log('📝 Update data:', request);
+      
+      const response = await apiService.put<TransactionResponse>(
+        `/api/v1/transactions/update/${transactionId}`,
+        request
+      );
+      
+      if (response.data) {
+        console.log('✅ Transaction updated successfully:', response.data);
+        return response.data;
+      }
+      
+      throw new Error(response.message || 'Failed to update transaction');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to update transaction:', error);
+      throw new Error(error.message || 'Failed to update transaction');
+    }
+  }
+
+  /**
    * Delete a transaction by ID
    * @param transactionId - The ID of the transaction to delete
    */

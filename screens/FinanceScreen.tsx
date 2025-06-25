@@ -1,17 +1,17 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, G, Svg } from 'react-native-svg';
@@ -21,6 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { UserProfile, userService } from '../services/userService';
+import { WalletResponse, walletService } from '../services/walletService';
 
 const { width } = Dimensions.get('window');
 
@@ -42,15 +43,32 @@ interface ButtonProps {
   iconColor?: string;
 }
 
+interface FinanceData {
+  totalBalance: number;
+  income: number;
+  expenses: number;
+  difference: number;
+}
+
 const FinanceScreen = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigationService();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, transactionRefreshTrigger } = useAuth();
   
   // State for user data
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // State for wallet data
+  const [wallets, setWallets] = useState<WalletResponse[]>([]);
+  const [financeData, setFinanceData] = useState<FinanceData>({
+    totalBalance: 0,
+    income: 0,
+    expenses: 0,
+    difference: 0
+  });
+  const [walletLoading, setWalletLoading] = useState(true);
   
   // UI state
   const [selectedPeriod, setSelectedPeriod] = useState(t('finance.periods.thisMonth'));
@@ -59,17 +77,27 @@ const FinanceScreen = () => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [notificationCount, setNotificationCount] = useState(3);
 
-  // Load user profile from API
+  // Load user profile and wallet data
   useEffect(() => {
     loadUserProfile();
+    loadWalletData();
   }, [isAuthenticated]);
+
+  // Listen to transaction changes to refresh wallet balance
+  useEffect(() => {
+    if (transactionRefreshTrigger > 0) {
+      console.log('🔄 Transaction updated - refreshing finance data');
+      loadWalletData();
+    }
+  }, [transactionRefreshTrigger]);
 
   // Auto reload data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       if (isAuthenticated) {
-        console.log('🔄 FinanceScreen focused, reloading profile...');
+        console.log('🔄 FinanceScreen focused, reloading data...');
         loadUserProfile();
+        loadWalletData();
       }
     }, [isAuthenticated])
   );
@@ -96,6 +124,14 @@ const FinanceScreen = () => {
     }
   };
 
+  // Helper function to format money
+  const formatMoney = (amount: number): string => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '0';
+    }
+    return amount.toLocaleString('vi-VN');
+  };
+
   // Helper function to get avatar source based on gender
   const getAvatarSource = () => {
     if (userProfile?.user_avatar_url) {
@@ -113,14 +149,45 @@ const FinanceScreen = () => {
     return require('../assets/images/Unknown.jpg');
   };
 
-  // Dữ liệu mẫu (will be replaced with real API data later)
-  const financeData = {
-    balance: '2,100,000',
-    income: '80,000',
-    expenses: '1,980,000',
-    difference: '-1,900,000'
+  const loadWalletData = async () => {
+    if (!isAuthenticated) {
+      setWalletLoading(false);
+      return;
+    }
+
+    try {
+      setWalletLoading(true);
+      console.log('🟡 Loading wallet data in FinanceScreen...');
+      
+      const walletsData = await walletService.getAllWallets();
+      console.log('🟢 Wallet data loaded in FinanceScreen:', walletsData);
+      
+      setWallets(walletsData);
+      
+      // Calculate total balance from current_balance field
+      const totalBalance = walletsData.reduce((total: number, wallet: WalletResponse) => {
+        // Only include active wallets and those not excluded from total
+        if (wallet.is_active !== false && !wallet.exclude_from_total) {
+          return total + (wallet.current_balance || 0);
+        }
+        return total;
+      }, 0);
+      
+      setFinanceData({
+        totalBalance: totalBalance,
+        income: 0, // TODO: Get from transaction API
+        expenses: 0, // TODO: Get from transaction API
+        difference: 0 // TODO: Calculate from income - expenses
+      });
+    } catch (error: any) {
+      console.error('🔴 Failed to load wallet data in FinanceScreen:', error);
+      // Don't show alert on finance screen, just use fallback data
+    } finally {
+      setWalletLoading(false);
+    }
   };
 
+  // Dữ liệu mẫu (will be replaced with real API data later)
   const expenseData: ExpenseData[] = [
     { category: 'Leisure', percentage: 54.55, color: '#FFA726' },
     { category: 'Self-development', percentage: 25.25, color: '#EF5350' },
@@ -282,7 +349,7 @@ const FinanceScreen = () => {
   ];
 
   // Show loading state
-  if (loading) {
+  if (loading || walletLoading) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#4285F4" />
@@ -333,7 +400,7 @@ const FinanceScreen = () => {
             <Text style={styles.balanceLabel}>{t('finance.totalBalance')}</Text>
             <View style={styles.balanceRow}>
               <Text style={[styles.balanceAmount, { minWidth: 200 }]}>
-                {isBalanceVisible ? `${financeData.balance} ${t('currency')}` : '********'}
+                {isBalanceVisible ? `${formatMoney(financeData.totalBalance)} ${t('currency')}` : '********'}
               </Text>
               <TouchableOpacity onPress={() => setIsBalanceVisible(!isBalanceVisible)}>
                 <Icon 
@@ -373,15 +440,20 @@ const FinanceScreen = () => {
               <View style={styles.amountsList}>
                 <View style={styles.amountRow}>
                   <Text style={styles.amountLabel}>{t('incomeLabel')}</Text>
-                  <Text style={styles.incomeAmount}>{financeData.income} {t('currency')}</Text>
+                  <Text style={styles.incomeAmount}>{formatMoney(financeData.income)} {t('currency')}</Text>
                 </View>
                 <View style={styles.amountRow}>
                   <Text style={styles.amountLabel}>{t('finance.expenseShort')}</Text>
-                  <Text style={styles.expenseAmount}>{financeData.expenses} {t('currency')}</Text>
+                  <Text style={styles.expenseAmount}>{formatMoney(financeData.expenses)} {t('currency')}</Text>
                 </View>
                 <View style={styles.amountRow}>
                   <Text style={styles.amountLabel}>{t('finance.difference')}</Text>
-                  <Text style={styles.differenceAmount}>{financeData.difference} {t('currency')}</Text>
+                  <Text style={[
+                    styles.differenceAmount,
+                    financeData.difference >= 0 ? styles.incomeAmount : styles.expenseAmount
+                  ]}>
+                    {financeData.difference >= 0 ? '+' : ''}{formatMoney(Math.abs(financeData.difference))} {t('currency')}
+                  </Text>
                 </View>
               </View>
             </View>

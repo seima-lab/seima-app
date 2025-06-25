@@ -1,21 +1,21 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -35,18 +35,37 @@ import { getIconColor } from '../utils/iconUtils';
 export default function AddExpenseScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const route = useRoute();
+  const { user, isAuthenticated, isLoading: authLoading, refreshTransactions } = useAuth();
+  
+  // Get route parameters for edit mode
+  const routeParams = route.params as any;
+  const isEditMode = routeParams?.editMode || false;
+  const transactionData = routeParams?.transactionData;
   
   // State
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
+  const [activeTab, setActiveTab] = useState<'expense' | 'income'>(
+    isEditMode && transactionData?.type ? transactionData.type : 'expense'
+  );
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   
-  // Form data
-  const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
-  const [date, setDate] = useState(new Date());
+  // Form data - pre-fill if in edit mode
+  const [amount, setAmount] = useState(isEditMode && transactionData?.amount ? transactionData.amount : '');
+  const [note, setNote] = useState(isEditMode && transactionData?.note ? transactionData.note : '');
+  const [date, setDate] = useState(() => {
+    if (isEditMode && transactionData?.date) {
+      const parsedDate = new Date(transactionData.date);
+      // Ensure we use local timezone
+      return new Date(
+        parsedDate.getFullYear(),
+        parsedDate.getMonth(),
+        parsedDate.getDate()
+      );
+    }
+    return new Date();
+  });
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedWallet, setSelectedWallet] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -190,23 +209,47 @@ export default function AddExpenseScreen() {
         };
       }));
 
-      // Set default category based on current active tab
-      if (activeTab === 'expense' && expenseCats.length > 0) {
-        const defaultCategoryId = expenseCats[0].category_id.toString();
-        console.log('🔍 Setting default expense category:', {
-          activeTab: activeTab,
-          defaultCategoryId: defaultCategoryId,
-          defaultCategory: expenseCats[0]
-        });
-        setSelectedCategory(defaultCategoryId);
-      } else if (activeTab === 'income' && incomeCats.length > 0) {
-        const defaultCategoryId = incomeCats[0].category_id.toString();
-        console.log('🔍 Setting default income category:', {
-          activeTab: activeTab,
-          defaultCategoryId: defaultCategoryId,
-          defaultCategory: incomeCats[0]
-        });
-        setSelectedCategory(defaultCategoryId);
+      // Set default category based on current active tab or edit mode
+      if (isEditMode && transactionData?.category) {
+        // In edit mode, try to find and select the matching category
+        const allCategories = [...expenseCats, ...incomeCats];
+        const matchingCategory = allCategories.find(cat => cat.category_name === transactionData.category);
+        if (matchingCategory) {
+          const categoryKey = categoryServiceInstance.convertToLocalCategory(matchingCategory).key;
+          console.log('🔍 Setting edit mode category:', {
+            transactionCategory: transactionData.category,
+            matchingCategoryId: matchingCategory.category_id,
+            categoryKey: categoryKey
+          });
+          setSelectedCategory(categoryKey);
+        } else {
+          console.log('⚠️ Could not find matching category for:', transactionData.category);
+          // Fall back to default category selection
+          const categories = activeTab === 'expense' ? expenseCats : incomeCats;
+          if (categories.length > 0) {
+            const defaultCategoryKey = categoryServiceInstance.convertToLocalCategory(categories[0]).key;
+            setSelectedCategory(defaultCategoryKey);
+          }
+        }
+      } else {
+        // Normal mode - set default category based on current active tab
+        if (activeTab === 'expense' && expenseCats.length > 0) {
+          const defaultCategoryKey = categoryServiceInstance.convertToLocalCategory(expenseCats[0]).key;
+          console.log('🔍 Setting default expense category:', {
+            activeTab: activeTab,
+            defaultCategoryKey: defaultCategoryKey,
+            defaultCategory: expenseCats[0]
+          });
+          setSelectedCategory(defaultCategoryKey);
+        } else if (activeTab === 'income' && incomeCats.length > 0) {
+          const defaultCategoryKey = categoryServiceInstance.convertToLocalCategory(incomeCats[0]).key;
+          console.log('🔍 Setting default income category:', {
+            activeTab: activeTab,
+            defaultCategoryKey: defaultCategoryKey,
+            defaultCategory: incomeCats[0]
+          });
+          setSelectedCategory(defaultCategoryKey);
+        }
       }
 
       console.log('✅ All data loaded successfully');
@@ -820,15 +863,45 @@ export default function AddExpenseScreen() {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       });
 
-      if (activeTab === 'expense') {
-        await transactionService.createExpense(transactionData);
+      if (isEditMode && routeParams?.transactionData?.id) {
+        // Update existing transaction
+        const transactionId = parseInt(routeParams.transactionData.id);
+        console.log('🔄 Updating existing transaction with ID:', transactionId);
+        await transactionService.updateTransaction(transactionId, transactionData);
+        
+        // Trigger global refresh
+        refreshTransactions();
+        
+        Alert.alert('Success', 'Transaction updated successfully!', [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              // Navigate back and indicate data has changed
+              navigation.goBack();
+            }
+          }
+        ]);
       } else {
-        await transactionService.createIncome(transactionData);
+        // Create new transaction
+        if (activeTab === 'expense') {
+          await transactionService.createExpense(transactionData);
+        } else {
+          await transactionService.createIncome(transactionData);
+        }
+        
+        // Trigger global refresh
+        refreshTransactions();
+        
+        Alert.alert('Success', 'Transaction saved successfully!', [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              // Navigate back and indicate data has changed
+              navigation.goBack();
+            }
+          }
+        ]);
       }
-
-      Alert.alert('Success', 'Transaction saved successfully!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
 
     } catch (error: any) {
       console.error('Error saving transaction:', error);
@@ -1107,26 +1180,34 @@ export default function AddExpenseScreen() {
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Icon name="arrow-left" size={24} color="#007aff" />
-            </TouchableOpacity>
+          </TouchableOpacity>
           
-          <View style={styles.tabContainer}>
+          {isEditMode ? (
+            <View style={styles.editHeaderContainer}>
+              <Text style={styles.editHeaderTitle}>
+                {activeTab === 'expense' ? 'Edit Expense' : 'Edit Income'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.tabContainer}>
               <TouchableOpacity
-              style={[styles.tab, activeTab === 'expense' && styles.tabActive]}
+                style={[styles.tab, activeTab === 'expense' && styles.tabActive]}
                 onPress={() => handleTabChange('expense')}
               >
-              <Text style={[styles.tabText, activeTab === 'expense' && styles.tabTextActive]}>
-                {t('expense')}
-              </Text>
+                <Text style={[styles.tabText, activeTab === 'expense' && styles.tabTextActive]}>
+                  {t('expense')}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-              style={[styles.tab, activeTab === 'income' && styles.tabActive]}
+                style={[styles.tab, activeTab === 'income' && styles.tabActive]}
                 onPress={() => handleTabChange('income')}
               >
-              <Text style={[styles.tabText, activeTab === 'income' && styles.tabTextActive]}>
-                {t('incomeLabel')}
-              </Text>
+                <Text style={[styles.tabText, activeTab === 'income' && styles.tabTextActive]}>
+                  {t('incomeLabel')}
+                </Text>
               </TouchableOpacity>
             </View>
+          )}
 
                     {/* Camera Icon - Available for both expense and income tabs */}
             <TouchableOpacity
@@ -1266,8 +1347,11 @@ export default function AddExpenseScreen() {
                 <ActivityIndicator size="small" color="#fff" />
             ) : (
             <Text style={styles.saveButtonText}>
-              {activeTab === 'expense' ? 'Add Expense' : 'Add Income'}
-              </Text>
+              {isEditMode 
+                ? (activeTab === 'expense' ? 'Update Expense' : 'Update Income')
+                : (activeTab === 'expense' ? 'Add Expense' : 'Add Income')
+              }
+            </Text>
             )}
           </TouchableOpacity>
       </ScrollView>
@@ -1478,6 +1562,17 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: '#fff',
+  },
+  editHeaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 16,
+  },
+  editHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
   },
   row: { 
     flexDirection: 'row', 

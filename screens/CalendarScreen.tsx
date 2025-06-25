@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
@@ -18,6 +19,7 @@ import { Calendar, DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
+import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import {
@@ -55,10 +57,12 @@ const formatMoney = (amount: number | undefined | null): string => {
 // Swipeable Transaction Item Component
 const SwipeableTransactionItem = ({ 
     transaction, 
-    onDelete 
+    onDelete,
+    onEdit
 }: { 
     transaction: Transaction; 
     onDelete: (id: string) => void;
+    onEdit: (transaction: Transaction) => void;
 }) => {
     const { t } = useTranslation();
     const translateX = new Animated.Value(0);
@@ -139,7 +143,10 @@ const SwipeableTransactionItem = ({
                     ]}
                     {...panResponder.panHandlers}
                 >
-                    <TouchableOpacity style={styles.transactionItem}>
+                    <TouchableOpacity 
+                        style={styles.transactionItem}
+                        onPress={() => onEdit(transaction)}
+                    >
                         <View style={styles.transactionLeft}>
                             <View style={[styles.transactionIcon, { backgroundColor: transaction.iconColor + '20' }]}>
                                 <Icon name={transaction.icon} size={20} color={transaction.iconColor} />
@@ -198,6 +205,7 @@ const CalendarScreen = () => {
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
     const navigation = useNavigationService();
+    const { transactionRefreshTrigger } = useAuth();
     
     // Initialize with current month
     const today = new Date();
@@ -208,6 +216,7 @@ const CalendarScreen = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
 
     // Load transaction overview data
     const loadTransactionOverview = async (month: string, isRefresh = false) => {
@@ -242,6 +251,7 @@ const CalendarScreen = () => {
             }
             
             setOverviewData(data);
+            setLastRefreshTime(Date.now());
         } catch (err: any) {
             console.error('❌ Failed to load transaction overview:', err);
             console.error('❌ Error details:', {
@@ -275,6 +285,29 @@ const CalendarScreen = () => {
     useEffect(() => {
         loadTransactionOverview(currentMonth);
     }, [currentMonth]);
+
+    // Listen to global transaction refresh trigger
+    useEffect(() => {
+        if (transactionRefreshTrigger > 0) {
+            console.log('🔄 Global transaction refresh triggered');
+            loadTransactionOverview(currentMonth, true);
+        }
+    }, [transactionRefreshTrigger, currentMonth]);
+
+    // Refresh data when screen comes into focus (when returning from edit screen)
+    useFocusEffect(
+        useCallback(() => {
+            const now = Date.now();
+            const timeSinceLastRefresh = now - lastRefreshTime;
+            
+            // Only refresh if it's been more than 1 second since last refresh
+            // This prevents unnecessary API calls on first load
+            if (timeSinceLastRefresh > 1000) {
+                console.log('🔄 Screen focused - refreshing calendar data');
+                loadTransactionOverview(currentMonth, true);
+            }
+        }, [currentMonth, lastRefreshTime])
+    );
 
     // Helper function to get category icon based on category name
     const getCategoryIcon = (categoryName: string): { icon: string; color: string } => {
@@ -480,6 +513,24 @@ const CalendarScreen = () => {
         }
     };
 
+    // Handle edit transaction
+    const handleEditTransaction = (transaction: Transaction) => {
+        console.log('🔄 Navigating to edit transaction:', transaction);
+        navigation.navigate('AddExpenseScreen' as any, {
+            editMode: true,
+            transactionData: {
+                id: transaction.id,
+                amount: transaction.amount.toString(),
+                note: transaction.description || '',
+                date: transaction.date,
+                category: transaction.category,
+                type: transaction.type,
+                icon: transaction.icon,
+                iconColor: transaction.iconColor
+            }
+        });
+    };
+
     // Create marked dates - simple marking for days with transactions
     const getMarkedDates = () => {
         const marked: any = {};
@@ -578,9 +629,12 @@ const CalendarScreen = () => {
                     </Text>
                 </View>
                 {dayTransactions.map(transaction => (
-                    <SwipeableTransactionItem key={transaction.id} transaction={transaction} onDelete={(id) => {
-                        handleDeleteTransaction(id);
-                    }} />
+                    <SwipeableTransactionItem 
+                        key={transaction.id} 
+                        transaction={transaction} 
+                        onDelete={(id) => handleDeleteTransaction(id)}
+                        onEdit={handleEditTransaction}
+                    />
                 ))}
             </View>
         );
