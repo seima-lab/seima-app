@@ -704,10 +704,17 @@ export default function AddExpenseScreen() {
       
       if (ocrResult.transaction_date) {
         console.log('📅 Setting date:', ocrResult.transaction_date);
+        // Parse date properly to avoid timezone issues
         const parsedDate = new Date(ocrResult.transaction_date);
         if (!isNaN(parsedDate.getTime())) {
-          setDate(parsedDate);
-          console.log('✅ Date set successfully:', parsedDate);
+          // Create a new date object in local timezone to preserve the date
+          const localDate = new Date(
+            parsedDate.getFullYear(),
+            parsedDate.getMonth(),
+            parsedDate.getDate()
+          );
+          setDate(localDate);
+          console.log('✅ Date set successfully (local):', localDate);
         } else {
           console.log('❌ Invalid date format:', ocrResult.transaction_date);
         }
@@ -781,6 +788,15 @@ export default function AddExpenseScreen() {
         selectedCategoryDetails: getCurrentCategories().find(cat => cat.key === selectedCategory)
       });
 
+      // Format date - use noon time to avoid timezone issues
+      const formatDateForAPI = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        // Use noon (12:00) to avoid timezone conversion issues
+        return `${year}-${month}-${day}T12:00:00.000Z`;
+      };
+
       const transactionData: CreateTransactionRequest = {
         user_id: userId, // Use real userId from /me API
         wallet_id: selectedWallet!,
@@ -789,13 +805,20 @@ export default function AddExpenseScreen() {
         transaction_type: activeTab === 'expense' ? TransactionType.EXPENSE : TransactionType.INCOME,
         amount: amountValue,
         currency_code: 'VND',
-        transaction_date: date.toISOString(),
+        transaction_date: formatDateForAPI(date),
         description: note.trim() || undefined,
         receipt_image_url: selectedImage || null,
         payee_payer_name: undefined,
       };
 
       console.log('🔄 Saving transaction:', transactionData);
+      console.log('📅 Date debugging:', {
+        originalDate: date,
+        localDateString: date.toLocaleDateString(),
+        isoString: date.toISOString(),
+        formattedForAPI: formatDateForAPI(date),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      });
 
       if (activeTab === 'expense') {
         await transactionService.createExpense(transactionData);
@@ -898,7 +921,18 @@ export default function AddExpenseScreen() {
       setShowDatePicker(false);
     }
     if (selectedDate) {
-      setDate(selectedDate);
+      // Ensure we use the selected date in local timezone
+      const localDate = new Date(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate()
+      );
+      setDate(localDate);
+      console.log('📅 Date changed to (local):', {
+        selected: selectedDate,
+        local: localDate,
+        localString: localDate.toLocaleDateString()
+      });
     }
   };
 

@@ -1,19 +1,31 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+    ActivityIndicator,
+    Alert,
+    Animated,
+    PanResponder,
+    RefreshControl,
     SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomConfirmModal from '../components/CustomConfirmModal';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import {
+    DailyTransactions,
+    TransactionItem,
+    TransactionOverviewResponse,
+    transactionService
+} from '../services/transactionService';
 
 interface Transaction {
     id: string;
@@ -32,95 +44,359 @@ interface DayData {
     total: number;
 }
 
+// Format money helper function
+const formatMoney = (amount: number | undefined | null): string => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+        return '0đ';
+    }
+    return amount.toLocaleString('vi-VN') + 'đ';
+};
+
+// Swipeable Transaction Item Component
+const SwipeableTransactionItem = ({ 
+    transaction, 
+    onDelete 
+}: { 
+    transaction: Transaction; 
+    onDelete: (id: string) => void;
+}) => {
+    const { t } = useTranslation();
+    const translateX = new Animated.Value(0);
+    const rightActionOpacity = new Animated.Value(0);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    
+    const panResponder = PanResponder.create({
+        onMoveShouldSetPanResponder: (evt, gestureState) => {
+            return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 50;
+        },
+        onPanResponderMove: (evt, gestureState) => {
+            if (gestureState.dx < 0) { // Only allow left swipe
+                const newTranslateX = Math.max(gestureState.dx, -100);
+                translateX.setValue(newTranslateX);
+                rightActionOpacity.setValue(Math.abs(newTranslateX) / 100);
+            }
+        },
+        onPanResponderRelease: (evt, gestureState) => {
+            if (gestureState.dx < -50) {
+                // Show delete button
+                Animated.parallel([
+                    Animated.timing(translateX, {
+                        toValue: -100,
+                        duration: 200,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(rightActionOpacity, {
+                        toValue: 1,
+                        duration: 200,
+                        useNativeDriver: true,
+                    })
+                ]).start();
+            } else {
+                // Reset position
+                resetPosition();
+            }
+        },
+    });
+
+    const resetPosition = () => {
+        Animated.parallel([
+            Animated.timing(translateX, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+            Animated.timing(rightActionOpacity, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            })
+        ]).start();
+    };
+
+    const handleDelete = () => {
+        setShowConfirmModal(true);
+    };
+
+    const handleConfirmDelete = () => {
+        setShowConfirmModal(false);
+        resetPosition();
+        onDelete(transaction.id);
+    };
+
+    const handleCancelDelete = () => {
+        setShowConfirmModal(false);
+        resetPosition();
+    };
+
+    return (
+        <>
+            <View style={styles.swipeableContainer}>
+                {/* Transaction Item */}
+                <Animated.View
+                    style={[
+                        styles.transactionItemSwipeable,
+                        { transform: [{ translateX }] }
+                    ]}
+                    {...panResponder.panHandlers}
+                >
+                    <TouchableOpacity style={styles.transactionItem}>
+                        <View style={styles.transactionLeft}>
+                            <View style={[styles.transactionIcon, { backgroundColor: transaction.iconColor + '20' }]}>
+                                <Icon name={transaction.icon} size={20} color={transaction.iconColor} />
+                            </View>
+                            <View style={styles.transactionInfo}>
+                                <Text style={styles.transactionCategory}>{transaction.category}</Text>
+                                {transaction.description && (
+                                    <Text style={styles.transactionDescription}>{transaction.description}</Text>
+                                )}
+                            </View>
+                        </View>
+                        <Text style={[
+                            styles.transactionAmount,
+                            transaction.type === 'income' ? styles.incomeAmount : styles.expenseAmount
+                        ]}>
+                            {transaction.type === 'income' ? '+' : '-'}{formatMoney(transaction.amount)}
+                        </Text>
+                        <Icon name="chevron-right" size={20} color="#999" />
+                    </TouchableOpacity>
+                </Animated.View>
+                
+                {/* Delete Action - appears behind when swiped */}
+                <Animated.View 
+                    style={[
+                        styles.deleteAction,
+                        { opacity: rightActionOpacity }
+                    ]}
+                >
+                    <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={handleDelete}
+                    >
+                        <Icon name="delete" size={20} color="#FFFFFF" />
+                        <Text style={styles.deleteText}>{t('delete')}</Text>
+                    </TouchableOpacity>
+                </Animated.View>
+            </View>
+
+            {/* Custom Confirm Modal */}
+            <CustomConfirmModal
+                visible={showConfirmModal}
+                title={t('confirm')}
+                message={t('calendar.confirmDeleteTransaction')}
+                confirmText={t('delete')}
+                cancelText={t('cancel')}
+                onConfirm={handleConfirmDelete}
+                onCancel={handleCancelDelete}
+                type="danger"
+                iconName="delete"
+            />
+        </>
+    );
+};
+
 const CalendarScreen = () => {
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
     const navigation = useNavigationService();
     
-    const [selectedDate, setSelectedDate] = useState('2025-05-20');
-    const [currentMonth, setCurrentMonth] = useState('2025-05');
+    // Initialize with current month
+    const today = new Date();
+    const currentMonthString = today.toISOString().substring(0, 7);
+    
+    const [currentMonth, setCurrentMonth] = useState(currentMonthString);
+    const [overviewData, setOverviewData] = useState<TransactionOverviewResponse | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Mock data for transactions
-    const transactions: Transaction[] = [
-        {
-            id: '1',
-            date: '2025-05-26',
-            category: 'Không có',
-            amount: 10000,
-            type: 'expense',
-            icon: 'more-horiz',
-            iconColor: '#666',
-            description: 'Không có'
-        },
-        {
-            id: '2',
-            date: '2025-05-20',
-            category: 'Ăn uống',
-            amount: 30000,
-            type: 'expense',
-            icon: 'restaurant',
-            iconColor: '#FF9500',
-            description: 'Ăn uống'
-        },
-        {
-            id: '3',
-            date: '2025-05-20',
-            category: 'Ăn uống',
-            amount: 35000,
-            type: 'expense',
-            icon: 'restaurant',
-            iconColor: '#FF9500',
-            description: 'Ăn uống'
-        },
-        {
-            id: '4',
-            date: '2025-05-20',
-            category: 'Ăn uống',
-            amount: 0,
-            type: 'expense',
-            icon: 'restaurant',
-            iconColor: '#FF9500',
-            description: 'Ăn uống'
-        },
-        {
-            id: '5',
-            date: '2025-05-20',
-            category: 'Thu nhập phụ',
-            amount: 1000000,
-            type: 'income',
-            icon: 'account-balance-wallet',
-            iconColor: '#34C759',
-            description: 'Thu nhập phụ (Vợ iu cho)'
-        },
-        {
-            id: '6',
-            date: '2025-05-19',
-            category: 'Chi tiêu hàng ngày',
-            amount: 180000,
-            type: 'expense',
-            icon: 'shopping-basket',
-            iconColor: '#007AFF',
-            description: 'Chi tiêu hàng ngày'
-        },
-    ];
+    // Load transaction overview data
+    const loadTransactionOverview = async (month: string, isRefresh = false) => {
+        try {
+            if (isRefresh) {
+                setRefreshing(true);
+            } else {
+                setLoading(true);
+                // Clear old data immediately when loading new month to avoid showing stale data
+                setOverviewData(null);
+            }
+            setError(null);
+            
+            console.log('🔄 Loading transaction overview for month:', month);
+            const data = await transactionService.getTransactionOverview(month);
+            
+            // Log the received data
+            console.log('📦 Received overview data:', JSON.stringify(data, null, 2));
+            console.log('📊 Summary:', data?.summary);
+            console.log('📅 by_date array length:', data?.by_date?.length || 0);
+            
+            if (data?.by_date && Array.isArray(data.by_date)) {
+                data.by_date.forEach((dailyData, index) => {
+                    console.log(`📆 Day ${index + 1}:`, {
+                        date: dailyData.date,
+                        transactionCount: dailyData.transactions?.length || 0,
+                        transactions: dailyData.transactions
+                    });
+                });
+            } else {
+                console.log('⚠️ No by_date data or by_date is not an array');
+            }
+            
+            setOverviewData(data);
+        } catch (err: any) {
+            console.error('❌ Failed to load transaction overview:', err);
+            console.error('❌ Error details:', {
+                message: err.message,
+                stack: err.stack,
+                response: err.response
+            });
+            setError(err.message || 'Failed to load transaction data');
+            if (!isRefresh) {
+                Alert.alert(
+                    t('common.error'),
+                    err.message || 'Failed to load transaction data',
+                    [{ text: t('common.ok') }]
+                );
+            }
+        } finally {
+            if (isRefresh) {
+                setRefreshing(false);
+            } else {
+                setLoading(false);
+            }
+        }
+    };
+
+    // Handle pull to refresh
+    const onRefresh = () => {
+        loadTransactionOverview(currentMonth, true);
+    };
+
+    // Load data when component mounts or month changes
+    useEffect(() => {
+        loadTransactionOverview(currentMonth);
+    }, [currentMonth]);
+
+    // Helper function to get category icon based on category name
+    const getCategoryIcon = (categoryName: string): { icon: string; color: string } => {
+        const lowerCategory = categoryName.toLowerCase();
+        
+        if (lowerCategory.includes('ăn') || lowerCategory.includes('uống') || lowerCategory.includes('food')) {
+            return { icon: 'restaurant', color: '#FF9500' };
+        }
+        if (lowerCategory.includes('thu nhập') || lowerCategory.includes('income') || lowerCategory.includes('salary')) {
+            return { icon: 'account-balance-wallet', color: '#34C759' };
+        }
+        if (lowerCategory.includes('chi tiêu') || lowerCategory.includes('shopping') || lowerCategory.includes('mua sắm')) {
+            return { icon: 'shopping-basket', color: '#007AFF' };
+        }
+        if (lowerCategory.includes('transport') || lowerCategory.includes('xe')) {
+            return { icon: 'directions-car', color: '#FF3B30' };
+        }
+        if (lowerCategory.includes('entertainment') || lowerCategory.includes('giải trí')) {
+            return { icon: 'movie', color: '#9500FF' };
+        }
+        if (lowerCategory.includes('health') || lowerCategory.includes('sức khỏe')) {
+            return { icon: 'local-hospital', color: '#FF2D92' };
+        }
+        
+        return { icon: 'more-horiz', color: '#666' };
+    };
+
+    // Convert API data to local Transaction format
+    const convertToLocalTransaction = (item: TransactionItem, date: string): Transaction | null => {
+        // Filter out inactive or invalid transaction types
+        const validTypes = ['income', 'expense', 'INCOME', 'EXPENSE'];
+        const transactionType = item.transaction_type?.toLowerCase();
+        
+        if (!transactionType || !validTypes.includes(item.transaction_type)) {
+            console.log('⚠️ Filtered out invalid transaction type:', item.transaction_type, 'for transaction:', item.transaction_id);
+            return null;
+        }
+        
+        const categoryIcon = getCategoryIcon(item.category_name || '');
+        return {
+            id: (item.transaction_id || 0).toString(),
+            date: date,
+            category: item.category_name || 'Unknown',
+            amount: item.amount || 0,
+            type: transactionType === 'income' ? 'income' : 'expense',
+            icon: categoryIcon.icon,
+            iconColor: categoryIcon.color,
+            description: item.description || item.category_name || 'No description'
+        };
+    };
+
+    // Get all transactions from API data
+    const getAllTransactions = (): Transaction[] => {
+        console.log('🔄 Getting all transactions from overview data...');
+        
+        if (!overviewData || !overviewData.by_date || !Array.isArray(overviewData.by_date)) {
+            console.log('⚠️ No overview data available for transactions');
+            return [];
+        }
+        
+        const transactions: Transaction[] = [];
+        
+        overviewData.by_date.forEach((dailyTransaction: DailyTransactions, dayIndex: number) => {
+            console.log(`📅 Processing day ${dayIndex + 1}:`, dailyTransaction.date);
+            
+            if (dailyTransaction && dailyTransaction.transactions && Array.isArray(dailyTransaction.transactions)) {
+                console.log(`📝 Found ${dailyTransaction.transactions.length} transactions for ${dailyTransaction.date}`);
+                
+                dailyTransaction.transactions.forEach((item: TransactionItem, transIndex: number) => {
+                    if (item) {
+                        const convertedTransaction = convertToLocalTransaction(item, dailyTransaction.date);
+                        if (convertedTransaction) {
+                            console.log(`💰 Transaction ${transIndex + 1}:`, {
+                                id: convertedTransaction.id,
+                                category: convertedTransaction.category,
+                                amount: convertedTransaction.amount,
+                                type: convertedTransaction.type
+                            });
+                            transactions.push(convertedTransaction);
+                        }
+                    }
+                });
+            } else {
+                console.log(`⚠️ No transactions found for ${dailyTransaction.date}`);
+            }
+        });
+        
+        console.log(`✅ Total transactions processed: ${transactions.length}`);
+        return transactions;
+    };
+
+    const transactions = getAllTransactions();
 
     // Calculate day data
     const getDayData = (): { [key: string]: DayData } => {
+        console.log('📊 Calculating day data from transactions...');
         const dayData: { [key: string]: DayData } = {};
         
-        transactions.forEach(transaction => {
-            if (!dayData[transaction.date]) {
-                dayData[transaction.date] = { income: 0, expense: 0, total: 0 };
-            }
+        if (transactions && Array.isArray(transactions)) {
+            console.log(`📝 Processing ${transactions.length} valid transactions for day calculations`);
             
-            if (transaction.type === 'income') {
-                dayData[transaction.date].income += transaction.amount;
-            } else {
-                dayData[transaction.date].expense += transaction.amount;
-            }
+            transactions.forEach((transaction, index) => {
+                if (transaction && transaction.date && (transaction.type === 'income' || transaction.type === 'expense')) {
+                    if (!dayData[transaction.date]) {
+                        dayData[transaction.date] = { income: 0, expense: 0, total: 0 };
+                        console.log(`📅 Created day data for: ${transaction.date}`);
+                    }
+                    
+                    if (transaction.type === 'income') {
+                        dayData[transaction.date].income += transaction.amount || 0;
+                    } else if (transaction.type === 'expense') {
+                        dayData[transaction.date].expense += transaction.amount || 0;
+                    }
+                    
+                    dayData[transaction.date].total = dayData[transaction.date].income - dayData[transaction.date].expense;
+                }
+            });
             
-            dayData[transaction.date].total = dayData[transaction.date].income - dayData[transaction.date].expense;
-        });
+            console.log('📊 Final day data:', dayData);
+        } else {
+            console.log('⚠️ No transactions array available for day data calculation');
+        }
         
         return dayData;
     };
@@ -129,77 +405,100 @@ const CalendarScreen = () => {
 
     // Get monthly totals
     const getMonthlyTotals = () => {
-        let totalIncome = 0;
-        let totalExpense = 0;
+        console.log('💰 Calculating monthly totals...');
         
-        transactions.forEach(transaction => {
-            if (transaction.date.startsWith(currentMonth)) {
-                if (transaction.type === 'income') {
-                    totalIncome += transaction.amount;
-                } else {
-                    totalExpense += transaction.amount;
-                }
-            }
-        });
+        if (!overviewData || !overviewData.summary) {
+            console.log('⚠️ No summary data available, returning zeros');
+            return {
+                income: 0,
+                expense: 0,
+                total: 0
+            };
+        }
         
-        return {
-            income: totalIncome,
-            expense: totalExpense,
-            total: totalIncome - totalExpense
+        const totals = {
+            income: overviewData.summary.total_income || 0,
+            expense: overviewData.summary.total_expense || 0,
+            total: overviewData.summary.balance || 0
         };
+        
+        console.log('📊 Monthly totals:', totals);
+        return totals;
     };
 
     const monthlyTotals = getMonthlyTotals();
 
-    // Get transactions for selected date
-    const getSelectedDateTransactions = () => {
-        return transactions.filter(transaction => transaction.date === selectedDate);
+    // Group transactions by date for the entire month
+    const getGroupedTransactions = (): { [date: string]: Transaction[] } => {
+        if (!transactions || !Array.isArray(transactions)) {
+            return {};
+        }
+        
+        const grouped: { [date: string]: Transaction[] } = {};
+        transactions.forEach(transaction => {
+            if (transaction && transaction.date) {
+                if (!grouped[transaction.date]) {
+                    grouped[transaction.date] = [];
+                }
+                grouped[transaction.date].push(transaction);
+            }
+        });
+        
+        // Sort dates in descending order (newest first)
+        const sortedGrouped: { [date: string]: Transaction[] } = {};
+        Object.keys(grouped)
+            .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+            .forEach(date => {
+                sortedGrouped[date] = grouped[date];
+            });
+        
+        return sortedGrouped;
     };
 
-    const selectedTransactions = getSelectedDateTransactions();
+    const groupedTransactions = getGroupedTransactions();
 
-    // Format money
-    const formatMoney = (amount: number): string => {
-        return amount.toLocaleString('vi-VN') + 'đ';
+    // Handle delete transaction
+    const handleDeleteTransaction = async (transactionId: string) => {
+        try {
+            console.log('🔄 Deleting transaction:', transactionId);
+            
+            // Call the actual delete API
+            await transactionService.deleteTransaction(parseInt(transactionId));
+            
+            console.log('✅ Transaction deleted successfully');
+            
+            // Refresh the data
+            loadTransactionOverview(currentMonth);
+            
+        } catch (error: any) {
+            console.error('❌ Failed to delete transaction:', error);
+            Alert.alert(
+                'Error',
+                error.message || 'Failed to delete transaction',
+                [{ text: 'OK' }]
+            );
+        }
     };
 
-    // Create marked dates
+    // Create marked dates - simple marking for days with transactions
     const getMarkedDates = () => {
         const marked: any = {};
         
         Object.keys(dayData).forEach(date => {
-            const data = dayData[date];
             marked[date] = {
                 customStyles: {
                     container: {
-                        backgroundColor: date === selectedDate ? '#007AFF' : 'transparent',
+                        backgroundColor: 'transparent',
                         borderRadius: 4,
                     },
                     text: {
-                        color: date === selectedDate ? 'white' : '#333',
+                        color: '#333',
                         fontSize: 14,
-                        fontWeight: date === selectedDate ? 'bold' : 'normal',
+                        fontWeight: 'normal',
                     }
                 }
             };
         });
-
-        // Ensure selected date is marked even if no transactions
-        if (!marked[selectedDate]) {
-            marked[selectedDate] = {
-                customStyles: {
-                    container: {
-                        backgroundColor: '#007AFF',
-                        borderRadius: 4,
-                    },
-                    text: {
-                        color: 'white',
-                        fontSize: 14,
-                        fontWeight: 'bold',
-                    }
-                }
-            };
-        }
         
         return marked;
     };
@@ -207,23 +506,10 @@ const CalendarScreen = () => {
     const renderDayComponent = ({ date, state }: any) => {
         const dateStr = date.dateString;
         const data = dayData[dateStr];
-        const isSelected = dateStr === selectedDate;
-        const isToday = dateStr === new Date().toISOString().split('T')[0];
         
         return (
-            <TouchableOpacity
-                style={[
-                    styles.dayContainer,
-                    isSelected && styles.selectedDay,
-                    isToday && !isSelected && styles.todayDay
-                ]}
-                onPress={() => setSelectedDate(dateStr)}
-            >
-                <Text style={[
-                    styles.dayNumber,
-                    isSelected && styles.selectedDayText,
-                    state === 'disabled' && styles.disabledDayText
-                ]}>
+            <View style={styles.dayContainer}>
+                <Text style={styles.dayNumber}>
                     {date.day}
                 </Text>
                 {data && (
@@ -240,7 +526,7 @@ const CalendarScreen = () => {
                         )}
                     </View>
                 )}
-            </TouchableOpacity>
+            </View>
         );
     };
 
@@ -267,6 +553,39 @@ const CalendarScreen = () => {
         </TouchableOpacity>
     );
 
+    const renderDayGroup = (date: string, dayTransactions: Transaction[]) => {
+        const dayTotal = dayTransactions.reduce((total, transaction) => {
+            return transaction.type === 'income' 
+                ? total + transaction.amount 
+                : total - transaction.amount;
+        }, 0);
+
+        return (
+            <View key={date} style={styles.dayGroup}>
+                <View style={styles.dayHeader}>
+                    <Text style={styles.dayHeaderDate}>
+                        {new Date(date).toLocaleDateString(undefined, { 
+                            weekday: 'long',
+                            day: '2-digit',
+                            month: '2-digit'
+                        })}
+                    </Text>
+                    <Text style={[
+                        styles.dayHeaderTotal,
+                        dayTotal >= 0 ? styles.positiveTotal : styles.negativeTotal
+                    ]}>
+                        {dayTotal >= 0 ? '+' : ''}{formatMoney(Math.abs(dayTotal))}
+                    </Text>
+                </View>
+                {dayTransactions.map(transaction => (
+                    <SwipeableTransactionItem key={transaction.id} transaction={transaction} onDelete={(id) => {
+                        handleDeleteTransaction(id);
+                    }} />
+                ))}
+            </View>
+        );
+    };
+
     return (
         <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
@@ -287,83 +606,114 @@ const CalendarScreen = () => {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* Calendar */}
-                <View style={styles.calendarContainer}>
-                    <Calendar
-                        current={currentMonth + '-01'}
-                        onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
-                        onMonthChange={(month: DateData) => setCurrentMonth(month.dateString.substring(0, 7))}
-                        markingType={'custom'}
-                        markedDates={getMarkedDates()}
-                        dayComponent={renderDayComponent}
-                        theme={{
-                            backgroundColor: '#ffffff',
-                            calendarBackground: '#ffffff',
-                            textSectionTitleColor: '#b6c1cd',
-                            selectedDayBackgroundColor: '#007AFF',
-                            selectedDayTextColor: '#ffffff',
-                            todayTextColor: '#007AFF',
-                            dayTextColor: '#2d4150',
-                            textDisabledColor: '#d9e1e8',
-                            arrowColor: '#007AFF',
-                            monthTextColor: '#333',
-                            indicatorColor: '#007AFF',
-                            textDayFontWeight: '400',
-                            textMonthFontWeight: 'bold',
-                            textDayHeaderFontWeight: '600',
-                            textDayFontSize: 14,
-                            textMonthFontSize: 18,
-                            textDayHeaderFontSize: 12
-                        }}
-                        style={styles.calendar}
-                    />
+                        <View style={styles.content}>
+                {/* Fixed Top Section */}
+                <View style={styles.fixedSection}>
+                    {/* Calendar */}
+                    <View style={styles.calendarContainer}>
+                        {loading ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color="#007AFF" />
+                                <Text style={styles.loadingText}>{t('common.loading')}</Text>
+                            </View>
+                        ) : (
+                            <Calendar
+                                current={currentMonth + '-01'}
+                                onMonthChange={(month: DateData) => {
+                                    const newMonth = month.dateString.substring(0, 7);
+                                    setCurrentMonth(newMonth);
+                                    // loadTransactionOverview will be called by useEffect when currentMonth changes
+                                }}
+                                markingType={'custom'}
+                                markedDates={getMarkedDates()}
+                                dayComponent={renderDayComponent}
+                                theme={{
+                                    backgroundColor: '#ffffff',
+                                    calendarBackground: '#ffffff',
+                                    textSectionTitleColor: '#b6c1cd',
+                                    selectedDayBackgroundColor: '#007AFF',
+                                    selectedDayTextColor: '#ffffff',
+                                    todayTextColor: '#007AFF',
+                                    dayTextColor: '#2d4150',
+                                    textDisabledColor: '#d9e1e8',
+                                    arrowColor: '#007AFF',
+                                    monthTextColor: '#333',
+                                    indicatorColor: '#007AFF',
+                                    textDayFontWeight: '400',
+                                    textMonthFontWeight: 'bold',
+                                    textDayHeaderFontWeight: '600',
+                                    textDayFontSize: 14,
+                                    textMonthFontSize: 18,
+                                    textDayHeaderFontSize: 12
+                                }}
+                                style={styles.calendar}
+                            />
+                        )}
+                    </View>
+
+                    {/* Summary */}
+                    <View style={styles.summaryContainer}>
+                        <View style={styles.summaryItem}>
+                            <Text style={styles.summaryLabel}>{t('calendar.income')}</Text>
+                            <Text style={styles.incomeAmount}>{formatMoney(monthlyTotals.income)}</Text>
+                        </View>
+                        <View style={styles.summaryItem}>
+                            <Text style={styles.summaryLabel}>{t('calendar.expense')}</Text>
+                            <Text style={styles.expenseAmount}>{formatMoney(monthlyTotals.expense)}</Text>
+                        </View>
+                        <View style={styles.summaryItem}>
+                            <Text style={styles.summaryLabel}>{t('calendar.total')}</Text>
+                            <Text style={[
+                                styles.totalAmount,
+                                monthlyTotals.total >= 0 ? styles.positiveTotal : styles.negativeTotal
+                            ]}>
+                                {monthlyTotals.total >= 0 ? '+' : ''}{formatMoney(monthlyTotals.total)}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Month Info */}
+                    <Text style={styles.selectedDateTitle}>
+                        {loading ? (
+                            `${t('common.loading')} - ${currentMonth}...`
+                        ) : (
+                            `${t('calendar.transactionsFor')} ${new Date(currentMonth + '-01').toLocaleDateString(undefined, { 
+                                year: 'numeric',
+                                month: 'long'
+                            })}`
+                        )}
+                    </Text>
                 </View>
 
-                {/* Summary */}
-                <View style={styles.summaryContainer}>
-                    <View style={styles.summaryItem}>
-                        <Text style={styles.summaryLabel}>{t('calendar.income')}</Text>
-                        <Text style={styles.incomeAmount}>{formatMoney(monthlyTotals.income)}</Text>
-                    </View>
-                    <View style={styles.summaryItem}>
-                        <Text style={styles.summaryLabel}>{t('calendar.expense')}</Text>
-                        <Text style={styles.expenseAmount}>{formatMoney(monthlyTotals.expense)}</Text>
-                    </View>
-                    <View style={styles.summaryItem}>
-                        <Text style={styles.summaryLabel}>{t('calendar.total')}</Text>
-                        <Text style={[
-                            styles.totalAmount,
-                            monthlyTotals.total >= 0 ? styles.positiveTotal : styles.negativeTotal
-                        ]}>
-                            {monthlyTotals.total >= 0 ? '+' : ''}{formatMoney(monthlyTotals.total)}
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Selected Date Info */}
-                <Text style={styles.selectedDateTitle}>
-                    {new Date(selectedDate).toLocaleDateString('vi-VN', { 
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit'
-                    })}
-                </Text>
-
-                {/* Transactions List */}
-                <View style={styles.transactionsList}>
-                    {selectedTransactions.length > 0 ? (
-                        selectedTransactions.map(renderTransaction)
+                {/* Scrollable Transactions List */}
+                <ScrollView 
+                    style={styles.transactionsList} 
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                        />
+                    }
+                >
+                    {loading ? (
+                        <View style={styles.transactionLoadingContainer}>
+                            <ActivityIndicator size="large" color="#007AFF" />
+                            <Text style={styles.loadingText}>{t('common.loading')}</Text>
+                        </View>
+                    ) : Object.keys(groupedTransactions).length > 0 ? (
+                        Object.entries(groupedTransactions).map(([date, dayTransactions]) => 
+                            renderDayGroup(date, dayTransactions)
+                        )
                     ) : (
                         <View style={styles.noTransactions}>
                             <Text style={styles.noTransactionsText}>
-                                {t('calendar.noTransactions')}
+                                {t('calendar.noTransactionsThisMonth')}
                             </Text>
                         </View>
                     )}
-                </View>
-            </ScrollView>
+                </ScrollView>
+            </View>
 
       
         </SafeAreaView>
@@ -399,6 +749,9 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
+    },
+    fixedSection: {
+        backgroundColor: '#FFFFFF',
     },
     calendarContainer: {
         backgroundColor: '#FFFFFF',
@@ -492,6 +845,7 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
     },
     transactionsList: {
+        flex: 1,
         paddingHorizontal: 16,
         paddingBottom: 20,
     },
@@ -541,6 +895,46 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#666',
     },
+    dayGroup: {
+        marginBottom: 16,
+    },
+    dayHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        marginBottom: 8,
+    },
+    dayHeaderDate: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+    },
+    dayHeaderTotal: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 40,
+    },
+    transactionLoadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 60,
+        minHeight: 200,
+    },
+    loadingText: {
+        fontSize: 16,
+        color: '#666',
+        marginTop: 8,
+    },
     bottomNavigation: {
         flexDirection: 'row',
         backgroundColor: '#FFFFFF',
@@ -561,6 +955,42 @@ const styles = StyleSheet.create({
     activeNavText: {
         color: '#FF9500',
         fontWeight: '500',
+    },
+    swipeableContainer: {
+        position: 'relative',
+        backgroundColor: '#FFFFFF',
+        overflow: 'hidden',
+    },
+    deleteAction: {
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 100,
+        backgroundColor: '#FF3B30',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1,
+    },
+    deleteButton: {
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 15,
+        width: '100%',
+        height: '100%',
+    },
+    deleteText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+        marginTop: 4,
+    },
+    transactionItemSwipeable: {
+        backgroundColor: '#FFFFFF',
+        zIndex: 2,
+        width: '100%',
     },
 });
 

@@ -40,6 +40,32 @@ export interface TransactionResponse {
   updated_at: string;
 }
 
+// Transaction Overview interfaces
+export interface TransactionOverviewResponse {
+  summary: TransactionSummary;
+  by_date: DailyTransactions[];
+}
+
+export interface TransactionSummary {
+  total_income: number;
+  total_expense: number;
+  balance: number; // total_income - total_expense
+}
+
+export interface DailyTransactions {
+  date: string; // LocalDate as string
+  transactions: TransactionItem[];
+}
+
+export interface TransactionItem {
+  transaction_id: number;
+  category_name: string;
+  amount: number;
+  transaction_type: string;
+  description?: string;
+  transaction_date: string; // LocalDateTime as string
+}
+
 export class TransactionService {
   
   /**
@@ -112,6 +138,59 @@ export class TransactionService {
     } catch (error: any) {
       console.error('❌ Failed to get transactions:', error);
       throw new Error(error.message || 'Failed to get transactions');
+    }
+  }
+
+  /**
+   * Get transaction overview for a specific month
+   * @param month - Month in 'YYYY-MM' format
+   */
+  async getTransactionOverview(month: string): Promise<TransactionOverviewResponse> {
+    try {
+      console.log('🔄 Getting transaction overview for month:', month);
+      
+      const response = await apiService.get<TransactionOverviewResponse>(
+        `/api/v1/transactions/overview?month=${month}`
+      );
+      
+      if (response.data) {
+        console.log('✅ Transaction overview retrieved successfully:', response.data);
+        return response.data;
+      }
+      
+      throw new Error(response.message || 'Failed to get transaction overview');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get transaction overview:', error);
+      throw new Error(error.message || 'Failed to get transaction overview');
+    }
+  }
+
+  /**
+   * Delete a transaction by ID
+   * @param transactionId - The ID of the transaction to delete
+   */
+  async deleteTransaction(transactionId: number): Promise<void> {
+    try {
+      console.log('🔄 Deleting transaction with ID:', transactionId);
+      
+      const response = await apiService.delete<null>(
+        `/api/v1/transactions/delete/${transactionId}`
+      );
+      
+      console.log('📋 Delete response:', JSON.stringify(response, null, 2));
+      
+      // Check if the response indicates success (200 OK or 204 No Content)
+      if (response.status_code === 200 || response.status_code === 204) {
+        console.log('✅ Transaction deleted successfully:', response.message);
+      } else {
+        console.log('⚠️ Unexpected status code:', response.status_code, 'Message:', response.message);
+        throw new Error(response.message || 'Failed to delete transaction');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Failed to delete transaction:', error);
+      throw new Error(error.message || 'Failed to delete transaction');
     }
   }
 }

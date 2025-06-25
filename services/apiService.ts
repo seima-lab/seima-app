@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 
 // Types for API responses
 export interface ApiResponse<T = any> {
-  statusCode: number;
+  status_code: number;
   message: string;
   data?: T;
   error?: string;
