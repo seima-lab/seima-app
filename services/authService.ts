@@ -1,25 +1,27 @@
 import * as SecureStore from 'expo-secure-store';
+import { ApiConfig, AUTH_ENDPOINTS, USER_ENDPOINTS } from './config';
 
-// API endpoints - read from environment variables
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+// API endpoints - using centralized configuration
+const API_BASE_URL = ApiConfig.BASE_URL;
 
+// Using centralized endpoints from config
 const ENDPOINTS = {
-  GOOGLE_LOGIN: '/api/v1/auth/google',
-  EMAIL_LOGIN: '/api/v1/auth/login', 
-  REGISTER: '/api/v1/auth/register',
-  VERIFY_OTP: '/api/v1/auth/verify-otp',
-  RESEND_OTP: '/api/v1/auth/resend-otp',
-  FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
-  RESET_PASSWORD: '/api/v1/auth/reset-password',
-  RESEND_FORGOT_PASSWORD_OTP: '/api/v1/auth/resend-forgot-password-otp',
-  VERIFY_FORGOT_PASSWORD_OTP: '/api/v1/auth/verify-forgot-password-otp',
-  SET_NEW_PASSWORD_AFTER_VERIFICATION: '/api/v1/auth/set-new-password-after-verification',
-  CHANGE_PASSWORD: '/api/v1/auth/change-password',
-  REFRESH_TOKEN: '/api/v1/auth/refresh',
-  LOGOUT: '/api/v1/auth/logout',
-  UPDATE_PROFILE: '/api/v1/users/update',
-  GET_PROFILE: '/api/v1/users/me',
-  UPLOAD_AVATAR: '/api/v1/users/upload-avatar',
+  GOOGLE_LOGIN: AUTH_ENDPOINTS.GOOGLE_LOGIN,
+  EMAIL_LOGIN: AUTH_ENDPOINTS.EMAIL_LOGIN,
+  REGISTER: AUTH_ENDPOINTS.REGISTER,
+  VERIFY_OTP: AUTH_ENDPOINTS.VERIFY_OTP,
+  RESEND_OTP: AUTH_ENDPOINTS.RESEND_OTP,
+  FORGOT_PASSWORD: AUTH_ENDPOINTS.FORGOT_PASSWORD,
+  RESET_PASSWORD: AUTH_ENDPOINTS.RESET_PASSWORD,
+  RESEND_FORGOT_PASSWORD_OTP: AUTH_ENDPOINTS.RESEND_FORGOT_PASSWORD_OTP,
+  VERIFY_FORGOT_PASSWORD_OTP: AUTH_ENDPOINTS.VERIFY_FORGOT_PASSWORD_OTP,
+  SET_NEW_PASSWORD_AFTER_VERIFICATION: AUTH_ENDPOINTS.SET_NEW_PASSWORD_AFTER_VERIFICATION,
+  CHANGE_PASSWORD: AUTH_ENDPOINTS.CHANGE_PASSWORD,
+  REFRESH_TOKEN: AUTH_ENDPOINTS.REFRESH_TOKEN,
+  LOGOUT: AUTH_ENDPOINTS.LOGOUT,
+  UPDATE_PROFILE: USER_ENDPOINTS.UPDATE_PROFILE,
+  GET_PROFILE: USER_ENDPOINTS.GET_PROFILE,
+  UPLOAD_AVATAR: USER_ENDPOINTS.UPLOAD_AVATAR,
 };
 
 // Token storage keys

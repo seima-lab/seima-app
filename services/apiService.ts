@@ -1,6 +1,7 @@
 // services/ApiService.ts
 
 import * as SecureStore from 'expo-secure-store';
+import { ApiConfig } from './config';
 
 // Types for API responses
 export interface ApiResponse<T = any> {
@@ -16,8 +17,9 @@ export class ApiService {
   private timeout: number;
 
   private constructor() {
-    this.baseURL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.example.com';
-    this.timeout = parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '10000');
+    // Use centralized API configuration
+    this.baseURL = ApiConfig.BASE_URL;
+    this.timeout = ApiConfig.DEFAULT_TIMEOUT;
     console.log('🌐 API Service initialized with baseURL:', this.baseURL);
   }
 

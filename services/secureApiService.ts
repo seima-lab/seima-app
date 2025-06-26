@@ -1,5 +1,6 @@
 import { apiService } from './apiService';
 import { authService } from './authService';
+import { TRANSACTION_ENDPOINTS, USER_ENDPOINTS } from './config';
 
 export interface UserData {
   user_id: number;
@@ -58,7 +59,7 @@ export class SecureApiService {
   async getCurrentUserProfile(): Promise<UserData> {
     try {
       console.log('🟡 Making request to /api/v1/users/me...');
-      const response = await apiService.get<any>('/api/v1/users/me');
+      const response = await apiService.get<any>(USER_ENDPOINTS.GET_PROFILE);
       
       console.log('🟢 Full response:', JSON.stringify(response, null, 2));
       console.log('🟢 Response.data:', response.data);
@@ -87,7 +88,7 @@ export class SecureApiService {
 
   // ✅ Get user profile (with automatic Authorization header from SecureStore)
   async getUserProfile(): Promise<UserData> {
-    const response = await apiService.get<UserData>('/api/v1/user/profile');
+    const response = await apiService.get<UserData>(`${USER_ENDPOINTS.GET_PROFILE.replace('/users/me', '/user/profile')}`);
     if (response.data) {
       return response.data;
     }
@@ -96,7 +97,7 @@ export class SecureApiService {
 
   // ✅ Update user profile
   async updateUserProfile(userData: Partial<UserData>): Promise<UserData> {
-    const response = await apiService.put<UserData>('/api/v1/user/profile', userData);
+    const response = await apiService.put<UserData>(`${USER_ENDPOINTS.UPDATE_PROFILE.replace('/users/update', '/user/profile')}`, userData);
     if (response.data) {
       return response.data;
     }
@@ -105,7 +106,7 @@ export class SecureApiService {
 
   // ✅ Get user transactions
   async getTransactions(page = 1, limit = 20): Promise<TransactionData[]> {
-    const response = await apiService.get<TransactionData[]>(`/api/v1/transactions?page=${page}&limit=${limit}`);
+    const response = await apiService.get<TransactionData[]>(`${TRANSACTION_ENDPOINTS.LIST}?page=${page}&limit=${limit}`);
     if (response.data) {
       return response.data;
     }
@@ -114,7 +115,7 @@ export class SecureApiService {
 
   // ✅ Create new transaction
   async createTransaction(transaction: Omit<TransactionData, 'id'>): Promise<TransactionData> {
-    const response = await apiService.post<TransactionData>('/api/v1/transactions', transaction);
+    const response = await apiService.post<TransactionData>(TRANSACTION_ENDPOINTS.CREATE, transaction);
     if (response.data) {
       return response.data;
     }
@@ -130,7 +131,7 @@ export class SecureApiService {
       name: 'avatar.jpg',
     } as any);
 
-    const response = await apiService.post<{ avatarUrl: string }>('/api/v1/user/avatar', formData, {
+    const response = await apiService.post<{ avatarUrl: string }>(`${USER_ENDPOINTS.UPLOAD_AVATAR.replace('/users/upload-avatar', '/user/avatar')}`, formData, {
       'Content-Type': 'multipart/form-data',
     });
 

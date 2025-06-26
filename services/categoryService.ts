@@ -371,7 +371,7 @@ export class CategoryService {
        console.log('🔄 Trying system categories with categoryType:', categoryTypeValue);
        
        const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(
-         `/api/v1/categories/system?categoryType=${categoryTypeValue}`
+         `${CATEGORY_ENDPOINTS.LIST}/system?categoryType=${categoryTypeValue}`
        );
       
       console.log('📊 System categories response:', response);
@@ -418,7 +418,7 @@ export class CategoryService {
       });
       
       const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(
-        `/api/v1/categories?categoryType=${categoryTypeValue}&userId=${userId}&groupId=${groupId}`
+        `${CATEGORY_ENDPOINTS.LIST}?categoryType=${categoryTypeValue}&userId=${userId}&groupId=${groupId}`
       );
       
       console.log('📊 Categories response for', categoryType, ':', response);
@@ -482,7 +482,7 @@ export class CategoryService {
       console.log('🔄 Fetching ALL categories for user:', { userId, groupId });
       
       // Pass null for categoryType to fetch all types.
-      const endpoint = `/api/v1/categories?categoryType=null&userId=${userId}&groupId=${groupId}`;
+      const endpoint = `${CATEGORY_ENDPOINTS.LIST}?categoryType=null&userId=${userId}&groupId=${groupId}`;
       console.log('🚀 Calling endpoint:', endpoint);
 
       const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(endpoint);
@@ -515,7 +515,7 @@ export class CategoryService {
       console.log('🔄 Fetching category by ID:', categoryId);
       
       const response = await apiService.get<ApiResponseData<CategoryResponse>>(
-        `/api/v1/categories/${categoryId}`
+        CATEGORY_ENDPOINTS.GET_BY_ID(categoryId.toString())
       );
       
       console.log('📊 Category response:', response);
@@ -538,7 +538,7 @@ export class CategoryService {
       console.log('🔄 Creating category:', request);
       
       const response = await apiService.post<ApiResponseData<CategoryResponse>>(
-        '/api/v1/categories',
+        CATEGORY_ENDPOINTS.CREATE,
         request
       );
       
@@ -562,7 +562,7 @@ export class CategoryService {
       console.log('🔄 Updating category:', { categoryId, request });
       
       const response = await apiService.put<ApiResponseData<CategoryResponse>>(
-        `/api/v1/categories/update/${categoryId}`,
+        `${CATEGORY_ENDPOINTS.UPDATE(categoryId.toString())}`,
         request
       );
       
@@ -586,7 +586,7 @@ export class CategoryService {
       console.log('🔄 Deleting category:', categoryId);
       
       const response = await apiService.delete<ApiResponseData>(
-        `/api/v1/categories/delete/${categoryId}`
+        CATEGORY_ENDPOINTS.DELETE(categoryId.toString())
       );
       
       console.log('📊 Delete category response:', response);
@@ -679,8 +679,6 @@ export class CategoryService {
       is_system_defined: false,
     };
   }
-
-
 
   // Get default categories for specific type (fallback when API fails)
   getDefaultCategories(categoryType: CategoryType): LocalCategory[] {

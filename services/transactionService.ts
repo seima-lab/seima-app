@@ -1,4 +1,5 @@
 import { apiService } from './apiService';
+import { TRANSACTION_ENDPOINTS } from './config';
 
 // Transaction Types
 export enum TransactionType {
@@ -77,7 +78,7 @@ export class TransactionService {
       
       // Send as JSON instead of FormData to match backend expectation
       const response = await apiService.post<TransactionResponse>(
-        '/api/v1/transactions/expense', 
+        `${TRANSACTION_ENDPOINTS.CREATE}/expense`, 
         request
       );
       
@@ -103,7 +104,7 @@ export class TransactionService {
       
       // Send as JSON instead of FormData to match backend expectation
       const response = await apiService.post<TransactionResponse>(
-        '/api/v1/transactions/income', 
+        `${TRANSACTION_ENDPOINTS.CREATE}/income`, 
         request
       );
       
@@ -126,7 +127,7 @@ export class TransactionService {
   async getAllTransactions(page = 1, limit = 20): Promise<TransactionResponse[]> {
     try {
       const response = await apiService.get<TransactionResponse[]>(
-        `/api/v1/transactions?page=${page}&limit=${limit}`
+        `${TRANSACTION_ENDPOINTS.LIST}?page=${page}&limit=${limit}`
       );
       
       if (response.data) {
@@ -150,7 +151,7 @@ export class TransactionService {
       console.log('🔄 Getting transaction overview for month:', month);
       
       const response = await apiService.get<TransactionOverviewResponse>(
-        `/api/v1/transactions/overview?month=${month}`
+        `${TRANSACTION_ENDPOINTS.LIST}/overview?month=${month}`
       );
       
       if (response.data) {
@@ -177,7 +178,7 @@ export class TransactionService {
       console.log('📝 Update data:', request);
       
       const response = await apiService.put<TransactionResponse>(
-        `/api/v1/transactions/update/${transactionId}`,
+        `${TRANSACTION_ENDPOINTS.LIST}/update/${transactionId}`,
         request
       );
       
@@ -202,23 +203,40 @@ export class TransactionService {
     try {
       console.log('🔄 Deleting transaction with ID:', transactionId);
       
-      const response = await apiService.delete<null>(
-        `/api/v1/transactions/delete/${transactionId}`
+      const response = await apiService.delete<void>(
+        `${TRANSACTION_ENDPOINTS.LIST}/delete/${transactionId}`
       );
       
-      console.log('📋 Delete response:', JSON.stringify(response, null, 2));
-      
-      // Check if the response indicates success (200 OK or 204 No Content)
-      if (response.status_code === 200 || response.status_code === 204) {
-        console.log('✅ Transaction deleted successfully:', response.message);
-      } else {
-        console.log('⚠️ Unexpected status code:', response.status_code, 'Message:', response.message);
-        throw new Error(response.message || 'Failed to delete transaction');
-      }
+      console.log('✅ Transaction deleted successfully');
       
     } catch (error: any) {
       console.error('❌ Failed to delete transaction:', error);
       throw new Error(error.message || 'Failed to delete transaction');
+    }
+  }
+
+  /**
+   * Get transaction by ID
+   * @param transactionId - The ID of the transaction to get
+   */
+  async getTransactionById(transactionId: number): Promise<TransactionResponse> {
+    try {
+      console.log('🔄 Getting transaction with ID:', transactionId);
+      
+      const response = await apiService.get<TransactionResponse>(
+        `${TRANSACTION_ENDPOINTS.LIST}/${transactionId}`
+      );
+      
+      if (response.data) {
+        console.log('✅ Transaction retrieved successfully:', response.data);
+        return response.data;
+      }
+      
+      throw new Error(response.message || 'Failed to get transaction');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get transaction:', error);
+      throw new Error(error.message || 'Failed to get transaction');
     }
   }
 }

@@ -1,4 +1,5 @@
 import { apiService } from './apiService';
+import { USER_ENDPOINTS } from './config';
 
 export interface UserProfileResponseDto {
   user_id: number;
@@ -154,8 +155,8 @@ export class UserService {
       if (forceRefresh) {
         console.log('🔄 Force refreshing user profile...');
       }
-      console.log('🔄 Calling API: /api/v1/users/me');
-      const response = await apiService.get<ApiResponseData>('/api/v1/users/me');
+      console.log('🔄 Calling API:', USER_ENDPOINTS.GET_PROFILE);
+      const response = await apiService.get<ApiResponseData>(USER_ENDPOINTS.GET_PROFILE);
       
       console.log('📊 API Response:', JSON.stringify(response, null, 2));
       
@@ -190,7 +191,7 @@ export class UserService {
       
       // Send request to create endpoint
       console.log('🚀 Attempting to create user...');
-      const response = await apiService.post<ApiResponseData>('/api/v1/users/create', payload);
+      const response = await apiService.post<ApiResponseData>(`${USER_ENDPOINTS.UPDATE_PROFILE.replace('/update', '/create')}`, payload);
       
       console.log('📥 Response received:', JSON.stringify(response, null, 2));
       
@@ -231,7 +232,7 @@ export class UserService {
       
       // Send request directly with snake_case payload
       console.log('🚀 Attempting to update user profile...');
-      const response = await apiService.put<ApiResponseData>('/api/v1/users/update', payload);
+      const response = await apiService.put<ApiResponseData>(USER_ENDPOINTS.UPDATE_PROFILE, payload);
       
       console.log('📥 Response received:', JSON.stringify(response, null, 2));
       
@@ -303,7 +304,7 @@ export class UserService {
       console.log('📤 Uploading avatar...');
       
       // Upload using apiService with FormData
-      const response = await apiService.postFormData<ApiResponseData>('/api/v1/users/upload-avatar', formData);
+      const response = await apiService.postFormData<ApiResponseData>(USER_ENDPOINTS.UPLOAD_AVATAR, formData);
       
       console.log('📥 Upload response:', JSON.stringify(response, null, 2));
       
