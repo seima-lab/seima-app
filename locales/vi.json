@@ -161,8 +161,11 @@
   
   "navigation": {
     "home": "Trang chủ",
+    "overview": "Tổng quan",
     "wallet": "Ví tiền",
+    "report": "Báo cáo",
     "statistics": "Thống kê",
+    "setting": "Cài đặt",
     "settings": "Cài đặt"
   },
   

@@ -23,7 +23,31 @@ import { useNavigationService } from '../navigation/NavigationService';
 import { UserProfile, userService } from '../services/userService';
 import { WalletResponse, walletService } from '../services/walletService';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+// Responsive utilities for FinanceScreen
+const isSmallScreen = width < 375 || height < 667;
+const screenWidth = width;
+const screenHeight = height;
+
+// Responsive functions
+const rp = (size: number) => {
+  const scale = Math.min(width / 375, height / 667);
+  const minSize = size * 0.7;
+  const scaledSize = size * scale;
+  return Math.max(scaledSize, minSize);
+};
+
+const rf = (fontSize: number) => {
+  const scale = Math.min(width / 375, height / 667);
+  const minFontScale = 0.85;
+  const maxFontScale = 1.15;
+  const fontScale = Math.min(Math.max(scale, minFontScale), maxFontScale);
+  return fontSize * fontScale;
+};
+
+const wp = (percentage: number) => (screenWidth * percentage) / 100;
+const hp = (percentage: number) => (screenHeight * percentage) / 100;
 
 // Type definitions
 interface ExpenseData {
@@ -198,9 +222,9 @@ const FinanceScreen = () => {
 
   // Component biểu đồ tròn
   const PieChart = ({ data }: PieChartProps) => {
-    const radius = 80;
-    const centerX = 100;
-    const centerY = 100;
+    const radius = isSmallScreen ? rp(60) : rp(80);
+    const centerX = isSmallScreen ? rp(80) : rp(100);
+    const centerY = isSmallScreen ? rp(80) : rp(100);
     let cumulativePercentage = 0;
 
     const createArc = (centerX: number, centerY: number, radius: number, startAngle: number, endAngle: number) => {
@@ -223,9 +247,11 @@ const FinanceScreen = () => {
       };
     };
 
+    const svgSize = isSmallScreen ? rp(160) : rp(200);
+    
     return (
       <View style={styles.chartContainer}>
-        <Svg width={200} height={200}>
+        <Svg width={svgSize} height={svgSize}>
           {data.map((item: ExpenseData, index: number) => {
             const startAngle = cumulativePercentage * 3.6;
             const endAngle = (cumulativePercentage + item.percentage) * 3.6;
@@ -251,7 +277,7 @@ const FinanceScreen = () => {
           <Circle
             cx={centerX}
             cy={centerY}
-            r={50}
+            r={isSmallScreen ? rp(35) : rp(50)}
             fill="white"
           />
         </Svg>
@@ -415,7 +441,7 @@ const FinanceScreen = () => {
 
         <ScrollView 
           style={styles.content} 
-          contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
+          contentContainerStyle={{ paddingBottom: rp(80) + insets.bottom }}
           showsVerticalScrollIndicator={false}
         >
           {/* Income and Expenses Section */}
@@ -516,9 +542,9 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#4285F4',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    paddingTop: isSmallScreen ? rp(40) : rp(50),
+    paddingHorizontal: rp(20),
+    paddingBottom: rp(30),
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
   },
@@ -526,20 +552,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: rp(30),
   },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: rp(50),
+    height: rp(50),
+    borderRadius: rp(25),
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: rp(15),
     overflow: 'hidden',
   },
   avatarImage: {
@@ -549,32 +575,32 @@ const styles = StyleSheet.create({
   },
   greeting: {
     color: 'white',
-    fontSize: 16,
+    fontSize: rf(16),
     fontWeight: '400',
   },
   userName: {
     color: 'white',
-    fontSize: 18,
+    fontSize: rf(18),
     fontWeight: '600',
   },
   headerIcons: {  
     flexDirection: 'row',
   },
   headerIcon: {
-    marginLeft: 15,
+    marginLeft: rp(15),
     position: 'relative',
   },
   headerIconText: {
     color: 'white',
-    fontSize: 20,
+    fontSize: rf(20),
   },
   balanceSection: {
     alignItems: 'flex-start',
   },
   balanceLabel: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 16,
-    marginBottom: 8,
+    fontSize: rf(16),
+    marginBottom: rp(8),
   },
   balanceRow: {
     flexDirection: 'row',
@@ -582,9 +608,9 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     color: 'white',
-    fontSize: 32,
+    fontSize: isSmallScreen ? rf(28) : rf(32),
     fontWeight: 'bold',
-    marginRight: 15,
+    marginRight: rp(15),
   },
   eyeIcon: {
     fontSize: 20,
@@ -592,19 +618,19 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: rp(20),
   },
   section: {
-    marginTop: 25,
+    marginTop: rp(25),
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: rp(20),
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontWeight: '600',
     color: '#333',
   },
@@ -615,17 +641,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E8E8E8',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
+    paddingHorizontal: rp(12),
+    paddingVertical: rp(6),
+    borderRadius: rp(15),
   },
   periodText: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#666',
-    marginRight: 5,
+    marginRight: rp(5),
   },
   dropdownIcon: {
-    fontSize: 10,
+    fontSize: rf(10),
     color: '#666',
   },
   dropdownMenu: {
@@ -633,9 +659,9 @@ const styles = StyleSheet.create({
     top: '100%',
     right: 0,
     backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 8,
-    marginTop: 4,
+    borderRadius: rp(15),
+    padding: rp(8),
+    marginTop: rp(4),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -645,26 +671,26 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
     zIndex: 1000,
-    minWidth: 140,
-    maxWidth: 180,
+    minWidth: rp(140),
+    maxWidth: rp(180),
   },
   periodOption: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingVertical: rp(14),
+    paddingHorizontal: rp(20),
+    borderRadius: rp(8),
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 2,
+    marginVertical: rp(2),
   },
   selectedPeriodOption: {
     backgroundColor: '#E8F0FE',
   },
   periodOptionText: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#666',
     textAlign: 'center',
     fontWeight: '500',
-    lineHeight: 16,
+    lineHeight: rf(16),
   },
   selectedPeriodOptionText: {
     color: '#1e90ff',
@@ -681,60 +707,60 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   incomeBar: {
-    width: 30,
-    height: 40,
+    width: rp(30),
+    height: rp(40),
     backgroundColor: '#4CAF50',
-    marginRight: 10,
-    borderRadius: 4,
+    marginRight: rp(10),
+    borderRadius: rp(4),
     justifyContent: 'flex-end',
-    paddingBottom: 5,
+    paddingBottom: rp(5),
   },
   expenseBar: {
-    width: 30,
-    height: 120,
+    width: rp(30),
+    height: rp(120),
     backgroundColor: '#F44336',
-    marginRight: 20,
-    borderRadius: 4,
+    marginRight: rp(20),
+    borderRadius: rp(4),
     justifyContent: 'flex-end',
-    paddingBottom: 5,
+    paddingBottom: rp(5),
   },
   barLabel: {
-    fontSize: 10,
+    fontSize: rf(10),
     color: 'white',
     textAlign: 'center',
     fontWeight: 'bold',
   },
   differenceLabel: {
-    fontSize: 12,
+    fontSize: rf(12),
     color: '#666',
-    marginLeft: 10,
+    marginLeft: rp(10),
   },
   amountsList: {
     flex: 1,
-    paddingLeft: 20,
+    paddingLeft: rp(20),
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: rp(8),
   },
   amountLabel: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#666',
   },
   incomeAmount: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#4CAF50',
     fontWeight: '600',
   },
   expenseAmount: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#F44336',
     fontWeight: '600',
   },
   differenceAmount: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#F44336',
     fontWeight: '600',
   },
@@ -749,40 +775,40 @@ const styles = StyleSheet.create({
   },
   legendContainer: {
     flex: 1,
-    paddingLeft: 20,
+    paddingLeft: isSmallScreen ? rp(10) : rp(20),
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: rp(8),
   },
   legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
+    width: rp(12),
+    height: rp(12),
+    borderRadius: rp(6),
+    marginRight: rp(8),
   },
   legendLabel: {
     flex: 1,
-    fontSize: 12,
+    fontSize: rf(12),
     color: '#666',
   },
   legendPercentage: {
-    fontSize: 12,
+    fontSize: rf(12),
     color: '#333',
     fontWeight: '600',
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 30,
-    marginBottom: 20,
+    marginTop: rp(30),
+    marginBottom: rp(20),
   },
   iconButton: {
-    width: 60,
-    height: 60,
+    width: rp(60),
+    height: rp(60),
     backgroundColor: '#1e90ff',
-    borderRadius: 15,
+    borderRadius: rp(15),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -851,19 +877,19 @@ const styles = StyleSheet.create({
   },
   notificationBadge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
+    top: rp(-5),
+    right: rp(-5),
     backgroundColor: '#FF3B30',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: rp(10),
+    minWidth: rp(20),
+    height: rp(20),
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: rp(4),
   },
   notificationText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: rf(10),
     fontWeight: '600',
   },
   loadingContainer: {
@@ -873,9 +899,9 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: rf(18),
     fontWeight: '600',
-    marginTop: 20,
+    marginTop: rp(20),
   },
 });
 

@@ -1,5 +1,5 @@
 import { apiService } from './apiService';
-
+import { CATEGORY_ENDPOINTS } from './config';
 // Enums
 export enum CategoryType {
   INCOME = 'INCOME',

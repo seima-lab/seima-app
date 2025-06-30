@@ -161,8 +161,11 @@
   
   "navigation": {
     "home": "Home",
+    "overview": "Overview",
     "wallet": "Wallet",
+    "report": "Report",
     "statistics": "Statistics",
+    "setting": "Setting",
     "settings": "Settings"
   },
   
