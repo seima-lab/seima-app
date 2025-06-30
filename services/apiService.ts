@@ -189,6 +189,65 @@ export class ApiService {
     }
   }
 
+  // Put FormData for multipart uploads
+  async putFormData<T>(
+    endpoint: string,
+    formData: FormData,
+    headers?: Record<string, string>
+  ): Promise<ApiResponse<T>> {
+    try {
+      const url = this.buildUrl(endpoint);
+
+      // Default headers (don't set Content-Type for FormData, let browser set it with boundary)
+      const defaultHeaders: Record<string, string> = {};
+
+      // Get token from secure store
+      const token = await SecureStore.getItemAsync('access_token');
+      if (token) {
+        defaultHeaders['Authorization'] = `Bearer ${token}`;
+        console.log(`🔐 Token added to FormData headers for PUT ${url}`);
+        console.log(`🔐 Token preview: ${token.substring(0, 20)}...`);
+      } else {
+        console.log(`⚠️ No token found for FormData PUT ${url}`);
+      }
+
+      // Merge additional headers
+      if (headers) {
+        Object.assign(defaultHeaders, headers);
+      }
+
+      const config: RequestInit = {
+        method: 'PUT',
+        headers: defaultHeaders,
+        body: formData,
+      };
+
+      // Setup timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+      config.signal = controller.signal;
+
+      console.log(`🌐 API FormData Request: PUT ${url}`);
+      console.log(`📋 FormData headers:`, defaultHeaders);
+
+      const response = await fetch(url, config);
+      clearTimeout(timeoutId);
+
+      const result: ApiResponse<T> = await response.json();
+
+      if (response.ok) {
+        console.log(`✅ API FormData Success: ${url}`, result);
+        return result;
+      } else {
+        console.error(`❌ API FormData Error: ${url}`, result);
+        throw new Error(result.message || 'API FormData request failed');
+      }
+    } catch (error: any) {
+      console.error(`🔴 API FormData Request Error:`, error);
+      throw error;
+    }
+  }
+
   // Auth token helpers
   async setAuthToken(token: string) {
     await SecureStore.setItemAsync('access_token', token);

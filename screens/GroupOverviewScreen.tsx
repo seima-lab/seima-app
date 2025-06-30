@@ -1,6 +1,8 @@
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
+    Alert,
+    Clipboard,
     FlatList,
     Image,
     ListRenderItem,
@@ -43,6 +45,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
     avatar: require('../assets/images/group.png'),
     memberCount: 4,
     createdDate: '15/11/2024',
+    inviteCode: 'ce2dddb9320d4bfc951e8d9d54ae889d',
   };
 
   const financialSummary = {
@@ -87,6 +90,15 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString('vi-VN') + '₫';
+  };
+
+  const handleCopyInviteCode = async () => {
+    try {
+      await Clipboard.setString(groupInfo.inviteCode);
+      Alert.alert('Thành công', 'Đã sao chép mã mời vào clipboard');
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể sao chép mã mời');
+    }
   };
 
   const handleEditGroup = () => {
@@ -142,6 +154,19 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
             <TouchableOpacity style={styles.editButton} onPress={handleEditGroup}>
               <Icon name="edit" size={20} color="#1e90ff" />
             </TouchableOpacity>
+          </View>
+          
+          {/* Invite Code Section */}
+          <View style={styles.inviteCodeSection}>
+            <Text style={styles.inviteCodeLabel}>Mã mời nhóm</Text>
+            <TouchableOpacity 
+              style={styles.inviteCodeContainer}
+              onPress={handleCopyInviteCode}
+            >
+              <Text style={styles.inviteCodeText}>{groupInfo.inviteCode}</Text>
+              <Icon name="content-copy" size={18} color="#4A90E2" />
+            </TouchableOpacity>
+            <Text style={styles.inviteCodeHint}>Nhấn để sao chép và chia sẻ với bạn bè</Text>
           </View>
         </View>
 
@@ -419,6 +444,41 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: 8,
+  },
+  inviteCodeSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  inviteCodeLabel: {
+    fontSize: 12,
+    color: '#666666',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  inviteCodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8F9FA',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginBottom: 6,
+  },
+  inviteCodeText: {
+    fontSize: 14,
+    color: '#333333',
+    fontWeight: '500',
+    fontFamily: 'monospace',
+    flex: 1,
+  },
+  inviteCodeHint: {
+    fontSize: 11,
+    color: '#999999',
+    fontStyle: 'italic',
   },
 });
 

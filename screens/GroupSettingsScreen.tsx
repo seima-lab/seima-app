@@ -1,6 +1,9 @@
-import React from 'react';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
+    Modal,
     ScrollView,
     StyleSheet,
     Switch,
@@ -9,18 +12,76 @@ import {
     View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { RootStackParamList } from '../navigation/types';
 
 interface GroupSettingsScreenProps {
   groupId: string;
   groupName: string;
+  groupAvatar?: string;
+  groupDescription?: string;
 }
 
-const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, groupName }) => {
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [autoApproveEnabled, setAutoApproveEnabled] = React.useState(false);
+const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ 
+  groupId, 
+  groupName, 
+  groupAvatar, 
+  groupDescription 
+}) => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [autoApproveEnabled, setAutoApproveEnabled] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('');
 
-  const handleEditGroup = () => {
-    Alert.alert('Chỉnh sửa nhóm', 'Chức năng chỉnh sửa thông tin nhóm');
+  const handleEditGroup = async () => {
+    try {
+      console.log('🔄 [GroupSettingsScreen] Loading group detail for editing...');
+      
+      // Get full group detail using API
+      const { groupService } = await import('../services/groupService');
+      const groupDetail = await groupService.getGroupDetail(Number(groupId));
+      
+      console.log('✅ [GroupSettingsScreen] Group detail loaded:', groupDetail);
+      
+      // Navigate to CreateGroupScreen with edit mode and full data
+      navigation.navigate('CreateGroup', {
+        mode: 'edit',
+        groupData: groupDetail
+      });
+    } catch (error: any) {
+      console.error('🔴 [GroupSettingsScreen] Failed to load group detail:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to load group details',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Continue Anyway',
+            onPress: () => {
+              // Fallback: navigate with basic data in GroupDetailResponse format
+              navigation.navigate('CreateGroup', {
+                mode: 'edit',
+                groupData: {
+                  group_id: Number(groupId),
+                  group_name: groupName,
+                  group_avatar_url: groupAvatar,
+                  group_created_date: '',
+                  group_is_active: true,
+                  group_leader: {
+                    user_id: 0,
+                    user_full_name: '',
+                    user_email: ''
+                  },
+                  members: [],
+                  total_members_count: 0,
+                  current_user_role: 'OWNER' as any
+                }
+              });
+            }
+          }
+        ]
+      );
+    }
   };
 
   const handleManagePermissions = () => {
@@ -56,7 +117,52 @@ const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, grou
       'Bạn có chắc chắn muốn xóa nhóm này? Tất cả dữ liệu sẽ bị mất vĩnh viễn.',
       [
         { text: 'Hủy', style: 'cancel' },
-        { text: 'Xóa nhóm', style: 'destructive', onPress: () => console.log('Deleted group') }
+        { 
+          text: 'Xóa nhóm', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              console.log('🗑️ [GroupSettingsScreen] Starting group deletion...');
+              setLoading(true);
+              setLoadingText('Đang xóa nhóm...');
+
+              // Import and call archive API
+              const { groupService } = await import('../services/groupService');
+              await groupService.archiveGroup(Number(groupId));
+
+              console.log('✅ [GroupSettingsScreen] Group archived successfully');
+              setLoading(false);
+
+              // Show success message and navigate back
+              Alert.alert(
+                'Thành công',
+                'Nhóm đã được xóa thành công',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      // Navigate back to group list
+                      navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'MainTab' }],
+                      });
+                    }
+                  }
+                ]
+              );
+
+            } catch (error: any) {
+              console.error('🔴 [GroupSettingsScreen] Failed to archive group:', error);
+              setLoading(false);
+              
+              Alert.alert(
+                'Lỗi',
+                error.message || 'Không thể xóa nhóm. Vui lòng thử lại.',
+                [{ text: 'OK' }]
+              );
+            }
+          }
+        }
       ]
     );
   };
@@ -101,6 +207,33 @@ const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, grou
         <Icon name="chevron-right" size={24} color="#CCCCCC" />
       ))}
     </TouchableOpacity>
+  );
+
+  const renderLoadingModal = () => (
+    <Modal
+      visible={loading}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => {}} // Prevent closing during loading
+    >
+      <View style={styles.loadingModalOverlay}>
+        <View style={styles.loadingModalContent}>
+          {/* Loading Animation */}
+          <View style={styles.loadingAnimationContainer}>
+            <ActivityIndicator size="large" color="#F44336" />
+          </View>
+          
+          {/* Loading Text */}
+          <Text style={styles.loadingTitle}>Xóa nhóm</Text>
+          <Text style={styles.loadingMessage}>{loadingText}</Text>
+          
+          {/* Warning */}
+          <Text style={styles.loadingWarning}>
+            Vui lòng không tắt ứng dụng...
+          </Text>
+        </View>
+      </View>
+    </Modal>
   );
 
   return (
@@ -234,6 +367,7 @@ const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, grou
           </View>
         </View>
       </ScrollView>
+      {renderLoadingModal()}
     </View>
   );
 };
@@ -317,6 +451,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333333',
     fontWeight: '500',
+  },
+  loadingModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingModalContent: {
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 12,
+    width: '80%',
+    alignItems: 'center',
+  },
+  loadingAnimationContainer: {
+    marginBottom: 16,
+  },
+  loadingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  loadingMessage: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 16,
+  },
+  loadingWarning: {
+    fontSize: 12,
+    color: '#F44336',
   },
 });
 

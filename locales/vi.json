@@ -74,45 +74,89 @@
   },
 
   "group": {
-    "title": "Danh sách hội nhóm",
-    "createGroup": "Tạo nhóm mới",
+    "title": "Nhóm",
+    "createGroup": "Tạo nhóm",
     "joinGroup": "Tham gia nhóm",
     "settings": "Cài đặt",
-    "groupSettings": "Cài đặt nhóm",
-    "groupDetail": "Chi tiết nhóm",
+    "groupSettings": "Chức năng cài đặt nhóm",
     "members": "thành viên",
-    "member": "thành viên",
-    "loading": "Đang tải danh sách nhóm...",
-    "noGroups": "Không có nhóm nào",
-    "actions": {
-      "createGroup": "Chức năng tạo nhóm mới",
-      "joinGroup": "Chức năng tham gia nhóm",
-      "viewDetail": "Xem chi tiết nhóm"
+    "member": "Thành viên",
+    "owner": "Chủ nhóm",
+    "admin": "Quản trị viên",
+    "leader": "Trưởng nhóm",
+    "joined": "Tham gia",
+    "loading": "Đang tải nhóm...",
+    "errorLoadingGroups": "Không thể tải danh sách nhóm",
+    "errorLoadingDetail": "Không thể tải thông tin chi tiết nhóm",
+    "continueAnyway": "Tiếp tục",
+    "emptyState": {
+      "title": "Chưa có nhóm nào",
+      "subtitle": "Tạo hoặc tham gia nhóm để bắt đầu",
+      "description": "Nhóm giúp bạn quản lý chi tiêu chung và theo dõi chi tiêu cùng gia đình và bạn bè.",
+      "benefitsTitle": "Tại sao nên sử dụng nhóm?",
+      "benefit1": "Chia sẻ chi tiêu với gia đình và bạn bè",
+      "benefit2": "Theo dõi chi tiêu nhóm trong thời gian thực",
+      "benefit3": "Dữ liệu tài chính an toàn và riêng tư",
+      "createDescription": "Bắt đầu với một nhóm mới",
+      "joinDescription": "Tham gia nhóm hiện có bằng mã mời",
+      "helpTitle": "Cần trợ giúp?",
+      "helpText": "Liên hệ với đội ngũ hỗ trợ của chúng tôi nếu bạn có câu hỏi về việc tạo hoặc tham gia nhóm."
     },
     "create": {
-      "title": "Tạo nhóm mới",
-      "avatar": "Avatar nhóm",
-      "selectImage": "Chọn ảnh",
+      "title": "Tạo nhóm",
+      "avatar": "Ảnh đại diện nhóm",
       "groupName": "Tên nhóm",
-      "groupDescription": "Mô tả nhóm",
       "required": "*",
+      "selectImage": "Chọn ảnh",
+      "info": "Bạn sẽ là trưởng nhóm và có thể quản lý thành viên cũng như cài đặt.",
+      "createButton": "Tạo nhóm",
+      "creating": "Đang tạo nhóm...",
+      "processingImage": "Đang xử lý ảnh...",
+      "uploadingData": "Đang tải dữ liệu nhóm...",
+      "loadingTip": "Quá trình này có thể mất vài giây với ảnh lớn.",
       "nameRequired": "Tên nhóm là bắt buộc",
       "nameMinLength": "Tên nhóm phải có ít nhất 3 ký tự",
-      "nameMaxLength": "Tên nhóm không được vượt quá 50 ký tự",
-      "descriptionRequired": "Mô tả nhóm là bắt buộc",
-      "descriptionMinLength": "Mô tả phải có ít nhất 10 ký tự",
-      "descriptionMaxLength": "Mô tả không được vượt quá 200 ký tự",
-      "info": "Sau khi tạo nhóm, bạn sẽ nhận được mã nhóm để chia sẻ với những người muốn tham gia.",
-      "createButton": "Tạo nhóm",
+      "nameMaxLength": "Tên nhóm không được vượt quá 100 ký tự",
+      "errors": {
+        "imagePickerError": "Không thể mở trình chọn ảnh",
+        "imageTooLarge": "Ảnh quá lớn. Kích thước tối đa là 5MB.",
+        "createFailed": "Không thể tạo nhóm. Vui lòng thử lại.",
+        "timeout": "Hết thời gian chờ. Vui lòng thử lại với ảnh nhỏ hơn.",
+        "network": "Lỗi mạng. Vui lòng kiểm tra kết nối.",
+        "auth": "Xác thực thất bại. Vui lòng đăng nhập lại."
+      },
       "success": {
-        "title": "Tạo nhóm thành công!",
-        "message": "Nhóm \"{{name}}\" đã được tạo thành công.\nBạn có thể bắt đầu mời thành viên tham gia.",
+        "title": "Đã tạo nhóm!",
+        "subtitle": "Nhóm của bạn đã được tạo thành công",
+        "groupInfo": "Thông tin nhóm",
+        "inviteCode": "Mã mời nhóm",
+        "inviteCodeDescription": "Chia sẻ mã này với bạn bè để mời họ tham gia",
+        "shareButton": "Chia sẻ mã",
         "backButton": "Quay lại danh sách nhóm"
       },
+      "imagePicker": {
+        "title": "Chọn ảnh đại diện nhóm",
+        "camera": "Camera",
+        "cameraDescription": "Chụp ảnh mới",
+        "gallery": "Thư viện",
+        "galleryDescription": "Chọn từ thư viện"
+      }
+    },
+    "edit": {
+      "title": "Chỉnh sửa nhóm",
+      "info": "Cập nhật thông tin nhóm của bạn. Các thay đổi sẽ hiển thị cho tất cả thành viên.",
+      "updateButton": "Cập nhật nhóm",
+      "updating": "Đang cập nhật nhóm...",
+      "processingImage": "Đang xử lý ảnh...",
+      "uploadingChanges": "Đang tải thay đổi...",
+      "loadingTip": "Vui lòng chờ trong khi chúng tôi lưu thay đổi của bạn.",
       "errors": {
-        "cameraPermission": "Cần quyền truy cập thư viện ảnh để chọn avatar nhóm",
-        "imagePickerError": "Không thể chọn ảnh. Vui lòng thử lại.",
-        "createError": "Không thể tạo nhóm. Vui lòng thử lại."
+        "updateFailed": "Không thể cập nhật nhóm. Vui lòng thử lại.",
+        "timeout": "Hết thời gian chờ. Vui lòng thử lại với ảnh nhỏ hơn."
+      },
+      "success": {
+        "title": "Đã cập nhật nhóm!",
+        "subtitle": "Thông tin nhóm của bạn đã được cập nhật thành công"
       }
     }
   },
@@ -408,10 +452,12 @@
     "camera": "Camera",
     "gallery": "Thư viện ảnh",
     "chooseOption": "Chọn cách bạn muốn chọn ảnh đại diện",
-    "permissionDenied": "Quyền truy cập bị từ chối",
+    "cameraDescription": "Chụp ảnh mới với camera",
+    "galleryDescription": "Chọn từ thư viện ảnh",
+    "permissionDenied": "Từ chối quyền",
     "permissionMessage": "Chúng tôi cần quyền truy cập camera và thư viện ảnh để thay đổi ảnh đại diện của bạn.",
-    "cameraError": "Lỗi khi truy cập camera. Vui lòng thử lại.",
-    "galleryError": "Lỗi khi truy cập thư viện ảnh. Vui lòng thử lại."
+    "cameraError": "Lỗi truy cập camera. Vui lòng thử lại.",
+    "galleryError": "Lỗi truy cập thư viện ảnh. Vui lòng thử lại."
   },
   
   "updateProfilePage": {
@@ -438,7 +484,12 @@
     "continue": "Tiếp tục",
     "ok": "Hiểu rồi!",
     "okay": "Đồng ý",
-    "retry": "Thử lại"
+    "retry": "Thử lại",
+    "optional": "tùy chọn"
+  },
+  
+  "auth": {
+    "pleaseLogin": "Vui lòng đăng nhập để tiếp tục"
   },
   
   "notifications": {

@@ -49,6 +49,12 @@ Hệ thống API services được cấu hình để sử dụng với EAS Build
 - Automatic token refresh
 - Secure token storage
 
+### 4. **groupService.ts** - Group Management
+- Quản lý các chức năng nhóm: tạo, cập nhật, xóa, tham gia
+- Support multipart form data cho upload avatar nhóm
+- Tích hợp với backend Spring Boot endpoints
+- Xử lý member roles và permissions
+
 ## Usage Examples
 
 ### Basic API Call
@@ -69,6 +75,28 @@ const customUrl = ApiConfig.buildApiUrl('custom/endpoint');
 
 // Use predefined endpoints
 const transactions = await apiService.get(TRANSACTION_ENDPOINTS.LIST);
+```
+
+### Group Management
+```typescript
+import { groupService, GroupMemberRole } from './services/groupService';
+
+// Get user's joined groups
+const userGroups = await groupService.getUserJoinedGroups();
+
+// Create new group
+const newGroup = await groupService.createGroup({
+  group_name: 'My Group',
+  group_avatar: imageFile
+});
+
+// Get group details
+const groupDetail = await groupService.getGroupDetail(groupId);
+
+// Update group
+const updatedGroup = await groupService.updateGroup(groupId, {
+  group_name: 'Updated Name'
+});
 ```
 
 ## Environment URLs

@@ -19,7 +19,10 @@ export type RootStackParamList = {
   ChangePassword: undefined;
   ChatAI: undefined;
   GroupManagement: undefined;
-  CreateGroup: undefined;
+  CreateGroup: {
+    mode?: 'create' | 'edit';
+    groupData?: import('../services/groupService').GroupDetailResponse;
+  } | undefined;
   Notifications: undefined;
   NotificationDetail: {
     notification: {
@@ -84,7 +87,11 @@ export type RootStackParamList = {
       excludeFromTotal: boolean;
     };
   } | undefined;
-  GroupDetail: { groupId: string; groupName: string };
+  GroupDetail: { 
+    groupId: string; 
+    groupName: string;
+    groupData?: import('../services/groupService').GroupDetailResponse;
+  };
   EditGroup: { groupId: string; groupName: string };
   InviteUsers: { groupId: string };
   ApproveMembers: { groupId: string };

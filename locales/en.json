@@ -74,47 +74,100 @@
   },
 
   "group": {
-    "title": "Group List",
-    "createGroup": "Create New Group",
+    "title": "Groups",
+    "createGroup": "Create Group",
     "joinGroup": "Join Group",
     "settings": "Settings",
-    "groupSettings": "Group Settings",
+    "groupSettings": "Group settings functionality",
     "groupDetail": "Group Detail",
     "members": "members",
-    "member": "member",
-    "loading": "Loading group list...",
+    "member": "Member",
+    "owner": "Owner",
+    "admin": "Admin",
+    "leader": "Leader",
+    "joined": "Joined",
+    "created": "Created",
+    "loading": "Loading groups...",
     "noGroups": "No groups available",
+    "errorLoadingGroups": "Failed to load groups",
+    "errorLoadingDetail": "Failed to load group details",
+    "continueAnyway": "Continue anyway",
+    "emptyState": {
+      "title": "No groups yet",
+      "subtitle": "Create or join groups to get started",
+      "description": "Groups help you manage shared expenses and track spending together with family and friends.",
+      "benefitsTitle": "Why use groups?",
+      "benefit1": "Share expenses with family and friends",
+      "benefit2": "Track group spending in real-time", 
+      "benefit3": "Secure and private financial data",
+      "createDescription": "Start fresh with a new group",
+      "joinDescription": "Join an existing group with invite code",
+      "helpTitle": "Need help?",
+      "helpText": "Contact our support team if you have questions about creating or joining groups."
+    },
     "actions": {
       "createGroup": "Create new group feature",
       "joinGroup": "Join group feature",
       "viewDetail": "View group detail"
     },
     "create": {
-      "title": "Create New Group",
+      "title": "Create Group",
       "avatar": "Group Avatar",
-      "selectImage": "Select Image",
       "groupName": "Group Name",
-      "groupDescription": "Group Description",
       "required": "*",
+      "selectImage": "Select Image",
+      "info": "You will be the group leader and can manage members and settings.",
+      "createButton": "Create Group",
+      "creating": "Creating group...",
+      "processingImage": "Processing image...",
+      "uploadingData": "Uploading group data...",
+      "loadingTip": "This may take a few moments for large images.",
       "nameRequired": "Group name is required",
       "nameMinLength": "Group name must be at least 3 characters",
-      "nameMaxLength": "Group name cannot exceed 50 characters",
-      "descriptionRequired": "Group description is required",
-      "descriptionMinLength": "Description must be at least 10 characters",
-      "descriptionMaxLength": "Description cannot exceed 200 characters",
-      "info": "After creating the group, you will receive a group code to share with people you want to invite.",
-      "createButton": "Create Group",
-      "success": {
-        "title": "Group Created Successfully!",
-        "message": "Group \"{{name}}\" has been created successfully.\nYou can now start inviting members to join.",
-        "backButton": "Back to Group List"
-      },
+      "nameMaxLength": "Group name cannot exceed 100 characters",
       "errors": {
-        "cameraPermission": "Camera permission required to select group avatar",
-        "imagePickerError": "Cannot select image. Please try again.",
-        "createError": "Cannot create group. Please try again."
+        "imagePickerError": "Failed to open image picker",
+        "imageTooLarge": "Image is too large. Maximum size is 5MB.",
+        "createFailed": "Failed to create group. Please try again.",
+        "timeout": "Request timed out. Please try again with a smaller image.",
+        "network": "Network error. Please check your connection.",
+        "auth": "Authentication failed. Please login again."
+      },
+      "success": {
+        "title": "Group Created!",
+        "subtitle": "Your group has been created successfully",
+        "groupInfo": "Group Information",
+        "inviteCode": "Group Invite Code",
+        "inviteCodeDescription": "Share this code with friends to invite them",
+        "shareButton": "Share Code",
+        "backButton": "Back to Groups"
+      },
+      "imagePicker": {
+        "title": "Select Group Avatar",
+        "camera": "Camera",
+        "cameraDescription": "Take a new photo",
+        "gallery": "Gallery",
+        "galleryDescription": "Choose from gallery"
       }
-    }
+    },
+    "edit": {
+      "title": "Edit Group",
+      "info": "Update your group information. Changes will be visible to all members.",
+      "updateButton": "Update Group",
+      "updating": "Updating group...",
+      "processingImage": "Processing image...",
+      "uploadingChanges": "Uploading changes...",
+      "loadingTip": "Please wait while we save your changes.",
+      "errors": {
+        "updateFailed": "Failed to update group. Please try again.",
+        "timeout": "Request timed out. Please try again with a smaller image."
+      },
+      "success": {
+        "title": "Group Updated!",
+        "subtitle": "Your group information has been updated successfully"
+      }
+    },
+    "owner": "Owner"
   },
   
   "categoryNames": {
@@ -367,6 +420,8 @@
     "camera": "Camera",
     "gallery": "Gallery",
     "chooseOption": "Choose how you want to select your avatar",
+    "cameraDescription": "Take a new photo with camera",
+    "galleryDescription": "Choose from photo library",
     "permissionDenied": "Permission Denied",
     "permissionMessage": "We need camera and photo library permissions to change your avatar.",
     "cameraError": "Error accessing camera. Please try again.",
@@ -397,7 +452,12 @@
     "continue": "Continue",
     "ok": "Got it!",
     "okay": "Okay",
-    "retry": "Try Again"
+    "retry": "Try Again",
+    "optional": "optional"
+  },
+  
+  "auth": {
+    "pleaseLogin": "Please login to continue"
   },
   
   "notifications": {
