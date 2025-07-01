@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { getDefaultTab, getScreenForTab, TabType } from '../utils/mainTabUtils';
 import FinanceScreen from './FinanceScreen';
+import ReportScreen from './ReportScreen';
 import SettingScreen from './SettingScreen';
 import WalletScreen from './WalletScreen';
 
@@ -22,6 +23,8 @@ const MainTabScreen = React.memo(() => {
         return <FinanceScreen />;
       case 'Wallet':
         return <WalletScreen />;
+      case 'Report':
+        return <ReportScreen />;
       case 'Setting':
         return <SettingScreen />;
       default:

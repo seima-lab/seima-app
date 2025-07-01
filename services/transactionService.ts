@@ -67,6 +67,25 @@ export interface TransactionItem {
   transaction_date: string; // LocalDateTime as string
 }
 
+// Transaction Report interfaces
+export interface TransactionReportResponse {
+  summary: ReportSummary;
+  transactionsByCategory: { [key: string]: ReportByCategory[] };
+}
+
+export interface ReportSummary {
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+}
+
+export interface ReportByCategory {
+  category_name: string;
+  category_icon_url: string;
+  amount: number;
+  percentage: number;
+}
+
 export class TransactionService {
   
   /**
@@ -237,6 +256,48 @@ export class TransactionService {
     } catch (error: any) {
       console.error('❌ Failed to get transaction:', error);
       throw new Error(error.message || 'Failed to get transaction');
+    }
+  }
+
+  /**
+   * Get transaction report
+   * @param categoryId - Optional category ID to filter by
+   * @param startDate - Start date in YYYY-MM-DD format
+   * @param endDate - End date in YYYY-MM-DD format
+   */
+  async viewTransactionReport(
+    categoryId?: number,
+    startDate?: string,
+    endDate?: string
+  ): Promise<TransactionReportResponse> {
+    try {
+      console.log('🔄 Getting transaction report:', { categoryId, startDate, endDate });
+      
+      const params = new URLSearchParams();
+      if (categoryId) {
+        params.append('categoryId', categoryId.toString());
+      }
+      if (startDate) {
+        params.append('startDate', startDate);
+      }
+      if (endDate) {
+        params.append('endDate', endDate);
+      }
+      
+      const response = await apiService.get<TransactionReportResponse>(
+        `${TRANSACTION_ENDPOINTS.LIST}/view-report?${params.toString()}`
+      );
+      
+      if (response.data) {
+        console.log('✅ Transaction report retrieved successfully:', response.data);
+        return response.data;
+      }
+      
+      throw new Error(response.message || 'Failed to get transaction report');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get transaction report:', error);
+      throw new Error(error.message || 'Failed to get transaction report');
     }
   }
 }

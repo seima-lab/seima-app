@@ -116,6 +116,11 @@ export class ApiService {
     data?: any,
     headers?: Record<string, string>
   ): Promise<ApiResponse<T>> {
+    console.log('🔄 === API SERVICE PUT METHOD ===');
+    console.log('🌐 Endpoint:', endpoint);
+    console.log('📤 Data to send:', JSON.stringify(data, null, 2));
+    console.log('📋 Headers:', headers);
+    
     return this.request<T>(endpoint, {
       method: 'PUT',
       headers,

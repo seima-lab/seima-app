@@ -1,16 +1,16 @@
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
-    Alert,
-    Clipboard,
-    FlatList,
-    Image,
-    ListRenderItem,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  Clipboard,
+  FlatList,
+  Image,
+  ListRenderItem,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { RootStackParamList } from '../navigation/types';

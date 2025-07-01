@@ -9,8 +9,8 @@ import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 
 interface Props {
-  activeTab: 'Finance' | 'Wallet' | 'Setting';
-  setActiveTab: (tab: 'Finance' | 'Wallet' | 'Setting') => void;
+  activeTab: 'Finance' | 'Wallet' | 'Report' | 'Setting';
+  setActiveTab: (tab: 'Finance' | 'Wallet' | 'Report' | 'Setting') => void;
 }
 
 const BottomNavigation: React.FC<Props> = ({ activeTab, setActiveTab }) => {
@@ -37,9 +37,9 @@ const BottomNavigation: React.FC<Props> = ({ activeTab, setActiveTab }) => {
           <Icon name="add" size={32} color="#fff" />
         </View>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => {}} style={styles.tab}>
-        <Icon name="bar-chart" size={28} style={styles.icon} color="#b0b0b0" />
-        <Text style={styles.text}>{t('navigation.report')}</Text>
+      <TouchableOpacity onPress={() => setActiveTab('Report')} style={styles.tab}>
+        <Icon name="bar-chart" size={28} style={styles.icon} color={activeTab === 'Report' ? '#1e90ff' : '#b0b0b0'} />
+        <Text style={[styles.text, activeTab === 'Report' && styles.active]}>{t('navigation.report')}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => setActiveTab('Setting')} style={styles.tab}>
         <Icon name="settings" size={30} style={styles.icon} color={activeTab === 'Setting' ? '#1e90ff' : '#b0b0b0'} />

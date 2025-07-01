@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, LogBox, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
@@ -28,6 +29,7 @@ import MainTabScreen from '../screens/MainTabScreen';
 import NotificationDetailScreen from '../screens/NotificationDetailScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import OTPScreen from '../screens/OTPScreen';
+import ReportDetailScreen from '../screens/ReportDetailScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import SetBudgetLimitScreen from '../screens/SetBudgetLimitScreen';
 import VerifyOTPScreen from '../screens/VerifyOTPScreen';
@@ -120,6 +122,7 @@ function AuthNavigator() {
       <Stack.Screen name="AddWalletScreen" component={AddWalletScreen} />
       <Stack.Screen name="InviteUsers" component={InviteUsersScreen} />
       <Stack.Screen name="ApproveMembers" component={ApproveMembersScreen} />
+      <Stack.Screen name="ReportDetailScreen" component={ReportDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -154,12 +157,14 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <LanguageProvider>
-        <TokenExpiryProvider>
-          <AppNavigator />
-        </TokenExpiryProvider>
-      </LanguageProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <LanguageProvider>
+          <TokenExpiryProvider>
+            <AppNavigator />
+          </TokenExpiryProvider>
+        </LanguageProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 } 

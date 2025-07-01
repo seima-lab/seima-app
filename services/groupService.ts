@@ -14,7 +14,8 @@ export interface GroupMemberResponse {
   user_id: number;
   user_full_name: string;
   user_avatar_url?: string;
-  user_email: string;
+  user_email?: string;
+  role?: GroupMemberRole;
 }
 
 export interface UserJoinedGroupResponse {
@@ -48,6 +49,20 @@ export interface GroupDetailResponse {
   members: GroupMemberResponse[];
   total_members_count: number;
   current_user_role: GroupMemberRole;
+}
+
+export interface GroupMemberListResponse {
+  group_id: number;
+  group_name: string;
+  group_avatar_url?: string;
+  total_members_count: number;
+  group_leader: GroupMemberResponse;
+  members: GroupMemberResponse[];
+  current_user_role: GroupMemberRole;
+}
+
+export interface UpdateMemberRoleRequest {
+  new_role: GroupMemberRole;
 }
 
 export interface CreateGroupRequest {
@@ -84,6 +99,44 @@ class GroupService {
     } catch (error: any) {
       console.error('🔴 Failed to load group detail:', error);
       throw new Error(error.message || 'Failed to load group detail');
+    }
+  }
+
+  // Get active group members by group ID
+  async getActiveGroupMembers(groupId: number): Promise<GroupMemberListResponse> {
+    try {
+      console.log('🟡 Loading active group members for ID:', groupId);
+      const response = await secureApiService.makeAuthenticatedRequest<GroupMemberListResponse>(`/api/v1/group-members/group/${groupId}`, 'GET');
+      console.log('🟢 Active group members loaded:', response);
+      return response;
+    } catch (error: any) {
+      console.error('🔴 Failed to load active group members:', error);
+      throw new Error(error.message || 'Failed to load group members');
+    }
+  }
+
+  // Remove member from group
+  async removeMemberFromGroup(groupId: number, memberUserId: number): Promise<void> {
+    try {
+      console.log('🟡 Removing member from group:', { groupId, memberUserId });
+      await secureApiService.makeAuthenticatedRequest<Object>(`/api/v1/group-members/group/${groupId}/members/${memberUserId}`, 'DELETE');
+      console.log('🟢 Member removed from group successfully');
+    } catch (error: any) {
+      console.error('🔴 Failed to remove member from group:', error);
+      throw new Error(error.message || 'Failed to remove member from group');
+    }
+  }
+
+  // Update member role in group
+  async updateMemberRole(groupId: number, memberUserId: number, role: GroupMemberRole): Promise<void> {
+    try {
+      console.log('🟡 Updating member role:', { groupId, memberUserId, role });
+      const request: UpdateMemberRoleRequest = { new_role: role };
+      await secureApiService.makeAuthenticatedRequest<Object>(`/api/v1/group-members/group/${groupId}/members/${memberUserId}/role`, 'PUT', request);
+      console.log('🟢 Member role updated successfully');
+    } catch (error: any) {
+      console.error('🔴 Failed to update member role:', error);
+      throw new Error(error.message || 'Failed to update member role');
     }
   }
 

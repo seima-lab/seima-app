@@ -3,7 +3,7 @@
  * Pure functions for tab navigation logic
  */
 
-export type TabType = 'Finance' | 'Wallet' | 'Setting';
+export type TabType = 'Finance' | 'Wallet' | 'Report' | 'Setting';
 
 /**
  * Validates if a tab type is valid
@@ -11,7 +11,7 @@ export type TabType = 'Finance' | 'Wallet' | 'Setting';
  * @returns boolean indicating if tab is valid
  */
 export const isValidTab = (tab: string): tab is TabType => {
-  return ['Finance', 'Wallet', 'Setting'].includes(tab);
+  return ['Finance', 'Wallet', 'Report', 'Setting'].includes(tab);
 };
 
 /**
@@ -33,6 +33,8 @@ export const getScreenForTab = (activeTab: TabType): TabType => {
       return 'Finance';
     case 'Wallet':
       return 'Wallet';
+    case 'Report':
+      return 'Report';
     case 'Setting':
       return 'Setting';
     default:
@@ -46,7 +48,7 @@ export const getScreenForTab = (activeTab: TabType): TabType => {
  * @returns Next tab in sequence
  */
 export const getNextTab = (currentTab: TabType): TabType => {
-  const tabSequence: TabType[] = ['Finance', 'Wallet', 'Setting'];
+  const tabSequence: TabType[] = ['Finance', 'Wallet', 'Report', 'Setting'];
   const currentIndex = tabSequence.indexOf(currentTab);
   const nextIndex = (currentIndex + 1) % tabSequence.length;
   return tabSequence[nextIndex];
@@ -58,7 +60,7 @@ export const getNextTab = (currentTab: TabType): TabType => {
  * @returns Previous tab in sequence
  */
 export const getPreviousTab = (currentTab: TabType): TabType => {
-  const tabSequence: TabType[] = ['Finance', 'Wallet', 'Setting'];
+  const tabSequence: TabType[] = ['Finance', 'Wallet', 'Report', 'Setting'];
   const currentIndex = tabSequence.indexOf(currentTab);
   const previousIndex = currentIndex === 0 ? tabSequence.length - 1 : currentIndex - 1;
   return tabSequence[previousIndex];
@@ -96,6 +98,13 @@ export const getTabConfig = (tab: TabType) => {
       iconType: 'FontAwesome5' as const,
       testId: 'wallet-tab'
     },
+    Report: {
+      key: 'Report' as const,
+      title: 'Report',
+      icon: 'chart-pie',
+      iconType: 'MaterialCommunityIcons' as const,
+      testId: 'report-tab'
+    },
     Setting: {
       key: 'Setting' as const,
       title: 'Setting',
@@ -113,5 +122,5 @@ export const getTabConfig = (tab: TabType) => {
  * @returns Array of all tab types
  */
 export const getAllTabs = (): TabType[] => {
-  return ['Finance', 'Wallet', 'Setting'];
+  return ['Finance', 'Wallet', 'Report', 'Setting'];
 }; 

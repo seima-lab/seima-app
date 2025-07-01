@@ -157,8 +157,6 @@ const FinanceScreen = React.memo(() => {
     return amount.toLocaleString('vi-VN');
   }, []);
 
-
-
   const loadWalletData = useCallback(async () => {
     if (!isAuthenticated) {
       setWalletLoading(false);

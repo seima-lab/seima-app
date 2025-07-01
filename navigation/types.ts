@@ -95,6 +95,12 @@ export type RootStackParamList = {
   EditGroup: { groupId: string; groupName: string };
   InviteUsers: { groupId: string };
   ApproveMembers: { groupId: string };
+  ReportDetailScreen: {
+    title: string;
+    categoryType: 'expense' | 'income';
+    data: import('../services/transactionService').ReportByCategory[];
+    totalAmount: number;
+  };
 };
 
 export type ScreenNames = keyof RootStackParamList; 
