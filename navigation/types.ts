@@ -41,7 +41,24 @@ export type RootStackParamList = {
   SettingScreen: undefined;
   MainTab: undefined;
   MainTabScreen: undefined;
-  AddExpenseScreen: undefined;
+  AddExpenseScreen: {
+    fromGroupOverview?: boolean;
+    fromGroupTransactionList?: boolean;
+    groupId?: string;
+    groupName?: string;
+    editMode?: boolean;
+    transactionData?: {
+      id: string;
+      amount: string;
+      note: string;
+      date: string;
+      category: string;
+      type: string;
+      icon: string;
+      iconColor: string;
+      categoryId?: number;
+    };
+  } | undefined;
   BudgetScreen: undefined;
   AddBudgetCategoryScreen: undefined;
   SetBudgetLimitScreen: {
@@ -95,6 +112,10 @@ export type RootStackParamList = {
   EditGroup: { groupId: string; groupName: string };
   InviteUsers: { groupId: string };
   ApproveMembers: { groupId: string };
+  GroupTransactionList: { 
+    groupId: string; 
+    groupName: string; 
+  };
   ReportDetailScreen: {
     title: string;
     categoryType: 'expense' | 'income';

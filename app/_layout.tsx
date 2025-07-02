@@ -24,6 +24,7 @@ import FinanceScreen from '../screens/FinanceScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import GroupDetailTabScreen from '../screens/GroupDetailTabScreen';
 import GroupManagementScreen from '../screens/GroupManagementScreen';
+import GroupTransactionListScreen from '../screens/GroupTransactionListScreen';
 import InviteUsersScreen from '../screens/InviteUsersScreen';
 import MainTabScreen from '../screens/MainTabScreen';
 import NotificationDetailScreen from '../screens/NotificationDetailScreen';
@@ -115,6 +116,7 @@ function AuthNavigator() {
       <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
       <Stack.Screen name="GroupDetail" component={GroupDetailTabScreen} />
       <Stack.Screen name="EditGroup" component={EditGroupScreen} />
+      <Stack.Screen name="GroupTransactionList" component={GroupTransactionListScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
       <Stack.Screen name="Calendar" component={CalendarScreen} />

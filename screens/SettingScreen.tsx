@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LogoutModal from '../components/LogoutModal';
@@ -17,7 +17,6 @@ const SettingScreen = () => {
   const { user: authUser, logout, isAuthenticated } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
   const { language, setLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState('Setting');
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
@@ -257,20 +256,7 @@ const SettingScreen = () => {
         </View>
       </View>
 
-      {/* Dark Mode */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{t('darkMode')}</Text>
-        <Text style={styles.cardDesc}>{t('darkModeDesc')}</Text>
-        <View style={styles.darkRow}>
-          <Text style={styles.darkLabel}>{t('enableDarkMode')}</Text>
-          <Switch
-            value={darkMode}
-            onValueChange={setDarkMode}
-            trackColor={{ false: '#ccc', true: '#1e90ff' }}
-            thumbColor="#fff"
-          />
-        </View>
-      </View>
+
       </ScrollView>
              <LogoutModal
          visible={logoutModalVisible}
@@ -317,8 +303,6 @@ const styles = StyleSheet.create({
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
   flag: { fontSize: 20, marginRight: 4 },
   langText: { fontSize: 16, color: '#222' },
-  darkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  darkLabel: { fontSize: 16, color: '#222' },
   bottomNav: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', height: 64, backgroundColor: '#fff', borderTopWidth: 1, borderColor: '#eee', position: 'absolute', left: 0, right: 0, bottom: 0 },
   navItem: { alignItems: 'center', flex: 1 },
   navItemCenter: { alignItems: 'center', flex: 1 },

@@ -3,13 +3,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Circle, Svg } from 'react-native-svg';
@@ -19,9 +19,9 @@ import CustomToast from '../components/CustomToast';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import {
-  ReportByCategory,
-  TransactionReportResponse,
-  transactionService,
+    ReportByCategory,
+    TransactionReportResponse,
+    transactionService,
 } from '../services/transactionService';
 // Import getIconColor to match colors with AddExpenseScreen
 import { RootStackParamList } from '../navigation/types';

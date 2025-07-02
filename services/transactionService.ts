@@ -61,6 +61,7 @@ export interface DailyTransactions {
 export interface TransactionItem {
   transaction_id: number;
   category_name: string;
+  category_icon_url?: string;
   amount: number;
   transaction_type: string;
   description?: string;
@@ -80,10 +81,58 @@ export interface ReportSummary {
 }
 
 export interface ReportByCategory {
+  category_id: number;
   category_name: string;
   category_icon_url: string;
   amount: number;
   percentage: number;
+}
+
+// Group Transaction History interfaces (snake_case)
+export interface GroupTransactionResponse {
+  transaction_id: number;
+  user_id: number;
+  wallet_id: number;
+  category_id: number;
+  group_id?: number;
+  transaction_type: TransactionType;
+  amount: number;
+  currency_code: string;
+  transaction_date: string;
+  description?: string;
+  receipt_image_url?: string;
+  payee_payer_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaginatedGroupTransactionsResponse {
+  content: GroupTransactionResponse[];
+  pageable: {
+    sort: {
+      sorted: boolean;
+      unsorted: boolean;
+      empty: boolean;
+    };
+    page_number: number;
+    page_size: number;
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  total_pages: number;
+  total_elements: number;
+  last: boolean;
+  number_of_elements: number;
+  first: boolean;
+  size: number;
+  number: number;
+  sort: {
+    sorted: boolean;
+    unsorted: boolean;
+    empty: boolean;
+  };
+  empty: boolean;
 }
 
 export class TransactionService {
@@ -298,6 +347,77 @@ export class TransactionService {
     } catch (error: any) {
       console.error('❌ Failed to get transaction report:', error);
       throw new Error(error.message || 'Failed to get transaction report');
+    }
+  }
+
+  /**
+   * Get transactions by date range using the view-report API
+   * @param startDate - Start date in YYYY-MM-DD format
+   * @param endDate - End date in YYYY-MM-DD format
+   * @param categoryId - Optional category ID to filter by
+   */
+  async getTransactionByDateRange(
+    startDate: string,
+    endDate: string,
+    categoryId?: number
+  ) {
+    try {
+      const response = await this.viewTransactionReport(categoryId, startDate, endDate);
+      
+      // Return in a format compatible with CategoryDetailScreen expectations
+      return {
+        success: true,
+        data: {
+          transactions: [], // This API doesn't return individual transactions
+          summary: response.summary,
+          transactionsByCategory: response.transactionsByCategory
+        }
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get transactions by date range:', error);
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+  }
+
+  /**
+   * Get group transaction history with pagination
+   * @param groupId - The ID of the group
+   * @param page - Page number (default: 0)  
+   * @param size - Page size (default: 10)
+   */
+  async getGroupTransactionHistory(
+    groupId: number,
+    page: number = 0,
+    size: number = 10
+  ): Promise<GroupTransactionResponse[]> {
+    try {
+      console.log(`🔄 Getting group transaction history for group ${groupId}, page ${page}, size ${size}`);
+      
+      const response = await apiService.get<PaginatedGroupTransactionsResponse>(
+        `${TRANSACTION_ENDPOINTS.LIST}/view-history-transactions-group/${groupId}?page=${page}&size=${size}`
+      );
+      
+      if (response.data && response.data.content) {
+        console.log(`✅ Group transaction history retrieved: ${response.data.content.length} transactions`);
+        
+        // Sort by transaction_date descending (newest first) and take first 10
+        const sortedTransactions = response.data.content
+          .sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime())
+          .slice(0, 10);
+        
+        console.log(`🔢 Returning ${sortedTransactions.length} latest transactions`);
+        return sortedTransactions;
+      }
+      
+      throw new Error(response.message || 'Failed to get group transaction history');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get group transaction history:', error);
+      throw new Error(error.message || 'Failed to get group transaction history');
     }
   }
 }
