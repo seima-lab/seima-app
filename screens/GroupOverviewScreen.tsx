@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { RootStackParamList } from '../navigation/types';
+import { categoryService, CategoryService, CategoryType, LocalCategory } from '../services/categoryService';
 import { GroupDetailResponse, GroupMemberResponse, groupService } from '../services/groupService';
 import { GroupTransactionResponse, transactionService, TransactionType } from '../services/transactionService';
 
@@ -42,6 +43,12 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
   const [transactionsLoading, setTransactionsLoading] = useState(true);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
   
+  // Categories state
+  const [expenseCategories, setExpenseCategories] = useState<LocalCategory[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<LocalCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
   // Load group detail data from API
   const loadGroupDetail = useCallback(async () => {
     if (!groupId) return;
@@ -63,11 +70,42 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
     }
   }, [groupId]);
 
-  const financialSummary = {
-    totalIncome: 15000000,
-    totalExpense: 8500000,
-    balance: 6500000,
+  // Calculate financial summary from actual transactions data
+  const getFinancialSummary = () => {
+    if (!transactions || transactions.length === 0) {
+      return {
+        totalIncome: 0,
+        totalExpense: 0,
+        balance: 0,
+      };
+    }
+
+    const summary = transactions.reduce(
+      (acc, transaction) => {
+        if (transaction.transaction_type === TransactionType.INCOME) {
+          acc.totalIncome += transaction.amount;
+        } else if (transaction.transaction_type === TransactionType.EXPENSE) {
+          acc.totalExpense += transaction.amount;
+        }
+        return acc;
+      },
+      { totalIncome: 0, totalExpense: 0, balance: 0 }
+    );
+
+    // Calculate balance: income - expense
+    summary.balance = summary.totalIncome - summary.totalExpense;
+
+    console.log('💰 Financial summary calculated:', {
+      totalIncome: summary.totalIncome,
+      totalExpense: summary.totalExpense,
+      balance: summary.balance,
+      transactionCount: transactions.length
+    });
+
+    return summary;
   };
+
+  const financialSummary = getFinancialSummary();
 
   // Load members data from API
   const loadMembersData = useCallback(async () => {
@@ -112,6 +150,63 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
     }
   }, [groupId]);
 
+  // Load categories data from API (similar to AddExpenseScreen logic)
+  const loadCategoriesData = useCallback(async () => {
+    if (!groupId) return;
+    
+    try {
+      setCategoriesLoading(true);
+      setCategoriesError(null);
+      console.log('🟡 Loading group categories for groupId:', groupId);
+      
+      // Use same logic as AddExpenseScreen for group context
+      // For group context: userId=0, groupId=current group
+      const userId = 0;
+      const groupIdNum = parseInt(groupId);
+      
+      console.log('🔍 GroupOverviewScreen categories context:', {
+        userId: userId,
+        groupId: groupIdNum,
+        groupIdType: typeof groupIdNum
+      });
+      
+      // Fetch categories for both expense and income
+      const [expenseCats, incomeCats] = await Promise.all([
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId, groupIdNum),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId, groupIdNum),
+      ]);
+
+      console.log('🟢 Categories loaded:', {
+        expenseCount: expenseCats.length,
+        incomeCount: incomeCats.length,
+      });
+      
+      console.log('📊 Raw expense categories from API:', expenseCats.map(cat => ({
+        category_id: cat.category_id,
+        category_name: cat.category_name,
+        category_type: cat.category_type
+      })));
+      
+      console.log('📊 Raw income categories from API:', incomeCats.map(cat => ({
+        category_id: cat.category_id,
+        category_name: cat.category_name,
+        category_type: cat.category_type
+      })));
+
+      // Convert to local format
+      const categoryServiceInstance = CategoryService.getInstance();
+      setExpenseCategories(expenseCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
+      setIncomeCategories(incomeCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
+
+      console.log('🟢 Categories processed successfully');
+    } catch (error: any) {
+      console.error('🔴 Failed to load group categories:', error);
+      setCategoriesError(error.message || 'Failed to load categories');
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, [groupId]);
+
   // Load transactions data from API
   const loadTransactionsData = useCallback(async () => {
     if (!groupId) return;
@@ -121,8 +216,19 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
       setTransactionsError(null);
       console.log('🟡 Loading group transactions for groupId:', groupId);
       
-      const transactionsResponse = await transactionService.getGroupTransactionHistory(parseInt(groupId), 0, 10);
-      console.log('🟢 Group transactions loaded:', transactionsResponse);
+      // Load all transactions for accurate financial summary calculation
+      // Use a large page size to get all transactions at once
+      const transactionsResponse = await transactionService.getGroupTransactionHistory(parseInt(groupId), 0, 1000);
+      console.log('🟢 Group transactions loaded:', transactionsResponse.length, 'transactions');
+      
+      // Log transaction types for debugging
+      const incomeCount = transactionsResponse.filter(t => t.transaction_type === TransactionType.INCOME).length;
+      const expenseCount = transactionsResponse.filter(t => t.transaction_type === TransactionType.EXPENSE).length;
+      console.log('📊 Transaction breakdown:', {
+        total: transactionsResponse.length,
+        income: incomeCount,
+        expense: expenseCount
+      });
       
       setTransactions(transactionsResponse);
     } catch (error: any) {
@@ -137,8 +243,9 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
   const loadAllData = useCallback(() => {
     loadGroupDetail();
     loadMembersData();
+    loadCategoriesData();
     loadTransactionsData();
-  }, [loadGroupDetail, loadMembersData, loadTransactionsData]);
+  }, [loadGroupDetail, loadMembersData, loadCategoriesData, loadTransactionsData]);
 
   // Load data when component mounts
   useEffect(() => {
@@ -170,6 +277,45 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
     return amount.toLocaleString('vi-VN') + '₫';
   };
 
+  // Helper function to get user info from member data
+  const getUserInfo = (userId: number) => {
+    const user = members.find(member => member.user_id === userId);
+    return {
+      name: user?.user_full_name || 'Người dùng không xác định',
+      avatar: user?.user_avatar_url || null
+    };
+  };
+
+  // Helper function to get avatar source
+  const getUserAvatarSource = (userId: number) => {
+    const userInfo = getUserInfo(userId);
+    if (userInfo.avatar) {
+      return { uri: userInfo.avatar };
+    }
+    // Use male avatar as fallback
+    return require('../assets/images/maleavatar.png');
+  };
+
+  // Helper function to get category name from category_id using real API data
+  const getCategoryName = (categoryId: number) => {
+    // Search in both expense and income categories
+    const allCategories = [...expenseCategories, ...incomeCategories];
+    const category = allCategories.find(cat => cat.category_id === categoryId);
+    
+    if (category) {
+      console.log('🎯 Found category:', {
+        categoryId: categoryId,
+        categoryName: category.label,
+        categoryKey: category.key
+      });
+      return category.label;
+    }
+    
+    // Fallback if not found
+    console.log('⚠️ Category not found for ID:', categoryId);
+    return `Danh mục ${categoryId}`;
+  };
+
   const handleCopyInviteCode = async () => {
     try {
       const inviteCode = groupDetail?.group_invite_link || 'Không có mã mời';
@@ -195,28 +341,62 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
   const renderTransaction: ListRenderItem<GroupTransactionResponse> = ({ item }) => {
     const isIncome = item.transaction_type === TransactionType.INCOME;
     const isExpense = item.transaction_type === TransactionType.EXPENSE;
+    const userInfo = getUserInfo(item.user_id);
     
     return (
       <View style={styles.transactionItem}>
-        <View style={[styles.transactionIcon, { backgroundColor: isIncome ? '#E8F5E8' : '#FFF2F2' }]}>
-          <Icon 
-            name={isIncome ? 'arrow-downward' : 'arrow-upward'} 
-            size={20} 
-            color={isIncome ? '#4CAF50' : '#F44336'} 
+        {/* User Avatar */}
+        <View style={styles.transactionUserAvatar}>
+          <Image 
+            source={getUserAvatarSource(item.user_id)} 
+            style={styles.transactionAvatarImage} 
           />
         </View>
+        
+        {/* Transaction Content */}
         <View style={styles.transactionContent}>
-          <Text style={styles.transactionDescription}>{item.description || 'Không có mô tả'}</Text>
-          <Text style={styles.transactionCategory}>
-            Category ID: {item.category_id} • {new Date(item.transaction_date).toLocaleDateString('vi-VN')}
+          <View style={styles.transactionHeader}>
+            <Text style={styles.transactionUserName}>{userInfo.name}</Text>
+            <Text style={[
+              styles.transactionAmount, 
+              { color: isIncome ? '#4CAF50' : '#F44336' }
+            ]}>
+              {isIncome ? '+' : '-'}{formatCurrency(item.amount)}
+            </Text>
+          </View>
+          
+          <Text style={styles.transactionDescription}>
+            {getCategoryName(item.category_id)}
           </Text>
+          
+          <View style={styles.transactionMeta}>
+            <View style={styles.transactionTypeContainer}>
+              <View style={[
+                styles.transactionTypeIndicator, 
+                { backgroundColor: isIncome ? '#E8F5E8' : '#FFF2F2' }
+              ]}>
+                <Icon 
+                  name={isIncome ? 'trending-up' : 'trending-down'} 
+                  size={12} 
+                  color={isIncome ? '#4CAF50' : '#F44336'} 
+                />
+              </View>
+              <Text style={styles.transactionType}>
+                {isIncome ? 'Thu nhập' : 'Chi tiêu'}
+              </Text>
+            </View>
+            
+            <Text style={styles.transactionDate}>
+              {new Date(item.transaction_date).toLocaleString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              })}
+            </Text>
+          </View>
         </View>
-        <Text style={[
-          styles.transactionAmount, 
-          { color: isIncome ? '#4CAF50' : '#F44336' }
-        ]}>
-          {isIncome ? '+' : '-'}{formatCurrency(item.amount)}
-        </Text>
       </View>
     );
   };
@@ -344,7 +524,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
             </TouchableOpacity>
           </View>
           <FlatList
-            data={transactions}
+            data={transactions.slice(0, 5)}
             renderItem={renderTransaction}
             keyExtractor={(item) => item.transaction_id.toString()}
             scrollEnabled={false}
@@ -539,38 +719,82 @@ const styles = StyleSheet.create({
   },
   transactionItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
+    alignItems: 'flex-start',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
   },
-  transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  transactionUserAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#F0F0F0',
+  },
+  transactionAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
   },
   transactionContent: {
     flex: 1,
   },
-  transactionDescription: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333333',
-    marginBottom: 2,
+  transactionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
   },
-  transactionCategory: {
-    fontSize: 12,
+  transactionUserName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333333',
+    flex: 1,
+    marginRight: 8,
+  },
+  transactionDescription: {
+    fontSize: 13,
     color: '#666666',
+    marginBottom: 8,
+    lineHeight: 18,
   },
   transactionAmount: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  transactionMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  transactionTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transactionTypeIndicator: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  transactionType: {
+    fontSize: 12,
+    color: '#666666',
+    fontWeight: '500',
+  },
+  transactionDate: {
+    fontSize: 11,
+    color: '#999999',
+    fontWeight: '400',
   },
   separator: {
     height: 1,
     backgroundColor: '#F0F0F0',
-    marginHorizontal: 52,
+    marginLeft: 56,
+    marginVertical: 4,
   },
   fab: {
     position: 'absolute',

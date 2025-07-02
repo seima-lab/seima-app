@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   RefreshControl,
   SafeAreaView,
   StatusBar,
@@ -13,7 +14,9 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { RootStackParamList } from '../navigation/types';
-import { GroupTransactionResponse, transactionService } from '../services/transactionService';
+import { categoryService, CategoryService, CategoryType, LocalCategory } from '../services/categoryService';
+import { GroupMemberResponse, groupService } from '../services/groupService';
+import { GroupTransactionResponse, transactionService, TransactionType } from '../services/transactionService';
 
 type GroupTransactionListScreenRouteProp = RouteProp<RootStackParamList, 'GroupTransactionList'>;
 
@@ -27,39 +30,12 @@ interface Transaction {
   iconColor: string;
   description?: string;
   categoryId?: number;
+  userId?: number;
 }
 
 // Format money helper function
 const formatMoney = (amount: number): string => {
   return amount.toLocaleString('vi-VN') + '₫';
-};
-
-// Simple Transaction Item Component (Read-Only)
-const TransactionItem = ({ transaction }: { transaction: Transaction }) => {
-  return (
-    <View style={styles.transactionItem}>
-      <View style={styles.transactionLeft}>
-        <View style={[styles.transactionIcon, { backgroundColor: transaction.iconColor + '20' }]}>
-          <Icon name={transaction.icon} size={20} color={transaction.iconColor} />
-        </View>
-        <View style={styles.transactionInfo}>
-          <Text style={styles.transactionCategory}>{transaction.category}</Text>
-          {transaction.description && (
-            <Text style={styles.transactionDescription}>{transaction.description}</Text>
-          )}
-          <Text style={styles.transactionDate}>
-            {new Date(transaction.date).toLocaleDateString('vi-VN')}
-          </Text>
-        </View>
-      </View>
-      <Text style={[
-        styles.transactionAmount,
-        transaction.type === 'income' ? styles.incomeAmount : styles.expenseAmount
-      ]}>
-        {transaction.type === 'income' ? '+' : '-'}{formatMoney(transaction.amount)}
-      </Text>
-    </View>
-  );
 };
 
 const GroupTransactionListScreen: React.FC = () => {
@@ -75,36 +51,130 @@ const GroupTransactionListScreen: React.FC = () => {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   
+  // Members and categories state
+  const [members, setMembers] = useState<GroupMemberResponse[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<LocalCategory[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<LocalCategory[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  
   const LIMIT = 20;
 
-  const getCategoryIcon = (categoryName: string): { icon: string; color: string } => {
-    const lowerCategory = categoryName.toLowerCase();
-    
-    if (lowerCategory.includes('ăn') || lowerCategory.includes('uống') || lowerCategory.includes('food')) {
-      return { icon: 'restaurant', color: '#FF9500' };
-    }
-    if (lowerCategory.includes('thu nhập') || lowerCategory.includes('income') || lowerCategory.includes('salary')) {
-      return { icon: 'account-balance-wallet', color: '#34C759' };
-    }
-    if (lowerCategory.includes('chi tiêu') || lowerCategory.includes('shopping') || lowerCategory.includes('mua sắm')) {
-      return { icon: 'shopping-basket', color: '#007AFF' };
-    }
-    if (lowerCategory.includes('transport') || lowerCategory.includes('xe')) {
-      return { icon: 'directions-car', color: '#FF3B30' };
-    }
-    if (lowerCategory.includes('entertainment') || lowerCategory.includes('giải trí')) {
-      return { icon: 'movie', color: '#9500FF' };
-    }
-    if (lowerCategory.includes('health') || lowerCategory.includes('sức khỏe')) {
-      return { icon: 'local-hospital', color: '#FF2D92' };
-    }
-    
-    return { icon: 'more-horiz', color: '#666' };
+  // Helper function to get user info from member data
+  const getUserInfo = (userId: number) => {
+    const user = members.find(member => member.user_id === userId);
+    return {
+      name: user?.user_full_name || 'Người dùng không xác định',
+      avatar: user?.user_avatar_url || null
+    };
   };
 
+  // Helper function to get avatar source
+  const getUserAvatarSource = (userId: number) => {
+    const userInfo = getUserInfo(userId);
+    if (userInfo.avatar) {
+      return { uri: userInfo.avatar };
+    }
+    // Use male avatar as fallback
+    return require('../assets/images/maleavatar.png');
+  };
+
+  // Helper function to get category name from category_id using real API data
+  const getCategoryName = (categoryId: number) => {
+    // Search in both expense and income categories
+    const allCategories = [...expenseCategories, ...incomeCategories];
+    const category = allCategories.find(cat => cat.category_id === categoryId);
+    
+    if (category) {
+      console.log('🎯 Found category:', {
+        categoryId: categoryId,
+        categoryName: category.label,
+        categoryKey: category.key
+      });
+      return category.label;
+    }
+    
+    // Fallback if not found
+    console.log('⚠️ Category not found for ID:', categoryId);
+    return `Danh mục ${categoryId}`;
+  };
+
+  // Load members data from API
+  const loadMembersData = useCallback(async () => {
+    if (!groupId) return;
+    
+    try {
+      setMembersLoading(true);
+      console.log('🟡 Loading group members for groupId:', groupId);
+      
+      const response = await groupService.getActiveGroupMembers(parseInt(groupId));
+      console.log('🟢 Group members loaded:', response);
+      
+      // Combine group_leader + members array
+      const allMembers: GroupMemberResponse[] = [];
+      
+      // Add group leader first
+      if (response.group_leader) {
+        allMembers.push(response.group_leader);
+      }
+      
+      // Add other members
+      if (response.members) {
+        response.members.forEach(member => {
+          // Avoid duplicate if leader is also in members array
+          if (member.user_id !== response.group_leader?.user_id) {
+            allMembers.push(member);
+          }
+        });
+      }
+      
+      console.log('🟢 Final members array:', allMembers.length, 'members');
+      setMembers(allMembers);
+    } catch (error: any) {
+      console.error('🔴 Failed to load group members:', error);
+    } finally {
+      setMembersLoading(false);
+    }
+  }, [groupId]);
+
+  // Load categories data from API
+  const loadCategoriesData = useCallback(async () => {
+    if (!groupId) return;
+    
+    try {
+      setCategoriesLoading(true);
+      console.log('🟡 Loading group categories for groupId:', groupId);
+      
+      // Use same logic as GroupOverviewScreen for group context
+      const userId = 0;
+      const groupIdNum = parseInt(groupId);
+      
+      // Fetch categories for both expense and income
+      const [expenseCats, incomeCats] = await Promise.all([
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId, groupIdNum),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId, groupIdNum),
+      ]);
+
+      console.log('🟢 Categories loaded:', {
+        expenseCount: expenseCats.length,
+        incomeCount: incomeCats.length,
+      });
+
+      // Convert to local format
+      const categoryServiceInstance = CategoryService.getInstance();
+      setExpenseCategories(expenseCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
+      setIncomeCategories(incomeCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
+
+      console.log('🟢 Categories processed successfully');
+    } catch (error: any) {
+      console.error('🔴 Failed to load group categories:', error);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, [groupId]);
+
   const convertToLocalTransaction = (item: GroupTransactionResponse): Transaction => {
-    const categoryName = `Category ${item.category_id}`;
-    const categoryIcon = getCategoryIcon(categoryName);
+    const categoryName = getCategoryName(item.category_id);
     const transactionType = item.transaction_type?.toLowerCase();
     
     return {
@@ -113,10 +183,11 @@ const GroupTransactionListScreen: React.FC = () => {
       category: categoryName,
       amount: item.amount || 0,
       type: transactionType === 'income' ? 'income' : 'expense',
-      icon: categoryIcon.icon,
-      iconColor: categoryIcon.color,
+      icon: 'more-horiz', // Will be replaced by proper category icons if needed
+      iconColor: transactionType === 'income' ? '#4CAF50' : '#F44336',
       description: item.description || '',
-      categoryId: item.category_id
+      categoryId: item.category_id,
+      userId: item.user_id
     };
   };
 
@@ -132,7 +203,7 @@ const GroupTransactionListScreen: React.FC = () => {
       
       setError(null);
       
-      console.log('🔄 Loading group transactions (read-only):', { groupId, offset: currentOffset, limit: LIMIT });
+      console.log('🔄 Loading group transactions:', { groupId, offset: currentOffset, limit: LIMIT });
       
       const response = await transactionService.getGroupTransactionHistory(
         parseInt(groupId), 
@@ -162,9 +233,12 @@ const GroupTransactionListScreen: React.FC = () => {
     }
   }, [groupId]);
 
+  // Load initial data
   useEffect(() => {
+    loadMembersData();
+    loadCategoriesData();
     loadTransactions(0);
-  }, [loadTransactions]);
+  }, [loadMembersData, loadCategoriesData, loadTransactions]);
 
   const onRefresh = () => {
     loadTransactions(0, true);
@@ -176,12 +250,73 @@ const GroupTransactionListScreen: React.FC = () => {
     }
   };
 
-  const renderTransaction = ({ item }: { item: GroupTransactionResponse }) => {
-    const transaction = convertToLocalTransaction(item);
+  // Enhanced Transaction Item Component with user avatar and better design
+  const TransactionItem = ({ item }: { item: GroupTransactionResponse }) => {
+    const isIncome = item.transaction_type === TransactionType.INCOME;
+    const userInfo = getUserInfo(item.user_id);
     
     return (
-      <TransactionItem transaction={transaction} />
+      <View style={styles.transactionItem}>
+        {/* User Avatar */}
+        <View style={styles.transactionUserAvatar}>
+          <Image 
+            source={getUserAvatarSource(item.user_id)} 
+            style={styles.transactionAvatarImage} 
+          />
+        </View>
+        
+        {/* Transaction Content */}
+        <View style={styles.transactionContent}>
+          <View style={styles.transactionHeader}>
+            <Text style={styles.transactionUserName}>{userInfo.name}</Text>
+            <Text style={[
+              styles.transactionAmount, 
+              { color: isIncome ? '#4CAF50' : '#F44336' }
+            ]}>
+              {isIncome ? '+' : '-'}{formatMoney(item.amount)}
+            </Text>
+          </View>
+          
+          <Text style={styles.transactionDescription}>
+            {getCategoryName(item.category_id)}
+          </Text>
+          
+          <View style={styles.transactionMeta}>
+            <View style={styles.transactionTypeContainer}>
+              <View style={[
+                styles.transactionTypeIndicator, 
+                { backgroundColor: isIncome ? '#E8F5E8' : '#FFF2F2' }
+              ]}>
+                <Icon 
+                  name={isIncome ? 'trending-up' : 'trending-down'} 
+                  size={12} 
+                  color={isIncome ? '#4CAF50' : '#F44336'} 
+                />
+              </View>
+              <Text style={styles.transactionType}>
+                {isIncome ? 'Thu nhập' : 'Chi tiêu'}
+              </Text>
+            </View>
+            
+            <Text style={styles.transactionDate}>
+              {new Date(item.transaction_date.replace(' ', 'T')).toLocaleString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+              })}
+            </Text>
+          </View>
+        </View>
+      </View>
     );
+  };
+
+  const renderTransaction = ({ item }: { item: GroupTransactionResponse }) => {
+    return <TransactionItem item={item} />;
   };
 
   const renderFooter = () => {
@@ -304,57 +439,83 @@ const styles = StyleSheet.create({
   },
   transactionItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: 16,
     paddingHorizontal: 16,
     backgroundColor: '#FFFFFF',
   },
-  transactionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  transactionUserAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#F0F0F0',
   },
-  transactionInfo: {
+  transactionAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+  },
+  transactionContent: {
     flex: 1,
   },
-  transactionCategory: {
-    fontSize: 16,
-    fontWeight: '500',
+  transactionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  transactionUserName: {
+    fontSize: 15,
+    fontWeight: '600',
     color: '#333',
-    marginBottom: 2,
+    flex: 1,
+    marginRight: 8,
+  },
+  transactionAmount: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   transactionDescription: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  transactionMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  transactionTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transactionTypeIndicator: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  transactionType: {
     fontSize: 12,
     color: '#666',
-    marginBottom: 2,
+    fontWeight: '500',
   },
   transactionDate: {
     fontSize: 11,
     color: '#999',
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginRight: 8,
-  },
-  incomeAmount: {
-    color: '#4CAF50',
-  },
-  expenseAmount: {
-    color: '#F44336',
+    fontWeight: '400',
   },
   separator: {
     height: 1,
     backgroundColor: '#F0F0F0',
-    marginLeft: 68,
+    marginLeft: 56,
+    marginVertical: 4,
   },
   footerLoader: {
     flexDirection: 'row',
