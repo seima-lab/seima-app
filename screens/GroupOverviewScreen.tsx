@@ -1,17 +1,18 @@
 import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Clipboard,
-  FlatList,
-  Image,
-  ListRenderItem,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Clipboard,
+    FlatList,
+    Image,
+    ListRenderItem,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { RootStackParamList } from '../navigation/types';
@@ -26,6 +27,7 @@ interface GroupOverviewScreenProps {
 
 const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, groupName }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { t } = useTranslation();
   
   // State management
   const [members, setMembers] = useState<GroupMemberResponse[]>([]);
@@ -318,11 +320,11 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
 
   const handleCopyInviteCode = async () => {
     try {
-      const inviteCode = groupDetail?.group_invite_link || 'Không có mã mời';
+      const inviteCode = groupDetail?.group_invite_link || t('group.overview.noInviteCode');
       await Clipboard.setString(inviteCode);
-      Alert.alert('Thành công', 'Đã sao chép mã mời vào clipboard');
+      Alert.alert(t('common.success'), t('group.overview.copySuccess'));
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể sao chép mã mời');
+      Alert.alert(t('common.error'), t('group.overview.copyError'));
     }
   };
 
@@ -415,7 +417,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
           {groupDetailLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="#4A90E2" />
-              <Text style={styles.loadingText}>Đang tải thông tin nhóm...</Text>
+              <Text style={styles.loadingText}>{t('common.loading')}...</Text>
             </View>
           ) : groupDetailError ? (
             <Text style={styles.errorText}>{groupDetailError}</Text>
@@ -428,9 +430,9 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
                 />
                 <View style={styles.groupDetails}>
                   <Text style={styles.groupName}>{groupDetail.group_name}</Text>
-                  <Text style={styles.groupDescription}>Nhóm quản lý tài chính gia đình</Text>
+                  <Text style={styles.groupDescription}>{t('group.overview.groupDescription')}</Text>
                   <Text style={styles.groupMeta}>
-                    {groupDetail.total_members_count} thành viên • Tạo ngày {new Date(groupDetail.group_created_date).toLocaleDateString('vi-VN')}
+                    {t('group.overview.totalMembers', { count: groupDetail.total_members_count })} • {t('group.overview.groupCreated')} {new Date(groupDetail.group_created_date).toLocaleDateString('vi-VN')}
                   </Text>
                 </View>
                 <TouchableOpacity style={styles.editButton} onPress={handleEditGroup}>
@@ -441,7 +443,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
               {/* Invite Code Section */}
               {groupDetail.group_invite_link && (
                 <View style={styles.inviteCodeSection}>
-                  <Text style={styles.inviteCodeLabel}>Mã mời nhóm</Text>
+                  <Text style={styles.inviteCodeLabel}>{t('group.overview.inviteCode')}</Text>
                   <TouchableOpacity 
                     style={styles.inviteCodeContainer}
                     onPress={handleCopyInviteCode}
@@ -449,7 +451,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
                     <Text style={styles.inviteCodeText}>{groupDetail.group_invite_link}</Text>
                     <Icon name="content-copy" size={18} color="#4A90E2" />
                   </TouchableOpacity>
-                  <Text style={styles.inviteCodeHint}>Nhấn để sao chép và chia sẻ với bạn bè</Text>
+                  <Text style={styles.inviteCodeHint}>{t('group.overview.inviteCodeHint')}</Text>
                 </View>
               )}
             </>
@@ -458,18 +460,18 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
 
         {/* Financial Summary */}
         <View style={styles.financialCard}>
-          <Text style={styles.cardTitle}>Tổng quan tài chính</Text>
+          <Text style={styles.cardTitle}>{t('group.overview.financialSummary')}</Text>
           <View style={styles.financialRow}>
             <View style={styles.financialItem}>
-              <Text style={styles.financialLabel}>Thu nhập</Text>
+              <Text style={styles.financialLabel}>{t('group.overview.totalIncome')}</Text>
               <Text style={styles.incomeAmount}>{formatCurrency(financialSummary.totalIncome)}</Text>
             </View>
             <View style={styles.financialItem}>
-              <Text style={styles.financialLabel}>Chi tiêu</Text>
+              <Text style={styles.financialLabel}>{t('group.overview.totalExpense')}</Text>
               <Text style={styles.expenseAmount}>{formatCurrency(financialSummary.totalExpense)}</Text>
             </View>
             <View style={styles.financialItem}>
-              <Text style={styles.financialLabel}>Số dư</Text>
+              <Text style={styles.financialLabel}>{t('group.overview.balance')}</Text>
               <Text style={styles.balanceAmount}>{formatCurrency(financialSummary.balance)}</Text>
             </View>
           </View>
@@ -478,7 +480,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
         {/* Members Preview */}
         <View style={styles.membersCard}>
           <View style={styles.membersHeader}>
-            <Text style={styles.cardTitle}>Thành viên</Text>
+            <Text style={styles.cardTitle}>{t('group.overview.membersPreview')}</Text>
             <View style={styles.memberAvatars}>
               {membersLoading ? (
                 <ActivityIndicator size="small" color="#4A90E2" />
@@ -486,13 +488,8 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
                 <Text style={styles.errorText}>{membersError}</Text>
               ) : (
                 <>
-                  {(() => {
-                    console.log('🔍 Debug - Members array length:', members.length);
-                    console.log('🔍 Debug - Members data:', JSON.stringify(members, null, 2));
-                    return null;
-                  })()}
                   {members.length === 0 ? (
-                    <Text style={styles.noMembersText}>Không có thành viên nào</Text>
+                    <Text style={styles.noMembersText}>{t('group.overview.noMembers')}</Text>
                   ) : (
                     members.slice(0, 3).map((member, index) => {
                       console.log('🟡 Rendering member avatar:', member.user_full_name, 'Index:', index, 'Avatar URL:', member.user_avatar_url);
@@ -510,7 +507,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
           </View>
           {!membersLoading && !membersError && (
             <Text style={styles.memberCount}>
-              Tổng cộng: {totalMembersCount} thành viên
+              {t('group.overview.totalMembers', { count: totalMembersCount })}
             </Text>
           )}
         </View>
@@ -518,9 +515,9 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
         {/* Recent Transactions */}
         <View style={styles.transactionsCard}>
           <View style={styles.transactionsHeader}>
-            <Text style={styles.cardTitle}>Giao dịch gần đây</Text>
+            <Text style={styles.cardTitle}>{t('group.overview.recentTransactions')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('GroupTransactionList', { groupId, groupName })}>
-              <Text style={styles.viewAllText}>Xem tất cả</Text>
+              <Text style={styles.viewAllText}>{t('group.overview.viewAll')}</Text>
             </TouchableOpacity>
           </View>
           <FlatList
@@ -533,7 +530,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
               transactionsLoading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color="#4A90E2" />
-                  <Text style={styles.loadingText}>Đang tải giao dịch...</Text>
+                  <Text style={styles.loadingText}>{t('group.overview.loadingTransactions')}</Text>
                 </View>
               ) : transactionsError ? (
                 <Text style={styles.errorText}>{transactionsError}</Text>
@@ -541,7 +538,7 @@ const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, grou
             )}
             ListEmptyComponent={() => (
               !transactionsLoading && !transactionsError ? (
-                <Text style={styles.emptyText}>Chưa có giao dịch nào</Text>
+                <Text style={styles.emptyText}>{t('group.overview.noTransactions')}</Text>
               ) : null
             )}
           />

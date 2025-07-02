@@ -147,11 +147,13 @@ const getCategoryColor = (categoryName: string, categoryType: 'expense' | 'incom
 };
 
 const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, categoryType }) => {
+  const { t } = useTranslation();
+  
   if (!data || data.length === 0) {
     return (
       <View style={[styles.chartContainer, { width: size, height: size }]}>
         <View style={[styles.emptyChart, { width: size, height: size, borderRadius: size / 2 }]}>
-          <Text style={styles.emptyChartText}>Không có dữ liệu</Text>
+          <Text style={styles.emptyChartText}>{t('reports.noData')}</Text>
         </View>
       </View>
     );
@@ -255,7 +257,7 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
 };
 
 export default function ReportScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -342,11 +344,11 @@ export default function ReportScreen() {
         stack: error.stack,
         response: error.response?.data
       });
-      showToastMessage(error.message || 'Failed to load report data');
+      showToastMessage(error.message || t('reports.loadingReport'));
     } finally {
       setIsLoading(false);
     }
-  }, [selectedMonth, showToastMessage]);
+  }, [selectedMonth, showToastMessage, t]);
 
   // Load data on mount and when month changes
   useEffect(() => {
@@ -367,7 +369,8 @@ export default function ReportScreen() {
   const getMonthDisplayText = (): string => {
     const [year, month] = selectedMonth.split('-').map(Number);
     const date = new Date(year, month - 1);
-    return date.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+    const locale = i18n.language === 'vi' ? 'vi-VN' : 'en-US';
+    return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
   };
 
   // Navigate month
@@ -482,7 +485,7 @@ export default function ReportScreen() {
         <TouchableOpacity style={styles.backButton}>
           <Icon name="arrow-left" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Báo cáo</Text>
+        <Text style={styles.headerTitle}>{t('reports.title')}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -500,7 +503,7 @@ export default function ReportScreen() {
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Đang tải báo cáo...</Text>
+          <Text style={styles.loadingText}>{t('reports.loadingReport')}</Text>
         </View>
       ) : (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -508,7 +511,7 @@ export default function ReportScreen() {
           <View style={styles.summaryContainer}>
             <View style={styles.summaryRow}>
               <View style={styles.incomeCard}>
-                <Text style={styles.incomeLabel}>Chi tiêu</Text>
+                <Text style={styles.incomeLabel}>{t('reports.expense')}</Text>
                 <Text style={[styles.summaryValue, styles.expenseValue]}>
                   {(() => {
                     // Log summary data before rendering
@@ -529,7 +532,7 @@ export default function ReportScreen() {
                 </Text>
               </View>
               <View style={styles.expenseCard}>
-                <Text style={styles.expenseLabel}>Thu nhập</Text>
+                <Text style={styles.expenseLabel}>{t('reports.income')}</Text>
                 <Text style={[styles.summaryValue, styles.incomeValue]}>
                   {(() => {
                     // Log summary data before rendering
@@ -555,16 +558,16 @@ export default function ReportScreen() {
           {/* Expense Chart Section */}
           <View style={styles.chartSection}>
             <View style={styles.chartHeader}>
-              <Text style={styles.chartTitle}>Chi phí</Text>
+              <Text style={styles.chartTitle}>{t('reports.expense')}</Text>
               <TouchableOpacity 
                 onPress={() => navigation.navigate('ReportDetailScreen', {
-                  title: 'Chi tiết chi phí',
+                  title: t('reports.expenseDetails'),
                   categoryType: 'expense',
                   data: getExpenseData(),
                   totalAmount: (reportData as any)?.summary?.total_expense || 0,
                 })}
               >
-                <Text style={styles.seeAllText}>Xem chi tiết</Text>
+                <Text style={styles.seeAllText}>{t('reports.seeDetails')}</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.chartAmount}>
@@ -580,16 +583,16 @@ export default function ReportScreen() {
           {/* Income Chart Section */}
           <View style={styles.chartSection}>
             <View style={styles.chartHeader}>
-              <Text style={styles.chartTitle}>Thu nhập</Text>
+              <Text style={styles.chartTitle}>{t('reports.income')}</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('ReportDetailScreen', {
-                  title: 'Chi tiết thu nhập',
+                  title: t('reports.incomeDetails'),
                   categoryType: 'income',
                   data: getIncomeData(),
                   totalAmount: (reportData as any)?.summary?.total_income || 0,
                 })}
               >
-                <Text style={styles.seeAllText}>Xem chi tiết</Text>
+                <Text style={styles.seeAllText}>{t('reports.seeDetails')}</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.chartAmount}>
@@ -604,7 +607,7 @@ export default function ReportScreen() {
 
           {/* View Report by Category */}
           <TouchableOpacity style={styles.viewReportButton}>
-            <Text style={styles.viewReportText}>Xem báo cáo theo hạng mục</Text>
+            <Text style={styles.viewReportText}>{t('reports.viewReportByCategory')}</Text>
           </TouchableOpacity>
         </ScrollView>
       )}

@@ -1,5 +1,6 @@
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Modal, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -15,6 +16,7 @@ type TabType = 'overview' | 'members' | 'settings';
 const GroupDetailTabScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<GroupDetailRouteProp>();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showMenu, setShowMenu] = useState(false);
 
@@ -27,13 +29,13 @@ const GroupDetailTabScreen = () => {
   const getHeaderTitle = () => {
     switch (activeTab) {
       case 'overview':
-        return 'Overview';
+        return t('group.tabs.overview');
       case 'members':
-        return 'Members';
+        return t('group.tabs.members');
       case 'settings':
-        return 'Settings';
+        return t('group.tabs.settings');
       default:
-        return 'Overview';
+        return t('group.tabs.overview');
     }
   };
 
@@ -49,15 +51,15 @@ const GroupDetailTabScreen = () => {
   const handleLeaveGroup = () => {
     setShowMenu(false);
     Alert.alert(
-      'Leave Group',
-      'Are you sure you want to leave this group?',
+      t('group.detail.leaveGroup'),
+      t('group.settings.confirmLeaveDesc'),
       [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel'
         },
         {
-          text: 'Leave',
+          text: t('group.settings.leave'),
           style: 'destructive',
           onPress: () => {
             console.log('Leave group:', groupId);
@@ -119,11 +121,11 @@ const GroupDetailTabScreen = () => {
           <View style={styles.menuContainer}>
             <TouchableOpacity style={styles.menuItem} onPress={handleEditGroup}>
               <Icon name="edit" size={20} color="#333" />
-              <Text style={styles.menuItemText}>Edit Group</Text>
+              <Text style={styles.menuItemText}>{t('group.detail.editGroup')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={handleLeaveGroup}>
               <Icon name="exit-to-app" size={20} color="#dc3545" />
-              <Text style={[styles.menuItemText, { color: '#dc3545' }]}>Leave Group</Text>
+              <Text style={[styles.menuItemText, { color: '#dc3545' }]}>{t('group.detail.leaveGroup')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -34,6 +35,8 @@ interface GroupTabNavigationProps {
 }
 
 const GroupTabNavigation: React.FC<GroupTabNavigationProps> = ({ activeTab, setActiveTab }) => {
+  const { t } = useTranslation();
+  
   return (
     <View style={styles.container}>
       <View style={styles.tabBar}>
@@ -48,7 +51,7 @@ const GroupTabNavigation: React.FC<GroupTabNavigationProps> = ({ activeTab, setA
             color={activeTab === 'overview' ? '#4A90E2' : '#999999'} 
           />
           <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>
-            Tổng quan
+            {t('group.tabs.overview')}
           </Text>
         </TouchableOpacity>
         
@@ -63,7 +66,7 @@ const GroupTabNavigation: React.FC<GroupTabNavigationProps> = ({ activeTab, setA
             color={activeTab === 'members' ? '#4A90E2' : '#999999'} 
           />
           <Text style={[styles.tabText, activeTab === 'members' && styles.tabTextActive]}>
-            Thành viên
+            {t('group.tabs.members')}
           </Text>
         </TouchableOpacity>
         
@@ -78,7 +81,7 @@ const GroupTabNavigation: React.FC<GroupTabNavigationProps> = ({ activeTab, setA
             color={activeTab === 'settings' ? '#4A90E2' : '#999999'} 
           />
           <Text style={[styles.tabText, activeTab === 'settings' && styles.tabTextActive]}>
-            Cài đặt
+            {t('group.tabs.settings')}
           </Text>
         </TouchableOpacity>
       </View>

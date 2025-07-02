@@ -1,5 +1,6 @@
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     Alert,
@@ -44,9 +45,10 @@ interface SwipeableRowProps {
   onRemove: (member: DisplayMember) => void;
   isGroupLeader: boolean;
   renderContent: () => React.ReactNode;
+  t: (key: string) => string;
 }
 
-const SwipeableRow: React.FC<SwipeableRowProps> = ({ member, onRemove, isGroupLeader, renderContent }) => {
+const SwipeableRow: React.FC<SwipeableRowProps> = ({ member, onRemove, isGroupLeader, renderContent, t }) => {
   const translateX = new Animated.Value(0);
   const { width: screenWidth } = Dimensions.get('window');
   const threshold = 60; // Smaller threshold - just need to swipe a bit
@@ -139,7 +141,7 @@ const SwipeableRow: React.FC<SwipeableRowProps> = ({ member, onRemove, isGroupLe
       >
         <TouchableOpacity style={styles.swipeRemoveButton} onPress={handleRemove}>
           <Icon name="delete" size={20} color="#FFFFFF" />
-          <Text style={styles.swipeRemoveButtonText}>Remove</Text>
+          <Text style={styles.swipeRemoveButtonText}>{t('common.remove')}</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -160,16 +162,18 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({
   disabled = false,
   canPromoteToOwner = false 
 }) => {
+  const { t } = useTranslation();
+  
   const getRoleConfig = (role: GroupMemberRole) => {
     switch (role) {
       case GroupMemberRole.OWNER:
-        return { label: 'Owner', color: '#FF6B35', icon: 'stars' };
+        return { label: t('group.memberManagement.roles.owner'), color: '#FF6B35', icon: 'stars' };
       case GroupMemberRole.ADMIN:
-        return { label: 'Admin', color: '#4A90E2', icon: 'admin-panel-settings' };
+        return { label: t('group.memberManagement.roles.admin'), color: '#4A90E2', icon: 'admin-panel-settings' };
       case GroupMemberRole.MEMBER:
-        return { label: 'Member', color: '#6C757D', icon: 'person' };
+        return { label: t('group.memberManagement.roles.member'), color: '#6C757D', icon: 'person' };
       default:
-        return { label: 'Member', color: '#6C757D', icon: 'person' };
+        return { label: t('group.memberManagement.roles.member'), color: '#6C757D', icon: 'person' };
     }
   };
 
@@ -181,7 +185,7 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({
 
   return (
     <View style={styles.roleSelectorContainer}>
-      <Text style={styles.roleSelectorTitle}>Vai trò trong nhóm</Text>
+      <Text style={styles.roleSelectorTitle}>{t('group.memberManagement.memberRole')}</Text>
       <View style={styles.roleOptions}>
         {availableRoles.map((role) => {
           const config = getRoleConfig(role);
@@ -228,16 +232,18 @@ interface RoleBadgeProps {
 }
 
 const RoleBadge: React.FC<RoleBadgeProps> = ({ role, size = 'small' }) => {
+  const { t } = useTranslation();
+  
   const getRoleConfig = (role: GroupMemberRole) => {
     switch (role) {
       case GroupMemberRole.OWNER:
-        return { label: 'Owner', color: '#FF6B35', bgColor: '#FFF2F0' };
+        return { label: t('group.memberManagement.roles.owner'), color: '#FF6B35', bgColor: '#FFF2F0' };
       case GroupMemberRole.ADMIN:
-        return { label: 'Admin', color: '#4A90E2', bgColor: '#F0F7FF' };
+        return { label: t('group.memberManagement.roles.admin'), color: '#4A90E2', bgColor: '#F0F7FF' };
       case GroupMemberRole.MEMBER:
-        return { label: 'Member', color: '#6C757D', bgColor: '#F8F9FA' };
+        return { label: t('group.memberManagement.roles.member'), color: '#6C757D', bgColor: '#F8F9FA' };
       default:
-        return { label: 'Member', color: '#6C757D', bgColor: '#F8F9FA' };
+        return { label: t('group.memberManagement.roles.member'), color: '#6C757D', bgColor: '#F8F9FA' };
     }
   };
 
@@ -264,6 +270,7 @@ const RoleBadge: React.FC<RoleBadgeProps> = ({ role, size = 'small' }) => {
 const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupName }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [showAllMembers, setShowAllMembers] = useState(false);
   const [groupCode] = useState('651251');
   const [loading, setLoading] = useState(true);
@@ -313,7 +320,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
         joinDate: new Date().toLocaleDateString('vi-VN'),
       contribution: 700000,
         role: GroupMemberRole.OWNER, // Group leader is always OWNER
-        email: memberData.group_leader.user_email || 'Chưa có email', // Fix undefined email
+        email: memberData.group_leader.user_email || t('group.memberManagement.noEmail'), // Fix undefined email
         isCurrentUser: user?.id === memberData.group_leader.user_id.toString()
       });
     }
@@ -331,7 +338,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
             joinDate: new Date().toLocaleDateString('vi-VN'),
       contribution: 500000,
             role: (member as any).role || GroupMemberRole.MEMBER, // FIX: Use role from API
-            email: member.user_email || 'Chưa có email', // Fix undefined email
+            email: member.user_email || t('group.memberManagement.noEmail'), // Fix undefined email
             isCurrentUser: user?.id === member.user_id.toString()
           });
         }
@@ -353,7 +360,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
   };
 
   const handleCopyCode = () => {
-    Alert.alert('Thành công', 'Đã sao chép mã nhóm vào clipboard');
+    Alert.alert(t('common.success'), t('group.memberManagement.copyCode'));
   };
 
   const handleInviteUsers = () => {
@@ -370,12 +377,12 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
 
   const handleRemoveMember = async (member: DisplayMember) => {
     Alert.alert(
-      'Xác nhận xóa thành viên',
-      `Bạn có chắc muốn xóa ${member.name} khỏi nhóm?`,
+      t('group.memberManagement.removeMember'),
+      t('group.memberManagement.confirmRemove', { name: member.name }),
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Xóa',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -388,13 +395,13 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
               );
               
               console.log('🟢 Member removed successfully');
-              Alert.alert('Thành công', `Đã xóa ${member.name} khỏi nhóm`);
+              Alert.alert(t('common.success'), t('group.memberManagement.removeSuccess', { name: member.name }));
               
               // Reload member list
               await loadGroupMembers();
             } catch (error: any) {
               console.error('🔴 Failed to remove member:', error);
-              Alert.alert('Lỗi', error.message || 'Không thể xóa thành viên');
+              Alert.alert(t('common.error'), error.message || t('group.memberManagement.removeFailed'));
             } finally {
               setRemovingMember(null);
             }
@@ -454,20 +461,24 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
 
     const getRoleLabel = (role: GroupMemberRole) => {
       switch (role) {
-        case GroupMemberRole.OWNER: return 'Owner';
-        case GroupMemberRole.ADMIN: return 'Admin';
-        case GroupMemberRole.MEMBER: return 'Member';
-        default: return 'Member';
+        case GroupMemberRole.OWNER: return t('group.owner');
+        case GroupMemberRole.ADMIN: return t('group.admin');
+        case GroupMemberRole.MEMBER: return t('group.member');
+        default: return t('group.member');
       }
     };
 
     Alert.alert(
-      'Xác nhận thay đổi vai trò',
-      `Bạn có chắc muốn thay đổi vai trò của ${member.name} từ ${getRoleLabel(member.role)} thành ${getRoleLabel(newRole)}?`,
+      t('group.memberManagement.confirmRoleChange'),
+      t('group.memberManagement.changeRoleFrom', { 
+        name: member.name, 
+        oldRole: getRoleLabel(member.role), 
+        newRole: getRoleLabel(newRole) 
+      }),
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Xác nhận',
+          text: t('group.memberManagement.confirm'),
           onPress: async () => {
             try {
               console.log('🟡 Updating member role:', member.name, newRole);
@@ -479,13 +490,13 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
               );
               
               console.log('🟢 Member role updated successfully');
-              Alert.alert('Thành công', `Đã cập nhật vai trò của ${member.name}`);
+              Alert.alert(t('common.success'), t('group.memberManagement.roleUpdateSuccess', { name: member.name }));
               
               // Reload member list to get updated data
               await loadGroupMembers();
             } catch (error: any) {
               console.error('🔴 Failed to update member role:', error);
-              Alert.alert('Lỗi', error.message || 'Không thể cập nhật vai trò');
+              Alert.alert(t('common.error'), error.message || t('group.memberManagement.roleUpdateFailed'));
             }
           }
         }
@@ -563,6 +574,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
         onRemove={handleRemoveMember}
         isGroupLeader={isOwner}
         renderContent={memberContent}
+        t={t}
       />
     );
   };
@@ -573,7 +585,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
     return (
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#4A90E2" />
-        <Text style={styles.loadingText}>Loading members...</Text>
+        <Text style={styles.loadingText}>{t('common.loading')}...</Text>
       </View>
     );
   }
@@ -582,9 +594,9 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
     return (
       <View style={[styles.container, styles.centered]}>
         <Icon name="error-outline" size={48} color="#FF6B6B" />
-        <Text style={styles.errorText}>Failed to load members</Text>
+        <Text style={styles.errorText}>{t('group.errorLoadingGroups')}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadGroupMembers}>
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={styles.retryText}>{t('common.retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -603,7 +615,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
           <View style={styles.modalContainer}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Quản lý thành viên</Text>
+              <Text style={styles.modalTitle}>{t('group.memberManagement.title')}</Text>
               <TouchableOpacity 
                 onPress={() => setShowMemberModal(false)}
                 style={styles.modalCloseButton}
@@ -615,7 +627,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
             {/* Member Count */}
             <View style={styles.memberCountBadge}>
               <Text style={styles.memberCountText}>
-                Tổng cộng: {members.length} thành viên
+                {t('group.memberManagement.totalMembersCount', { count: members.length })}
               </Text>
             </View>
             
@@ -644,8 +656,8 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
                           member.role === GroupMemberRole.MEMBER && styles.roleTagMember,
                         ]}>
                           <Text style={styles.roleTagText}>
-                            {member.role === GroupMemberRole.OWNER ? 'Chủ quỹ' :
-                             member.role === GroupMemberRole.ADMIN ? 'Quản trị viên' : 'Thành viên'}
+                            {member.role === GroupMemberRole.OWNER ? t('group.memberManagement.roles.owner') :
+                             member.role === GroupMemberRole.ADMIN ? t('group.memberManagement.roles.admin') : t('group.memberManagement.roles.member')}
                           </Text>
                         </View>
 
@@ -660,7 +672,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
                                     onPress={() => handleRoleUpdate(member, GroupMemberRole.ADMIN)}
                                   >
                                     <Icon name="arrow-upward" size={14} color="#fff" />
-                                    <Text style={styles.actionButtonText}>Lên Admin</Text>
+                                    <Text style={styles.actionButtonText}>{t('group.memberManagement.promoteToAdmin')}</Text>
                                   </TouchableOpacity>
                                 )}
                                 {member.role === GroupMemberRole.ADMIN && (
@@ -669,7 +681,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
                                     onPress={() => handleRoleUpdate(member, GroupMemberRole.MEMBER)}
                                   >
                                     <Icon name="arrow-downward" size={14} color="#fff" />
-                                    <Text style={styles.actionButtonText}>Xuống Member</Text>
+                                    <Text style={styles.actionButtonText}>{t('group.memberManagement.demoteToMember')}</Text>
                                   </TouchableOpacity>
                                 )}
                               </>
@@ -679,7 +691,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
                               onPress={() => handleRemoveMember(member)}
                             >
                               <Icon name="delete-forever" size={14} color="#fff" />
-                              <Text style={styles.actionButtonText}>Xóa</Text>
+                              <Text style={styles.actionButtonText}>{t('common.remove')}</Text>
                             </TouchableOpacity>
                           </View>
                         )}
@@ -690,7 +702,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
               ) : (
                 <View style={styles.emptyStateContainer}>
                   <Icon name="people-outline" size={64} color="#CCCCCC" />
-                  <Text style={styles.emptyStateText}>Không có thành viên nào</Text>
+                  <Text style={styles.emptyStateText}>{t('group.memberManagement.noMembersFound')}</Text>
                 </View>
               )}
             </View>
@@ -700,7 +712,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
               style={styles.modalFooterButton}
               onPress={() => setShowMemberModal(false)}
             >
-              <Text style={styles.modalFooterButtonText}>Đóng</Text>
+              <Text style={styles.modalFooterButtonText}>{t('group.memberManagement.close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -726,7 +738,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
         <View style={styles.managementCard}>
           <TouchableOpacity style={styles.managementItem} onPress={handleInviteUsers}>
             <Icon name="mail" size={24} color="#4A90E2" />
-            <Text style={styles.managementText}>Invite Users with email/sms</Text>
+            <Text style={styles.managementText}>{t('group.memberManagement.inviteUsers')}</Text>
             <Icon name="chevron-right" size={24} color="#CCCCCC" />
           </TouchableOpacity>
           
@@ -734,7 +746,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
           
           <TouchableOpacity style={styles.managementItem} onPress={handleManageMembers}>
             <Icon name="people" size={24} color="#4A90E2" />
-            <Text style={styles.managementText}>Manage Members</Text>
+            <Text style={styles.managementText}>{t('group.memberManagement.manageMembers')}</Text>
             <Icon name="chevron-right" size={24} color="#CCCCCC" />
           </TouchableOpacity>
           
@@ -742,7 +754,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
           
           <TouchableOpacity style={styles.managementItem} onPress={handleApproveFundRequests}>
             <Icon name="approval" size={24} color="#4A90E2" />
-            <Text style={styles.managementText}>Approve Fund Join Requests</Text>
+            <Text style={styles.managementText}>{t('group.memberManagement.approveFundRequests')}</Text>
             <Icon name="chevron-right" size={24} color="#CCCCCC" />
           </TouchableOpacity>
         </View>
@@ -750,11 +762,11 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
         {/* Group Code Section */}
         <View style={styles.groupCodeCard}>
           <TouchableOpacity style={styles.shareButton}>
-            <Text style={styles.shareButtonText}>Invite via Code</Text>
+            <Text style={styles.shareButtonText}>{t('group.memberManagement.inviteViaCode')}</Text>
           </TouchableOpacity>
           
           <View style={styles.codeSection}>
-            <Text style={styles.codeLabel}>This is a private fund, only those you approve can join Change</Text>
+            <Text style={styles.codeLabel}>{t('group.memberManagement.privateGroup')}</Text>
             <View style={styles.codeRow}>
               <Text style={styles.codeText}>{groupCode}</Text>
               <TouchableOpacity onPress={handleCopyCode} style={styles.copyButton}>
@@ -768,7 +780,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
         <View style={styles.membersCard}>
           <View style={styles.membersHeader}>
             <Text style={styles.membersTitle}>
-              Listmember ( {memberData?.total_members_count || 0} )
+              {t('group.memberManagement.listMembers')} ( {memberData?.total_members_count || 0} )
             </Text>
             <TouchableOpacity onPress={handleManageMembers}>
               <Icon name="chevron-right" size={24} color="#CCCCCC" />
@@ -788,7 +800,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
               style={styles.viewAllButton}
               onPress={() => setShowAllMembers(true)}
             >
-              <Text style={styles.viewAllText}>View all members</Text>
+              <Text style={styles.viewAllText}>{t('group.memberManagement.viewAllMembers')}</Text>
               <Icon name="expand-more" size={20} color="#4A90E2" />
             </TouchableOpacity>
           )}
@@ -798,7 +810,7 @@ const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupN
               style={styles.viewAllButton}
               onPress={() => setShowAllMembers(false)}
             >
-              <Text style={styles.viewAllText}>Thu gọn</Text>
+              <Text style={styles.viewAllText}>{t('group.memberManagement.collapse')}</Text>
               <Icon name="expand-less" size={20} color="#4A90E2" />
             </TouchableOpacity>
           )}

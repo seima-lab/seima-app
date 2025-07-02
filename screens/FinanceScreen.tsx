@@ -2,16 +2,16 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, G, Svg } from 'react-native-svg';
@@ -597,7 +597,7 @@ const FinanceScreen = React.memo(() => {
             >
               <Icon name="calendar-month" size={24} color="white" />
             </TouchableOpacity>
-            <Text style={styles.buttonTitle}>Lịch</Text>
+            <Text style={styles.buttonTitle}>{t('navigation.calendar')}</Text>
           </View>
           <View style={styles.actionButtonWrapper}>
             <TouchableOpacity 
@@ -606,7 +606,7 @@ const FinanceScreen = React.memo(() => {
             >
               <Icon2 name="robot" size={24} color="white" />
             </TouchableOpacity>
-            <Text style={styles.buttonTitle}>Chat AI</Text>
+            <Text style={styles.buttonTitle}>{t('navigation.chatAI')}</Text>
           </View>
           <View style={styles.actionButtonWrapper}>
             <TouchableOpacity 
@@ -615,7 +615,7 @@ const FinanceScreen = React.memo(() => {
             >
               <Icon name="group" size={24} color="white" />
             </TouchableOpacity>
-            <Text style={styles.buttonTitle}>Nhóm</Text>
+            <Text style={styles.buttonTitle}>{t('navigation.groups')}</Text>
           </View>
           <View style={styles.actionButtonWrapper}>
             <TouchableOpacity 
@@ -624,7 +624,7 @@ const FinanceScreen = React.memo(() => {
             >
               <Icon2 name="bullseye" size={24} color="white" />
             </TouchableOpacity>
-            <Text style={styles.buttonTitle}>Ngân sách</Text>
+            <Text style={styles.buttonTitle}>{t('navigation.budget')}</Text>
           </View>
         </View>
       </ScrollView>

@@ -110,7 +110,7 @@ const DetailedPieChart: React.FC<DetailedPieChartProps> = ({ data, categoryType 
 const ReportDetailScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<ReportDetailScreenRouteProp>();
-  const { t } = useTranslation('vi');
+  const { t } = useTranslation();
 
   const { title, categoryType, data, totalAmount } = route.params;
 
@@ -151,17 +151,17 @@ const ReportDetailScreen = () => {
         
         <View style={styles.summarySection}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Tổng cộng</Text>
+            <Text style={styles.summaryLabel}>{t('reports.total')}</Text>
             <Text style={styles.summaryAmount}>{totalAmount.toLocaleString('vi-VN')} đ</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Trung bình hàng ngày</Text>
+            <Text style={styles.summaryLabel}>{t('reports.dailyAverage')}</Text>
             <Text style={styles.summaryAmount}>{Math.round(dailyAverage).toLocaleString('vi-VN')} đ</Text>
           </View>
         </View>
 
         <View style={styles.listSection}>
-          <Text style={styles.listHeader}>Hạng mục</Text>
+          <Text style={styles.listHeader}>{t('reports.categories')}</Text>
           {chartData.map((item, index) => (
             <View key={index} style={styles.listItem}>
               <View style={[styles.itemIconContainer, { backgroundColor: `${item.color}20` }]}>
