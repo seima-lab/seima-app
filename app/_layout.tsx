@@ -1,5 +1,7 @@
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
+
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, LogBox, View } from 'react-native';
@@ -8,6 +10,7 @@ import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
+import { navigationRef } from '../navigation/NavigationService';
 import AddBudgetCategoryScreen from '../screens/AddBudgetCategoryScreen';
 import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
@@ -24,6 +27,7 @@ import FinanceScreen from '../screens/FinanceScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import GroupDetailTabScreen from '../screens/GroupDetailTabScreen';
 import GroupManagementScreen from '../screens/GroupManagementScreen';
+import GroupMembersScreenContainer from '../screens/GroupMembersScreen';
 import GroupTransactionListScreen from '../screens/GroupTransactionListScreen';
 import InviteUsersScreen from '../screens/InviteUsersScreen';
 import MainTabScreen from '../screens/MainTabScreen';
@@ -37,6 +41,7 @@ import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import LoginScreen from '../screens/login';
 import RegisterScreen from '../screens/register';
 import UpdateProfileScreen from '../screens/update-profile';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -124,6 +129,7 @@ function AuthNavigator() {
       <Stack.Screen name="AddWalletScreen" component={AddWalletScreen} />
       <Stack.Screen name="InviteUsers" component={InviteUsersScreen} />
       <Stack.Screen name="ApproveMembers" component={ApproveMembersScreen} />
+      <Stack.Screen name="GroupMembers" component={GroupMembersScreenContainer} />
       <Stack.Screen name="ReportDetailScreen" component={ReportDetailScreen} />
     </Stack.Navigator>
   );
@@ -140,7 +146,11 @@ function AppNavigator() {
     );
   }
 
-  return <AuthNavigator />;
+  return (
+    <NavigationContainer ref={navigationRef}>
+      <AuthNavigator />
+    </NavigationContainer>
+  );
 }
 
 export default function RootLayout() {

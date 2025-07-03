@@ -1,4 +1,4 @@
-import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -1352,4 +1352,12 @@ const styles = StyleSheet.create({
   },
 });
 
-export default GroupMembersScreen; 
+// Main component that works with React Navigation
+const GroupMembersScreenContainer: React.FC = () => {
+  const route = useRoute<RouteProp<RootStackParamList, 'GroupMembers'>>();
+  const { groupId, groupName } = route.params;
+  
+  return <GroupMembersScreen groupId={groupId} groupName={groupName} />;
+};
+
+export default GroupMembersScreenContainer; 

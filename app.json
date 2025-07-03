@@ -42,7 +42,6 @@
           "iosUrlScheme": "com.googleusercontent.apps._some_id_here_"
         }
       ],
-      "expo-router",
       [
         "expo-splash-screen",
         {
@@ -69,9 +68,6 @@
       ],
       "expo-web-browser"
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "eas": {
         "projectId": "96f3d92a-164a-49a3-bdb8-dbd35d543928"
