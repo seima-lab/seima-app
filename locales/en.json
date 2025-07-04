@@ -311,7 +311,38 @@
     "okay": "Okay",
     "retry": "Try Again",
     "optional": "optional",
-    "close": "Close"
+    "close": "Close",
+    "pleaseLogin": "Please login to continue",
+    "failedToLoadData": "Failed to load data. Please try again.",
+    "failedToSaveTransaction": "Failed to save transaction. Please try again.",
+    "transactionUpdated": "Transaction updated successfully!",
+    "transactionSaved": "Transaction saved successfully!",
+    "pleaseEnterAmount": "Please enter an amount",
+    "pleaseEnterValidAmount": "Please enter a valid amount",
+    "amountExceed15Digits": "Amount cannot exceed 15 digits",
+    "amountTooLarge": "Amount is too large",
+    "noteExceed500Chars": "Note cannot exceed 500 characters",
+    "noteInvalidChars": "Note contains invalid characters",
+    "pleaseSelectCategory": "Please select a category",
+    "pleaseSelectWallet": "Please select a wallet",
+    "failedToTakePhoto": "Failed to take photo. Please try again.",
+    "failedToPickImage": "Failed to pick image. Please try again.",
+    "scanningInvoice": "Scanning invoice...",
+    "extractingText": "Extracting text from your receipt",
+    "failedToExtractText": "Failed to extract text from invoice",
+    "enterNoteOptional": "Enter note (optional)",
+    "selectWallet": "Select Wallet",
+    "takePhoto": "Take Photo",
+    "photoLibrary": "Photo Library",
+    "photoLibraryWithCrop": "Photo Library (with Crop)",
+    "noWallets": "No wallets available",
+    "noWalletsMessage": "You don't have any wallets yet. Would you like to create one?",
+    "no": "No",
+    "yes": "Yes",
+    "editExpense": "Edit Expense",
+    "editIncome": "Edit Income",
+    "addExpense": "Add Expense",
+    "addIncome": "Add Income"
   },
 
   "changePasswordBtn": "Change Password",
@@ -763,6 +794,8 @@
       "enterBankName": "Enter bank name",
       "enterEWalletName": "Enter e-wallet name",
       "enterDescription": "Enter description"
-    }
+    },
+    "update": "Update Wallet",
+    "save": "Save Wallet"
   }
 } 

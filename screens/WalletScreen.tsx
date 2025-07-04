@@ -2,18 +2,19 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Modal,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -21,7 +22,52 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigationService } from '../navigation/NavigationService';
 import { WalletResponse, walletService } from '../services/walletService';
 
-const WalletScreen = () => {
+// Enhanced responsive utilities for all screen sizes
+const { width, height } = Dimensions.get('window');
+
+// Responsive utilities - optimized for all screen sizes
+const responsiveUtils = {
+  isSmallScreen: width < 375 || height < 667,
+  isMediumScreen: width >= 375 && width < 414,
+  isLargeScreen: width >= 414,
+  screenWidth: width,
+  screenHeight: height,
+  
+  // Responsive padding/margin
+  rp: (size: number) => {
+    const scale = Math.min(width / 375, height / 667);
+    const minSize = size * 0.7;
+    const maxSize = size * 1.3;
+    const scaledSize = size * scale;
+    return Math.max(Math.min(scaledSize, maxSize), minSize);
+  },
+  
+  // Responsive font size
+  rf: (fontSize: number) => {
+    const scale = Math.min(width / 375, height / 667);
+    const minFontScale = 0.8;
+    const maxFontScale = 1.2;
+    const fontScale = Math.min(Math.max(scale, minFontScale), maxFontScale);
+    return fontSize * fontScale;
+  },
+  
+  // Width percentage
+  wp: (percentage: number) => (width * percentage) / 100,
+  
+  // Height percentage
+  hp: (percentage: number) => (height * percentage) / 100,
+  
+  // Responsive border radius
+  rb: (size: number) => {
+    const scale = Math.min(width / 375, height / 667);
+    return Math.max(size * scale, size * 0.8);
+  }
+};
+
+// Extract utilities for easier use
+const { isSmallScreen, isMediumScreen, isLargeScreen, rp, rf, wp, hp, rb } = responsiveUtils;
+
+const WalletScreen = ({ footerHeight = 0 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [menuVisible, setMenuVisible] = useState<string | null>(null);
@@ -29,7 +75,7 @@ const WalletScreen = () => {
   const [deleteWalletInfo, setDeleteWalletInfo] = useState<{id: number, name: string} | null>(null);
   const navigation = useNavigationService();
   const isFirstRender = useRef(true);
-  const shouldAutoRefresh = useRef(false); // Flag to control when auto-refresh should run
+  const shouldAutoRefresh = useRef(false);
 
   // Wallet data state
   const [wallets, setWallets] = useState<WalletResponse[]>([]);
@@ -37,42 +83,40 @@ const WalletScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load wallets from API
+  const loadWallets = useCallback(async (showRefreshing = false) => {
+    try {
+      if (showRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
 
-
-     // Load wallets from API
-   const loadWallets = useCallback(async (showRefreshing = false) => {
-     try {
-       if (showRefreshing) {
-         setRefreshing(true);
-       } else {
-         setLoading(true);
-       }
-       setError(null);
-
-       console.log('🔄 Loading wallets...');
-       const walletsData = await walletService.getAllWallets();
-       console.log('✅ Wallets loaded:', walletsData);
-       console.log('📊 Wallets count:', walletsData.length);
-       console.log('📋 Wallets data structure:', JSON.stringify(walletsData, null, 2));
-       
-       setWallets(walletsData);
-     } catch (err: any) {
-       console.error('❌ Failed to load wallets:', err);
-       setError(err.message || 'Failed to load wallets');
-       
-       Alert.alert(
-         t('common.error'),
-         'Failed to load wallets. Please check your connection and try again.',
-         [
-           { text: 'Retry', onPress: () => loadWallets() },
-           { text: 'Cancel' }
-         ]
-       );
-     } finally {
-       setLoading(false);
-       setRefreshing(false);
-     }
-   }, [t]);
+      console.log('🔄 Loading wallets...');
+      const walletsData = await walletService.getAllWallets();
+      console.log('✅ Wallets loaded:', walletsData);
+      console.log('📊 Wallets count:', walletsData.length);
+      console.log('📋 Wallets data structure:', JSON.stringify(walletsData, null, 2));
+      
+      setWallets(walletsData);
+    } catch (err: any) {
+      console.error('❌ Failed to load wallets:', err);
+      setError(err.message || 'Failed to load wallets');
+      
+      Alert.alert(
+        t('common.error'),
+        'Failed to load wallets. Please check your connection and try again.',
+        [
+          { text: 'Retry', onPress: () => loadWallets() },
+          { text: 'Cancel' }
+        ]
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [t]);
 
   // Load wallets on component mount
   useEffect(() => {
@@ -82,18 +126,15 @@ const WalletScreen = () => {
   // Check for refresh flag when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      // Skip first render
       if (isFirstRender.current) {
         isFirstRender.current = false;
         return;
       }
 
-      // Check if service is marked for refresh
       if (walletService.shouldRefresh()) {
         console.log('🔄 Refresh flag detected - reloading wallets...');
         walletService.clearRefreshFlag();
         
-        // Small delay to avoid conflicts
         setTimeout(() => {
           if (!loading && !refreshing) {
             loadWallets(false);
@@ -103,21 +144,19 @@ const WalletScreen = () => {
     }, [loading, refreshing, loadWallets])
   );
 
+  // Calculate total balance (exclude wallets marked as exclude_from_total)
+  const calculateTotalBalance = useCallback(() => {
+    return wallets
+      .filter(wallet => (wallet.is_active !== false) && !wallet.exclude_from_total && !wallet.is_delete)
+      .reduce((total, wallet) => total + wallet.current_balance, 0);
+  }, [wallets]);
 
-
-     // Calculate total balance (exclude wallets marked as exclude_from_total)
-   const calculateTotalBalance = useCallback(() => {
-     return wallets
-       .filter(wallet => (wallet.is_active !== false) && !wallet.exclude_from_total && !wallet.is_delete)
-       .reduce((total, wallet) => total + wallet.current_balance, 0);
-   }, [wallets]);
-
-   // Calculate total assets (all active wallets)
-   const calculateTotalAssets = useCallback(() => {
-     return wallets
-       .filter(wallet => wallet.is_active !== false && !wallet.is_delete)
-       .reduce((total, wallet) => total + wallet.current_balance, 0);
-   }, [wallets]);
+  // Calculate total assets (all active wallets)
+  const calculateTotalAssets = useCallback(() => {
+    return wallets
+      .filter(wallet => wallet.is_active !== false && !wallet.is_delete)
+      .reduce((total, wallet) => total + wallet.current_balance, 0);
+  }, [wallets]);
 
   // Handle refresh
   const onRefresh = useCallback(() => {
@@ -137,12 +176,10 @@ const WalletScreen = () => {
     console.log('Edit wallet:', walletId);
     setMenuVisible(null);
     
-    // Find wallet data
     const wallet = wallets.find(w => w.id === walletId);
     if (!wallet) return;
 
-    // Map wallet_type_name to the format expected by AddWalletScreen
-    let mappedType = t('wallet.walletTypes.cash'); // default
+    let mappedType = t('wallet.walletTypes.cash');
     if (wallet.wallet_type_name === "Tài khoản Ngân hàng") {
       mappedType = t('wallet.walletTypes.bank');
     }
@@ -151,12 +188,12 @@ const WalletScreen = () => {
       balance: wallet.current_balance.toString(),
       name: wallet.wallet_name,
       type: mappedType,
-      bankName: wallet.bank_name || '', // Ensure bankName is passed correctly
+      bankName: wallet.bank_name || '',
       isDefault: wallet.is_default,
       excludeFromTotal: wallet.exclude_from_total || false,
     };
     
-    console.log('📝 Edit wallet data:', walletData); // Debug log
+    console.log('📝 Edit wallet data:', walletData);
 
     navigation.navigate('AddWalletScreen', {
       editMode: true,
@@ -171,10 +208,8 @@ const WalletScreen = () => {
     const wallet = wallets.find(w => w.id === walletId);
     if (!wallet) return;
 
-    // Get active wallets (non-deleted)
     const activeWallets = wallets.filter(w => !w.is_delete && w.is_active !== false);
     
-    // Prevent deleting the last wallet
     if (activeWallets.length <= 1) {
       Alert.alert(
         t('common.error'),
@@ -184,7 +219,6 @@ const WalletScreen = () => {
       return;
     }
 
-    // Warn about deleting default wallet
     if (wallet.is_default) {
       Alert.alert(
         'Delete Default Wallet',
@@ -204,7 +238,6 @@ const WalletScreen = () => {
       return;
     }
 
-    // Normal delete confirmation
     setDeleteWalletInfo({ id: walletId, name: wallet.wallet_name });
     setDeleteAlertVisible(true);
   };
@@ -215,27 +248,21 @@ const WalletScreen = () => {
     try {
       console.log('🗑️ Deleting wallet:', deleteWalletInfo.id);
       
-      // Store wallet name for success message
       const deletedWalletName = deleteWalletInfo.name;
       
-      // Close modal and menu, then show loading
       setDeleteAlertVisible(false);
       setDeleteWalletInfo(null);
-      setMenuVisible(null); // Close any open menu
+      setMenuVisible(null);
       setLoading(true);
       
-      // Call DELETE API endpoint
       await walletService.deleteWallet(deleteWalletInfo.id);
       console.log('✅ Wallet deleted successfully via API');
       
-      // Optimistic update: immediately remove wallet from local state
       setWallets(prevWallets => prevWallets.filter(w => w.id !== deleteWalletInfo.id));
       
-      // Reload wallets after deletion to reflect changes and ensure data consistency
       await loadWallets(false);
       console.log('🔄 Wallets reloaded after deletion');
       
-      // Show success message after reload
       Alert.alert(
         t('common.success'),
         `Wallet "${deletedWalletName}" has been deleted successfully.`,
@@ -245,16 +272,13 @@ const WalletScreen = () => {
     } catch (error: any) {
       console.error('❌ Failed to delete wallet:', error);
       
-      // Hide loading
       setLoading(false);
       
-      // Show error message
       Alert.alert(
         t('common.error'),
         error.message || 'Failed to delete wallet. Please try again.',
         [
           { text: 'Retry', onPress: () => {
-            // Reopen delete confirmation for retry
             setDeleteWalletInfo({ id: deleteWalletInfo.id, name: deleteWalletInfo.name });
             setDeleteAlertVisible(true);
           }},
@@ -283,7 +307,7 @@ const WalletScreen = () => {
           style={styles.menuItem}
           onPress={() => handleEdit(walletId)}
         >
-          <Icon name="edit" size={18} color="#333" />
+          <Icon name="edit" size={rf(18)} color="#333" />
           <Text style={styles.menuText}>{t('edit')}</Text>
         </TouchableOpacity>
         <View style={styles.menuDivider} />
@@ -291,7 +315,7 @@ const WalletScreen = () => {
           style={styles.menuItem}
           onPress={() => handleDelete(walletId)}
         >
-          <Icon name="delete" size={18} color="#ff4757" />
+          <Icon name="delete" size={rf(18)} color="#ff4757" />
           <Text style={[styles.menuText, { color: '#ff4757' }]}>{t('delete')}</Text>
         </TouchableOpacity>
       </View>
@@ -299,23 +323,20 @@ const WalletScreen = () => {
   };
 
   const getWalletIcon = (walletTypeName?: string) => {
-    // wallet_type_name: "Tài khoản Ngân hàng" = Bank, "Tiền mặt" = Cash
     if (walletTypeName === "Tài khoản Ngân hàng") {
-      return <Icon2 name="university" size={20} color="#fff" />;
+      return <Icon2 name="university" size={rf(20)} color="#fff" />;
     }
-    return <Icon2 name="wallet" size={20} color="#fff" />;
+    return <Icon2 name="wallet" size={rf(20)} color="#fff" />;
   };
 
   const getWalletIconStyle = (walletTypeName?: string) => {
-    // wallet_type_name: "Tài khoản Ngân hàng" = Bank, "Tiền mặt" = Cash
     if (walletTypeName === "Tài khoản Ngân hàng") {
-      return [styles.accountIcon, { backgroundColor: '#ff6b6b' }]; // Red for Bank
+      return [styles.accountIcon, { backgroundColor: '#ff6b6b' }];
     }
-    return [styles.accountIcon, styles.walletIcon]; // Default color for Cash
+    return [styles.accountIcon, styles.walletIcon];
   };
 
   const renderWalletItem = (wallet: WalletResponse) => {
-    // Determine balance color: green for positive, black for zero/negative
     const balanceColor = wallet.current_balance > 0 ? '#22c55e' : '#333';
     
     return (
@@ -341,7 +362,7 @@ const WalletScreen = () => {
             style={styles.moreButton}
             onPress={() => handleMenuPress(wallet.id)}
           >
-            <Icon name="more-vert" size={24} color="#666" />
+            <Icon name="more-vert" size={rf(24)} color="#666" />
           </TouchableOpacity>
           {renderMenu(wallet.id)}
         </View>
@@ -359,7 +380,7 @@ const WalletScreen = () => {
       <View style={styles.alertOverlay}>
         <View style={styles.alertContainer}>
           <View style={styles.alertIconContainer}>
-            <Icon name="warning" size={48} color="#ff4757" />
+            <Icon name="warning" size={rf(48)} color="#ff4757" />
           </View>
           <Text style={styles.alertTitle}>{t('wallet.alertTitle')}</Text>
           <Text style={styles.alertMessage}>
@@ -391,113 +412,161 @@ const WalletScreen = () => {
   // Calculate balances
   const totalBalance = calculateTotalBalance();
   const totalAssets = calculateTotalAssets();
-  const totalDebts = 0; // This could be calculated if you have debt wallets
+  const totalDebts = 0;
 
-     // Filter wallets that are included in total
-   let includedWallets = wallets.filter(wallet => 
-     (wallet.is_active !== false) && !wallet.exclude_from_total && !wallet.is_delete
-   );
+  let includedWallets = wallets.filter(wallet => 
+    (wallet.is_active !== false) && !wallet.exclude_from_total && !wallet.is_delete
+  );
 
-   // If no wallets are included (due to missing is_active field), show all wallets that are not deleted
-   if (includedWallets.length === 0 && wallets.length > 0) {
-     includedWallets = wallets.filter(wallet => !wallet.exclude_from_total && !wallet.is_delete);
-   }
+  if (includedWallets.length === 0 && wallets.length > 0) {
+    includedWallets = wallets.filter(wallet => !wallet.exclude_from_total && !wallet.is_delete);
+  }
 
-   console.log('🔍 Total wallets:', wallets.length);
-   console.log('📱 Included wallets:', includedWallets.length);
-   console.log('💼 Wallets details:', wallets.map(w => ({
-     id: w.id,
-     name: w.wallet_name,
-     is_active: w.is_active,
-     is_delete: w.is_delete,
-     exclude_from_total: w.exclude_from_total,
-     balance: w.current_balance
-   })));
+  console.log('🔍 Total wallets:', wallets.length);
+  console.log('📱 Included wallets:', includedWallets.length);
+  console.log('💼 Wallets details:', wallets.map(w => ({
+    id: w.id,
+    name: w.wallet_name,
+    is_active: w.is_active,
+    is_delete: w.is_delete,
+    exclude_from_total: w.exclude_from_total,
+    balance: w.current_balance
+  })));
 
   return (
-    <TouchableWithoutFeedback onPress={handleCloseMenu}>
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
-          <ScrollView 
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={['#1e90ff']}
-                tintColor="#1e90ff"
-              />
-            }
-          >
+    <View style={styles.container}>
+      <TouchableWithoutFeedback onPress={handleCloseMenu}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#1e90ff']}
+              tintColor="#1e90ff"
+            />
+          }
+          contentContainerStyle={{
+            paddingBottom: footerHeight + insets.bottom,
+          }}
+          keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={16}
+          bounces={true}
+          overScrollMode="always"
+        >
+          <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+          <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}> 
             {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>{t('wallet.title')}</Text>
+            <View style={[styles.header, { 
+              paddingHorizontal: rp(20), 
+              paddingVertical: rp(16),
+              paddingTop: rp(20)
+            }]}> 
+              <Text style={[styles.headerTitle, { fontSize: rf(20) }]}>{t('wallet.title')}</Text>
               <TouchableOpacity onPress={() => loadWallets(true)} disabled={loading || refreshing}>
-                <Icon name="refresh" size={24} color={loading || refreshing ? "#ccc" : "#333"} />
+                <Icon name="refresh" size={rf(24)} color={loading || refreshing ? "#ccc" : "#333"} />
               </TouchableOpacity>
             </View>
 
             {/* Balance Card */}
-            <View style={styles.balanceCard}>
-              <Text style={styles.balanceLabel}>{t('wallet.currentBalance')}</Text>
-              <Text style={styles.balanceAmount}>
-                {totalBalance.toLocaleString('vi-VN')} {t('currency')}
+            <View style={[styles.balanceCard, { 
+              margin: rp(16), 
+              padding: rp(24), 
+              borderRadius: rb(16),
+              marginHorizontal: rp(16)
+            }]}> 
+              <Text style={[styles.balanceLabel, { fontSize: rf(16), marginBottom: rp(8) }]}>
+                {t('wallet.currentBalance')}
               </Text>
-              
+              <Text style={[styles.balanceAmount, { fontSize: rf(32), marginBottom: rp(24) }]}> 
+                {totalBalance.toLocaleString('vi-VN')} {t('currency')} 
+              </Text>
               <View style={styles.balanceBreakdown}>
                 <View style={styles.balanceItem}>
-                  <Text style={styles.balanceSubLabel}>{t('wallet.totalAssets')}</Text>
-                  <Text style={styles.balanceSubAmount}>
-                    {totalAssets.toLocaleString('vi-VN')} {t('currency')}
+                  <Text style={[styles.balanceSubLabel, { fontSize: rf(14), marginBottom: rp(4) }]}>
+                    {t('wallet.totalAssets')}
+                  </Text>
+                  <Text style={[styles.balanceSubAmount, { fontSize: rf(18) }]}> 
+                    {totalAssets.toLocaleString('vi-VN')} {t('currency')} 
                   </Text>
                 </View>
                 <View style={styles.balanceItem}>
-                  <Text style={styles.balanceSubLabel}>{t('wallet.totalDebts')}</Text>
-                  <Text style={styles.balanceSubAmount}>
-                    {totalDebts.toLocaleString('vi-VN')} {t('currency')}
+                  <Text style={[styles.balanceSubLabel, { fontSize: rf(14), marginBottom: rp(4) }]}>
+                    {t('wallet.totalDebts')}
+                  </Text>
+                  <Text style={[styles.balanceSubAmount, { fontSize: rf(18) }]}> 
+                    {totalDebts.toLocaleString('vi-VN')} {t('currency')} 
                   </Text>
                 </View>
               </View>
             </View>
 
             {/* Accounts Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t('wallet.includeInTotal')}</Text>
-              
+            <View style={[styles.section, { 
+              marginHorizontal: rp(16), 
+              marginBottom: rp(16), 
+              borderRadius: rb(12), 
+              padding: rp(16) 
+            }]}> 
+              <Text style={[styles.sectionTitle, { fontSize: rf(18), marginBottom: rp(16) }]}>
+                {t('wallet.includeInTotal')}
+              </Text>
               {includedWallets.length > 0 ? (
                 includedWallets.map(renderWalletItem)
               ) : (
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No wallets found</Text>
-                  <Text style={styles.emptySubText}>Add your first wallet to get started</Text>
+                  <Text style={[styles.emptyText, { fontSize: rf(16), marginBottom: rp(8) }]}>
+                    No wallets found
+                  </Text>
+                  <Text style={[styles.emptySubText, { fontSize: rf(14) }]}>
+                    Add your first wallet to get started
+                  </Text>
                 </View>
               )}
             </View>
 
-                         {/* Excluded Wallets Section */}
-             {wallets.some(w => w.exclude_from_total && (w.is_active !== false) && !w.is_delete) && (
-               <View style={styles.section}>
-                 <Text style={styles.sectionTitle}>Excluded from Total</Text>
-                 {wallets
-                   .filter(w => w.exclude_from_total && (w.is_active !== false) && !w.is_delete)
-                   .map(renderWalletItem)
-                 }
-               </View>
-             )}
+            {/* Excluded Wallets Section */}
+            {wallets.some(w => w.exclude_from_total && (w.is_active !== false) && !w.is_delete) && (
+              <View style={[styles.section, { 
+                marginHorizontal: rp(16), 
+                marginBottom: rp(16), 
+                borderRadius: rb(12), 
+                padding: rp(16) 
+              }]}> 
+                <Text style={[styles.sectionTitle, { fontSize: rf(18), marginBottom: rp(16) }]}>
+                  Excluded from Total
+                </Text>
+                {wallets
+                  .filter(w => w.exclude_from_total && (w.is_active !== false) && !w.is_delete)
+                  .map(renderWalletItem)
+                }
+              </View>
+            )}
 
             {/* Action Buttons */}
-            <View style={styles.actionsContainer}>
-              <TouchableOpacity style={styles.actionButton} onPress={handleAddWallet}>
-                <Icon name="add" size={24} color="#1e90ff" />
-                <Text style={styles.actionButtonText}>{t('wallet.addWallet')}</Text>
+            <View style={[styles.actionsContainer, { 
+              paddingHorizontal: rp(16), 
+              marginBottom: rp(24) 
+            }]}> 
+              <TouchableOpacity 
+                style={[styles.actionButton, { 
+                  paddingHorizontal: rp(24), 
+                  paddingVertical: rp(16), 
+                  borderRadius: rb(12) 
+                }]} 
+                onPress={handleAddWallet}
+              >
+                <Icon name="add" size={rf(24)} color="#1e90ff" />
+                <Text style={[styles.actionButtonText, { fontSize: rf(16), marginLeft: rp(8) }]}>
+                  {t('wallet.addWallet')}
+                </Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
-        </SafeAreaView>
-        {renderCustomAlert()}
-      </View>
-    </TouchableWithoutFeedback>
+          </SafeAreaView>
+          {renderCustomAlert()}
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </View>
   );
 };
 
@@ -513,20 +582,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
     backgroundColor: '#fff',
   },
   headerTitle: {
-    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
   },
   balanceCard: {
     backgroundColor: '#1e90ff',
-    margin: 16,
-    padding: 24,
-    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -538,15 +601,11 @@ const styles = StyleSheet.create({
   },
   balanceLabel: {
     color: '#fff',
-    fontSize: 16,
-    marginBottom: 8,
     opacity: 0.9,
   },
   balanceAmount: {
     color: '#fff',
-    fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 24,
   },
   balanceBreakdown: {
     flexDirection: 'row',
@@ -557,27 +616,18 @@ const styles = StyleSheet.create({
   },
   balanceSubLabel: {
     color: '#fff',
-    fontSize: 14,
-    marginBottom: 4,
     opacity: 0.8,
   },
   balanceSubAmount: {
     color: '#fff',
-    fontSize: 18,
     fontWeight: '600',
   },
   section: {
     backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 12,
-    padding: 16,
   },
   sectionTitle: {
-    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 16,
   },
   accountItem: {
     flexDirection: 'row',
@@ -607,7 +657,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   accountName: {
-    fontSize: 16,
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
@@ -630,7 +679,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   accountBalance: {
-    fontSize: 16,
     fontWeight: '500',
   },
   moreButtonContainer: {
@@ -642,16 +690,11 @@ const styles = StyleSheet.create({
   actionsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 24,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -663,9 +706,7 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: '#1e90ff',
-    fontSize: 16,
     fontWeight: '600',
-    marginLeft: 8,
   },
   menuContainer: {
     position: 'absolute',
@@ -691,7 +732,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   menuText: {
-    fontSize: 14,
     fontWeight: '500',
     marginLeft: 8,
     color: '#333',
@@ -728,7 +768,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   alertTitle: {
-    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 16,
@@ -736,12 +775,10 @@ const styles = StyleSheet.create({
   },
   alertMessage: {
     color: '#666',
-    fontSize: 15,
     lineHeight: 22,
     marginBottom: 16,
     textAlign: 'center',
   },
-
   alertButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -761,7 +798,6 @@ const styles = StyleSheet.create({
   },
   alertCancelText: {
     color: '#495057',
-    fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -784,7 +820,6 @@ const styles = StyleSheet.create({
   },
   alertDeleteText: {
     color: '#fff',
-    fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -794,7 +829,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: '#1e90ff',
-    fontSize: 16,
     fontWeight: 'bold',
     marginTop: 16,
   },
@@ -805,13 +839,11 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: '#333',
-    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   emptySubText: {
     color: '#666',
-    fontSize: 14,
   },
 });
 

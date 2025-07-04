@@ -56,7 +56,7 @@ export default function AddExpenseScreen() {
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   
   // Form data - pre-fill if in edit mode
-  const [amount, setAmount] = useState(isEditMode && transactionData?.amount ? transactionData.amount : '');
+  const [amount, setAmount] = useState(isEditMode && transactionData?.amount ? transactionData.amount.toLocaleString('vi-VN') : '');
   const [note, setNote] = useState(isEditMode && transactionData?.note ? transactionData.note : '');
   const [date, setDate] = useState(() => {
     if (isEditMode && transactionData?.date) {
@@ -284,11 +284,11 @@ export default function AddExpenseScreen() {
       if (error.message?.includes('Authentication failed') || 
           error.message?.includes('Please login again') ||
           error.message?.includes('User not authenticated')) {
-        Alert.alert('Authentication Required', 'Please login first.', [
-          { text: 'OK', onPress: () => navigation.goBack() }
+        Alert.alert(t('common.error'), t('common.pleaseLogin'), [
+          { text: t('common.ok'), onPress: () => navigation.goBack() }
         ]);
       } else {
-        Alert.alert('Error', 'Failed to load data. Please try again.');
+        Alert.alert(t('common.error'), t('common.failedToLoadData'));
       }
     } finally {
       setIsLoading(false);
@@ -650,7 +650,7 @@ export default function AddExpenseScreen() {
       }
     } catch (error) {
       console.error('❌ Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo. Please try again.');
+      Alert.alert(t('common.error'), t('common.failedToTakePhoto'));
     }
   };
 
@@ -693,7 +693,7 @@ export default function AddExpenseScreen() {
       }
     } catch (error) {
       console.error('❌ Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      Alert.alert(t('common.error'), t('common.failedToPickImage'));
     }
   };
 
@@ -736,7 +736,7 @@ export default function AddExpenseScreen() {
       }
     } catch (error) {
       console.error('❌ Error picking image with crop:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      Alert.alert(t('common.error'), t('common.failedToPickImage'));
     }
   };
 
@@ -831,7 +831,7 @@ export default function AddExpenseScreen() {
         stack: error.stack,
         name: error.name
       });
-      setToastMessage('Failed to extract text from invoice');
+      setToastMessage(t('common.failedToExtractText'));
       setToastType('error');
       setShowToast(true);
     } finally {
@@ -857,7 +857,7 @@ export default function AddExpenseScreen() {
       
       console.log('✅ User ID for transaction:', userId);
 
-      const amountValue = parseFloat(amount);
+      const amountValue = getNumericAmount(amount);
       const categoryId = parseInt(selectedCategory);
 
       console.log('🔍 Form debug info:', {
@@ -922,7 +922,7 @@ export default function AddExpenseScreen() {
         // Trigger global refresh
         refreshTransactions();
         
-        Alert.alert('Success', 'Transaction updated successfully!', [
+        Alert.alert(t('common.success'), t('common.transactionUpdated'), [
           { 
             text: 'OK', 
             onPress: () => {
@@ -957,7 +957,7 @@ export default function AddExpenseScreen() {
         // Trigger global refresh
         refreshTransactions();
         
-        Alert.alert('Success', 'Transaction saved successfully!', [
+        Alert.alert(t('common.success'), t('common.transactionSaved'), [
           { 
             text: 'OK', 
             onPress: () => {
@@ -990,7 +990,7 @@ export default function AddExpenseScreen() {
       if (error.message?.includes('Authentication failed') || 
           error.message?.includes('Please login again') ||
           error.message?.includes('User not authenticated')) {
-        Alert.alert('Authentication Required', 'Please login first.', [
+        Alert.alert(t('common.error'), t('common.pleaseLogin'), [
           { 
             text: 'OK', 
             onPress: () => {
@@ -1014,7 +1014,7 @@ export default function AddExpenseScreen() {
           }
         ]);
       } else {
-        Alert.alert('Error', 'Failed to save transaction. Please try again.');
+        Alert.alert(t('common.error'), t('common.failedToSaveTransaction'));
       }
     } finally {
       setIsSaving(false);
@@ -1023,32 +1023,32 @@ export default function AddExpenseScreen() {
 
   const validateForm = () => {
     if (!amount.trim()) {
-      Alert.alert('Error', 'Please enter an amount');
+      Alert.alert(t('common.error'), t('common.pleaseEnterAmount'));
       return false;
     }
     
-    const amountValue = parseFloat(amount);
-    if (isNaN(amountValue) || amountValue <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+    const amountValue = getNumericAmount(amount);
+    if (amountValue <= 0) {
+      Alert.alert(t('common.error'), t('common.pleaseEnterValidAmount'));
       return false;
     }
     
-    // Check if amount exceeds 16 digits
-    const digitsOnly = amount.replace(/[^0-9]/g, '');
-    if (digitsOnly.length > 16) {
-      Alert.alert('Error', 'Amount cannot exceed 16 digits');
+    // Check if amount exceeds 15 digits
+    const digitsOnly = amount.replace(/[^\d]/g, '');
+    if (digitsOnly.length > 15) {
+      Alert.alert(t('common.error'), t('common.amountExceed15Digits'));
       return false;
     }
     
     // Check if amount is too large for JavaScript number precision
     if (amountValue > Number.MAX_SAFE_INTEGER) {
-      Alert.alert('Error', 'Amount is too large');
+      Alert.alert(t('common.error'), t('common.amountTooLarge'));
       return false;
     }
     
     // Validate note (optional but with constraints if provided)
     if (note.trim().length > 500) {
-      Alert.alert('Error', 'Note cannot exceed 500 characters');
+      Alert.alert(t('common.error'), t('common.noteExceed500Chars'));
       return false;
     }
     
@@ -1063,17 +1063,17 @@ export default function AddExpenseScreen() {
     ];
     
     if (suspiciousPatterns.some(pattern => pattern.test(note))) {
-      Alert.alert('Error', 'Note contains invalid characters');
+      Alert.alert(t('common.error'), t('common.noteInvalidChars'));
       return false;
     }
     
     if (!selectedCategory) {
-      Alert.alert('Error', 'Please select a category');
+      Alert.alert(t('common.error'), t('common.pleaseSelectCategory'));
       return false;
     }
     
     if (!selectedWallet) {
-      Alert.alert('Error', 'Please select a wallet');
+      Alert.alert(t('common.error'), t('common.pleaseSelectWallet'));
       return false;
     }
     
@@ -1133,10 +1133,10 @@ export default function AddExpenseScreen() {
 
   const getSelectedWalletName = () => {
     if (wallets.length === 0) {
-      return 'Tạo ví mới';
+      return t('wallet.addWallet');
     }
     const wallet = wallets.find(w => w.id === selectedWallet);
-    return wallet ? wallet.wallet_name : 'Select Wallet';
+    return wallet ? wallet.wallet_name : t('wallet.addWallet');
   };
 
   const handleWalletPickerPress = () => {
@@ -1154,61 +1154,30 @@ export default function AddExpenseScreen() {
     (navigation as any).navigate('AddWalletScreen');
   };
 
-  // Debug function to test permission status
-  const debugPermissionStatus = async () => {
-    try {
-      console.log('🔍 === DEBUG PERMISSION STATUS ===');
-      console.log('🕐 Current time:', new Date().toISOString());
-      
-      const cameraStatus = await ImagePicker.getCameraPermissionsAsync();
-      const libraryStatus = await ImagePicker.getMediaLibraryPermissionsAsync(false);
-      
-      console.log('📷 Camera Permission:', {
-        status: cameraStatus.status,
-        canAskAgain: cameraStatus.canAskAgain,
-        granted: cameraStatus.granted,
-        expires: cameraStatus.expires,
-        expiresDate: cameraStatus.expires && cameraStatus.expires !== 'never' ? new Date(cameraStatus.expires) : 'never'
-      });
-      
-      console.log('🖼️ Library Permission:', {
-        status: libraryStatus.status,
-        canAskAgain: libraryStatus.canAskAgain,
-        granted: libraryStatus.granted,
-        expires: libraryStatus.expires,
-        expiresDate: libraryStatus.expires && libraryStatus.expires !== 'never' ? new Date(libraryStatus.expires) : 'never'
-      });
-      
-      Alert.alert(
-        'Permission Debug',
-        `Camera: ${cameraStatus.status}\nLibrary: ${libraryStatus.status}\n\nWould you like to test permission request?`,
-        [
-          { text: 'Cancel' },
-          { 
-            text: 'Test Camera', 
-            onPress: async () => {
-              console.log('🧪 Testing camera permission request...');
-              const result = await ImagePicker.requestCameraPermissionsAsync();
-              console.log('🧪 Force camera request result:', result);
-              Alert.alert('Camera Test', `Result: ${result.status}`);
-            }
-          },
-          { 
-            text: 'Test Library', 
-            onPress: async () => {
-              console.log('🧪 Testing library permission request...');
-              const result = await ImagePicker.requestMediaLibraryPermissionsAsync(false);
-              console.log('🧪 Force library request result:', result);
-              Alert.alert('Library Test', `Result: ${result.status}`);
-            }
-          }
-        ]
-      );
-      
-    } catch (error) {
-      console.error('❌ Error checking permission status:', error);
+  // Hàm format số tiền với dấu phẩy
+  const formatAmountInput = (text: string): string => {
+    // Loại bỏ tất cả ký tự không phải số
+    const numericValue = text.replace(/[^\d]/g, '');
+    
+    if (numericValue === '') return '';
+    
+    // Giới hạn tối đa 15 chữ số
+    if (numericValue.length > 15) {
+      return '';
     }
+    
+    // Chuyển thành số và format với dấu phẩy
+    const number = parseInt(numericValue, 10);
+    return number.toLocaleString('vi-VN');
   };
+
+  // Hàm lấy giá trị số từ text đã format
+  const getNumericAmount = (formattedText: string): number => {
+    const numericValue = formattedText.replace(/[^\d]/g, '');
+    return numericValue ? parseInt(numericValue, 10) : 0;
+  };
+
+
 
   const renderCategoryItem = ({ item }: { item: LocalCategory }) => {
     const isSelected = selectedCategory === item.key;
@@ -1258,9 +1227,9 @@ export default function AddExpenseScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
         <ActivityIndicator size="large" color="#1e90ff" />
-          <Text style={styles.loadingText}>
-            {authLoading ? 'Checking authentication...' : 'Loading...'}
-          </Text>
+                      <Text style={styles.loadingText}>
+              {authLoading ? t('common.loading') : t('common.loading')}
+            </Text>
       </View>
       </SafeAreaView>
     );
@@ -1272,8 +1241,8 @@ export default function AddExpenseScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color="#1e90ff" />
-          <Text style={styles.loadingText}>Scanning invoice...</Text>
-          <Text style={styles.subLoadingText}>Extracting text from your receipt</Text>
+          <Text style={styles.loadingText}>{t('common.scanningInvoice')}</Text>
+          <Text style={styles.subLoadingText}>{t('common.extractingText')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -1291,7 +1260,7 @@ export default function AddExpenseScreen() {
           {isEditMode ? (
             <View style={styles.editHeaderContainer}>
               <Text style={styles.editHeaderTitle}>
-                {activeTab === 'expense' ? 'Edit Expense' : 'Edit Income'}
+                {activeTab === 'expense' ? t('common.editExpense') : t('common.editIncome')}
               </Text>
             </View>
           ) : (
@@ -1324,14 +1293,7 @@ export default function AddExpenseScreen() {
               </TouchableOpacity>
 
             {/* Debug Permission Button - Only show in development */}
-            {__DEV__ && (
-              <TouchableOpacity
-                style={[styles.cameraButton, { backgroundColor: '#ff9500' }]}
-                onPress={debugPermissionStatus}
-              >
-                <Icon name="bug" size={24} color="#fff" />
-              </TouchableOpacity>
-            )}
+       
           </View>
 
         {/* Group Context Indicator */}
@@ -1357,7 +1319,7 @@ export default function AddExpenseScreen() {
 
         {/* Wallet */}
           <View style={styles.row}>
-          <Text style={styles.label}>Wallet</Text>
+          <Text style={styles.label}>{t('wallet.title')}</Text>
               <TouchableOpacity 
             style={styles.input}
                 onPress={handleWalletPickerPress}
@@ -1371,33 +1333,21 @@ export default function AddExpenseScreen() {
 
           {/* Amount */}
           <View style={styles.row}>
-          <Text style={styles.label}>Amount</Text>
+          <Text style={styles.label}>{t('amount')}</Text>
             <View style={styles.amountContainer}>
               <TextInput
               style={styles.amountInput}
                 placeholder="0"
                 value={amount}
                 onChangeText={(text) => {
-                  // Remove any non-digit characters except decimal point
-                  const cleanText = text.replace(/[^0-9.]/g, '');
-                  
-                  // Ensure only one decimal point
-                  const parts = cleanText.split('.');
-                  let formattedText = parts[0];
-                  if (parts.length > 1) {
-                    formattedText += '.' + parts.slice(1).join('');
-                  }
-                  
-                  // Limit to 16 digits total (including decimal places)
-                  const digitsOnly = formattedText.replace(/\./g, '');
-                  if (digitsOnly.length <= 16) {
-                    setAmount(formattedText);
-                  }
+                  // Format with commas and limit to 15 digits
+                  const formattedText = formatAmountInput(text);
+                  setAmount(formattedText);
                 }}
                 keyboardType="numeric"
-                maxLength={18} // 16 digits + 1 decimal point + 1 extra buffer
+                maxLength={20} // Reduced for 15 digits with commas
               />
-            <Text style={styles.currency}>VND</Text>
+            <Text style={styles.currency}>{t('currency')}</Text>
             </View>
           </View>
 
@@ -1407,7 +1357,7 @@ export default function AddExpenseScreen() {
             <View style={styles.noteContainer}>
               <TextInput
                 style={styles.noteInput}
-                placeholder="Enter note (optional)"
+                placeholder={t('common.enterNoteOptional')}
                 value={note}
                 onChangeText={(text) => {
                   // Trim leading/trailing whitespace and limit length
@@ -1443,7 +1393,7 @@ export default function AddExpenseScreen() {
         )}
 
         {/* Categories */}
-        <Text style={styles.sectionTitle}>Category</Text>
+        <Text style={styles.sectionTitle}>{t('category')}</Text>
             <FlatList
           data={getCurrentCategories()}
               renderItem={renderCategoryItem}
@@ -1464,8 +1414,8 @@ export default function AddExpenseScreen() {
             ) : (
             <Text style={styles.saveButtonText}>
               {isEditMode 
-                ? (activeTab === 'expense' ? 'Update Expense' : 'Update Income')
-                : (activeTab === 'expense' ? 'Add Expense' : 'Add Income')
+                ? (activeTab === 'expense' ? t('common.editExpense') : t('common.editIncome'))
+                : (activeTab === 'expense' ? t('common.addExpense') : t('common.addIncome'))
               }
             </Text>
             )}
@@ -1479,11 +1429,11 @@ export default function AddExpenseScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.modalButton}>Cancel</Text>
+                  <Text style={styles.modalButton}>{t('cancel')}</Text>
                 </TouchableOpacity>
-                <Text style={styles.modalTitle}>Select Date</Text>
+                <Text style={styles.modalTitle}>{t('date')}</Text>
                 <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.modalButton}>Done</Text>
+                  <Text style={styles.modalButton}>{t('done')}</Text>
                 </TouchableOpacity>
               </View>
               <DateTimePicker
@@ -1507,7 +1457,7 @@ export default function AddExpenseScreen() {
             onPress={() => setShowWalletPicker(false)}
           >
             <View style={styles.walletPickerContainer}>
-              <Text style={styles.walletPickerTitle}>Select Wallet</Text>
+              <Text style={styles.walletPickerTitle}>{t('common.selectWallet')}</Text>
               {wallets.map((wallet) => (
                 <TouchableOpacity
                   key={wallet.id}
@@ -1527,7 +1477,7 @@ export default function AddExpenseScreen() {
                     {wallet.wallet_name}
                   </Text>
                   {wallet.is_default && (
-                    <Text style={styles.walletPickerDefault}>Default</Text>
+                    <Text style={styles.walletPickerDefault}>{t('wallet.defaultWallet')}</Text>
                   )}
                 </TouchableOpacity>
               ))}
@@ -1546,7 +1496,7 @@ export default function AddExpenseScreen() {
           >
             <View style={styles.imageOptionsContainer}>
               <Text style={styles.imageOptionsTitle}>
-                {activeTab === 'expense' ? 'Add Receipt Photo' : 'Add Photo'}
+                {activeTab === 'expense' ? t('addExpense') : t('addIncome')}
               </Text>
               
               <TouchableOpacity
@@ -1554,7 +1504,7 @@ export default function AddExpenseScreen() {
                 onPress={takePhoto}
               >
                 <Icon name="camera" size={24} color="#007aff" />
-                <Text style={styles.imageOptionText}>Take Photo</Text>
+                <Text style={styles.imageOptionText}>{t('common.takePhoto')}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -1562,7 +1512,7 @@ export default function AddExpenseScreen() {
                 onPress={pickFromGallery}
               >
                 <Icon name="image" size={24} color="#007aff" />
-                <Text style={styles.imageOptionText}>Photo Library</Text>
+                <Text style={styles.imageOptionText}>{t('common.photoLibrary')}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -1570,7 +1520,7 @@ export default function AddExpenseScreen() {
                 onPress={pickFromGalleryWithCrop}
               >
                 <Icon name="crop" size={24} color="#007aff" />
-                <Text style={styles.imageOptionText}>Photo Library (with Crop)</Text>
+                <Text style={styles.imageOptionText}>{t('common.photoLibraryWithCrop')}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -1578,7 +1528,7 @@ export default function AddExpenseScreen() {
                 onPress={() => setShowImageOptions(false)}
               >
                 <Icon name="close" size={24} color="#666" />
-                <Text style={[styles.imageOptionText, styles.imageOptionCancelText]}>Cancel</Text>
+                <Text style={[styles.imageOptionText, styles.imageOptionCancelText]}>{t('cancel')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -1590,26 +1540,26 @@ export default function AddExpenseScreen() {
         <Modal visible={showCreateWalletModal} transparent animationType="fade">
           <View style={styles.createWalletModalOverlay}>
             <View style={styles.createWalletContainer}>
-              <Text style={styles.createWalletTitle}>Không có ví nào</Text>
-              <Text style={styles.createWalletMessage}>
-                Hiện tại bạn đang chưa có ví nào. Bạn có muốn tạo ví không?
-              </Text>
+                          <Text style={styles.createWalletTitle}>{t('common.noWallets')}</Text>
+            <Text style={styles.createWalletMessage}>
+              {t('common.noWalletsMessage')}
+            </Text>
+            
+            <View style={styles.createWalletButtons}>
+              <TouchableOpacity
+                style={[styles.createWalletButton, styles.createWalletButtonCancel]}
+                onPress={() => setShowCreateWalletModal(false)}
+              >
+                <Text style={styles.createWalletButtonTextCancel}>{t('common.no')}</Text>
+              </TouchableOpacity>
               
-              <View style={styles.createWalletButtons}>
-                <TouchableOpacity
-                  style={[styles.createWalletButton, styles.createWalletButtonCancel]}
-                  onPress={() => setShowCreateWalletModal(false)}
-                >
-                  <Text style={styles.createWalletButtonTextCancel}>Không</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.createWalletButton, styles.createWalletButtonConfirm]}
-                  onPress={handleCreateWallet}
-                >
-                  <Text style={styles.createWalletButtonTextConfirm}>Có</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={[styles.createWalletButton, styles.createWalletButtonConfirm]}
+                onPress={handleCreateWallet}
+              >
+                <Text style={styles.createWalletButtonTextConfirm}>{t('common.yes')}</Text>
+              </TouchableOpacity>
+            </View>
             </View>
           </View>
         </Modal>
@@ -1771,12 +1721,15 @@ const styles = StyleSheet.create({
   },
   categoriesContainer: { 
     paddingBottom: 20,
+    paddingHorizontal: 4, // Thêm padding để cân bằng margin của các item
   },
   categoryItem: {
-    flex: 1,
+    width: '25%', // Đảm bảo mỗi item chiếm đúng 1/4 chiều rộng
+    aspectRatio: 1, // Đảm bảo item có hình vuông
     alignItems: 'center',
-    padding: 12,
-    margin: 4,
+    justifyContent: 'center',
+    padding: 8,
+    margin: 2,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#eee',
@@ -1787,10 +1740,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#e6f2ff',
   },
   categoryText: { 
-    fontSize: 12,
+    fontSize: 11,
     color: '#333', 
     marginTop: 4,
     textAlign: 'center',
+    lineHeight: 14,
+    flexWrap: 'wrap',
   },
   saveButton: {
     backgroundColor: '#007aff',

@@ -2,18 +2,18 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, G, Svg } from 'react-native-svg';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -74,6 +74,30 @@ interface FinanceData {
   expenses: number;
   difference: number;
 }
+
+// Hàm tính toán font size động cho balance
+const getDynamicBalanceFontSize = (balance: number): number => {
+  const formattedBalance = balance.toLocaleString('vi-VN');
+  const balanceLength = formattedBalance.length;
+  
+  // Base font size
+  const baseFontSize = isSmallScreen ? rf(28) : rf(32);
+  
+  // Giảm font size dựa trên độ dài
+  if (balanceLength > 15) {
+    return baseFontSize * 0.5; // Giảm 50%
+  } else if (balanceLength > 12) {
+    return baseFontSize * 0.6; // Giảm 40%
+  } else if (balanceLength > 10) {
+    return baseFontSize * 0.7; // Giảm 30%
+  } else if (balanceLength > 8) {
+    return baseFontSize * 0.8; // Giảm 20%
+  } else if (balanceLength > 6) {
+    return baseFontSize * 0.9; // Giảm 10%
+  }
+  
+  return baseFontSize; // Giữ nguyên kích thước gốc
+};
 
 const FinanceScreen = React.memo(() => {
   const { t } = useTranslation();
@@ -426,8 +450,13 @@ const FinanceScreen = React.memo(() => {
 
   // Memoized formatted balance
   const formattedBalance = useMemo(() => {
-    return isBalanceVisible ? `${formatMoney(financeData.totalBalance)} ${t('currency')}` : '********';
+    return isBalanceVisible ? `${financeData.totalBalance.toLocaleString('vi-VN')} ${t('currency')}` : '********';
   }, [isBalanceVisible, financeData.totalBalance, t]);
+
+  // Memoized dynamic balance font size
+  const dynamicBalanceFontSize = useMemo(() => {
+    return getDynamicBalanceFontSize(financeData.totalBalance);
+  }, [financeData.totalBalance]);
 
   // Memoized callback functions for better performance
   const handleRefreshProfile = useCallback(() => {
@@ -465,24 +494,22 @@ const FinanceScreen = React.memo(() => {
   // Show loading state
   if (loading || walletLoading) {
     return (
-      <View style={styles.container}>
-        <View style={[styles.statusBarBackground, { height: insets.top }]} />
+      <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#4285F4" translucent={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FFFFFF" />
           <Text style={styles.loadingText}>{t('common.loading')}...</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.statusBarBackground, { height: insets.top }]} />
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#4285F4" translucent={true} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: rp(20) }]}>
+      <View style={[styles.header, { paddingTop: insets.top + rp(20) }]}>
         <View style={styles.headerTop}>
           <View style={styles.profileSection}>
             <View style={styles.avatar}>
@@ -514,7 +541,10 @@ const FinanceScreen = React.memo(() => {
         <View style={styles.balanceSection}>
           <Text style={styles.balanceLabel}>{t('finance.totalBalance')}</Text>
           <View style={styles.balanceRow}>
-            <Text style={[styles.balanceAmount, { minWidth: 200 }]}>
+            <Text style={[styles.balanceAmount, { 
+              minWidth: 200,
+              fontSize: dynamicBalanceFontSize
+            }]}>
               {formattedBalance}
             </Text>
             <TouchableOpacity onPress={handleToggleBalance}>
@@ -528,103 +558,103 @@ const FinanceScreen = React.memo(() => {
         </View>
       </View>
 
-      <ScrollView {...scrollViewProps}>
-        {/* Income and Expenses Section */}
-        <TouchableWithoutFeedback onPress={handleClosePeriodModal}>
+             <ScrollView {...scrollViewProps}>
+         <View style={styles.bodyContainer}>
+          {/* Income and Expenses Section */}
+          <TouchableWithoutFeedback onPress={handleClosePeriodModal}>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{t('finance.incomeAndExpenses')}</Text>
+                <PeriodSelector />
+              </View>
+              {/* Bar Chart */}
+              <View style={styles.barChartContainer}>
+                <View style={styles.barChart}>
+                  <View style={styles.incomeBar}>
+                    <Text style={styles.barLabel}>{t('finance.incomeShort')}</Text>
+                  </View>
+                  <View style={styles.expenseBar}>
+                    <Text style={styles.barLabel}>{t('finance.expenseShort')}</Text>
+                  </View>
+                  <Text style={styles.differenceLabel}>{t('finance.difference')}</Text>
+                </View>
+                <View style={styles.amountsList}>
+                  <View style={styles.amountRow}>
+                    <Text style={styles.amountLabel}>{t('incomeLabel')}</Text>
+                    <Text style={styles.incomeAmount}>{formatMoney(financeData.income)} {t('currency')}</Text>
+                  </View>
+                  <View style={styles.amountRow}>
+                    <Text style={styles.amountLabel}>{t('finance.expenseShort')}</Text>
+                    <Text style={styles.expenseAmount}>{formatMoney(financeData.expenses)} {t('currency')}</Text>
+                  </View>
+                  <View style={styles.amountRow}>
+                    <Text style={styles.amountLabel}>{t('finance.difference')}</Text>
+                    <Text style={[
+                      styles.differenceAmount,
+                      financeData.difference >= 0 ? styles.incomeAmount : styles.expenseAmount
+                    ]}>
+                      {financeData.difference >= 0 ? '+' : ''}{formatMoney(Math.abs(financeData.difference))} {t('currency')}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+
+          {/* Pie Chart Section */}
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('finance.incomeAndExpenses')}</Text>
-              <PeriodSelector />
-            </View>
-
-            {/* Bar Chart */}
-            <View style={styles.barChartContainer}>
-              <View style={styles.barChart}>
-                <View style={styles.incomeBar}>
-                  <Text style={styles.barLabel}>{t('finance.incomeShort')}</Text>
-                </View>
-                <View style={styles.expenseBar}>
-                  <Text style={styles.barLabel}>{t('finance.expenseShort')}</Text>
-                </View>
-                <Text style={styles.differenceLabel}>{t('finance.difference')}</Text>
-              </View>
-              
-              <View style={styles.amountsList}>
-                <View style={styles.amountRow}>
-                  <Text style={styles.amountLabel}>{t('incomeLabel')}</Text>
-                  <Text style={styles.incomeAmount}>{formatMoney(financeData.income)} {t('currency')}</Text>
-                </View>
-                <View style={styles.amountRow}>
-                  <Text style={styles.amountLabel}>{t('finance.expenseShort')}</Text>
-                  <Text style={styles.expenseAmount}>{formatMoney(financeData.expenses)} {t('currency')}</Text>
-                </View>
-                <View style={styles.amountRow}>
-                  <Text style={styles.amountLabel}>{t('finance.difference')}</Text>
-                  <Text style={[
-                    styles.differenceAmount,
-                    financeData.difference >= 0 ? styles.incomeAmount : styles.expenseAmount
-                  ]}>
-                    {financeData.difference >= 0 ? '+' : ''}{formatMoney(Math.abs(financeData.difference))} {t('currency')}
-                  </Text>
-                </View>
+            <View style={styles.pieChartSection}>
+              <PieChart data={expenseData} />
+              <View style={styles.legendContainer}>
+                {expenseData.map((item, index) => (
+                  <View key={index} style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: item.color }]} />
+                    <Text style={styles.legendLabel}>{item.category}</Text>
+                    <Text style={styles.legendPercentage}>{item.percentage} %</Text>
+                  </View>
+                ))}
               </View>
             </View>
           </View>
-        </TouchableWithoutFeedback>
 
-        {/* Pie Chart Section */}
-        <View style={styles.section}>
-          <View style={styles.pieChartSection}>
-            <PieChart data={expenseData} />
-            <View style={styles.legendContainer}>
-              {expenseData.map((item, index) => (
-                <View key={index} style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: item.color }]} />
-                  <Text style={styles.legendLabel}>{item.category}</Text>
-                  <Text style={styles.legendPercentage}>{item.percentage} %</Text>
-                </View>
-              ))}
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <View style={styles.actionButtonWrapper}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={handleNavigateToCalendar}
+              >
+                <Icon name="calendar-month" size={24} color="white" />
+              </TouchableOpacity>
+              <Text style={styles.buttonTitle}>{t('navigation.calendar')}</Text>
             </View>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <View style={styles.actionButtonWrapper}>
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={handleNavigateToCalendar}
-            >
-              <Icon name="calendar-month" size={24} color="white" />
-            </TouchableOpacity>
-            <Text style={styles.buttonTitle}>{t('navigation.calendar')}</Text>
-          </View>
-          <View style={styles.actionButtonWrapper}>
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={handleNavigateToChatAI}
-            >
-              <Icon2 name="robot" size={24} color="white" />
-            </TouchableOpacity>
-            <Text style={styles.buttonTitle}>{t('navigation.chatAI')}</Text>
-          </View>
-          <View style={styles.actionButtonWrapper}>
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={handleNavigateToGroupManagement}
-            >
-              <Icon name="group" size={24} color="white" />
-            </TouchableOpacity>
-            <Text style={styles.buttonTitle}>{t('navigation.groups')}</Text>
-          </View>
-          <View style={styles.actionButtonWrapper}>
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={handleNavigateToBudget}
-            >
-              <Icon2 name="bullseye" size={24} color="white" />
-            </TouchableOpacity>
-            <Text style={styles.buttonTitle}>{t('navigation.budget')}</Text>
+            <View style={styles.actionButtonWrapper}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={handleNavigateToChatAI}
+              >
+                <Icon2 name="robot" size={24} color="white" />
+              </TouchableOpacity>
+              <Text style={styles.buttonTitle}>{t('navigation.chatAI')}</Text>
+            </View>
+            <View style={styles.actionButtonWrapper}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={handleNavigateToGroupManagement}
+              >
+                <Icon name="group" size={24} color="white" />
+              </TouchableOpacity>
+              <Text style={styles.buttonTitle}>{t('navigation.groups')}</Text>
+            </View>
+            <View style={styles.actionButtonWrapper}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={handleNavigateToBudget}
+              >
+                <Icon2 name="bullseye" size={24} color="white" />
+              </TouchableOpacity>
+              <Text style={styles.buttonTitle}>{t('navigation.budget')}</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -635,7 +665,7 @@ const FinanceScreen = React.memo(() => {
           <View style={styles.dropdownBackdrop} />
         </TouchableWithoutFeedback>
       )}
-    </View>
+    </SafeAreaView>
   );
 });
 
@@ -644,24 +674,14 @@ FinanceScreen.displayName = 'FinanceScreen';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  statusBarBackground: {
     backgroundColor: '#4285F4',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 0,
   },
+
   header: {
     backgroundColor: '#4285F4',
     paddingHorizontal: rp(20),
-    paddingBottom: rp(30),
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    zIndex: 1,
-    elevation: 2,
   },
   headerTop: {
     flexDirection: 'row',
@@ -723,7 +743,6 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     color: 'white',
-    fontSize: isSmallScreen ? rf(28) : rf(32),
     fontWeight: 'bold',
     marginRight: rp(15),
   },
@@ -1021,7 +1040,6 @@ const styles = StyleSheet.create({
     marginTop: rp(20),
   },
   scrollContent: {
-    flexGrow: 1,
     paddingTop: rp(10),
   },
   dropdownBackdrop: {
@@ -1045,6 +1063,13 @@ const styles = StyleSheet.create({
     marginTop: rp(4),
     textAlign: 'center',
     fontWeight: '400',
+  },
+  stickySection: {
+    backgroundColor: '#fff',
+    zIndex: 2,
+  },
+  bodyContainer: {
+    paddingTop: rp(20),
   },
 });
 
