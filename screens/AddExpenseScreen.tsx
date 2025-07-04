@@ -5,17 +5,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -38,10 +38,14 @@ export default function AddExpenseScreen() {
   const route = useRoute();
   const { user, isAuthenticated, isLoading: authLoading, refreshTransactions } = useAuth();
   
-  // Get route parameters for edit mode
+  // Get route parameters for edit mode and group context
   const routeParams = route.params as any;
   const isEditMode = routeParams?.editMode || false;
   const transactionData = routeParams?.transactionData;
+  const fromGroupOverview = routeParams?.fromGroupOverview || false;
+  const fromGroupTransactionList = routeParams?.fromGroupTransactionList || false;
+  const groupContextId = routeParams?.groupId;
+  const groupContextName = routeParams?.groupName;
   
   // State
   const [isLoading, setIsLoading] = useState(false);
@@ -148,12 +152,30 @@ export default function AddExpenseScreen() {
         console.log('✅ Default wallet selected:', defaultWallet.wallet_name);
       }
 
-      // Now load categories using userId from /me API
-      const userId = userProfile.user_id;
-      // Per user's direction, groupId should be 0 to fetch all user-specific categories
-      const groupId = 0; 
+      // Determine userId and groupId based on context
+      let userId, groupId;
+      if (fromGroupOverview) {
+        // When called from GroupOverviewScreen, use userId=0 and current groupId
+        userId = 0;
+        groupId = groupContextId ? parseInt(groupContextId) : 0; // Convert to number
+      } else {
+        // When called from other screens, use real userId and groupId=0
+        userId = userProfile.user_id;
+        groupId = 0;
+      }
       
-      console.log('🔄 Loading categories for both tabs with userId:', userId);
+      console.log('🔄 Loading categories for both tabs');
+      console.log('🔍 AddExpenseScreen context:', {
+        fromGroupOverview: fromGroupOverview,
+        groupContextId: groupContextId,
+        groupContextIdType: typeof groupContextId,
+        groupContextName: groupContextName,
+        isEditMode: isEditMode,
+        willUseUserId: userId,
+        willUseGroupId: groupId,
+        willUseGroupIdType: typeof groupId,
+        realUserId: userProfile.user_id
+      });
       
       // Fetch categories separately for each tab with correct categoryType values
       const [expenseCats, incomeCats] = await Promise.all([
@@ -279,10 +301,30 @@ export default function AddExpenseScreen() {
       
       // Get user profile
       const userProfile = await secureApiService.getCurrentUserProfile();
-      const userId = userProfile.user_id;
-      const groupId = 0; 
       
-      console.log('🔄 Loading categories for both tabs with userId:', userId);
+      // Determine userId and groupId based on context
+      let userId, groupId;
+      if (fromGroupOverview) {
+        // When called from GroupOverviewScreen, use userId=0 and current groupId
+        userId = 0;
+        groupId = groupContextId ? parseInt(groupContextId) : 0; // Convert to number
+      } else {
+        // When called from other screens, use real userId and groupId=0
+        userId = userProfile.user_id;
+        groupId = 0;
+      }
+      
+      console.log('🔄 Refreshing categories for both tabs');
+      console.log('🔍 AddExpenseScreen context (refresh):', {
+        fromGroupOverview: fromGroupOverview,
+        groupContextId: groupContextId,
+        groupContextIdType: typeof groupContextId,
+        groupContextName: groupContextName,
+        willUseUserId: userId,
+        willUseGroupId: groupId,
+        willUseGroupIdType: typeof groupId,
+        realUserId: userProfile.user_id
+      });
       
       // Fetch categories separately for each tab with correct categoryType values
       const [expenseCats, incomeCats] = await Promise.all([
@@ -844,8 +886,8 @@ export default function AddExpenseScreen() {
         user_id: userId, // Use real userId from /me API
         wallet_id: selectedWallet!,
         category_id: categoryId,
-        group_id: undefined,
-        transaction_type: activeTab === 'expense' ? TransactionType.EXPENSE : TransactionType.INCOME,
+        group_id: fromGroupOverview && groupContextId ? parseInt(groupContextId) : undefined, // Convert groupId to number
+
         amount: amountValue,
         currency_code: 'VND',
         transaction_date: formatDateForAPI(date),
@@ -855,6 +897,14 @@ export default function AddExpenseScreen() {
       };
 
       console.log('🔄 Saving transaction:', transactionData);
+      console.log('🔍 Transaction context:', {
+        fromGroupOverview: fromGroupOverview,
+        groupContextId: groupContextId,
+        groupContextIdType: typeof groupContextId,
+        parsedGroupId: fromGroupOverview && groupContextId ? parseInt(groupContextId) : undefined,
+        finalGroupId: fromGroupOverview && groupContextId ? parseInt(groupContextId) : undefined,
+        isGroupTransaction: !!fromGroupOverview
+      });
       console.log('📅 Date debugging:', {
         originalDate: date,
         localDateString: date.toLocaleDateString(),
@@ -876,8 +926,23 @@ export default function AddExpenseScreen() {
           { 
             text: 'OK', 
             onPress: () => {
-              // Navigate back and indicate data has changed
-              navigation.goBack();
+              // Navigate back to appropriate screen
+              if (fromGroupTransactionList && groupContextId && groupContextName) {
+                // Navigate back to GroupTransactionList screen
+                (navigation as any).navigate('GroupTransactionList', {
+                  groupId: groupContextId,
+                  groupName: groupContextName
+                });
+              } else if (fromGroupOverview && groupContextId && groupContextName) {
+                // Navigate back to GroupDetail screen
+                (navigation as any).navigate('GroupDetail', {
+                  groupId: groupContextId,
+                  groupName: groupContextName
+                });
+              } else {
+                // Normal navigation back
+                navigation.goBack();
+              }
             }
           }
         ]);
@@ -896,8 +961,23 @@ export default function AddExpenseScreen() {
           { 
             text: 'OK', 
             onPress: () => {
-              // Navigate back and indicate data has changed
-              navigation.goBack();
+              // Navigate back to appropriate screen
+              if (fromGroupTransactionList && groupContextId && groupContextName) {
+                // Navigate back to GroupTransactionList screen
+                (navigation as any).navigate('GroupTransactionList', {
+                  groupId: groupContextId,
+                  groupName: groupContextName
+                });
+              } else if (fromGroupOverview && groupContextId && groupContextName) {
+                // Navigate back to GroupDetail screen
+                (navigation as any).navigate('GroupDetail', {
+                  groupId: groupContextId,
+                  groupName: groupContextName
+                });
+              } else {
+                // Normal navigation back
+                navigation.goBack();
+              }
             }
           }
         ]);
@@ -911,7 +991,27 @@ export default function AddExpenseScreen() {
           error.message?.includes('Please login again') ||
           error.message?.includes('User not authenticated')) {
         Alert.alert('Authentication Required', 'Please login first.', [
-          { text: 'OK', onPress: () => navigation.goBack() }
+          { 
+            text: 'OK', 
+            onPress: () => {
+              if (fromGroupTransactionList && groupContextId && groupContextName) {
+                // Navigate back to GroupTransactionList screen
+                (navigation as any).navigate('GroupTransactionList', {
+                  groupId: groupContextId,
+                  groupName: groupContextName
+                });
+              } else if (fromGroupOverview && groupContextId && groupContextName) {
+                // Navigate back to GroupDetail screen
+                (navigation as any).navigate('GroupDetail', {
+                  groupId: groupContextId,
+                  groupName: groupContextName
+                });
+              } else {
+                // Normal navigation back
+                navigation.goBack();
+              }
+            }
+          }
         ]);
       } else {
         Alert.alert('Error', 'Failed to save transaction. Please try again.');
@@ -1012,7 +1112,13 @@ export default function AddExpenseScreen() {
   const getCurrentCategories = () => {
     const categories = activeTab === 'expense' ? expenseCategories : incomeCategories;
     
-    // Add "Edit" item at the end of the categories list
+    // Only add "Edit" item if not called from GroupOverviewScreen
+    if (fromGroupOverview) {
+      // Return categories without edit option when from group overview
+      return categories;
+    }
+    
+    // Add "Edit" item at the end of the categories list for normal flow
     const editItem: LocalCategory = {
       key: 'edit_categories',
       label: 'Edit',
@@ -1227,6 +1333,16 @@ export default function AddExpenseScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+        {/* Group Context Indicator */}
+        {fromGroupOverview && groupContextName && (
+          <View style={styles.groupContextContainer}>
+            <Icon name="account-group" size={16} color="#4A90E2" />
+            <Text style={styles.groupContextText}>
+              Thêm cho nhóm "{groupContextName}"
+            </Text>
+          </View>
+        )}
 
           {/* Date */}
           <View style={styles.row}>
@@ -1914,5 +2030,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
+  },
+  // Group context styles
+  groupContextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F4FD',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  groupContextText: {
+    fontSize: 14,
+    color: '#4A90E2',
+    fontWeight: '500',
+    marginLeft: 6,
   },
 });

@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
@@ -23,7 +23,32 @@ import { useNavigationService } from '../navigation/NavigationService';
 import { UserProfile, userService } from '../services/userService';
 import { WalletResponse, walletService } from '../services/walletService';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+// Responsive utilities for FinanceScreen - memoized calculations
+const responsiveUtils = {
+  isSmallScreen: width < 375 || height < 667,
+  screenWidth: width,
+  screenHeight: height,
+  rp: (size: number) => {
+    const scale = Math.min(width / 375, height / 667);
+    const minSize = size * 0.7;
+    const scaledSize = size * scale;
+    return Math.max(scaledSize, minSize);
+  },
+  rf: (fontSize: number) => {
+    const scale = Math.min(width / 375, height / 667);
+    const minFontScale = 0.85;
+    const maxFontScale = 1.15;
+    const fontScale = Math.min(Math.max(scale, minFontScale), maxFontScale);
+    return fontSize * fontScale;
+  },
+  wp: (percentage: number) => (width * percentage) / 100,
+  hp: (percentage: number) => (height * percentage) / 100,
+};
+
+// Extract these for better performance
+const { isSmallScreen, rp, rf, wp, hp } = responsiveUtils;
 
 // Type definitions
 interface ExpenseData {
@@ -50,7 +75,7 @@ interface FinanceData {
   difference: number;
 }
 
-const FinanceScreen = () => {
+const FinanceScreen = React.memo(() => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigationService();
@@ -102,7 +127,7 @@ const FinanceScreen = () => {
     }, [isAuthenticated])
   );
 
-  const loadUserProfile = async (forceRefresh: boolean = false) => {
+  const loadUserProfile = useCallback(async (forceRefresh: boolean = false) => {
     if (!isAuthenticated) {
       setLoading(false);
       return;
@@ -122,34 +147,17 @@ const FinanceScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated]);
 
-  // Helper function to format money
-  const formatMoney = (amount: number): string => {
+  // Helper function to format money - memoized
+  const formatMoney = useCallback((amount: number): string => {
     if (amount === null || amount === undefined || isNaN(amount)) {
       return '0';
     }
     return amount.toLocaleString('vi-VN');
-  };
+  }, []);
 
-  // Helper function to get avatar source based on gender
-  const getAvatarSource = () => {
-    if (userProfile?.user_avatar_url) {
-      return { uri: userProfile.user_avatar_url };
-    }
-    
-    // Use gender-based default avatar
-    if (userProfile?.user_gender === true) {
-      return require('../assets/images/maleavatar.png');
-    } else if (userProfile?.user_gender === false) {
-      return require('../assets/images/femaleavatar.png');
-    }
-    
-    // Fallback to unknown avatar
-    return require('../assets/images/Unknown.jpg');
-  };
-
-  const loadWalletData = async () => {
+  const loadWalletData = useCallback(async () => {
     if (!isAuthenticated) {
       setWalletLoading(false);
       return;
@@ -185,81 +193,120 @@ const FinanceScreen = () => {
     } finally {
       setWalletLoading(false);
     }
-  };
+  }, [isAuthenticated]);
 
-  // Dữ liệu mẫu (will be replaced with real API data later)
-  const expenseData: ExpenseData[] = [
+  // Memoized expense data
+  const expenseData: ExpenseData[] = useMemo(() => [
     { category: 'Leisure', percentage: 54.55, color: '#FFA726' },
     { category: 'Self-development', percentage: 25.25, color: '#EF5350' },
     { category: 'Clothing', percentage: 18.74, color: '#26A69A' },
     { category: 'Food', percentage: 0.76, color: '#AB47BC' },
     { category: 'Undefined', percentage: 0.7, color: '#42A5F5' },
-  ];
+  ], []);
 
-  // Component biểu đồ tròn
-  const PieChart = ({ data }: PieChartProps) => {
-    const radius = 80;
-    const centerX = 100;
-    const centerY = 100;
-    let cumulativePercentage = 0;
+  // Optimized ScrollView props
+  const scrollViewProps = useMemo(() => ({
+    style: styles.content,
+    contentContainerStyle: [
+      styles.scrollContent,
+      { paddingBottom: rp(50) + insets.bottom }
+    ],
+    showsVerticalScrollIndicator: false,
+    keyboardShouldPersistTaps: 'handled' as const,
+    nestedScrollEnabled: true,
+    bounces: true, // Enable bounce for natural scroll feel
+    alwaysBounceVertical: true,
+    bouncesZoom: false,
+    overScrollMode: 'auto' as const, // Allow overscroll on Android
+    contentInsetAdjustmentBehavior: 'automatic' as const,
+    scrollEventThrottle: 16, // Smooth scroll events
+    decelerationRate: 'normal' as const, // Natural deceleration
+    removeClippedSubviews: true, // Performance optimization
+    maxToRenderPerBatch: 10, // Performance optimization
+    windowSize: 10, // Performance optimization
+  }), [insets.bottom]);
 
-    const createArc = (centerX: number, centerY: number, radius: number, startAngle: number, endAngle: number) => {
-      const start = polarToCartesian(centerX, centerY, radius, endAngle);
-      const end = polarToCartesian(centerX, centerY, radius, startAngle);
-      const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-      return [
-        "M", centerX, centerY,
-        "L", start.x, start.y,
-        "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y,
-        "Z"
-      ].join(" ");
-    };
+  // Component biểu đồ tròn - Memoized for performance
+  const PieChart = React.memo(({ data }: PieChartProps) => {
+    const radius = isSmallScreen ? rp(60) : rp(80);
+    const centerX = isSmallScreen ? rp(80) : rp(100);
+    const centerY = isSmallScreen ? rp(80) : rp(100);
+    const svgSize = isSmallScreen ? rp(160) : rp(200);
 
-    const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
-      const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-      return {
-        x: centerX + (radius * Math.cos(angleInRadians)),
-        y: centerY + (radius * Math.sin(angleInRadians))
+    const { arcs, polarToCartesian } = useMemo(() => {
+      let cumulativePercentage = 0;
+
+      const createArc = (centerX: number, centerY: number, radius: number, startAngle: number, endAngle: number) => {
+        const start = polarToCartesian(centerX, centerY, radius, endAngle);
+        const end = polarToCartesian(centerX, centerY, radius, startAngle);
+        const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+        return [
+          "M", centerX, centerY,
+          "L", start.x, start.y,
+          "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y,
+          "Z"
+        ].join(" ");
       };
-    };
 
+      const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
+        const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+        return {
+          x: centerX + (radius * Math.cos(angleInRadians)),
+          y: centerY + (radius * Math.sin(angleInRadians))
+        };
+      };
+
+      const arcs = data.map((item) => {
+        const startAngle = cumulativePercentage * 3.6;
+        const endAngle = (cumulativePercentage + item.percentage) * 3.6;
+        cumulativePercentage += item.percentage;
+        
+        return {
+          ...item,
+          startAngle,
+          endAngle,
+          strokeDasharray: `${item.percentage * 5.03} ${500}`,
+          strokeDashoffset: -startAngle * 1.4
+        };
+      });
+
+      return { arcs, polarToCartesian };
+    }, [data, centerX, centerY, radius]);
+    
     return (
       <View style={styles.chartContainer}>
-        <Svg width={200} height={200}>
-          {data.map((item: ExpenseData, index: number) => {
-            const startAngle = cumulativePercentage * 3.6;
-            const endAngle = (cumulativePercentage + item.percentage) * 3.6;
-            cumulativePercentage += item.percentage;
-
-            return (
-              <G key={index}>
-                <Circle
-                  cx={centerX}
-                  cy={centerY}
-                  r={radius}
-                  fill="none"
-                  stroke={item.color}
-                  strokeWidth={20}
-                  strokeDasharray={`${item.percentage * 5.03} ${500}`}
-                  strokeDashoffset={-startAngle * 1.4}
-                  transform={`rotate(-90 ${centerX} ${centerY})`}
-                />
-              </G>
-            );
-          })}
+        <Svg width={svgSize} height={svgSize}>
+          {arcs.map((item, index) => (
+            <G key={`${item.category}-${index}`}>
+              <Circle
+                cx={centerX}
+                cy={centerY}
+                r={radius}
+                fill="none"
+                stroke={item.color}
+                strokeWidth={20}
+                strokeDasharray={item.strokeDasharray}
+                strokeDashoffset={item.strokeDashoffset}
+                transform={`rotate(-90 ${centerX} ${centerY})`}
+              />
+            </G>
+          ))}
           {/* Vòng tròn trắng ở giữa */}
           <Circle
             cx={centerX}
             cy={centerY}
-            r={50}
+            r={isSmallScreen ? rp(35) : rp(50)}
             fill="white"
           />
         </Svg>
       </View>
     );
-  };
+  });
 
-  const IconButton = ({ icon, label, isActive = false, iconColor = 'white' }: ButtonProps) => (
+  PieChart.displayName = 'PieChart';
+
+  // Memoized Icon Button Component
+  const IconButton = React.memo(({ icon, label, isActive = false, iconColor = 'white' }: ButtonProps) => (
     <TouchableOpacity style={[styles.iconButton, isActive && styles.activeIconButton]}>
       <View style={styles.iconContainer}>
         {icon && typeof icon === 'string' && icon.startsWith('M') ? (
@@ -269,9 +316,12 @@ const FinanceScreen = () => {
         )}
       </View>
     </TouchableOpacity>
-  );
+  ));
 
-  const BottomTabButton = ({ icon, label, isActive = false }: ButtonProps) => (
+  IconButton.displayName = 'IconButton';
+
+  // Memoized Bottom Tab Button
+  const BottomTabButton = React.memo(({ icon, label, isActive = false }: ButtonProps) => (
     <TouchableOpacity 
       style={styles.bottomTabButton}
       onPress={() => setActiveTab(label)}
@@ -286,9 +336,12 @@ const FinanceScreen = () => {
         {label}
       </Text>
     </TouchableOpacity>
-  );
+  ));
 
-  const PeriodSelector = () => (
+  BottomTabButton.displayName = 'BottomTabButton';
+
+  // Memoized Period Selector Component
+  const PeriodSelector = React.memo(() => (
     <View style={styles.periodSelectorContainer}>
       <TouchableOpacity 
         style={styles.periodSelector}
@@ -325,9 +378,12 @@ const FinanceScreen = () => {
         </TouchableWithoutFeedback>
       )}
     </View>
-  );
+  ));
 
-  const NotificationIcon = () => (
+  PeriodSelector.displayName = 'PeriodSelector';
+
+  // Memoized Notification Icon Component
+  const NotificationIcon = React.memo(() => (
     <View style={styles.headerIcon}>
       <Icon name="notifications" size={24} color="white" />
       {notificationCount > 0 && (
@@ -338,21 +394,80 @@ const FinanceScreen = () => {
         </View>
       )}
     </View>
-  );
+  ));
 
-  const PERIODS = [
+  NotificationIcon.displayName = 'NotificationIcon';
+
+  // Memoized PERIODS array
+  const PERIODS = useMemo(() => [
     t('finance.periods.thisDay'),
     t('finance.periods.thisWeek'),
     t('finance.periods.thisMonth'),
     t('finance.periods.quarter'),
     t('finance.periods.thisYear')
-  ];
+  ], [t]);
+
+  // Memoized avatar source
+  const avatarSource = useMemo(() => {
+    if (userProfile?.user_avatar_url) {
+      return { uri: userProfile.user_avatar_url };
+    }
+    
+    // Use gender-based default avatar
+    if (userProfile?.user_gender === true) {
+      return require('../assets/images/maleavatar.png');
+    } else if (userProfile?.user_gender === false) {
+      return require('../assets/images/femaleavatar.png');
+    }
+    
+    // Fallback to unknown avatar
+    return require('../assets/images/Unknown.jpg');
+  }, [userProfile?.user_avatar_url, userProfile?.user_gender]);
+
+  // Memoized formatted balance
+  const formattedBalance = useMemo(() => {
+    return isBalanceVisible ? `${formatMoney(financeData.totalBalance)} ${t('currency')}` : '********';
+  }, [isBalanceVisible, financeData.totalBalance, t]);
+
+  // Memoized callback functions for better performance
+  const handleRefreshProfile = useCallback(() => {
+    loadUserProfile(true);
+  }, [loadUserProfile]);
+
+  const handleToggleBalance = useCallback(() => {
+    setIsBalanceVisible(!isBalanceVisible);
+  }, [isBalanceVisible]);
+
+  const handleNavigateToNotifications = useCallback(() => {
+    navigation.navigate('Notifications');
+  }, [navigation]);
+
+  const handleNavigateToCalendar = useCallback(() => {
+    navigation.navigate('Calendar');
+  }, [navigation]);
+
+  const handleNavigateToChatAI = useCallback(() => {
+    navigation.navigate('ChatAI');
+  }, [navigation]);
+
+  const handleNavigateToGroupManagement = useCallback(() => {
+    navigation.navigate('GroupManagement');
+  }, [navigation]);
+
+  const handleNavigateToBudget = useCallback(() => {
+    navigation.navigate('BudgetScreen');
+  }, [navigation]);
+
+  const handleClosePeriodModal = useCallback(() => {
+    setIsPeriodModalVisible(false);
+  }, []);
 
   // Show loading state
   if (loading || walletLoading) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#4285F4" />
+        <View style={[styles.statusBarBackground, { height: insets.top }]} />
+        <StatusBar barStyle="light-content" backgroundColor="#4285F4" translucent={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FFFFFF" />
           <Text style={styles.loadingText}>{t('common.loading')}...</Text>
@@ -362,63 +477,60 @@ const FinanceScreen = () => {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={() => setIsPeriodModalVisible(false)}>
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#4285F4" />
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <View style={styles.profileSection}>
-              <View style={styles.avatar}>
-                <Image 
-                  source={getAvatarSource()}
-                  style={styles.avatarImage}
-                />
-              </View>
-              <View>
-                <Text style={styles.greeting}>{t('finance.hello')}</Text>
-                <Text style={styles.userName}>
-                  {userProfile?.user_full_name || 'Unknown User'}
-                </Text>
-              </View>
+    <View style={styles.container}>
+      <View style={[styles.statusBarBackground, { height: insets.top }]} />
+      <StatusBar barStyle="light-content" backgroundColor="#4285F4" translucent={true} />
+      
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: rp(20) }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.profileSection}>
+            <View style={styles.avatar}>
+              <Image 
+                source={avatarSource}
+                style={styles.avatarImage}
+              />
             </View>
-            <View style={styles.headerIcons}>
-              <TouchableOpacity 
-                style={styles.headerIcon}
-                onPress={() => loadUserProfile(true)}
-              >
-                <Icon name="refresh" size={24} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
-                <NotificationIcon />
-              </TouchableOpacity>
+            <View>
+              <Text style={styles.greeting}>{t('finance.hello')}</Text>
+              <Text style={styles.userName}>
+                {userProfile?.user_full_name || 'Unknown User'}
+              </Text>
             </View>
           </View>
-          
-          <View style={styles.balanceSection}>
-            <Text style={styles.balanceLabel}>{t('finance.totalBalance')}</Text>
-            <View style={styles.balanceRow}>
-              <Text style={[styles.balanceAmount, { minWidth: 200 }]}>
-                {isBalanceVisible ? `${formatMoney(financeData.totalBalance)} ${t('currency')}` : '********'}
-              </Text>
-              <TouchableOpacity onPress={() => setIsBalanceVisible(!isBalanceVisible)}>
-                <Icon 
-                  name={isBalanceVisible ? "visibility" : "visibility-off"} 
-                  size={24} 
-                  color="white" 
-                />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity 
+              style={styles.headerIcon}
+              onPress={handleRefreshProfile}
+            >
+              <Icon name="refresh" size={24} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleNavigateToNotifications}>
+              <NotificationIcon />
+            </TouchableOpacity>
           </View>
         </View>
+        
+        <View style={styles.balanceSection}>
+          <Text style={styles.balanceLabel}>{t('finance.totalBalance')}</Text>
+          <View style={styles.balanceRow}>
+            <Text style={[styles.balanceAmount, { minWidth: 200 }]}>
+              {formattedBalance}
+            </Text>
+            <TouchableOpacity onPress={handleToggleBalance}>
+              <Icon 
+                name={isBalanceVisible ? "visibility" : "visibility-off"} 
+                size={24} 
+                color="white" 
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
 
-        <ScrollView 
-          style={styles.content} 
-          contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Income and Expenses Section */}
+      <ScrollView {...scrollViewProps}>
+        {/* Income and Expenses Section */}
+        <TouchableWithoutFeedback onPress={handleClosePeriodModal}>
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{t('finance.incomeAndExpenses')}</Text>
@@ -458,88 +570,117 @@ const FinanceScreen = () => {
               </View>
             </View>
           </View>
+        </TouchableWithoutFeedback>
 
-          {/* Pie Chart Section */}
-          <View style={styles.section}>
-            <View style={styles.pieChartSection}>
-              <PieChart data={expenseData} />
-              <View style={styles.legendContainer}>
-                {expenseData.map((item, index) => (
-                  <View key={index} style={styles.legendItem}>
-                    <View style={[styles.legendColor, { backgroundColor: item.color }]} />
-                    <Text style={styles.legendLabel}>{item.category}</Text>
-                    <Text style={styles.legendPercentage}>{item.percentage} %</Text>
-                  </View>
-                ))}
-              </View>
+        {/* Pie Chart Section */}
+        <View style={styles.section}>
+          <View style={styles.pieChartSection}>
+            <PieChart data={expenseData} />
+            <View style={styles.legendContainer}>
+              {expenseData.map((item, index) => (
+                <View key={index} style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: item.color }]} />
+                  <Text style={styles.legendLabel}>{item.category}</Text>
+                  <Text style={styles.legendPercentage}>{item.percentage} %</Text>
+                </View>
+              ))}
             </View>
           </View>
+        </View>
 
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <View style={styles.actionButtonWrapper}>
             <TouchableOpacity 
               style={styles.iconButton}
-              onPress={() => navigation.navigate('Calendar')}
+              onPress={handleNavigateToCalendar}
             >
               <Icon name="calendar-month" size={24} color="white" />
             </TouchableOpacity>
+            <Text style={styles.buttonTitle}>{t('navigation.calendar')}</Text>
+          </View>
+          <View style={styles.actionButtonWrapper}>
             <TouchableOpacity 
               style={styles.iconButton}
-              onPress={() => navigation.navigate('ChatAI')}
+              onPress={handleNavigateToChatAI}
             >
               <Icon2 name="robot" size={24} color="white" />
             </TouchableOpacity>
+            <Text style={styles.buttonTitle}>{t('navigation.chatAI')}</Text>
+          </View>
+          <View style={styles.actionButtonWrapper}>
             <TouchableOpacity 
               style={styles.iconButton}
-              onPress={() => navigation.navigate('GroupManagement')}
+              onPress={handleNavigateToGroupManagement}
             >
               <Icon name="group" size={24} color="white" />
             </TouchableOpacity>
+            <Text style={styles.buttonTitle}>{t('navigation.groups')}</Text>
+          </View>
+          <View style={styles.actionButtonWrapper}>
             <TouchableOpacity 
               style={styles.iconButton}
-              onPress={() => navigation.navigate('BudgetScreen')}
+              onPress={handleNavigateToBudget}
             >
               <Icon2 name="bullseye" size={24} color="white" />
             </TouchableOpacity>
+            <Text style={styles.buttonTitle}>{t('navigation.budget')}</Text>
           </View>
-        </ScrollView>
+        </View>
+      </ScrollView>
 
-      </View>
-    </TouchableWithoutFeedback>
+      {/* Backdrop for dropdown - separate from scroll */}
+      {isPeriodModalVisible && (
+        <TouchableWithoutFeedback onPress={handleClosePeriodModal}>
+          <View style={styles.dropdownBackdrop} />
+        </TouchableWithoutFeedback>
+      )}
+    </View>
   );
-};
+});
+
+FinanceScreen.displayName = 'FinanceScreen';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
+  statusBarBackground: {
+    backgroundColor: '#4285F4',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
+  },
   header: {
     backgroundColor: '#4285F4',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    paddingHorizontal: rp(20),
+    paddingBottom: rp(30),
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
+    zIndex: 1,
+    elevation: 2,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: rp(30),
   },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: rp(50),
+    height: rp(50),
+    borderRadius: rp(25),
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: rp(15),
     overflow: 'hidden',
   },
   avatarImage: {
@@ -549,32 +690,32 @@ const styles = StyleSheet.create({
   },
   greeting: {
     color: 'white',
-    fontSize: 16,
+    fontSize: rf(16),
     fontWeight: '400',
   },
   userName: {
     color: 'white',
-    fontSize: 18,
+    fontSize: rf(18),
     fontWeight: '600',
   },
   headerIcons: {  
     flexDirection: 'row',
   },
   headerIcon: {
-    marginLeft: 15,
+    marginLeft: rp(15),
     position: 'relative',
   },
   headerIconText: {
     color: 'white',
-    fontSize: 20,
+    fontSize: rf(20),
   },
   balanceSection: {
     alignItems: 'flex-start',
   },
   balanceLabel: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 16,
-    marginBottom: 8,
+    fontSize: rf(16),
+    marginBottom: rp(8),
   },
   balanceRow: {
     flexDirection: 'row',
@@ -582,9 +723,9 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     color: 'white',
-    fontSize: 32,
+    fontSize: isSmallScreen ? rf(28) : rf(32),
     fontWeight: 'bold',
-    marginRight: 15,
+    marginRight: rp(15),
   },
   eyeIcon: {
     fontSize: 20,
@@ -592,19 +733,20 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: rp(20),
+    backgroundColor: '#F5F5F5',
   },
   section: {
-    marginTop: 25,
+    marginTop: rp(25),
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: rp(20),
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontWeight: '600',
     color: '#333',
   },
@@ -615,17 +757,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E8E8E8',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
+    paddingHorizontal: rp(12),
+    paddingVertical: rp(6),
+    borderRadius: rp(15),
   },
   periodText: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#666',
-    marginRight: 5,
+    marginRight: rp(5),
   },
   dropdownIcon: {
-    fontSize: 10,
+    fontSize: rf(10),
     color: '#666',
   },
   dropdownMenu: {
@@ -633,9 +775,9 @@ const styles = StyleSheet.create({
     top: '100%',
     right: 0,
     backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 8,
-    marginTop: 4,
+    borderRadius: rp(15),
+    padding: rp(8),
+    marginTop: rp(4),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -645,26 +787,26 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
     zIndex: 1000,
-    minWidth: 140,
-    maxWidth: 180,
+    minWidth: rp(140),
+    maxWidth: rp(180),
   },
   periodOption: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingVertical: rp(14),
+    paddingHorizontal: rp(20),
+    borderRadius: rp(8),
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 2,
+    marginVertical: rp(2),
   },
   selectedPeriodOption: {
     backgroundColor: '#E8F0FE',
   },
   periodOptionText: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#666',
     textAlign: 'center',
     fontWeight: '500',
-    lineHeight: 16,
+    lineHeight: rf(16),
   },
   selectedPeriodOptionText: {
     color: '#1e90ff',
@@ -681,60 +823,60 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   incomeBar: {
-    width: 30,
-    height: 40,
+    width: rp(30),
+    height: rp(40),
     backgroundColor: '#4CAF50',
-    marginRight: 10,
-    borderRadius: 4,
+    marginRight: rp(10),
+    borderRadius: rp(4),
     justifyContent: 'flex-end',
-    paddingBottom: 5,
+    paddingBottom: rp(5),
   },
   expenseBar: {
-    width: 30,
-    height: 120,
+    width: rp(30),
+    height: rp(120),
     backgroundColor: '#F44336',
-    marginRight: 20,
-    borderRadius: 4,
+    marginRight: rp(20),
+    borderRadius: rp(4),
     justifyContent: 'flex-end',
-    paddingBottom: 5,
+    paddingBottom: rp(5),
   },
   barLabel: {
-    fontSize: 10,
+    fontSize: rf(10),
     color: 'white',
     textAlign: 'center',
     fontWeight: 'bold',
   },
   differenceLabel: {
-    fontSize: 12,
+    fontSize: rf(12),
     color: '#666',
-    marginLeft: 10,
+    marginLeft: rp(10),
   },
   amountsList: {
     flex: 1,
-    paddingLeft: 20,
+    paddingLeft: rp(20),
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: rp(8),
   },
   amountLabel: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#666',
   },
   incomeAmount: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#4CAF50',
     fontWeight: '600',
   },
   expenseAmount: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#F44336',
     fontWeight: '600',
   },
   differenceAmount: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#F44336',
     fontWeight: '600',
   },
@@ -749,40 +891,40 @@ const styles = StyleSheet.create({
   },
   legendContainer: {
     flex: 1,
-    paddingLeft: 20,
+    paddingLeft: isSmallScreen ? rp(10) : rp(20),
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: rp(8),
   },
   legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
+    width: rp(12),
+    height: rp(12),
+    borderRadius: rp(6),
+    marginRight: rp(8),
   },
   legendLabel: {
     flex: 1,
-    fontSize: 12,
+    fontSize: rf(12),
     color: '#666',
   },
   legendPercentage: {
-    fontSize: 12,
+    fontSize: rf(12),
     color: '#333',
     fontWeight: '600',
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 30,
-    marginBottom: 20,
+    marginTop: rp(30),
+    marginBottom: rp(20),
   },
   iconButton: {
-    width: 60,
-    height: 60,
+    width: rp(60),
+    height: rp(60),
     backgroundColor: '#1e90ff',
-    borderRadius: 15,
+    borderRadius: rp(15),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -851,31 +993,58 @@ const styles = StyleSheet.create({
   },
   notificationBadge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
+    top: rp(-5),
+    right: rp(-5),
     backgroundColor: '#FF3B30',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: rp(10),
+    minWidth: rp(20),
+    height: rp(20),
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: rp(4),
   },
   notificationText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: rf(10),
     fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#4285F4',
   },
   loadingText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: rf(18),
     fontWeight: '600',
-    marginTop: 20,
+    marginTop: rp(20),
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: rp(10),
+  },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 999,
+  },
+  actionButtonWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    maxWidth: rp(80),
+  },
+  buttonTitle: {
+    fontSize: rf(10),
+    color: '#666',
+    marginTop: rp(4),
+    textAlign: 'center',
+    fontWeight: '400',
   },
 });
 

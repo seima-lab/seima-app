@@ -1,4 +1,5 @@
 import { apiService } from './apiService';
+import { TRANSACTION_ENDPOINTS } from './config';
 
 // Transaction Types
 export enum TransactionType {
@@ -13,7 +14,6 @@ export interface CreateTransactionRequest {
   wallet_id: number;
   category_id: number;
   group_id?: number;
-  transaction_type: TransactionType;
   amount: number;
   currency_code: string;
   transaction_date: string; // ISO date string
@@ -60,10 +60,78 @@ export interface DailyTransactions {
 export interface TransactionItem {
   transaction_id: number;
   category_name: string;
+  category_icon_url?: string;
   amount: number;
   transaction_type: string;
   description?: string;
   transaction_date: string; // LocalDateTime as string
+}
+
+// Transaction Report interfaces
+export interface TransactionReportResponse {
+  summary: ReportSummary;
+  transactionsByCategory: { [key: string]: ReportByCategory[] };
+}
+
+export interface ReportSummary {
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+}
+
+export interface ReportByCategory {
+  category_id: number;
+  category_name: string;
+  category_icon_url: string;
+  amount: number;
+  percentage: number;
+}
+
+// Group Transaction History interfaces (snake_case)
+export interface GroupTransactionResponse {
+  transaction_id: number;
+  user_id: number;
+  wallet_id: number;
+  category_id: number;
+  group_id?: number;
+  transaction_type: TransactionType;
+  amount: number;
+  currency_code: string;
+  transaction_date: string;
+  description?: string;
+  receipt_image_url?: string;
+  payee_payer_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaginatedGroupTransactionsResponse {
+  content: GroupTransactionResponse[];
+  pageable: {
+    sort: {
+      sorted: boolean;
+      unsorted: boolean;
+      empty: boolean;
+    };
+    page_number: number;
+    page_size: number;
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  total_pages: number;
+  total_elements: number;
+  last: boolean;
+  number_of_elements: number;
+  first: boolean;
+  size: number;
+  number: number;
+  sort: {
+    sorted: boolean;
+    unsorted: boolean;
+    empty: boolean;
+  };
+  empty: boolean;
 }
 
 export class TransactionService {
@@ -77,7 +145,7 @@ export class TransactionService {
       
       // Send as JSON instead of FormData to match backend expectation
       const response = await apiService.post<TransactionResponse>(
-        '/api/v1/transactions/expense', 
+        `${TRANSACTION_ENDPOINTS.CREATE}/expense`, 
         request
       );
       
@@ -103,7 +171,7 @@ export class TransactionService {
       
       // Send as JSON instead of FormData to match backend expectation
       const response = await apiService.post<TransactionResponse>(
-        '/api/v1/transactions/income', 
+        `${TRANSACTION_ENDPOINTS.CREATE}/income`, 
         request
       );
       
@@ -126,7 +194,7 @@ export class TransactionService {
   async getAllTransactions(page = 1, limit = 20): Promise<TransactionResponse[]> {
     try {
       const response = await apiService.get<TransactionResponse[]>(
-        `/api/v1/transactions?page=${page}&limit=${limit}`
+        `${TRANSACTION_ENDPOINTS.LIST}?page=${page}&limit=${limit}`
       );
       
       if (response.data) {
@@ -150,7 +218,7 @@ export class TransactionService {
       console.log('🔄 Getting transaction overview for month:', month);
       
       const response = await apiService.get<TransactionOverviewResponse>(
-        `/api/v1/transactions/overview?month=${month}`
+        `${TRANSACTION_ENDPOINTS.LIST}/overview?month=${month}`
       );
       
       if (response.data) {
@@ -177,7 +245,7 @@ export class TransactionService {
       console.log('📝 Update data:', request);
       
       const response = await apiService.put<TransactionResponse>(
-        `/api/v1/transactions/update/${transactionId}`,
+        `${TRANSACTION_ENDPOINTS.LIST}/update/${transactionId}`,
         request
       );
       
@@ -202,23 +270,153 @@ export class TransactionService {
     try {
       console.log('🔄 Deleting transaction with ID:', transactionId);
       
-      const response = await apiService.delete<null>(
-        `/api/v1/transactions/delete/${transactionId}`
+      const response = await apiService.delete<void>(
+        `${TRANSACTION_ENDPOINTS.LIST}/delete/${transactionId}`
       );
       
-      console.log('📋 Delete response:', JSON.stringify(response, null, 2));
-      
-      // Check if the response indicates success (200 OK or 204 No Content)
-      if (response.status_code === 200 || response.status_code === 204) {
-        console.log('✅ Transaction deleted successfully:', response.message);
-      } else {
-        console.log('⚠️ Unexpected status code:', response.status_code, 'Message:', response.message);
-        throw new Error(response.message || 'Failed to delete transaction');
-      }
+      console.log('✅ Transaction deleted successfully');
       
     } catch (error: any) {
       console.error('❌ Failed to delete transaction:', error);
       throw new Error(error.message || 'Failed to delete transaction');
+    }
+  }
+
+  /**
+   * Get transaction by ID
+   * @param transactionId - The ID of the transaction to get
+   */
+  async getTransactionById(transactionId: number): Promise<TransactionResponse> {
+    try {
+      console.log('🔄 Getting transaction with ID:', transactionId);
+      
+      const response = await apiService.get<TransactionResponse>(
+        `${TRANSACTION_ENDPOINTS.LIST}/${transactionId}`
+      );
+      
+      if (response.data) {
+        console.log('✅ Transaction retrieved successfully:', response.data);
+        return response.data;
+      }
+      
+      throw new Error(response.message || 'Failed to get transaction');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get transaction:', error);
+      throw new Error(error.message || 'Failed to get transaction');
+    }
+  }
+
+  /**
+   * Get transaction report
+   * @param categoryId - Optional category ID to filter by
+   * @param startDate - Start date in YYYY-MM-DD format
+   * @param endDate - End date in YYYY-MM-DD format
+   */
+  async viewTransactionReport(
+    categoryId?: number,
+    startDate?: string,
+    endDate?: string
+  ): Promise<TransactionReportResponse> {
+    try {
+      console.log('🔄 Getting transaction report:', { categoryId, startDate, endDate });
+      
+      const params = new URLSearchParams();
+      if (categoryId) {
+        params.append('categoryId', categoryId.toString());
+      }
+      if (startDate) {
+        params.append('startDate', startDate);
+      }
+      if (endDate) {
+        params.append('endDate', endDate);
+      }
+      
+      const response = await apiService.get<TransactionReportResponse>(
+        `${TRANSACTION_ENDPOINTS.LIST}/view-report?${params.toString()}`
+      );
+      
+      if (response.data) {
+        console.log('✅ Transaction report retrieved successfully:', response.data);
+        return response.data;
+      }
+      
+      throw new Error(response.message || 'Failed to get transaction report');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get transaction report:', error);
+      throw new Error(error.message || 'Failed to get transaction report');
+    }
+  }
+
+  /**
+   * Get transactions by date range using the view-report API
+   * @param startDate - Start date in YYYY-MM-DD format
+   * @param endDate - End date in YYYY-MM-DD format
+   * @param categoryId - Optional category ID to filter by
+   */
+  async getTransactionByDateRange(
+    startDate: string,
+    endDate: string,
+    categoryId?: number
+  ) {
+    try {
+      const response = await this.viewTransactionReport(categoryId, startDate, endDate);
+      
+      // Return in a format compatible with CategoryDetailScreen expectations
+      return {
+        success: true,
+        data: {
+          transactions: [], // This API doesn't return individual transactions
+          summary: response.summary,
+          transactionsByCategory: response.transactionsByCategory
+        }
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get transactions by date range:', error);
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+  }
+
+  /**
+   * Get group transaction history with pagination
+   * @param groupId - The ID of the group
+   * @param page - Page number (default: 0)  
+   * @param size - Page size (default: 10)
+   */
+  async getGroupTransactionHistory(
+    groupId: number,
+    page: number = 0,
+    size: number = 10
+  ): Promise<GroupTransactionResponse[]> {
+    try {
+      console.log(`🔄 Getting group transaction history for group ${groupId}, page ${page}, size ${size}`);
+      
+      const response = await apiService.get<PaginatedGroupTransactionsResponse>(
+        `${TRANSACTION_ENDPOINTS.LIST}/view-history-transactions-group/${groupId}?page=${page}&size=${size}`
+      );
+      
+      if (response.data && response.data.content) {
+        console.log(`✅ Group transaction history retrieved: ${response.data.content.length} transactions`);
+        
+        // Sort by transaction_date descending (newest first) and take first 10
+        const sortedTransactions = response.data.content
+          .sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime())
+          .slice(0, 10);
+        
+        console.log(`🔢 Returning ${sortedTransactions.length} latest transactions`);
+        return sortedTransactions;
+      }
+      
+      throw new Error(response.message || 'Failed to get group transaction history');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get group transaction history:', error);
+      throw new Error(error.message || 'Failed to get group transaction history');
     }
   }
 }

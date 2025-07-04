@@ -1,13 +1,16 @@
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
+
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, LogBox, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
-import AddBudgetCategoryScreen from '../screens/AddBudgetCategoryScreen';
+import { navigationRef } from '../navigation/NavigationService';
 import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
 import AddWalletScreen from '../screens/AddWalletScreen';
@@ -23,17 +26,21 @@ import FinanceScreen from '../screens/FinanceScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import GroupDetailTabScreen from '../screens/GroupDetailTabScreen';
 import GroupManagementScreen from '../screens/GroupManagementScreen';
+import GroupMembersScreenContainer from '../screens/GroupMembersScreen';
+import GroupTransactionListScreen from '../screens/GroupTransactionListScreen';
 import InviteUsersScreen from '../screens/InviteUsersScreen';
 import MainTabScreen from '../screens/MainTabScreen';
 import NotificationDetailScreen from '../screens/NotificationDetailScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import OTPScreen from '../screens/OTPScreen';
+import ReportDetailScreen from '../screens/ReportDetailScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import SetBudgetLimitScreen from '../screens/SetBudgetLimitScreen';
 import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import LoginScreen from '../screens/login';
 import RegisterScreen from '../screens/register';
 import UpdateProfileScreen from '../screens/update-profile';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -104,7 +111,6 @@ function AuthNavigator() {
       <Stack.Screen name="EditCategoryScreen" component={EditCategoryScreen} />
       <Stack.Screen name="AddEditCategoryScreen" component={AddEditCategoryScreen} />
       <Stack.Screen name="BudgetScreen" component={BudgetScreen} />
-      <Stack.Screen name="AddBudgetCategoryScreen" component={AddBudgetCategoryScreen} />
       <Stack.Screen name="FinanceScreen" component={FinanceScreen} />
       <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
@@ -113,6 +119,7 @@ function AuthNavigator() {
       <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
       <Stack.Screen name="GroupDetail" component={GroupDetailTabScreen} />
       <Stack.Screen name="EditGroup" component={EditGroupScreen} />
+      <Stack.Screen name="GroupTransactionList" component={GroupTransactionListScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
       <Stack.Screen name="Calendar" component={CalendarScreen} />
@@ -120,6 +127,8 @@ function AuthNavigator() {
       <Stack.Screen name="AddWalletScreen" component={AddWalletScreen} />
       <Stack.Screen name="InviteUsers" component={InviteUsersScreen} />
       <Stack.Screen name="ApproveMembers" component={ApproveMembersScreen} />
+      <Stack.Screen name="GroupMembers" component={GroupMembersScreenContainer} />
+      <Stack.Screen name="ReportDetailScreen" component={ReportDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -135,7 +144,11 @@ function AppNavigator() {
     );
   }
 
-  return <AuthNavigator />;
+  return (
+    <NavigationContainer ref={navigationRef}>
+      <AuthNavigator />
+    </NavigationContainer>
+  );
 }
 
 export default function RootLayout() {
@@ -154,12 +167,14 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <LanguageProvider>
-        <TokenExpiryProvider>
-          <AppNavigator />
-        </TokenExpiryProvider>
-      </LanguageProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <LanguageProvider>
+          <TokenExpiryProvider>
+            <AppNavigator />
+          </TokenExpiryProvider>
+        </LanguageProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 } 

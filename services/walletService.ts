@@ -1,3 +1,4 @@
+import { WALLET_ENDPOINTS } from './config';
 import { secureApiService } from './secureApiService';
 
 /**
@@ -64,7 +65,7 @@ export interface WalletResponse {
 
 export class WalletService {
   private static instance: WalletService;
-  private baseUrl = '/api/v1/wallets';
+  private baseUrl = WALLET_ENDPOINTS.LIST;
   private _shouldRefresh = false; // Flag to indicate when wallets should be refreshed
 
   public static getInstance(): WalletService {
@@ -127,7 +128,7 @@ export class WalletService {
       console.log('🔄 Getting wallet:', walletId);
       
       const data = await secureApiService.makeAuthenticatedRequest<WalletResponse>(
-        `${this.baseUrl}/${walletId}`,
+        WALLET_ENDPOINTS.GET_BY_ID(walletId.toString()),
         'GET'
       );
       
@@ -149,7 +150,7 @@ export class WalletService {
       console.log('🔄 Creating wallet:', request);
       
       const data = await secureApiService.makeAuthenticatedRequest<WalletResponse>(
-        this.baseUrl,
+        WALLET_ENDPOINTS.CREATE,
         'POST',
         request
       );
@@ -172,7 +173,7 @@ export class WalletService {
       console.log('🔄 Updating wallet:', walletId, request);
       
       const data = await secureApiService.makeAuthenticatedRequest<WalletResponse>(
-        `${this.baseUrl}/${walletId}`,
+        WALLET_ENDPOINTS.UPDATE(walletId.toString()),
         'PUT',
         request
       );
@@ -195,7 +196,7 @@ export class WalletService {
       console.log('🔄 Deleting wallet:', walletId);
       
       const result = await secureApiService.makeAuthenticatedRequest<void>(
-        `${this.baseUrl}/${walletId}`,
+        WALLET_ENDPOINTS.DELETE(walletId.toString()),
         'DELETE'
       );
       
@@ -257,7 +258,11 @@ export class WalletService {
       const includedWallets = wallets.filter(wallet => 
         wallet.is_active && !wallet.exclude_from_total
       );
-      return includedWallets.reduce((total, wallet) => total + wallet.current_balance, 0);
+      
+      return includedWallets.reduce((total, wallet) => {
+        return total + (wallet.current_balance || 0);
+      }, 0);
+      
     } catch (error: any) {
       console.error('❌ Failed to get total balance:', error);
       throw new Error(error.message || 'Failed to get total balance');

@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
@@ -28,6 +28,7 @@ import {
     TransactionOverviewResponse,
     transactionService
 } from '../services/transactionService';
+import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 interface Transaction {
     id: string;
@@ -309,33 +310,7 @@ const CalendarScreen = () => {
         }, [currentMonth, lastRefreshTime])
     );
 
-    // Helper function to get category icon based on category name
-    const getCategoryIcon = (categoryName: string): { icon: string; color: string } => {
-        const lowerCategory = categoryName.toLowerCase();
-        
-        if (lowerCategory.includes('ăn') || lowerCategory.includes('uống') || lowerCategory.includes('food')) {
-            return { icon: 'restaurant', color: '#FF9500' };
-        }
-        if (lowerCategory.includes('thu nhập') || lowerCategory.includes('income') || lowerCategory.includes('salary')) {
-            return { icon: 'account-balance-wallet', color: '#34C759' };
-        }
-        if (lowerCategory.includes('chi tiêu') || lowerCategory.includes('shopping') || lowerCategory.includes('mua sắm')) {
-            return { icon: 'shopping-basket', color: '#007AFF' };
-        }
-        if (lowerCategory.includes('transport') || lowerCategory.includes('xe')) {
-            return { icon: 'directions-car', color: '#FF3B30' };
-        }
-        if (lowerCategory.includes('entertainment') || lowerCategory.includes('giải trí')) {
-            return { icon: 'movie', color: '#9500FF' };
-        }
-        if (lowerCategory.includes('health') || lowerCategory.includes('sức khỏe')) {
-            return { icon: 'local-hospital', color: '#FF2D92' };
-        }
-        
-        return { icon: 'more-horiz', color: '#666' };
-    };
-
-    // Convert API data to local Transaction format
+    // Convert API data to local Transaction format using iconUtils
     const convertToLocalTransaction = (item: TransactionItem, date: string): Transaction | null => {
         // Filter out inactive or invalid transaction types
         const validTypes = ['income', 'expense', 'INCOME', 'EXPENSE'];
@@ -346,15 +321,28 @@ const CalendarScreen = () => {
             return null;
         }
         
-        const categoryIcon = getCategoryIcon(item.category_name || '');
+        // Use iconUtils to get proper icon and color from category_icon_url
+        const categoryType = transactionType === 'income' ? 'income' : 'expense';
+        const iconName = getIconForCategory(item.category_icon_url, categoryType);
+        const iconColor = getIconColor(iconName, categoryType);
+        
+        console.log('🎨 Icon mapping for transaction:', {
+            transactionId: item.transaction_id,
+            categoryName: item.category_name,
+            categoryIconUrl: item.category_icon_url,
+            categoryType: categoryType,
+            mappedIcon: iconName,
+            mappedColor: iconColor
+        });
+        
         return {
             id: (item.transaction_id || 0).toString(),
             date: date,
             category: item.category_name || 'Unknown',
             amount: item.amount || 0,
             type: transactionType === 'income' ? 'income' : 'expense',
-            icon: categoryIcon.icon,
-            iconColor: categoryIcon.color,
+            icon: iconName,
+            iconColor: iconColor,
             description: item.description || item.category_name || 'No description'
         };
     };
@@ -384,7 +372,9 @@ const CalendarScreen = () => {
                                 id: convertedTransaction.id,
                                 category: convertedTransaction.category,
                                 amount: convertedTransaction.amount,
-                                type: convertedTransaction.type
+                                type: convertedTransaction.type,
+                                icon: convertedTransaction.icon,
+                                iconColor: convertedTransaction.iconColor
                             });
                             transactions.push(convertedTransaction);
                         }
@@ -650,17 +640,17 @@ const CalendarScreen = () => {
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Icon name="arrow-back-ios" size={24} color="#1e90ff" />
+                    <Icon name="arrow-left" size={24} color="#1e90ff" />
                 </TouchableOpacity>
                 
                 <Text style={styles.headerTitle}>{t('calendar.title')}</Text>
                 
                 <TouchableOpacity style={styles.searchButton}>
-                    <Icon name="search" size={24} color="#1e90ff" />
+                    <Icon name="magnify" size={24} color="#1e90ff" />
                 </TouchableOpacity>
             </View>
 
-                        <View style={styles.content}>
+            <View style={styles.content}>
                 {/* Fixed Top Section */}
                 <View style={styles.fixedSection}>
                     {/* Calendar */}
@@ -768,8 +758,6 @@ const CalendarScreen = () => {
                     )}
                 </ScrollView>
             </View>
-
-      
         </SafeAreaView>
     );
 };

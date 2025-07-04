@@ -1,4 +1,5 @@
 import { authService } from './authService';
+import { ApiConfig, TRANSACTION_ENDPOINTS } from './config';
 
 // OCR Response interface
 export interface TransactionOcrResponse {
@@ -103,7 +104,7 @@ export class OcrService {
 
       console.log('🔑 Using auth token for OCR request');
       
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/v1/transactions/scan-invoice`, {
+      const response = await fetch(`${ApiConfig.BASE_URL}${TRANSACTION_ENDPOINTS.SCAN_INVOICE}`, {
         method: 'POST',
         body: formData,
         signal: controller.signal,

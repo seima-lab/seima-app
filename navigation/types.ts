@@ -19,7 +19,10 @@ export type RootStackParamList = {
   ChangePassword: undefined;
   ChatAI: undefined;
   GroupManagement: undefined;
-  CreateGroup: undefined;
+  CreateGroup: {
+    mode?: 'create' | 'edit';
+    groupData?: import('../services/groupService').GroupDetailResponse;
+  } | undefined;
   Notifications: undefined;
   NotificationDetail: {
     notification: {
@@ -38,7 +41,24 @@ export type RootStackParamList = {
   SettingScreen: undefined;
   MainTab: undefined;
   MainTabScreen: undefined;
-  AddExpenseScreen: undefined;
+  AddExpenseScreen: {
+    fromGroupOverview?: boolean;
+    fromGroupTransactionList?: boolean;
+    groupId?: string;
+    groupName?: string;
+    editMode?: boolean;
+    transactionData?: {
+      id: string;
+      amount: string;
+      note: string;
+      date: string;
+      category: string;
+      type: string;
+      icon: string;
+      iconColor: string;
+      categoryId?: number;
+    };
+  } | undefined;
   BudgetScreen: undefined;
   AddBudgetCategoryScreen: undefined;
   SetBudgetLimitScreen: {
@@ -84,10 +104,29 @@ export type RootStackParamList = {
       excludeFromTotal: boolean;
     };
   } | undefined;
-  GroupDetail: { groupId: string; groupName: string };
+  GroupDetail: { 
+    groupId: string; 
+    groupName: string;
+    groupData?: import('../services/groupService').GroupDetailResponse;
+  };
   EditGroup: { groupId: string; groupName: string };
   InviteUsers: { groupId: string };
   ApproveMembers: { groupId: string };
+  GroupMembers: { groupId: string; groupName: string };
+  GroupTransactionList: { 
+    groupId: string; 
+    groupName: string; 
+  };
+  ReportDetailScreen: {
+    title: string;
+    categoryType: 'expense' | 'income';
+    data: import('../services/transactionService').ReportByCategory[];
+    totalAmount: number;
+  };
+  SelectCategoryScreen: {
+    categoryType: 'expense' | 'income';
+    onSelectCategory: (category: import('../services/categoryService').CategoryResponse) => void;
+  };
 };
 
 export type ScreenNames = keyof RootStackParamList; 

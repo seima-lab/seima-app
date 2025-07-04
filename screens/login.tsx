@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Animated,
-  Dimensions,
-  Keyboard,
-  Modal,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    Animated,
+    Dimensions,
+    Keyboard,
+    Modal,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -24,13 +24,37 @@ import { useNavigationService } from '../navigation/NavigationService';
 import { authService } from '../services/authService';
 import { configureGoogleSignIn, signInWithGoogle } from '../services/googleSignIn';
 import {
-  createUserProfileFromEmail,
-  mapAuthErrorToMessage,
-  prepareEmailLoginRequest,
-  validateLoginForm
+    createUserProfileFromEmail,
+    mapAuthErrorToMessage,
+    prepareEmailLoginRequest,
+    validateLoginForm
 } from '../utils/authUtils';
 
-const { height } = Dimensions.get('window');
+const { height, width } = Dimensions.get('window');
+
+// Responsive utilities
+const isSmallScreen = width < 375 || height < 667;
+const screenWidth = width;
+const screenHeight = height;
+
+// Responsive functions
+const rp = (size: number) => {
+  const scale = Math.min(width / 375, height / 667);
+  const minSize = size * 0.7;
+  const scaledSize = size * scale;
+  return Math.max(scaledSize, minSize);
+};
+
+const rf = (fontSize: number) => {
+  const scale = Math.min(width / 375, height / 667);
+  const minFontScale = 0.85;
+  const maxFontScale = 1.15;
+  const fontScale = Math.min(Math.max(scale, minFontScale), maxFontScale);
+  return fontSize * fontScale;
+};
+
+const wp = (percentage: number) => (screenWidth * percentage) / 100;
+const hp = (percentage: number) => (screenHeight * percentage) / 100;
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -285,7 +309,7 @@ export default function LoginScreen() {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.container}>
-        <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
+        <View style={[styles.content, { paddingTop: insets.top + rp(20) }]}>
           {/* Compact Logo */}
           <View style={styles.logoContainer}>
             <Logo />
@@ -412,7 +436,7 @@ export default function LoginScreen() {
           </View>
           
           {/* Footer */}
-          <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
+          <View style={[styles.footer, { paddingBottom: insets.bottom + rp(10) }]}>
             <Text style={styles.footerText}>
               {t('login.termsText')}
             </Text>
@@ -480,21 +504,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: rp(16),
   },
   logoContainer: {
-    height: 80,
+    height: isSmallScreen ? hp(8) : hp(10),
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
-    marginTop: 20,
+    marginTop: rp(20),
   },
   loginCard: {
     backgroundColor: '#fff',
     width: '100%',
     maxWidth: 400,
-    padding: 20,
-    borderRadius: 20,
+    padding: rp(20),
+    borderRadius: rp(20),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -507,20 +531,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loginTitle: {
-    fontSize: 20,
+    fontSize: rf(20),
     fontWeight: '600',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: rp(16),
   },
   inputContainer: {
-    marginBottom: 12,
+    marginBottom: rp(12),
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontWeight: '500',
     color: '#374151',
-    marginBottom: 6,
+    marginBottom: rp(6),
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -528,16 +552,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: rp(12),
+    paddingHorizontal: rp(16),
+    paddingVertical: rp(12),
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: rp(12),
   },
   textInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: rf(16),
     color: '#1F2937',
   },
   eyeButton: {
@@ -546,15 +570,15 @@ const styles = StyleSheet.create({
   rememberMeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: rp(12),
   },
   checkbox: {
-    width: 20,
-    height: 20,
+    width: rp(20),
+    height: rp(20),
     borderWidth: 2,
     borderColor: '#D1D5DB',
-    borderRadius: 4,
-    marginRight: 12,
+    borderRadius: rp(4),
+    marginRight: rp(12),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -563,37 +587,37 @@ const styles = StyleSheet.create({
     borderColor: '#1e90ff',
   },
   rememberMeText: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#6B7280',
   },
   loginButton: {
     backgroundColor: '#1e90ff',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: rp(12),
+    paddingVertical: rp(16),
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: rp(12),
   },
   loginButtonDisabled: {
     opacity: 0.6,
   },
   loginButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: rf(16),
     fontWeight: '600',
   },
   forgotPasswordButton: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: rp(12),
   },
   forgotPasswordText: {
     color: '#1e90ff',
-    fontSize: 14,
+    fontSize: rf(14),
     fontWeight: '500',
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: rp(20),
   },
   dividerLine: {
     flex: 1,
@@ -601,49 +625,49 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
   dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
+    marginHorizontal: rp(16),
+    fontSize: rf(14),
     color: '#6B7280',
   },
   signupContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    marginTop: 8,
+    marginBottom: rp(16),
+    marginTop: rp(8),
   },
   signupText: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#6B7280',
   },
   signupLink: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#1e90ff',
     fontWeight: '600',
-    marginLeft: 4,
+    marginLeft: rp(4),
   },
   footer: {
     width: '100%',
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingHorizontal: rp(20),
+    paddingTop: rp(10),
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
   footerText: {
-    fontSize: 12,
+    fontSize: rf(12),
     color: '#9CA3AF',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: rf(16),
   },
   autoFillContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: rp(16),
   },
   autoFillText: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#6B7280',
-    marginLeft: 8,
+    marginLeft: rp(8),
   },
   modalOverlay: {
     flex: 1,
@@ -653,38 +677,38 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 20,
-    width: '80%',
+    padding: rp(20),
+    borderRadius: rp(20),
+    width: '85%',
     maxWidth: 400,
     alignItems: 'center',
   },
   modalIconContainer: {
-    marginBottom: 20,
+    marginBottom: rp(20),
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: rf(20),
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 16,
+    marginBottom: rp(16),
   },
   modalMessage: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: rp(20),
   },
   modalButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    gap: 16,
+    gap: rp(16),
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: rp(12),
+    paddingHorizontal: rp(16),
+    borderRadius: rp(8),
     alignItems: 'center',
   },
   cancelButton: {
@@ -695,12 +719,12 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: rf(14),
     fontWeight: '600',
   },
   activateButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: rf(14),
     fontWeight: '600',
   },
 });

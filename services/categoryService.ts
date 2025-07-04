@@ -1,4 +1,7 @@
 import { apiService } from './apiService';
+import { CATEGORY_ENDPOINTS } from './config';
+
+import { getIconForCategory } from '../utils/iconUtils';
 
 // Enums
 export enum CategoryType {
@@ -371,7 +374,7 @@ export class CategoryService {
        console.log('🔄 Trying system categories with categoryType:', categoryTypeValue);
        
        const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(
-         `/api/v1/categories/system?categoryType=${categoryTypeValue}`
+         `${CATEGORY_ENDPOINTS.LIST}/system?categoryType=${categoryTypeValue}`
        );
       
       console.log('📊 System categories response:', response);
@@ -418,7 +421,7 @@ export class CategoryService {
       });
       
       const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(
-        `/api/v1/categories?categoryType=${categoryTypeValue}&userId=${userId}&groupId=${groupId}`
+        `${CATEGORY_ENDPOINTS.LIST}?categoryType=${categoryTypeValue}&userId=${userId}&groupId=${groupId}`
       );
       
       console.log('📊 Categories response for', categoryType, ':', response);
@@ -482,7 +485,7 @@ export class CategoryService {
       console.log('🔄 Fetching ALL categories for user:', { userId, groupId });
       
       // Pass null for categoryType to fetch all types.
-      const endpoint = `/api/v1/categories?categoryType=null&userId=${userId}&groupId=${groupId}`;
+      const endpoint = `${CATEGORY_ENDPOINTS.LIST}?categoryType=null&userId=${userId}&groupId=${groupId}`;
       console.log('🚀 Calling endpoint:', endpoint);
 
       const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(endpoint);
@@ -515,7 +518,7 @@ export class CategoryService {
       console.log('🔄 Fetching category by ID:', categoryId);
       
       const response = await apiService.get<ApiResponseData<CategoryResponse>>(
-        `/api/v1/categories/${categoryId}`
+        CATEGORY_ENDPOINTS.GET_BY_ID(categoryId.toString())
       );
       
       console.log('📊 Category response:', response);
@@ -538,7 +541,7 @@ export class CategoryService {
       console.log('🔄 Creating category:', request);
       
       const response = await apiService.post<ApiResponseData<CategoryResponse>>(
-        '/api/v1/categories',
+        CATEGORY_ENDPOINTS.CREATE,
         request
       );
       
@@ -559,23 +562,39 @@ export class CategoryService {
   // Update category - Use CreateCategoryRequest format as per backend API
   async updateCategory(categoryId: number, request: CreateCategoryRequest): Promise<CategoryResponse> {
     try {
-      console.log('🔄 Updating category:', { categoryId, request });
+      console.log('🔄 === CATEGORY SERVICE UPDATE ===');
+      console.log('📊 Category ID:', categoryId);
+      console.log('📤 Request object:', JSON.stringify(request, null, 2));
+      console.log('🌐 Endpoint URL:', `${CATEGORY_ENDPOINTS.UPDATE(categoryId.toString())}`);
       
       const response = await apiService.put<ApiResponseData<CategoryResponse>>(
-        `/api/v1/categories/update/${categoryId}`,
+        `${CATEGORY_ENDPOINTS.UPDATE(categoryId.toString())}`,
         request
       );
       
-      console.log('📊 Update category response:', response);
+      console.log('📥 === RAW API RESPONSE ===');
+      console.log('Response type:', typeof response);
+      console.log('Response keys:', Object.keys(response || {}));
+      console.log('Full response:', JSON.stringify(response, null, 2));
       
       if (response.data) {
         const data = response.data as any;
+        console.log('✅ Response has data property');
+        console.log('Data keys:', Object.keys(data || {}));
+        console.log('Final result:', JSON.stringify(data.data || data, null, 2));
         return data.data || data;
       }
       
+      console.error('❌ No data in response');
       throw new Error('Failed to update category');
-    } catch (error) {
-      console.error('❌ Error updating category:', error);
+    } catch (error: any) {
+      console.error('❌ === CATEGORY UPDATE ERROR ===');
+      console.error('Error type:', typeof error);
+      console.error('Error name:', error?.name);
+      console.error('Error message:', error?.message);
+      console.error('Error status:', error?.status);
+      console.error('Error response:', error?.response);
+      console.error('Full error object:', JSON.stringify(error, null, 2));
       throw error;
     }
   }
@@ -586,7 +605,7 @@ export class CategoryService {
       console.log('🔄 Deleting category:', categoryId);
       
       const response = await apiService.delete<ApiResponseData>(
-        `/api/v1/categories/delete/${categoryId}`
+        CATEGORY_ENDPOINTS.DELETE(categoryId.toString())
       );
       
       console.log('📊 Delete category response:', response);
@@ -603,54 +622,16 @@ export class CategoryService {
 
   // Convert API response to local category format for UI
   convertToLocalCategory(apiCategory: CategoryResponse): LocalCategory {
-    // List of known valid MaterialCommunityIcons (partial list of most common ones)
-    const validIcons = [
-      'cash', 'cash-plus', 'cash-minus', 'credit-card', 'bank', 'wallet',
-      'silverware-fork-knife', 'coffee', 'hamburger', 'food-apple', 'cake',
-      'bottle-soda', 'shopping', 'cart', 'store', 'minus-circle',
-      'tshirt-crew', 'shoe-heel', 'hanger', 'tshirt-v',
-      'lipstick', 'face-woman', 'spray',
-      'glass-cocktail', 'gamepad-variant', 'movie', 'music', 'party-popper',
-      'pill', 'hospital-box', 'dumbbell', 'doctor', 'stethoscope',
-      'book-open-variant', 'school', 'book-open-page-variant', 'graduation-cap',
-      'briefcase', 'office-building', 'laptop',
-      'flash', 'water', 'wifi', 'fire', 'home-lightning-bolt',
-      'train', 'car', 'bus', 'taxi', 'gas-station', 'airplane',
-      'cellphone', 'phone',
-      'home-city', 'home', 'apartment', 'home-outline', 'key',
-      'gift', 'hand-heart', 'star', 'trophy',
-      'chart-line', 'piggy-bank', 'bank-transfer', 'percent',
-      'dots-horizontal', 'shield-account', 'tools', 'wrench',
-      'exit-to-app', 'arrow-left', 'close', 'pencil'
-    ];
+    // Use centralized icon utility function
+    const categoryType = apiCategory.category_type === CategoryType.EXPENSE ? 'expense' : 'income';
+    const finalIcon = getIconForCategory(apiCategory.category_icon_url, categoryType);
     
-    let finalIcon = 'cash-minus'; // default fallback
-    
-    // Use category_icon_url if it exists and is valid
-    if (apiCategory.category_icon_url && apiCategory.category_icon_url.trim()) {
-      const iconName = apiCategory.category_icon_url.trim();
-      
-      // Check if it's a valid icon
-      if (validIcons.includes(iconName)) {
-        finalIcon = iconName;
-      } else {
-        // Log invalid icon for debugging
-        console.warn('⚠️ Invalid icon name from database:', iconName, 'for category:', apiCategory.category_name);
-        // Use mapping or fallback
-        finalIcon = ICON_MAPPING[iconName] || (apiCategory.category_type === CategoryType.EXPENSE ? 'cash-minus' : 'cash-plus');
-      }
-    } else {
-      // Fallback to default icons based on category type
-      finalIcon = apiCategory.category_type === CategoryType.EXPENSE ? 'cash-minus' : 'cash-plus';
-    }
-    
-    console.log('🔄 Converting category (validated mapping):', {
+    console.log('🔄 Converting category (using iconUtils):', {
       category_name: apiCategory.category_name,
       category_icon_url: apiCategory.category_icon_url,
       category_type: apiCategory.category_type,
       final_icon: finalIcon,
-      is_valid: validIcons.includes(finalIcon),
-      note: 'Color will be determined by iconUtils.getIconColor()'
+      note: 'Icon and color determined by iconUtils functions'
     });
     
     return {
@@ -679,8 +660,6 @@ export class CategoryService {
       is_system_defined: false,
     };
   }
-
-
 
   // Get default categories for specific type (fallback when API fails)
   getDefaultCategories(categoryType: CategoryType): LocalCategory[] {

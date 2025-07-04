@@ -1,62 +1,170 @@
-import React from 'react';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { RootStackParamList } from '../navigation/types';
 
 interface GroupSettingsScreenProps {
   groupId: string;
   groupName: string;
+  groupAvatar?: string;
+  groupDescription?: string;
 }
 
-const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, groupName }) => {
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [autoApproveEnabled, setAutoApproveEnabled] = React.useState(false);
+const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ 
+  groupId, 
+  groupName, 
+  groupAvatar, 
+  groupDescription 
+}) => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { t } = useTranslation();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [autoApproveEnabled, setAutoApproveEnabled] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('');
 
-  const handleEditGroup = () => {
-    Alert.alert('Chỉnh sửa nhóm', 'Chức năng chỉnh sửa thông tin nhóm');
+  const handleEditGroup = async () => {
+    try {
+      console.log('🔄 [GroupSettingsScreen] Loading group detail for editing...');
+      
+      // Get full group detail using API
+      const { groupService } = await import('../services/groupService');
+      const groupDetail = await groupService.getGroupDetail(Number(groupId));
+      
+      console.log('✅ [GroupSettingsScreen] Group detail loaded:', groupDetail);
+      
+      // Navigate to CreateGroupScreen with edit mode and full data
+      navigation.navigate('CreateGroup', {
+        mode: 'edit',
+        groupData: groupDetail
+      });
+    } catch (error: any) {
+      console.error('🔴 [GroupSettingsScreen] Failed to load group detail:', error);
+      Alert.alert(
+        t('common.error'),
+        error.message || t('group.settings.errors.updateFailed'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('group.continueAnyway'),
+            onPress: () => {
+              // Fallback: navigate with basic data in GroupDetailResponse format
+              navigation.navigate('CreateGroup', {
+                mode: 'edit',
+                groupData: {
+                  group_id: Number(groupId),
+                  group_name: groupName,
+                  group_avatar_url: groupAvatar,
+                  group_created_date: '',
+                  group_is_active: true,
+                  group_leader: {
+                    user_id: 0,
+                    user_full_name: '',
+                    user_email: ''
+                  },
+                  members: [],
+                  total_members_count: 0,
+                  current_user_role: 'OWNER' as any
+                }
+              });
+            }
+          }
+        ]
+      );
+    }
   };
 
   const handleManagePermissions = () => {
-    Alert.alert('Quản lý quyền', 'Chức năng quản lý quyền thành viên');
+    Alert.alert(t('group.settings.managePermissions'), t('group.settings.managePermissionsDesc'));
   };
 
   const handleViewReports = () => {
-    Alert.alert('Báo cáo', 'Chức năng xem báo cáo tài chính');
+    Alert.alert(t('group.settings.viewReports'), t('group.settings.viewReportsDesc'));
   };
 
   const handleExportData = () => {
-    Alert.alert('Xuất dữ liệu', 'Chức năng xuất dữ liệu ra file Excel/PDF');
+    Alert.alert(t('group.settings.exportData'), t('group.settings.exportDataDesc'));
   };
 
   const handleBackupData = () => {
-    Alert.alert('Sao lưu', 'Chức năng sao lưu dữ liệu');
+    Alert.alert(t('group.settings.backupData'), t('group.settings.backupDataDesc'));
   };
 
   const handleLeaveGroup = () => {
     Alert.alert(
-      'Rời khỏi nhóm',
-      'Bạn có chắc chắn muốn rời khỏi nhóm này? Hành động này không thể hoàn tác.',
+      t('group.settings.confirmLeave'),
+      t('group.settings.confirmLeaveDesc'),
       [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Rời nhóm', style: 'destructive', onPress: () => console.log('Left group') }
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('group.settings.leave'), style: 'destructive', onPress: () => console.log('Left group') }
       ]
     );
   };
 
   const handleDeleteGroup = () => {
     Alert.alert(
-      'Xóa nhóm',
-      'Bạn có chắc chắn muốn xóa nhóm này? Tất cả dữ liệu sẽ bị mất vĩnh viễn.',
+      t('group.settings.confirmDelete'),
+      t('group.settings.confirmDeleteDesc'),
       [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Xóa nhóm', style: 'destructive', onPress: () => console.log('Deleted group') }
+        { text: t('common.cancel'), style: 'cancel' },
+        { 
+          text: t('group.settings.deleteGroup'), 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              console.log('🗑️ [GroupSettingsScreen] Starting group deletion...');
+              setLoading(true);
+              setLoadingText(t('group.settings.deletingGroup'));
+
+              // Import and call archive API
+              const { groupService } = await import('../services/groupService');
+              await groupService.archiveGroup(Number(groupId));
+
+              console.log('✅ [GroupSettingsScreen] Group archived successfully');
+              setLoading(false);
+
+              // Show success message and navigate back
+              Alert.alert(
+                t('common.success'),
+                t('group.settings.deleteSuccess'),
+                [
+                  {
+                    text: t('common.ok'),
+                    onPress: () => {
+                      // Navigate back to group list
+                      navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'MainTab' }],
+                      });
+                    }
+                  }
+                ]
+              );
+
+            } catch (error: any) {
+              console.error('🔴 [GroupSettingsScreen] Failed to archive group:', error);
+              setLoading(false);
+              
+              Alert.alert(
+                t('common.error'),
+                error.message || t('group.settings.deleteFailed'),
+                [{ text: t('common.ok') }]
+              );
+            }
+          }
+        }
       ]
     );
   };
@@ -103,24 +211,51 @@ const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, grou
     </TouchableOpacity>
   );
 
+  const renderLoadingModal = () => (
+    <Modal
+      visible={loading}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => {}} // Prevent closing during loading
+    >
+      <View style={styles.loadingModalOverlay}>
+        <View style={styles.loadingModalContent}>
+          {/* Loading Animation */}
+          <View style={styles.loadingAnimationContainer}>
+            <ActivityIndicator size="large" color="#F44336" />
+          </View>
+          
+          {/* Loading Text */}
+          <Text style={styles.loadingTitle}>{t('group.settings.deleteGroup')}</Text>
+          <Text style={styles.loadingMessage}>{loadingText}</Text>
+          
+          {/* Warning */}
+          <Text style={styles.loadingWarning}>
+            {t('group.settings.doNotCloseApp')}
+          </Text>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Group Management */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quản lý nhóm</Text>
+          <Text style={styles.sectionTitle}>{t('group.settings.groupManagement')}</Text>
           <View style={styles.settingsCard}>
             <SettingItem
               icon="edit"
-              title="Chỉnh sửa thông tin nhóm"
-              subtitle="Tên, mô tả, ảnh đại diện"
+              title={t('group.settings.editGroupInfo')}
+              subtitle={t('group.settings.editGroupInfoDesc')}
               onPress={handleEditGroup}
             />
             <View style={styles.separator} />
             <SettingItem
               icon="security"
-              title="Quản lý quyền"
-              subtitle="Phân quyền cho thành viên"
+              title={t('group.settings.managePermissions')}
+              subtitle={t('group.settings.managePermissionsDesc')}
               onPress={handleManagePermissions}
             />
           </View>
@@ -128,12 +263,12 @@ const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, grou
 
         {/* Notifications */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông báo</Text>
+          <Text style={styles.sectionTitle}>{t('group.settings.notifications')}</Text>
           <View style={styles.settingsCard}>
             <SettingItem
               icon="notifications"
-              title="Thông báo giao dịch"
-              subtitle="Nhận thông báo khi có giao dịch mới"
+              title={t('group.settings.transactionNotifications')}
+              subtitle={t('group.settings.transactionNotificationsDesc')}
               showArrow={false}
               rightComponent={
                 <Switch
@@ -147,8 +282,8 @@ const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, grou
             <View style={styles.separator} />
             <SettingItem
               icon="auto-awesome"
-              title="Tự động duyệt"
-              subtitle="Tự động duyệt các giao dịch nhỏ"
+              title={t('group.settings.autoApprove')}
+              subtitle={t('group.settings.autoApproveDesc')}
               showArrow={false}
               rightComponent={
                 <Switch
@@ -164,26 +299,26 @@ const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, grou
 
         {/* Reports & Data */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Báo cáo & Dữ liệu</Text>
+          <Text style={styles.sectionTitle}>{t('group.settings.reportsAndData')}</Text>
           <View style={styles.settingsCard}>
             <SettingItem
               icon="assessment"
-              title="Xem báo cáo"
-              subtitle="Báo cáo thu chi chi tiết"
+              title={t('group.settings.viewReports')}
+              subtitle={t('group.settings.viewReportsDesc')}
               onPress={handleViewReports}
             />
             <View style={styles.separator} />
             <SettingItem
               icon="file-download"
-              title="Xuất dữ liệu"
-              subtitle="Xuất ra Excel hoặc PDF"
+              title={t('group.settings.exportData')}
+              subtitle={t('group.settings.exportDataDesc')}
               onPress={handleExportData}
             />
             <View style={styles.separator} />
             <SettingItem
               icon="backup"
-              title="Sao lưu dữ liệu"
-              subtitle="Sao lưu lên cloud"
+              title={t('group.settings.backupData')}
+              subtitle={t('group.settings.backupDataDesc')}
               onPress={handleBackupData}
             />
           </View>
@@ -191,20 +326,20 @@ const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, grou
 
         {/* Danger Zone */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Vùng nguy hiểm</Text>
+          <Text style={styles.sectionTitle}>{t('group.settings.dangerZone')}</Text>
           <View style={styles.settingsCard}>
             <SettingItem
               icon="exit-to-app"
-              title="Rời khỏi nhóm"
-              subtitle="Bạn sẽ không còn truy cập được nhóm này"
+              title={t('group.settings.leaveGroup')}
+              subtitle={t('group.settings.leaveGroupDesc')}
               onPress={handleLeaveGroup}
               danger={true}
             />
             <View style={styles.separator} />
             <SettingItem
               icon="delete-forever"
-              title="Xóa nhóm"
-              subtitle="Xóa vĩnh viễn nhóm và toàn bộ dữ liệu"
+              title={t('group.settings.deleteGroup')}
+              subtitle={t('group.settings.deleteGroupDesc')}
               onPress={handleDeleteGroup}
               danger={true}
             />
@@ -213,27 +348,28 @@ const GroupSettingsScreen: React.FC<GroupSettingsScreenProps> = ({ groupId, grou
 
         {/* Group Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin</Text>
+          <Text style={styles.sectionTitle}>{t('group.settings.information')}</Text>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>ID nhóm:</Text>
+              <Text style={styles.infoLabel}>{t('group.settings.groupId')}:</Text>
               <Text style={styles.infoValue}>{groupId}</Text>
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Tên nhóm:</Text>
+              <Text style={styles.infoLabel}>{t('group.settings.groupName')}:</Text>
               <Text style={styles.infoValue}>{groupName}</Text>
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Ngày tạo:</Text>
+              <Text style={styles.infoLabel}>{t('group.settings.createdDate')}:</Text>
               <Text style={styles.infoValue}>15/11/2024</Text>
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Phiên bản:</Text>
+              <Text style={styles.infoLabel}>{t('group.settings.version')}:</Text>
               <Text style={styles.infoValue}>1.0.0</Text>
             </View>
           </View>
         </View>
       </ScrollView>
+      {renderLoadingModal()}
     </View>
   );
 };
@@ -317,6 +453,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333333',
     fontWeight: '500',
+  },
+  loadingModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingModalContent: {
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 12,
+    width: '80%',
+    alignItems: 'center',
+  },
+  loadingAnimationContainer: {
+    marginBottom: 16,
+  },
+  loadingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  loadingMessage: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 16,
+  },
+  loadingWarning: {
+    fontSize: 12,
+    color: '#F44336',
   },
 });
 

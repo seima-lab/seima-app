@@ -1,10 +1,11 @@
-import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     Alert,
+    Clipboard,
     Image,
     Modal,
     ScrollView,
@@ -13,28 +14,57 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation/types';
+import { GroupResponse, groupService } from '../services/groupService';
 
 const CreateGroupScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'CreateGroup'>>();
   const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
+  
+  // Get route parameters
+  const { mode = 'create', groupData } = route.params || {};
+  const isEditMode = mode === 'edit';
   
   // Form state
   const [groupName, setGroupName] = useState('');
-  const [groupDescription, setGroupDescription] = useState('');
   const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [createdGroup, setCreatedGroup] = useState<GroupResponse | null>(null);
   
   // Validation errors
   const [errors, setErrors] = useState({
     groupName: '',
-    groupDescription: '',
   });
+
+  // Load existing group data in edit mode
+  useEffect(() => {
+    if (isEditMode && groupData) {
+      console.log('🔄 [CreateGroupScreen] Loading group data for editing:');
+      console.log('📊 [CreateGroupScreen] Group data type:', typeof groupData);
+      console.log('📊 [CreateGroupScreen] Group data keys:', Object.keys(groupData));
+      console.log('📊 [CreateGroupScreen] Full group data:', JSON.stringify(groupData, null, 2));
+      
+      // Set group name
+      const name = groupData.group_name || '';
+      console.log('📝 [CreateGroupScreen] Setting group name:', name);
+      setGroupName(name);
+      
+      // Set group avatar
+      const avatar = groupData.group_avatar_url || null;
+      console.log('🖼️ [CreateGroupScreen] Setting group avatar:', avatar);
+      setGroupAvatar(avatar);
+    }
+  }, [isEditMode, groupData]);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -43,86 +73,312 @@ const CreateGroupScreen = () => {
   const validateForm = () => {
     const newErrors = {
       groupName: '',
-      groupDescription: '',
     };
 
-    // Validate group name
+    // Validate group name (backend allows up to 100 characters)
     if (!groupName.trim()) {
       newErrors.groupName = t('group.create.nameRequired');
     } else if (groupName.trim().length < 3) {
       newErrors.groupName = t('group.create.nameMinLength');
-    } else if (groupName.trim().length > 50) {
+    } else if (groupName.trim().length > 100) {
       newErrors.groupName = t('group.create.nameMaxLength');
     }
 
-    // Validate description
-    if (!groupDescription.trim()) {
-      newErrors.groupDescription = t('group.create.descriptionRequired');
-    } else if (groupDescription.trim().length < 10) {
-      newErrors.groupDescription = t('group.create.descriptionMinLength');
-    } else if (groupDescription.trim().length > 200) {
-      newErrors.groupDescription = t('group.create.descriptionMaxLength');
-    }
-
     setErrors(newErrors);
-    return !newErrors.groupName && !newErrors.groupDescription;
+    return !newErrors.groupName;
   };
 
   const handlePickImage = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('🎨 [CreateGroupScreen] Opening image picker modal');
+      setShowImagePicker(true);
+    } catch (error) {
+      console.error('🔴 Error in handlePickImage:', error);
+      Alert.alert(t('common.error'), t('group.create.errors.imagePickerError'));
+    }
+  };
+
+  const closeImagePicker = () => {
+    console.log('❌ [CreateGroupScreen] Closing image picker modal');
+    setShowImagePicker(false);
+  };
+
+  const handleImageOptionPress = (option: 'camera' | 'gallery') => {
+    console.log('📷 [CreateGroupScreen] Image option selected:', option);
+    setShowImagePicker(false);
+    
+    switch (option) {
+      case 'camera':
+        openCamera();
+        break;
+      case 'gallery':
+        openGallery();
+        break;
+    }
+  };
+
+  const openCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(t('common.error'), t('group.create.errors.cameraPermission'));
+        Alert.alert(t('common.error'), t('permissions.cameraError'));
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      console.log('🟡 Opening camera...');
+      const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        setGroupAvatar(result.assets[0].uri);
-      }
+      handleImageResult(result);
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert(t('common.error'), t('group.create.errors.imagePickerError'));
+      console.error('🔴 Camera error:', error);
+      Alert.alert(t('common.error'), t('permissions.cameraError'));
+    }
+  };
+
+  const openGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('common.error'), t('permissions.galleryError'));
+        return;
+      }
+
+      console.log('🟡 Opening gallery...');
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        selectionLimit: 1,
+      });
+
+      handleImageResult(result);
+    } catch (error) {
+      console.error('🔴 Gallery error:', error);
+      Alert.alert(t('common.error'), t('permissions.galleryError'));
+    }
+  };
+
+  const handleImageResult = (result: ImagePicker.ImagePickerResult) => {
+    console.log('🟡 Image picker result:', result);
+
+    if (!result.canceled && result.assets && result.assets[0]) {
+      const selectedImage = result.assets[0];
+      
+      // Validate image size (max 5MB)
+      if (selectedImage.fileSize && selectedImage.fileSize > 5 * 1024 * 1024) {
+        Alert.alert(
+          t('common.error'),
+          t('group.create.errors.imageTooLarge')
+        );
+        return;
+      }
+
+      console.log('🟢 Image selected:', {
+        uri: selectedImage.uri,
+        type: selectedImage.type,
+        fileSize: selectedImage.fileSize,
+        width: selectedImage.width,
+        height: selectedImage.height,
+      });
+      
+      setGroupAvatar(selectedImage.uri);
+    } else {
+      console.log('🔴 Image selection cancelled or failed');
     }
   };
 
   const handleCreateGroup = async () => {
+    if (!isAuthenticated) {
+      Alert.alert(t('common.error'), t('auth.pleaseLogin'));
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
 
     setLoading(true);
+    setLoadingText(isEditMode ? t('group.edit.updating') : t('group.create.creating'));
     
     try {
-      // Mock API call - replace with actual API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log('Creating group:', {
-        name: groupName.trim(),
-        description: groupDescription.trim(),
-        avatar: groupAvatar,
+      console.log(`${isEditMode ? 'Updating' : 'Creating'} group with data:`, {
+        group_name: groupName.trim(),
+        image: groupAvatar,
+        ...(isEditMode && { groupId: groupData?.group_id }),
       });
 
+      // Prepare image file object if avatar is selected
+      let imageFile = undefined;
+      if (groupAvatar && !groupAvatar.startsWith('http')) {
+        setLoadingText(isEditMode ? t('group.edit.processingImage') : t('group.create.processingImage'));
+        
+        // Only create file object for local images (not for existing URLs)
+        const uriParts = groupAvatar.split('.');
+        const fileType = uriParts[uriParts.length - 1].toLowerCase();
+        
+        // Ensure valid image type
+        const validTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        const mimeType = validTypes.includes(fileType) ? `image/${fileType === 'jpg' ? 'jpeg' : fileType}` : 'image/jpeg';
+        
+        imageFile = {
+          uri: groupAvatar,
+          type: mimeType,
+          name: `group-avatar.${fileType === 'jpg' ? 'jpeg' : fileType}`,
+        };
+        
+        console.log('🟡 Image file object:', imageFile);
+      }
+
+      let response: GroupResponse;
+      
+      if (isEditMode && groupData?.group_id) {
+        setLoadingText(t('group.edit.uploadingChanges'));
+        // Update existing group
+        response = await groupService.updateGroup(Number(groupData.group_id), {
+          group_name: groupName.trim(),
+          image: imageFile,
+        });
+        console.log('🟢 Group updated successfully:', response);
+      } else {
+        setLoadingText(t('group.create.uploadingData'));
+        // Create new group
+        response = await groupService.createGroup({
+          group_name: groupName.trim(),
+          image: imageFile,
+        });
+        console.log('🟢 Group created successfully:', response);
+      }
+
+      setCreatedGroup(response);
       setLoading(false);
+      setLoadingText('');
       setShowSuccessModal(true);
       
-    } catch (error) {
+    } catch (error: any) {
       setLoading(false);
-      console.error('Error creating group:', error);
-      Alert.alert(t('common.error'), t('group.create.errors.createError'));
+      setLoadingText('');
+      console.error(`🔴 Error ${isEditMode ? 'updating' : 'creating'} group:`, error);
+      
+      let errorMessage = error.message;
+      if (error.message?.includes('timeout') || error.message?.includes('timed out')) {
+        errorMessage = isEditMode ? t('group.edit.errors.timeout') : t('group.create.errors.timeout');
+      } else if (error.message?.includes('Network')) {
+        errorMessage = t('group.create.errors.network');
+      } else if (error.message?.includes('Authentication')) {
+        errorMessage = t('group.create.errors.auth');
+      }
+      
+      Alert.alert(
+        t('common.error'),
+        errorMessage || (isEditMode ? t('group.edit.errors.updateFailed') : t('group.create.errors.createFailed'))
+      );
+    }
+  };
+
+  const handleCopyInviteCode = async () => {
+    if (createdGroup?.group_invite_code) {
+      try {
+        Clipboard.setString(createdGroup.group_invite_code);
+        Alert.alert(
+          t('common.success'),
+          t('group.create.success.inviteCodeCopied'),
+          [{ text: t('common.ok') }]
+        );
+      } catch (error) {
+        console.error('Failed to copy invite code:', error);
+      }
     }
   };
 
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false);
-    navigation.goBack();
+    if (isEditMode) {
+      // For edit mode, just go back to previous screen (likely GroupSettings)
+      navigation.goBack();
+    } else {
+      // For create mode, navigate to group management
+      navigation.navigate('GroupManagement');
+    }
   };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return dateString;
+    }
+  };
+
+  const renderImagePickerModal = () => (
+    <Modal
+      visible={showImagePicker}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={closeImagePicker}
+    >
+      <View style={styles.imagePickerOverlay}>
+        <TouchableOpacity style={styles.imagePickerBackdrop} onPress={closeImagePicker} />
+        <View style={styles.imagePickerContent}>
+          {/* Header */}
+          <View style={styles.imagePickerHeader}>
+            <View style={styles.imagePickerHandle} />
+            <Text style={styles.imagePickerTitle}>{t('group.create.selectImage')}</Text>
+            <Text style={styles.imagePickerSubtitle}>{t('permissions.chooseOption')}</Text>
+          </View>
+
+          {/* Options */}
+          <View style={styles.imagePickerOptions}>
+            {/* Camera Option */}
+            <TouchableOpacity 
+              style={styles.imagePickerOption}
+              onPress={() => handleImageOptionPress('camera')}
+            >
+              <View style={[styles.imagePickerOptionIcon, { backgroundColor: '#FF6B6B20' }]}>
+                <Icon name="camera-alt" size={24} color="#FF6B6B" />
+              </View>
+              <View style={styles.imagePickerOptionContent}>
+                <Text style={styles.imagePickerOptionTitle}>{t('permissions.camera')}</Text>
+                <Text style={styles.imagePickerOptionDescription}>{t('permissions.cameraDescription')}</Text>
+              </View>
+              <Icon name="chevron-right" size={20} color="#CCCCCC" />
+            </TouchableOpacity>
+
+            {/* Gallery Option */}
+            <TouchableOpacity 
+              style={styles.imagePickerOption}
+              onPress={() => handleImageOptionPress('gallery')}
+            >
+              <View style={[styles.imagePickerOptionIcon, { backgroundColor: '#4ECDC420' }]}>
+                <Icon name="photo-library" size={24} color="#4ECDC4" />
+              </View>
+              <View style={styles.imagePickerOptionContent}>
+                <Text style={styles.imagePickerOptionTitle}>{t('permissions.gallery')}</Text>
+                <Text style={styles.imagePickerOptionDescription}>{t('permissions.galleryDescription')}</Text>
+              </View>
+              <Icon name="chevron-right" size={20} color="#CCCCCC" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Cancel Button */}
+          <TouchableOpacity style={styles.imagePickerCancelButton} onPress={closeImagePicker}>
+            <Text style={styles.imagePickerCancelText}>{t('common.cancel')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
 
   const renderSuccessModal = () => (
     <Modal
@@ -143,14 +399,18 @@ const CreateGroupScreen = () => {
           </View>
           
           {/* Success Message */}
-          <Text style={styles.successTitle}>{t('group.create.success.title')}</Text>
-          <Text style={styles.successMessage}>
-            {t('group.create.success.message', { name: groupName })}
+          <Text style={styles.successTitle}>
+            {isEditMode ? t('group.edit.success.title') : t('group.create.success.title')}
+          </Text>
+          <Text style={styles.successSubtitle}>
+            {isEditMode ? t('group.edit.success.subtitle') : t('group.create.success.subtitle')}
           </Text>
           
           {/* Group Info Preview */}
           <View style={styles.groupPreview}>
-            {groupAvatar ? (
+            {createdGroup?.group_avatar_url ? (
+              <Image source={{ uri: createdGroup.group_avatar_url }} style={styles.groupPreviewAvatar} />
+            ) : groupAvatar ? (
               <Image source={{ uri: groupAvatar }} style={styles.groupPreviewAvatar} />
             ) : (
               <View style={styles.groupPreviewAvatarDefault}>
@@ -160,21 +420,95 @@ const CreateGroupScreen = () => {
               </View>
             )}
             <View style={styles.groupPreviewInfo}>
-              <Text style={styles.groupPreviewName}>{groupName}</Text>
-              <Text style={styles.groupPreviewDescription} numberOfLines={2}>
-                {groupDescription}
-              </Text>
+              <Text style={styles.groupPreviewName}>{createdGroup?.group_name || groupName}</Text>
+              {!isEditMode && (
+                <Text style={styles.groupPreviewDate}>
+                  {t('group.create.success.groupInfo')}
+                </Text>
+              )}
             </View>
           </View>
 
-          {/* Action Button */}
-          <TouchableOpacity 
-            style={styles.successButton} 
-            onPress={handleSuccessModalClose}
-          >
-            <Icon name="arrow-back" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-            <Text style={styles.successButtonText}>{t('group.create.success.backButton')}</Text>
-          </TouchableOpacity>
+          {/* Invite Code Section - Only show for create mode */}
+          {!isEditMode && createdGroup?.group_invite_code && (
+            <View style={styles.inviteCodeSection}>
+              <Text style={styles.inviteCodeTitle}>
+                {t('group.create.success.inviteCode')}
+              </Text>
+              <TouchableOpacity 
+                style={styles.inviteCodeContainer}
+                onPress={handleCopyInviteCode}
+              >
+                <Text style={styles.inviteCodeText}>
+                  {createdGroup.group_invite_code}
+                </Text>
+                <Icon name="content-copy" size={20} color="#4A90E2" />
+              </TouchableOpacity>
+              <Text style={styles.inviteCodeHint}>
+                {t('group.create.success.inviteCodeDescription')}
+              </Text>
+            </View>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.successActions}>
+            {!isEditMode && createdGroup?.group_invite_code && (
+              <TouchableOpacity 
+                style={styles.shareButton} 
+                onPress={handleCopyInviteCode}
+              >
+                <Icon name="share" size={20} color="#4A90E2" style={{ marginRight: 8 }} />
+                <Text style={styles.shareButtonText}>{t('group.create.success.shareButton')}</Text>
+              </TouchableOpacity>
+            )}
+            
+            <TouchableOpacity 
+              style={styles.successButton} 
+              onPress={handleSuccessModalClose}
+            >
+              <Icon name="arrow-back" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.successButtonText}>{t('group.create.success.backButton')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderLoadingModal = () => (
+    <Modal
+      visible={loading}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => {}} // Prevent closing during loading
+    >
+      <View style={styles.loadingModalOverlay}>
+        <View style={styles.loadingModalContent}>
+          {/* Loading Animation */}
+          <View style={styles.loadingAnimationContainer}>
+            <ActivityIndicator size="large" color="#4A90E2" />
+            <View style={styles.loadingPulse} />
+          </View>
+          
+          {/* Loading Text */}
+          <Text style={styles.loadingTitle}>
+            {isEditMode ? t('group.edit.title') : t('group.create.title')}
+          </Text>
+          <Text style={styles.loadingMessage}>
+            {loadingText}
+          </Text>
+          
+          {/* Progress Indicator */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View style={styles.progressFill} />
+            </View>
+          </View>
+          
+          {/* Tips */}
+          <Text style={styles.loadingTip}>
+            {isEditMode ? t('group.edit.loadingTip') : t('group.create.loadingTip')}
+          </Text>
         </View>
       </View>
     </Modal>
@@ -189,7 +523,9 @@ const CreateGroupScreen = () => {
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Icon name="arrow-back" size={24} color="#333333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('group.create.title')}</Text>
+        <Text style={styles.headerTitle}>
+          {isEditMode ? t('group.edit.title') : t('group.create.title')}
+        </Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -197,7 +533,10 @@ const CreateGroupScreen = () => {
         {/* Avatar Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('group.create.avatar')}</Text>
-          <TouchableOpacity style={styles.avatarContainer} onPress={handlePickImage}>
+          <TouchableOpacity 
+            style={styles.avatarContainer} 
+            onPress={handlePickImage}
+          >
             {groupAvatar ? (
               <Image source={{ uri: groupAvatar }} style={styles.avatarImage} />
             ) : (
@@ -222,67 +561,55 @@ const CreateGroupScreen = () => {
             placeholder={t('placeholders.enterGroupName') || 'Enter group name'}
             value={groupName}
             onChangeText={setGroupName}
-            maxLength={50}
+            maxLength={100}
           />
           {errors.groupName ? (
             <Text style={styles.errorText}>{errors.groupName}</Text>
           ) : null}
-          <Text style={styles.charCount}>{groupName.length}/50</Text>
-        </View>
-
-        {/* Description */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {t('group.create.groupDescription')} <Text style={styles.required}>{t('group.create.required')}</Text>
-          </Text>
-          <TextInput
-            style={[styles.textArea, errors.groupDescription ? styles.inputError : null]}
-            placeholder={t('placeholders.enterGroupDescription') || 'Enter group description...'}
-            value={groupDescription}
-            onChangeText={setGroupDescription}
-            multiline
-            numberOfLines={4}
-            maxLength={200}
-            textAlignVertical="top"
-          />
-          {errors.groupDescription ? (
-            <Text style={styles.errorText}>{errors.groupDescription}</Text>
-          ) : null}
-          <Text style={styles.charCount}>{groupDescription.length}/200</Text>
+          <Text style={styles.charCount}>{groupName.length}/100</Text>
         </View>
 
         {/* Info Section */}
         <View style={styles.infoSection}>
           <Icon name="info" size={20} color="#4A90E2" />
           <Text style={styles.infoText}>
-            {t('group.create.info')}
+            {isEditMode ? t('group.edit.info') : t('group.create.info')}
           </Text>
         </View>
       </ScrollView>
 
-      {/* Create Button */}
+      {/* Create/Update Button */}
       <View style={styles.footer}>
         <TouchableOpacity 
           style={[
             styles.createButton,
-            (!groupName.trim() || !groupDescription.trim()) && styles.createButtonDisabled
+            (!groupName.trim()) && styles.createButtonDisabled
           ]} 
           onPress={handleCreateGroup}
-          disabled={loading || !groupName.trim() || !groupDescription.trim()}
+          disabled={!groupName.trim()}
         >
-          {loading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <>
-              <Icon name="group-add" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.createButtonText}>{t('group.create.createButton')}</Text>
-            </>
-          )}
+          <>
+            <Icon 
+              name={isEditMode ? "edit" : "group-add"} 
+              size={20} 
+              color="#FFFFFF" 
+              style={{ marginRight: 8 }} 
+            />
+            <Text style={styles.createButtonText}>
+              {isEditMode ? t('group.edit.updateButton') : t('group.create.createButton')}
+            </Text>
+          </>
         </TouchableOpacity>
       </View>
 
+      {/* Image Picker Modal */}
+      {renderImagePickerModal()}
+
       {/* Success Modal */}
       {renderSuccessModal()}
+
+      {/* Loading Modal */}
+      {renderLoadingModal()}
     </SafeAreaView>
   );
 };
@@ -332,6 +659,9 @@ const styles = StyleSheet.create({
   required: {
     color: '#FF4444',
   },
+  optional: {
+    color: '#999999',
+  },
   avatarContainer: {
     alignSelf: 'center',
     position: 'relative',
@@ -380,17 +710,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333333',
   },
-  textArea: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#333333',
-    height: 100,
-  },
+
   inputError: {
     borderColor: '#FF4444',
   },
@@ -484,12 +804,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
-  successMessage: {
+  successSubtitle: {
     fontSize: 16,
     color: '#666666',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
   },
   groupPreview: {
     flexDirection: 'row',
@@ -528,10 +846,62 @@ const styles = StyleSheet.create({
     color: '#333333',
     marginBottom: 4,
   },
-  groupPreviewDescription: {
+  groupPreviewDate: {
     fontSize: 14,
     color: '#666666',
     lineHeight: 18,
+  },
+  inviteCodeSection: {
+    marginTop: 20,
+    marginBottom: 24,
+  },
+  inviteCodeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  inviteCodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  inviteCodeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+    marginRight: 8,
+  },
+  inviteCodeHint: {
+    fontSize: 12,
+    color: '#999999',
+    marginTop: 4,
+  },
+  successActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#4A90E2',
+    marginRight: 8,
+    flex: 1,
+  },
+  shareButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4A90E2',
   },
   successButton: {
     flexDirection: 'row',
@@ -541,13 +911,193 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    width: '100%',
+    flex: 1,
   },
   successButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  // Image Picker Styles
+  imagePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  imagePickerBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  imagePickerContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 34,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  imagePickerHeader: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  imagePickerHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CCCCCC',
+    marginBottom: 16,
+  },
+  imagePickerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  imagePickerSubtitle: {
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+  },
+  imagePickerOptions: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  imagePickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  imagePickerOptionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  imagePickerOptionContent: {
+    flex: 1,
+  },
+  imagePickerOptionTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 4,
+  },
+  imagePickerOptionDescription: {
+    fontSize: 15,
+    color: '#666666',
+    lineHeight: 20,
+  },
+  imagePickerCancelButton: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    alignItems: 'center',
+  },
+  imagePickerCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  // Loading Modal Styles
+  loadingModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 32,
+    width: '100%',
+    maxWidth: 380,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  loadingAnimationContainer: {
+    position: 'relative',
+    marginBottom: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingPulse: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(74, 144, 226, 0.2)',
+  },
+  loadingTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  loadingMessage: {
+    fontSize: 16,
+    color: '#4A90E2',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+    fontWeight: '500',
+  },
+  progressContainer: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  progressBar: {
+    width: '100%',
+    height: 4,
+    backgroundColor: '#E8F0FE',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#4A90E2',
+    borderRadius: 2,
+    width: '70%', // Static progress for now
+  },
+  loadingTip: {
+    fontSize: 13,
+    color: '#999999',
+    textAlign: 'center',
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
 });
 
-export default CreateGroupScreen; 
+export default CreateGroupScreen;
+
+CreateGroupScreen.displayName = 'CreateGroupScreen'; 
