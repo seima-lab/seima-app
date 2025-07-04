@@ -32,29 +32,47 @@ import {
 
 const { height, width } = Dimensions.get('window');
 
-// Responsive utilities
-const isSmallScreen = width < 375 || height < 667;
-const screenWidth = width;
-const screenHeight = height;
-
-// Responsive functions
-const rp = (size: number) => {
-  const scale = Math.min(width / 375, height / 667);
-  const minSize = size * 0.7;
-  const scaledSize = size * scale;
-  return Math.max(scaledSize, minSize);
+// Enhanced responsive utilities for all screen sizes
+const responsiveUtils = {
+  isSmallScreen: width < 375 || height < 667,
+  isMediumScreen: width >= 375 && width < 414,
+  isLargeScreen: width >= 414,
+  screenWidth: width,
+  screenHeight: height,
+  
+  // Responsive padding/margin
+  rp: (size: number) => {
+    const scale = Math.min(width / 375, height / 667);
+    const minSize = size * 0.7;
+    const maxSize = size * 1.3;
+    const scaledSize = size * scale;
+    return Math.max(Math.min(scaledSize, maxSize), minSize);
+  },
+  
+  // Responsive font size
+  rf: (fontSize: number) => {
+    const scale = Math.min(width / 375, height / 667);
+    const minFontScale = 0.8;
+    const maxFontScale = 1.2;
+    const fontScale = Math.min(Math.max(scale, minFontScale), maxFontScale);
+    return fontSize * fontScale;
+  },
+  
+  // Width percentage
+  wp: (percentage: number) => (width * percentage) / 100,
+  
+  // Height percentage
+  hp: (percentage: number) => (height * percentage) / 100,
+  
+  // Responsive border radius
+  rb: (size: number) => {
+    const scale = Math.min(width / 375, height / 667);
+    return Math.max(size * scale, size * 0.8);
+  }
 };
 
-const rf = (fontSize: number) => {
-  const scale = Math.min(width / 375, height / 667);
-  const minFontScale = 0.85;
-  const maxFontScale = 1.15;
-  const fontScale = Math.min(Math.max(scale, minFontScale), maxFontScale);
-  return fontSize * fontScale;
-};
-
-const wp = (percentage: number) => (screenWidth * percentage) / 100;
-const hp = (percentage: number) => (screenHeight * percentage) / 100;
+// Extract utilities for easier use
+const { isSmallScreen, isMediumScreen, isLargeScreen, rp, rf, wp, hp, rb } = responsiveUtils;
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -333,7 +351,7 @@ export default function LoginScreen() {
               >
                 <View style={[styles.checkbox, autoFillTest && styles.checkboxChecked]}>
                   {autoFillTest && (
-                    <Icon name="check" size={14} color="#fff" />
+                    <Icon name="check" size={rf(14)} color="#fff" />
                   )}
                 </View>
                 <Text style={styles.autoFillText}>{t('register.autoFillTest')}</Text>
@@ -343,7 +361,7 @@ export default function LoginScreen() {
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>{t('email')}</Text>
                 <View style={styles.inputWrapper}>
-                  <Icon name="email" size={20} color="#9CA3AF" style={styles.inputIcon} />
+                  <Icon name="email" size={rf(20)} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput
                     style={styles.textInput}
                     value={email}
@@ -361,7 +379,7 @@ export default function LoginScreen() {
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>{t('login.password')}</Text>
                 <View style={styles.inputWrapper}>
-                  <Icon name="lock" size={20} color="#9CA3AF" style={styles.inputIcon} />
+                  <Icon name="lock" size={rf(20)} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput
                     style={[styles.textInput, { flex: 1 }]}
                     value={password}
@@ -380,7 +398,7 @@ export default function LoginScreen() {
                   >
                     <Icon 
                       name={showPassword ? "visibility" : "visibility-off"} 
-                      size={20} 
+                      size={rf(20)} 
                       color="#9CA3AF" 
                     />
                   </TouchableOpacity>
@@ -393,7 +411,7 @@ export default function LoginScreen() {
                 onPress={() => setRememberMe(!rememberMe)}
               >
                 <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                  {rememberMe && <Icon name="check" size={14} color="#fff" />}
+                  {rememberMe && <Icon name="check" size={rf(14)} color="#fff" />}
                 </View>
                 <Text style={styles.rememberMeText}>{t('login.rememberMe')}</Text>
               </TouchableOpacity>
@@ -453,7 +471,7 @@ export default function LoginScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalIconContainer}>
-                <Icon name="error-outline" size={50} color="#FFA500" />
+                <Icon name="error-outline" size={rf(50)} color="#FFA500" />
               </View>
               <Text style={styles.modalTitle}>Tài khoản chưa được kích hoạt</Text>
               <Text style={styles.modalMessage}>
@@ -516,9 +534,9 @@ const styles = StyleSheet.create({
   loginCard: {
     backgroundColor: '#fff',
     width: '100%',
-    maxWidth: 400,
+    maxWidth: wp(90),
     padding: rp(20),
-    borderRadius: rp(20),
+    borderRadius: rb(20),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -529,6 +547,7 @@ const styles = StyleSheet.create({
     elevation: 4,
     flex: 1,
     justifyContent: 'center',
+    marginHorizontal: rp(16),
   },
   loginTitle: {
     fontSize: rf(20),
@@ -552,7 +571,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    borderRadius: rp(12),
+    borderRadius: rb(12),
     paddingHorizontal: rp(16),
     paddingVertical: rp(12),
   },
@@ -565,7 +584,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   eyeButton: {
-    padding: 4,
+    padding: rp(4),
   },
   rememberMeContainer: {
     flexDirection: 'row',
@@ -577,7 +596,7 @@ const styles = StyleSheet.create({
     height: rp(20),
     borderWidth: 2,
     borderColor: '#D1D5DB',
-    borderRadius: rp(4),
+    borderRadius: rb(4),
     marginRight: rp(12),
     alignItems: 'center',
     justifyContent: 'center',
@@ -592,7 +611,7 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     backgroundColor: '#1e90ff',
-    borderRadius: rp(12),
+    borderRadius: rb(12),
     paddingVertical: rp(16),
     alignItems: 'center',
     marginBottom: rp(12),
@@ -674,13 +693,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: rp(20),
   },
   modalContent: {
     backgroundColor: '#fff',
     padding: rp(20),
-    borderRadius: rp(20),
-    width: '85%',
-    maxWidth: 400,
+    borderRadius: rb(20),
+    width: '100%',
+    maxWidth: wp(85),
     alignItems: 'center',
   },
   modalIconContainer: {
@@ -691,12 +711,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: rp(16),
+    textAlign: 'center',
   },
   modalMessage: {
     fontSize: rf(14),
     color: '#6B7280',
     textAlign: 'center',
     marginBottom: rp(20),
+    lineHeight: rf(20),
   },
   modalButtonContainer: {
     flexDirection: 'row',
@@ -708,7 +730,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: rp(12),
     paddingHorizontal: rp(16),
-    borderRadius: rp(8),
+    borderRadius: rb(8),
     alignItems: 'center',
   },
   cancelButton: {

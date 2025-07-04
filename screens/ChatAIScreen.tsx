@@ -1,8 +1,10 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Animated,
     Dimensions,
+    Keyboard,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -11,9 +13,9 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
+    TouchableWithoutFeedback,
     View
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -280,145 +282,148 @@ const ChatAIScreen = () => {
     );
 
     return (
-        <LinearGradient
-            colors={['#f8f9fa', '#e9ecef']}
-            style={styles.container}
-        >
-            <StatusBar 
-                barStyle="dark-content" 
-                backgroundColor="transparent" 
-                translucent={true}
-                animated={true}
-            />
-            
-            {/* Header */}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
-                style={[styles.header, { paddingTop: insets.top + 16 }]}
+                colors={['#f8f9fa', '#e9ecef']}
+                style={styles.container}
             >
-                <TouchableOpacity 
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
+                <StatusBar 
+                    barStyle="dark-content" 
+                    backgroundColor="transparent" 
+                    translucent={true}
+                    animated={true}
+                />
+                
+                {/* Header */}
+                <LinearGradient
+                    colors={['#667eea', '#764ba2']}
+                    style={[styles.header, { paddingTop: insets.top + 16 }]}
                 >
-                    <Icon name="arrow-back-ios" size={24} color="#FFFFFF" />
-                </TouchableOpacity>
-                
-                <View style={styles.headerCenter}>
-                    <View style={styles.robotIconHeader}>
-                        <Icon2 name="robot" size={20} color="#FFFFFF" />
+                    <TouchableOpacity 
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Icon name="arrow-back-ios" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    
+                    <View style={styles.headerCenter}>
+                        <View style={styles.robotIconHeader}>
+                            <Icon2 name="robot" size={20} color="#FFFFFF" />
+                        </View>
+                        <View style={styles.headerTextContainer}>
+                            <Text style={styles.headerTitle}>Seima AI</Text>
+                            <Text style={styles.headerSubtitle}>Trợ lý tài chính thông minh</Text>
+                        </View>
                     </View>
-                    <View style={styles.headerTextContainer}>
-                        <Text style={styles.headerTitle}>Seima AI</Text>
-                        <Text style={styles.headerSubtitle}>Trợ lý tài chính thông minh</Text>
-                    </View>
-                </View>
-                
-                <TouchableOpacity style={styles.headerAction}>
-                    <Icon name="more-vert" size={24} color="#FFFFFF" />
-                </TouchableOpacity>
-            </LinearGradient>
+                    
+                    <TouchableOpacity style={styles.headerAction}>
+                        <Icon name="more-vert" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                </LinearGradient>
 
-            <KeyboardAvoidingView 
-                style={styles.chatContainer}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-                {/* Messages */}
-                <ScrollView 
-                    ref={scrollViewRef}
-                    style={styles.messagesContainer}
-                    contentContainerStyle={styles.messagesContent}
-                    onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-                    showsVerticalScrollIndicator={false}
+                <KeyboardAvoidingView 
+                    style={styles.chatContainer}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 >
-                    {showWelcome && <WelcomeMessage />}
-                    
-                    {messages.map(renderMessage)}
-                    
-                    {isLoading && (
-                        <View style={styles.messageRow}>
-                            <Avatar isUser={false} />
-                            <View style={styles.messageContent}>
-                                <View style={[styles.messageContainer, styles.aiMessage, styles.typingMessage]}>
-                                    <TypingIndicator />
+                    {/* Messages */}
+                    <ScrollView 
+                        ref={scrollViewRef}
+                        style={styles.messagesContainer}
+                        contentContainerStyle={styles.messagesContent}
+                        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        {showWelcome && <WelcomeMessage />}
+                        
+                        {messages.map(renderMessage)}
+                        
+                        {isLoading && (
+                            <View style={styles.messageRow}>
+                                <Avatar isUser={false} />
+                                <View style={styles.messageContent}>
+                                    <View style={[styles.messageContainer, styles.aiMessage, styles.typingMessage]}>
+                                        <TypingIndicator />
+                                    </View>
                                 </View>
                             </View>
-                        </View>
-                    )}
-                </ScrollView>
+                        )}
+                    </ScrollView>
 
-                {/* Suggestions */}
-                <View style={styles.suggestionsContainer}>
-                    <Text style={styles.suggestionsTitle}>Gợi ý cho bạn:</Text>
-                    <View style={styles.suggestionsGrid}>
-                        {suggestions.map((suggestion, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={styles.suggestionButton}
-                                onPress={() => handleSuggestion(suggestion.text)}
-                            >
-                                <Icon name={suggestion.icon} size={16} color="#667eea" />
-                                <Text style={styles.suggestionText}>{suggestion.text}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                {/* Input Area */}
-                <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 16 }]}>
-                    <LinearGradient
-                        colors={['#FFFFFF', '#f8f9fa']}
-                        style={styles.inputGradient}
-                    >
-                        <View style={styles.inputRow}>
-                            <View style={styles.textInputContainer}>
-                                <TextInput
-                                    style={styles.textInput}
-                                    value={inputText}
-                                    onChangeText={setInputText}
-                                    placeholder="Nhập tin nhắn của bạn..."
-                                    placeholderTextColor="#8e9aaf"
-                                    multiline
-                                />
-                            </View>
-                            
-                            <View style={styles.inputButtons}>
-                                <TouchableOpacity style={styles.inputButton}>
-                                    <Icon name="photo-camera" size={20} color="#667eea" />
-                                </TouchableOpacity>
-                                
-                                <TouchableOpacity style={styles.inputButton}>
-                                    <Icon name="mic" size={20} color="#667eea" />
-                                </TouchableOpacity>
-                                
-                                <TouchableOpacity 
-                                    style={[
-                                        styles.sendButton, 
-                                        (isLoading || !userId || !inputText.trim()) && styles.disabledButton
-                                    ]}
-                                    onPress={handleSendMessage}
-                                    disabled={isLoading || !userId || !inputText.trim()}
+                    {/* Suggestions */}
+                    <View style={styles.suggestionsContainer}>
+                        <Text style={styles.suggestionsTitle}>Gợi ý cho bạn:</Text>
+                        <View style={styles.suggestionsGrid}>
+                            {suggestions.map((suggestion, index) => (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={styles.suggestionButton}
+                                    onPress={() => handleSuggestion(suggestion.text)}
                                 >
-                                    <LinearGradient
-                                        colors={
-                                            (isLoading || !userId || !inputText.trim()) 
-                                                ? ['#ccc', '#999'] 
-                                                : ['#667eea', '#764ba2']
-                                        }
-                                        style={styles.sendButtonGradient}
-                                    >
-                                        <Icon 
-                                            name={isLoading ? "hourglass-empty" : "send"} 
-                                            size={20} 
-                                            color="#FFFFFF" 
-                                        />
-                                    </LinearGradient>
+                                    <Icon name={suggestion.icon} size={16} color="#667eea" />
+                                    <Text style={styles.suggestionText}>{suggestion.text}</Text>
                                 </TouchableOpacity>
-                            </View>
+                            ))}
                         </View>
-                    </LinearGradient>
-                </View>
-            </KeyboardAvoidingView>
-        </LinearGradient>
+                    </View>
+
+                    {/* Input Area */}
+                    <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 16 }]}>
+                        <LinearGradient
+                            colors={['#FFFFFF', '#f8f9fa']}
+                            style={styles.inputGradient}
+                        >
+                            <View style={styles.inputRow}>
+                                <View style={styles.textInputContainer}>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        value={inputText}
+                                        onChangeText={setInputText}
+                                        placeholder="Nhập tin nhắn của bạn..."
+                                        placeholderTextColor="#8e9aaf"
+                                        multiline
+                                    />
+                                </View>
+                                
+                                <View style={styles.inputButtons}>
+                                    <TouchableOpacity style={styles.inputButton}>
+                                        <Icon name="photo-camera" size={20} color="#667eea" />
+                                    </TouchableOpacity>
+                                    
+                                    <TouchableOpacity style={styles.inputButton}>
+                                        <Icon name="mic" size={20} color="#667eea" />
+                                    </TouchableOpacity>
+                                    
+                                    <TouchableOpacity 
+                                        style={[
+                                            styles.sendButton, 
+                                            (isLoading || !userId || !inputText.trim()) && styles.disabledButton
+                                        ]}
+                                        onPress={handleSendMessage}
+                                        disabled={isLoading || !userId || !inputText.trim()}
+                                    >
+                                        <LinearGradient
+                                            colors={
+                                                (isLoading || !userId || !inputText.trim()) 
+                                                    ? ['#ccc', '#999'] 
+                                                    : ['#667eea', '#764ba2']
+                                            }
+                                            style={styles.sendButtonGradient}
+                                        >
+                                            <Icon 
+                                                name={isLoading ? "hourglass-empty" : "send"} 
+                                                size={20} 
+                                                color="#FFFFFF" 
+                                            />
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </LinearGradient>
+                    </View>
+                </KeyboardAvoidingView>
+            </LinearGradient>
+        </TouchableWithoutFeedback>
     );
 };
 

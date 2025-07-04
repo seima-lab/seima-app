@@ -1,25 +1,24 @@
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { RootStackParamList } from '../navigation/types';
 import { transactionService } from '../services/transactionService';
 
 const { width } = Dimensions.get('window');
 
-type CategoryDetailScreenRouteProp = RouteProp<RootStackParamList, 'CategoryDetailScreen'>;
+
 
 type FilterPeriod = 'today' | 'week' | 'month' | 'year' | 'custom';
 

@@ -13,6 +13,7 @@ import {
   View
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialIcons';

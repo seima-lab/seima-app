@@ -2,17 +2,17 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -216,7 +216,7 @@ export default function AddEditCategoryScreen() {
                 if (retryCount < maxRetries) {
                   retryCount++;
                   console.log(`🔄 Retrying scroll (attempt ${retryCount}/${maxRetries})`);
-                  timerId = setTimeout(attemptScroll, 1000);
+                 
                 }
               }
             }
@@ -228,7 +228,7 @@ export default function AddEditCategoryScreen() {
     };
 
     // Initial delay to ensure FlatList is ready
-    timerId = setTimeout(attemptScroll, 500); // Increased delay for better reliability
+  
 
     // Cleanup function
     return () => {

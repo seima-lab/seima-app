@@ -38,7 +38,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   const walletId = route?.params?.walletId;
   const walletData = route?.params?.walletData;
 
-  const [balance, setBalance] = useState(walletData?.balance || '');
+  const [balance, setBalance] = useState(walletData?.balance ? walletData.balance.toLocaleString('vi-VN') : '');
   const [walletName, setWalletName] = useState(walletData?.name || '');
   const [walletType, setWalletType] = useState(walletData?.type || t('wallet.walletTypes.cash'));
   const [bankName, setBankName] = useState(walletData?.bankName || '');
@@ -109,13 +109,21 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
       return false;
     }
 
-    if (!balance.trim() || isNaN(parseFloat(balance))) {
+    const numericBalance = getNumericBalance(balance);
+    if (!balance.trim() || numericBalance === 0) {
       Alert.alert(t('common.error'), 'Please enter a valid balance');
       return false;
     }
 
-    if (parseFloat(balance) < 0) {
+    if (numericBalance < 0) {
       Alert.alert(t('common.error'), 'Balance cannot be negative');
+      return false;
+    }
+
+    // Kiểm tra số chữ số không được vượt quá 15
+    const digitsOnly = balance.replace(/[^\d]/g, '');
+    if (digitsOnly.length > 15) {
+      Alert.alert(t('common.error'), 'Balance cannot exceed 15 digits');
       return false;
     }
 
@@ -136,7 +144,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
              // Prepare wallet data in snake_case format
        const walletRequest: CreateWalletRequest = {
          wallet_name: walletName.trim(),
-         balance: parseFloat(balance),
+         balance: getNumericBalance(balance),
          wallet_type_id: getWalletTypeId(walletType),
          is_default: isDefault,
          exclude_from_total: excludeFromTotal,
@@ -232,6 +240,29 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
     return '';
   };
 
+  // Hàm format số tiền với dấu phẩy
+  const formatBalanceInput = (text: string): string => {
+    // Loại bỏ tất cả ký tự không phải số
+    const numericValue = text.replace(/[^\d]/g, '');
+    
+    if (numericValue === '') return '';
+    
+    // Giới hạn tối đa 15 chữ số
+    if (numericValue.length > 15) {
+      return '';
+    }
+    
+    // Chuyển thành số và format với dấu phẩy
+    const number = parseInt(numericValue, 10);
+    return number.toLocaleString('vi-VN');
+  };
+
+  // Hàm lấy giá trị số từ text đã format
+  const getNumericBalance = (formattedText: string): number => {
+    const numericValue = formattedText.replace(/[^\d]/g, '');
+    return numericValue ? parseInt(numericValue, 10) : 0;
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
@@ -267,7 +298,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
                 style={styles.textInput}
                 placeholder={t('wallet.placeholders.enterBalance')}
                 value={balance}
-                onChangeText={setBalance}
+                onChangeText={(text) => setBalance(formatBalanceInput(text))}
                 keyboardType="numeric"
                 onFocus={() => {
                   console.log('🎯 Balance TextInput focused - keyboard should appear');
