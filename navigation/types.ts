@@ -123,6 +123,10 @@ export type RootStackParamList = {
     data: import('../services/transactionService').ReportByCategory[];
     totalAmount: number;
   };
+  SelectCategoryScreen: {
+    categoryType: 'expense' | 'income';
+    onSelectCategory: (category: import('../services/categoryService').CategoryResponse) => void;
+  };
 };
 
 export type ScreenNames = keyof RootStackParamList; 

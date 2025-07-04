@@ -105,5 +105,14 @@ export const AI_CHAT_ENDPOINTS = {
   SEND_MESSAGE: 'https://andt20042003.app.n8n.cloud/webhook/seima_chatbot',
 } as const;
 
+// Budget endpoints
+export const BUDGET_ENDPOINTS = {
+  LIST: `${ApiConfig.API_PREFIX}/budgets`,
+  CREATE: `${ApiConfig.API_PREFIX}/budgets`,
+  GET_BY_ID: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,
+  UPDATE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,
+  DELETE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,
+} as const;
+
 // Initialize configuration logging
 ApiConfig.logConfig(); 

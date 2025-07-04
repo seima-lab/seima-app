@@ -11,7 +11,6 @@ import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { navigationRef } from '../navigation/NavigationService';
-import AddBudgetCategoryScreen from '../screens/AddBudgetCategoryScreen';
 import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
 import AddWalletScreen from '../screens/AddWalletScreen';
@@ -112,7 +111,6 @@ function AuthNavigator() {
       <Stack.Screen name="EditCategoryScreen" component={EditCategoryScreen} />
       <Stack.Screen name="AddEditCategoryScreen" component={AddEditCategoryScreen} />
       <Stack.Screen name="BudgetScreen" component={BudgetScreen} />
-      <Stack.Screen name="AddBudgetCategoryScreen" component={AddBudgetCategoryScreen} />
       <Stack.Screen name="FinanceScreen" component={FinanceScreen} />
       <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />

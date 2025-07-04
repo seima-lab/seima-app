@@ -315,7 +315,22 @@
     "loadMore": "Tải thêm",
     "noResults": "Không tìm thấy kết quả",
     "tryAgain": "Thử lại",
-    "somethingWentWrong": "Đã xảy ra lỗi"
+    "somethingWentWrong": "Đã xảy ra lỗi",
+    "confirm": "Xác nhận",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "finish": "Hoàn thành",
+    "loading": "Chờ một chút nhé... ⏳",
+    "error": "Ôi! 😅",
+    "success": "Thành công! 🎉",
+    "warning": "Chú ý! ⚠️",
+    "info": "Để bạn biết 💡",
+    "cancel": "Hủy",
+    "continue": "Tiếp tục",
+    "ok": "Hiểu rồi!",
+    "okay": "Đồng ý",
+    "retry": "Thử lại",
+    "optional": "tùy chọn"
   },
 
   "changePasswordBtn": "Đổi mật khẩu",
@@ -633,24 +648,6 @@
     "phoneFormat": "Định dạng: 0xxxxxxxxx (10 chữ số)"
   },
   
-  "common": {
-    "confirm": "Xác nhận",
-    "back": "Quay lại",
-    "next": "Tiếp theo",
-    "finish": "Hoàn thành",
-    "loading": "Chờ một chút nhé... ⏳",
-    "error": "Ôi! 😅",
-    "success": "Thành công! 🎉",
-    "warning": "Chú ý! ⚠️",
-    "info": "Để bạn biết 💡",
-    "cancel": "Hủy",
-    "continue": "Tiếp tục",
-    "ok": "Hiểu rồi!",
-    "okay": "Đồng ý",
-    "retry": "Thử lại",
-    "optional": "tùy chọn"
-  },
-  
   "auth": {
     "pleaseLogin": "Vui lòng đăng nhập để tiếp tục"
   },
@@ -709,13 +706,15 @@
   },
   
   "budget": {
-    "title": "Ngân sách",
+    "title": "Hạn mức chi",
     "currentMonth": "Tháng 6 2025",
     "daysLeft": "Còn {{days}} ngày nữa hết tháng",
     "remaining": "Còn lại",
-    "spent": "Chi",
+    "spent": "Đã chi",
     "exceeded": "Đã vượt",
-    "addBudget": "Thêm ngân sách",
+    "addBudget": "Thêm hạn mức",
+    "addMoreBudget": "Thêm hạn mức mới",
+    "createBudget": "Tạo hạn mức",
     "addBudgetTitle": "Thêm ngân sách",
     "editBudgetTitle": "Chỉnh sửa ngân sách",
     "selectCategoryTitle": "Chọn danh mục",
@@ -735,13 +734,23 @@
     "budgetLimit": "Giới hạn chi tiêu",
     "enterLimit": "Nhập giới hạn",
     "selectCategory": "Chọn danh mục",
-    "createBudget": "Tạo ngân sách",
     "updateBudget": "Cập nhật ngân sách",
     "addSuccess": "Thêm ngân sách thành công!",
     "updateSuccess": "Cập nhật ngân sách thành công!",
     "budgetCreated": "Đã tạo ngân sách",
     "editQuestion": "Bạn có muốn chỉnh sửa ngân sách?",
     "adjust": "Điều chỉnh",
+    "emptyState": {
+      "title": "Bạn chưa có hạn mức chi nào!",
+      "whatIsBudget": "Hạn mức chi là gì?",
+      "explanation": "Mỗi tháng bạn muốn chi tiêu cho việc Mua sắm 1.000.000 đ. Hãy tạo cho mình một hạn mức \"Chi cho mua sắm\".",
+      "exampleTitle": "Chi mua sắm",
+      "examplePeriod": "1/7 - 31/7",
+      "exampleAmount": "1.000.000 đ",
+      "daysLeft": "Còn 29 ngày",
+      "remainingAmount": "500.000đ",
+      "remainingDescription": "Số tiền còn lại hạn mức"
+    },
     "validation": {
       "limitRequired": "Vui lòng nhập giới hạn chi tiêu",
       "categoryRequired": "Vui lòng chọn danh mục",

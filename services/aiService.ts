@@ -60,35 +60,32 @@ export class AIService {
       console.log('📥 AI Response received:');
       console.log('   - Status:', response.status);
       console.log('   - Status Text:', response.statusText);
-      console.log('   - Headers:', response.headers);
-      
-      // Kiểm tra content type
-      const contentType = response.headers.get('content-type');
-      console.log('   - Content-Type:', contentType);
-      
-      // Lấy response text trước
+      console.log('   - Headers:', Object.fromEntries(response.headers.entries()));
+      console.log('   - Content-Type:', response.headers.get('content-type'));
+
       const responseText = await response.text();
       console.log('   - Raw Response Text:', responseText);
       console.log('   - Response Text Length:', responseText.length);
-      
-      let responseData;
+
+      let responseData: any;
+
       if (responseText.trim() === '') {
-        console.log('⚠️ Empty response received');
-        responseData = { message: 'Webhook trả về response rỗng' };
+        console.log('⚠️ Response is empty');
+        return this.getFriendlyErrorMessage('empty_response');
       } else {
         try {
           responseData = JSON.parse(responseText);
-          console.log('   - Parsed Response Data:', JSON.stringify(responseData, null, 2));
+          console.log('📥 Parsed Response Data:', JSON.stringify(responseData, null, 2));
         } catch (parseError) {
-          console.log('⚠️ JSON parse failed, treating as plain text');
-          console.log('⚠️ Parse error:', parseError);
-          // Nếu không parse được JSON, coi như text thuần
-          responseData = { message: responseText };
+          console.log('⚠️ Failed to parse JSON, treating as plain text');
+          console.log('📝 Using raw text as response:', responseText);
+          return this.getFriendlyMessage(responseText);
         }
       }
 
-      // Xử lý response từ API - chỉ có trường message
       console.log('🔄 Processing AI response...');
+
+      // Xử lý response từ API - chỉ có trường message
       if (responseData && responseData.message) {
         console.log('✅ Found response in message field:', responseData.message);
         console.log('🤖 === AI SERVICE DEBUG END ===');
@@ -97,7 +94,7 @@ export class AIService {
         console.log('⚠️ No message field found in response');
         console.log('⚠️ Full response structure:', JSON.stringify(responseData, null, 2));
         console.log('🤖 === AI SERVICE DEBUG END ===');
-        return 'Tôi hiểu yêu cầu của bạn. Hãy để tôi giúp bạn với thông tin tài chính.';
+        return this.getFriendlyErrorMessage('no_message');
       }
     } catch (error) {
       console.error('❌ === AI SERVICE ERROR ===');
@@ -105,9 +102,32 @@ export class AIService {
       console.error('❌ Error details:', JSON.stringify(error, null, 2));
       console.error('❌ === AI SERVICE ERROR END ===');
       
-      // Trả về phản hồi mặc định nếu API lỗi
-      return 'Xin lỗi, hiện tại tôi không thể xử lý yêu cầu của bạn. Vui lòng thử lại sau.';
+      return this.getFriendlyErrorMessage('network_error');
     }
+  }
+
+  // Lấy message thân thiện dựa vào loại lỗi
+  private getFriendlyErrorMessage(errorType: 'empty_response' | 'no_message' | 'network_error' | 'timeout' | 'default'): string {
+    const friendlyMessages = {
+      empty_response: 'Hmm, tôi đang suy nghĩ... Bạn có thể thử hỏi lại không? 🤔',
+      no_message: 'Tôi hiểu ý bạn rồi! Hãy để tôi suy nghĩ thêm một chút và trả lời bạn sau nhé 😊',
+      network_error: 'Ối, có vẻ như kết nối đang không ổn định. Bạn thử lại sau vài giây nhé! 🙏',
+      timeout: 'Tôi đang xử lý hơi lâu... Bạn có thể thử lại không? ⏰',
+      default: 'Xin lỗi, tôi đang gặp chút vấn đề kỹ thuật. Bạn hãy thử lại sau nhé! 😅'
+    };
+
+    return friendlyMessages[errorType] || friendlyMessages.default;
+  }
+
+  // Làm cho response thân thiện hơn
+  private getFriendlyMessage(rawText: string): string {
+    // Nếu response quá ngắn hoặc lạ, trả về message thân thiện
+    if (rawText.length < 10 || /^[0-9\s\-_]+$/.test(rawText)) {
+      return 'Tôi đã nhận được thông tin từ bạn rồi! Cảm ơn bạn đã chia sẻ 😊';
+    }
+
+    // Nếu response có vẻ hợp lý, trả về như bình thường
+    return rawText;
   }
 }
 
