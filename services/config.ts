@@ -100,5 +100,10 @@ export const CATEGORY_ENDPOINTS = {
   GET_BY_USER: (userId: string, groupId: string) => `${ApiConfig.API_PREFIX}/categories/user/${userId}/group/${groupId}`,
 } as const;
 
+// AI Chat endpoints
+export const AI_CHAT_ENDPOINTS = {
+  SEND_MESSAGE: 'https://andt20042003.app.n8n.cloud/webhook/seima_chatbot',
+} as const;
+
 // Initialize configuration logging
 ApiConfig.logConfig(); 

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     KeyboardAvoidingView,
@@ -16,6 +16,8 @@ import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { aiService } from '../services/aiService';
+import { UserService } from '../services/userService';
 
 interface Message {
     id: string;
@@ -33,54 +35,111 @@ const ChatAIScreen = () => {
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
-            text: 'Hello! How can I assist you with your finances today?',
-            isUser: false,
-            timestamp: new Date(),
-        },
-        {
-            id: '2',
-            text: 'I need help setting up a new budget for this month.',
-            isUser: true,
-            timestamp: new Date(),
-        },
-        {
-            id: '3',
-            text: "Sure! Let's start by reviewing your current expenses and income.",
+            text: 'Xin chào! Tôi có thể giúp bạn gì về tài chính hôm nay?',
             isUser: false,
             timestamp: new Date(),
         },
     ]);
     
     const [inputText, setInputText] = useState('');
+    const [userId, setUserId] = useState<number | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
     
     const suggestions = [
-        'Suggest 1',
-        'Suggest 2', 
-        'Suggest 3',
+        'Tôi tiêu 50k cho ăn uống',
+        'Tạo ngân sách tháng này', 
+        'Xem báo cáo chi tiêu',
     ];
 
-    const handleSendMessage = () => {
-        if (inputText.trim()) {
-            const newMessage: Message = {
+    // Lấy user_id khi component mount
+    useEffect(() => {
+        const fetchUserId = async () => {
+            try {
+                console.log('🔄 === CHATAI SCREEN DEBUG START ===');
+                console.log('🔄 Fetching user profile...');
+                const userService = UserService.getInstance();
+                const userProfile = await userService.getCurrentUserProfile();
+                setUserId(userProfile.user_id);
+                console.log('✅ User ID loaded successfully:', userProfile.user_id);
+                console.log('👤 Full user profile:', JSON.stringify(userProfile, null, 2));
+            } catch (error) {
+                console.error('❌ Error loading user profile:', error);
+                console.error('❌ Error details:', JSON.stringify(error, null, 2));
+            }
+        };
+
+        fetchUserId();
+    }, []);
+
+    const handleSendMessage = async () => {
+        console.log('📤 === SEND MESSAGE DEBUG START ===');
+        console.log('📤 Input text:', inputText.trim());
+        console.log('📤 User ID:', userId);
+        console.log('📤 Can send?', inputText.trim() && userId);
+        
+        if (inputText.trim() && userId) {
+            console.log('✅ Conditions met, proceeding to send message');
+            
+            const userMessage: Message = {
                 id: Date.now().toString(),
                 text: inputText,
                 isUser: true,
                 timestamp: new Date(),
             };
             
-            setMessages(prev => [...prev, newMessage]);
-            setInputText('');
+            console.log('📝 User message created:', JSON.stringify(userMessage, null, 2));
+            setMessages(prev => [...prev, userMessage]);
             
-            // Simulate AI response
-            setTimeout(() => {
-                const aiResponse: Message = {
+            const currentInput = inputText;
+            setInputText('');
+            setIsLoading(true);
+            
+            console.log('🚀 Starting AI request with input:', currentInput);
+            
+            try {
+                // Gửi message tới AI API
+                console.log('🤖 Calling aiService.sendMessage...');
+                const aiResponse = await aiService.sendMessage(userId, currentInput);
+                
+                console.log('✅ AI response received:', aiResponse);
+                
+                const aiMessage: Message = {
                     id: (Date.now() + 1).toString(),
-                    text: "I understand. Let me help you with that financial advice.",
+                    text: aiResponse,
                     isUser: false,
                     timestamp: new Date(),
                 };
-                setMessages(prev => [...prev, aiResponse]);
-            }, 1000);
+                
+                console.log('🤖 AI message created:', JSON.stringify(aiMessage, null, 2));
+                setMessages(prev => [...prev, aiMessage]);
+                console.log('📤 === SEND MESSAGE SUCCESS ===');
+                
+            } catch (error) {
+                console.error('❌ === SEND MESSAGE ERROR ===');
+                console.error('❌ Error sending message to AI:', error);
+                console.error('❌ Error type:', typeof error);
+                console.error('❌ Error details:', JSON.stringify(error, null, 2));
+                
+                // Hiển thị message lỗi
+                const errorMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: 'Xin lỗi, hiện tại tôi không thể xử lý yêu cầu của bạn. Vui lòng thử lại sau.',
+                    isUser: false,
+                    timestamp: new Date(),
+                };
+                
+                console.log('⚠️ Error message created:', JSON.stringify(errorMessage, null, 2));
+                setMessages(prev => [...prev, errorMessage]);
+                console.error('❌ === SEND MESSAGE ERROR END ===');
+                
+            } finally {
+                setIsLoading(false);
+                console.log('📤 === SEND MESSAGE DEBUG END ===');
+            }
+        } else {
+            console.log('❌ Cannot send message - missing conditions:');
+            console.log('   - Input text empty?', !inputText.trim());
+            console.log('   - User ID missing?', !userId);
         }
     };
 
@@ -144,6 +203,13 @@ const ChatAIScreen = () => {
                     onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
                 >
                     {messages.map(renderMessage)}
+                    {isLoading && (
+                        <View style={[styles.messageContainer, styles.aiMessage]}>
+                            <Text style={[styles.messageText, styles.aiMessageText]}>
+                                AI đang trả lời...
+                            </Text>
+                        </View>
+                    )}
                 </ScrollView>
 
                 {/* Suggestions */}
@@ -180,12 +246,13 @@ const ChatAIScreen = () => {
                                 <Icon name="mic" size={24} color="#007AFF" />
                             </TouchableOpacity>
                             
-                            <TouchableOpacity 
-                                style={[styles.inputButton, styles.sendButton]}
-                                onPress={handleSendMessage}
-                            >
-                                <Icon name="send" size={24} color="white" />
-                            </TouchableOpacity>
+                                                    <TouchableOpacity 
+                            style={[styles.inputButton, styles.sendButton, isLoading && styles.disabledButton]}
+                            onPress={handleSendMessage}
+                            disabled={isLoading || !userId}
+                        >
+                            <Icon name={isLoading ? "hourglass-empty" : "send"} size={24} color="white" />
+                        </TouchableOpacity>
                         </View>
                     </View>
                                  </View>
@@ -330,6 +397,9 @@ const styles = StyleSheet.create({
     },
     sendButton: {
         backgroundColor: '#007AFF',
+    },
+    disabledButton: {
+        backgroundColor: '#B0B0B0',
     },
 });
 

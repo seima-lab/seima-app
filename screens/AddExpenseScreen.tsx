@@ -5,17 +5,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -887,7 +887,7 @@ export default function AddExpenseScreen() {
         wallet_id: selectedWallet!,
         category_id: categoryId,
         group_id: fromGroupOverview && groupContextId ? parseInt(groupContextId) : undefined, // Convert groupId to number
-        transaction_type: activeTab === 'expense' ? TransactionType.EXPENSE : TransactionType.INCOME,
+
         amount: amountValue,
         currency_code: 'VND',
         transaction_date: formatDateForAPI(date),

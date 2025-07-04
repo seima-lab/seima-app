@@ -14,7 +14,6 @@ export interface CreateTransactionRequest {
   wallet_id: number;
   category_id: number;
   group_id?: number;
-  transaction_type: TransactionType;
   amount: number;
   currency_code: string;
   transaction_date: string; // ISO date string
