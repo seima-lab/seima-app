@@ -27,6 +27,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="seimaapp"/>
+        <data android:scheme="exp+seima-app"/>
       </intent-filter>
     </activity>
   </application>
