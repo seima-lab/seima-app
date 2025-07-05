@@ -33,7 +33,7 @@ import { WalletResponse, walletService } from '../services/walletService';
 import { getIconColor } from '../utils/iconUtils';
 
 export default function AddExpenseScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { user, isAuthenticated, isLoading: authLoading, refreshTransactions } = useAuth();
@@ -55,8 +55,14 @@ export default function AddExpenseScreen() {
   );
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   
+  // Hàm format số tiền từ OCR hoặc số nguyên
+  const formatAmountFromNumber = (value: number): string => {
+    if (value <= 0) return '';
+    return value.toLocaleString('vi-VN');
+  };
+
   // Form data - pre-fill if in edit mode
-  const [amount, setAmount] = useState(isEditMode && transactionData?.amount ? transactionData.amount.toLocaleString('vi-VN') : '');
+  const [amount, setAmount] = useState(isEditMode && transactionData?.amount ? formatAmountFromNumber(transactionData.amount) : '');
   const [note, setNote] = useState(isEditMode && transactionData?.note ? transactionData.note : '');
   const [date, setDate] = useState(() => {
     if (isEditMode && transactionData?.date) {
@@ -782,7 +788,7 @@ export default function AddExpenseScreen() {
       // Auto-fill form with OCR results
       if (ocrResult.total_amount) {
         console.log('💰 Setting amount:', ocrResult.total_amount);
-        setAmount(ocrResult.total_amount.toString());
+        setAmount(formatAmountFromNumber(ocrResult.total_amount));
       } else {
         console.log('⚠️ No amount found in OCR result');
       }
@@ -1081,7 +1087,8 @@ export default function AddExpenseScreen() {
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('vi-VN', {
+    const currentLocale = i18n.language || 'en';
+    return date.toLocaleDateString(currentLocale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -1161,13 +1168,11 @@ export default function AddExpenseScreen() {
     
     if (numericValue === '') return '';
     
-    // Giới hạn tối đa 15 chữ số
-    if (numericValue.length > 15) {
-      return '';
-    }
+    // Giới hạn tối đa 15 chữ số - chỉ lấy 15 chữ số đầu tiên
+    const limitedNumericValue = numericValue.slice(0, 15);
     
     // Chuyển thành số và format với dấu phẩy
-    const number = parseInt(numericValue, 10);
+    const number = parseInt(limitedNumericValue, 10);
     return number.toLocaleString('vi-VN');
   };
 
@@ -1324,7 +1329,13 @@ export default function AddExpenseScreen() {
             style={styles.input}
                 onPress={handleWalletPickerPress}
               >
-            <Text style={styles.inputText}>{getSelectedWalletName()}</Text>
+            <Text
+              style={styles.inputText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {getSelectedWalletName()}
+            </Text>
                 <Icon name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
           </View>
@@ -1470,10 +1481,14 @@ export default function AddExpenseScreen() {
                     setShowWalletPicker(false);
                   }}
                 >
-                  <Text style={[
-                    styles.walletPickerItemText,
-                    selectedWallet === wallet.id && styles.walletPickerItemTextSelected
-                  ]}>
+                  <Text
+                    style={[
+                      styles.walletPickerItemText,
+                      selectedWallet === wallet.id && styles.walletPickerItemTextSelected
+                    ]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
                     {wallet.wallet_name}
                   </Text>
                   {wallet.is_default && (

@@ -50,7 +50,7 @@ const SelectCategoryScreen = () => {
       const loadedCategories = await categoryService.getAllCategoriesByTypeAndUser(
         categoryType === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME,
         0,
-        0
+        1
       );
       
       setCategories(loadedCategories);

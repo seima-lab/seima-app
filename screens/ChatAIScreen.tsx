@@ -88,7 +88,7 @@ const Avatar = ({ isUser }: { isUser: boolean }) => {
                 <Icon name="person" size={20} color="#FFFFFF" />
             ) : (
                 <LinearGradient
-                    colors={['#667eea', '#764ba2']}
+                    colors={['#1e90ff', '#0066cc']}
                     style={styles.aiAvatarGradient}
                 >
                     <Icon2 name="robot" size={18} color="#FFFFFF" />
@@ -103,7 +103,7 @@ const WelcomeMessage = () => {
     return (
         <View style={styles.welcomeContainer}>
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#1e90ff', '#0066cc']}
                 style={styles.welcomeGradient}
             >
                 <Icon2 name="robot" size={32} color="#FFFFFF" />
@@ -296,7 +296,7 @@ const ChatAIScreen = () => {
                 
                 {/* Header */}
                 <LinearGradient
-                    colors={['#667eea', '#764ba2']}
+                    colors={['#1e90ff', '#0066cc']}
                     style={[styles.header, { paddingTop: insets.top + 16 }]}
                 >
                     <TouchableOpacity 
@@ -360,7 +360,7 @@ const ChatAIScreen = () => {
                                     style={styles.suggestionButton}
                                     onPress={() => handleSuggestion(suggestion.text)}
                                 >
-                                    <Icon name={suggestion.icon} size={16} color="#667eea" />
+                                    <Icon name={suggestion.icon} size={16} color="#1e90ff" />
                                     <Text style={styles.suggestionText}>{suggestion.text}</Text>
                                 </TouchableOpacity>
                             ))}
@@ -387,11 +387,11 @@ const ChatAIScreen = () => {
                                 
                                 <View style={styles.inputButtons}>
                                     <TouchableOpacity style={styles.inputButton}>
-                                        <Icon name="photo-camera" size={20} color="#667eea" />
+                                        <Icon name="photo-camera" size={20} color="#1e90ff" />
                                     </TouchableOpacity>
                                     
                                     <TouchableOpacity style={styles.inputButton}>
-                                        <Icon name="mic" size={20} color="#667eea" />
+                                        <Icon name="mic" size={20} color="#1e90ff" />
                                     </TouchableOpacity>
                                     
                                     <TouchableOpacity 
@@ -406,7 +406,7 @@ const ChatAIScreen = () => {
                                             colors={
                                                 (isLoading || !userId || !inputText.trim()) 
                                                     ? ['#ccc', '#999'] 
-                                                    : ['#667eea', '#764ba2']
+                                                    : ['#1e90ff', '#0066cc']
                                             }
                                             style={styles.sendButtonGradient}
                                         >
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 20,
         borderBottomRightRadius: 20,
         elevation: 8,
-        shadowColor: '#667eea',
+        shadowColor: '#1e90ff',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     userAvatar: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#1e90ff',
         alignSelf: 'flex-end',
         marginLeft: 8,
         marginRight: 0,
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
     },
     userMessage: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#1e90ff',
         borderBottomRightRadius: 8,
         alignSelf: 'flex-end',
     },
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#667eea',
+        backgroundColor: '#1e90ff',
     },
     suggestionsContainer: {
         paddingHorizontal: 16,

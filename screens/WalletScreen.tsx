@@ -2,19 +2,19 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Modal,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Modal,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -337,23 +337,25 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   };
 
   const renderWalletItem = (wallet: WalletResponse) => {
-    const balanceColor = wallet.current_balance > 0 ? '#22c55e' : '#333';
-    
+    const isExcluded = wallet.exclude_from_total;
+    const balanceColor = isExcluded
+      ? styles.disabledAccountBalance.color
+      : wallet.current_balance > 0 ? '#22c55e' : '#333';
     return (
-      <View key={wallet.id} style={styles.accountItem}>
-        <View style={getWalletIconStyle(wallet.wallet_type_name)}>
+      <View key={wallet.id} style={[styles.accountItem, isExcluded && styles.disabledAccountItem]}>
+        <View style={[getWalletIconStyle(wallet.wallet_type_name), isExcluded && styles.disabledAccountIcon]}>
           {getWalletIcon(wallet.wallet_type_name)}
         </View>
         <View style={styles.accountInfo}>
           <View style={styles.walletNameContainer}>
-            <Text style={styles.accountName}>{wallet.wallet_name}</Text>
-            {wallet.is_default && (
+            <Text style={[styles.accountName, isExcluded && styles.disabledAccountName]}>{wallet.wallet_name}</Text>
+            {wallet.is_default && !isExcluded && (
               <View style={styles.defaultBadge}>
                 <Text style={styles.defaultBadgeText}>{t('wallet.defaultWallet')}</Text>
               </View>
             )}
           </View>
-          <Text style={[styles.accountBalance, { color: balanceColor }]}>
+          <Text style={[styles.accountBalance, { color: balanceColor }]}> 
             {wallet.current_balance.toLocaleString('vi-VN')} {t('currency')}
           </Text>
         </View>
@@ -414,16 +416,8 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   const totalAssets = calculateTotalAssets();
   const totalDebts = 0;
 
-  let includedWallets = wallets.filter(wallet => 
-    (wallet.is_active !== false) && !wallet.exclude_from_total && !wallet.is_delete
-  );
-
-  if (includedWallets.length === 0 && wallets.length > 0) {
-    includedWallets = wallets.filter(wallet => !wallet.exclude_from_total && !wallet.is_delete);
-  }
-
   console.log('🔍 Total wallets:', wallets.length);
-  console.log('📱 Included wallets:', includedWallets.length);
+  console.log('📱 Included wallets:', wallets.filter(wallet => !wallet.is_delete && wallet.is_active !== false).length);
   console.log('💼 Wallets details:', wallets.map(w => ({
     id: w.id,
     name: w.wallet_name,
@@ -508,17 +502,23 @@ const WalletScreen = ({ footerHeight = 0 }) => {
               borderRadius: rb(12), 
               padding: rp(16) 
             }]}> 
-              <Text style={[styles.sectionTitle, { fontSize: rf(18), marginBottom: rp(16) }]}>
-                {t('wallet.includeInTotal')}
+              <Text style={[styles.sectionTitle, { fontSize: rf(18), marginBottom: rp(16) }]}> 
+                {t('wallet.includeInTotal')} 
               </Text>
-              {includedWallets.length > 0 ? (
-                includedWallets.map(renderWalletItem)
+              {wallets.length > 0 ? (
+                wallets
+                  .filter(wallet => !wallet.is_delete && wallet.is_active !== false)
+                  .sort((a, b) => {
+                    if (a.exclude_from_total === b.exclude_from_total) return 0;
+                    return a.exclude_from_total ? 1 : -1;
+                  })
+                  .map(renderWalletItem)
               ) : (
                 <View style={styles.emptyContainer}>
-                  <Text style={[styles.emptyText, { fontSize: rf(16), marginBottom: rp(8) }]}>
+                  <Text style={[styles.emptyText, { fontSize: rf(16), marginBottom: rp(8) }]}> 
                     No wallets found
                   </Text>
-                  <Text style={[styles.emptySubText, { fontSize: rf(14) }]}>
+                  <Text style={[styles.emptySubText, { fontSize: rf(14) }]}> 
                     Add your first wallet to get started
                   </Text>
                 </View>
@@ -526,22 +526,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
             </View>
 
             {/* Excluded Wallets Section */}
-            {wallets.some(w => w.exclude_from_total && (w.is_active !== false) && !w.is_delete) && (
-              <View style={[styles.section, { 
-                marginHorizontal: rp(16), 
-                marginBottom: rp(16), 
-                borderRadius: rb(12), 
-                padding: rp(16) 
-              }]}> 
-                <Text style={[styles.sectionTitle, { fontSize: rf(18), marginBottom: rp(16) }]}>
-                  Excluded from Total
-                </Text>
-                {wallets
-                  .filter(w => w.exclude_from_total && (w.is_active !== false) && !w.is_delete)
-                  .map(renderWalletItem)
-                }
-              </View>
-            )}
+            {/* Removed: do not render a separate section for excluded wallets */}
 
             {/* Action Buttons */}
             <View style={[styles.actionsContainer, { 
@@ -636,6 +621,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  disabledAccountItem: {
+    backgroundColor: '#f7f7f7',
+    opacity: 0.7,
+  },
+  disabledAccountName: {
+    color: '#bbb',
+  },
+  disabledAccountBalance: {
+    color: '#bbb',
+  },
+  disabledAccountIcon: {
+    backgroundColor: '#e0e0e0',
+  },
   accountIcon: {
     width: 48,
     height: 48,
@@ -662,8 +660,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   walletNameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     marginBottom: 4,
   },
   defaultBadge: {
@@ -671,7 +669,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
-    marginLeft: 8,
+    marginTop: 2,
   },
   defaultBadgeText: {
     color: '#fff',

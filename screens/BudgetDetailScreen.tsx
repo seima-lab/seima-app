@@ -1,15 +1,16 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { budgetService } from '../services/budgetService';
@@ -17,6 +18,7 @@ import { budgetService } from '../services/budgetService';
 const { width } = Dimensions.get('window');
 
 const BudgetDetailScreen = () => {
+  const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
   const { budgetId } = (route as any).params;
@@ -25,13 +27,40 @@ const BudgetDetailScreen = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('🔍 BudgetDetailScreen - useEffect triggered');
+    console.log('🔍 budgetId from route params:', budgetId);
+    console.log('🔍 budgetId type:', typeof budgetId);
+    
     const fetchDetail = async () => {
       try {
+        console.log('🔄 Fetching budget detail for ID:', budgetId);
         setLoading(true);
         const data = await budgetService.getBudgetDetail(budgetId);
+        console.log('📊 Budget detail API response:', data);
+        console.log('📊 Budget detail type:', typeof data);
+        console.log('📊 Budget detail keys:', data ? Object.keys(data) : 'null');
+        
+        // Log specific fields
+        if (data) {
+          console.log('📊 Budget name:', data.budget_name);
+          console.log('📊 Budget amount:', data.overall_amount_limit);
+          console.log('📊 Budget period:', data.period_type);
+          console.log('📊 Budget start date:', data.start_date);
+          console.log('📊 Budget end date:', data.end_date);
+          console.log('📊 Budget categories:', data.category_list);
+          console.log('📊 Categories type:', typeof data.category_list);
+          console.log('📊 Categories isArray:', Array.isArray(data.category_list));
+          if (data.category_list && Array.isArray(data.category_list)) {
+            console.log('📊 Categories count:', data.category_list.length);
+            console.log('📊 First category:', data.category_list[0]);
+            console.log('📊 All categories:', data.category_list);
+          }
+        }
+        
         setBudget(data);
       } catch (err) {
-        setError('Không thể tải chi tiết hạn mức.');
+        console.error('❌ Error fetching budget detail:', err);
+        setError(t('budget.detail.loadError'));
       } finally {
         setLoading(false);
       }
@@ -43,7 +72,7 @@ const BudgetDetailScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#1e90ff" />
-        <Text style={styles.loadingText}>Đang tải...</Text>
+        <Text style={styles.loadingText}>{t('budget.detail.loading')}</Text>
       </View>
     );
   }
@@ -57,7 +86,7 @@ const BudgetDetailScreen = () => {
           style={styles.retryButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.retryButtonText}>Quay lại</Text>
+          <Text style={styles.retryButtonText}>{t('budget.detail.back')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -82,24 +111,41 @@ const BudgetDetailScreen = () => {
         >
           <Icon name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chi tiết hạn mức</Text>
+        <Text style={styles.headerTitle}>{t('budget.detail.title')}</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.editButton}>
+          <TouchableOpacity 
+            style={styles.editButton}
+            onPress={() => {
+              console.log('🎯 Edit button pressed');
+              console.log('🎯 Current budget state:', budget);
+              console.log('🎯 budgetId being passed:', budgetId);
+              console.log('🎯 budgetData being passed:', budget);
+              
+              const navigationParams = {
+                editMode: true,
+                budgetId: budgetId,
+                budgetData: budget
+              };
+              console.log('🎯 Navigation params:', navigationParams);
+              
+              (navigation as any).navigate('SetBudgetLimitScreen', navigationParams);
+            }}
+          >
             <Icon name="pencil" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.deleteButton} onPress={async () => {
             Alert.alert(
-              'Xác nhận xoá',
-              'Bạn có chắc chắn muốn xoá hạn mức này?',
+              t('budget.detail.confirmDelete'),
+              t('budget.detail.deleteMessage'),
               [
-                { text: 'Huỷ', style: 'cancel' },
-                { text: 'Xoá', style: 'destructive', onPress: async () => {
+                { text: t('budget.detail.cancel'), style: 'cancel' },
+                { text: t('budget.detail.delete'), style: 'destructive', onPress: async () => {
                   try {
                     await budgetService.deleteBudget(budgetId);
-                    Alert.alert('Thành công', 'Đã xoá hạn mức!');
+                    Alert.alert(t('common.success'), t('budget.detail.deleteSuccess'));
                     navigation.goBack();
                   } catch (err) {
-                    Alert.alert('Lỗi', 'Xoá hạn mức thất bại!');
+                    Alert.alert(t('common.error'), t('budget.detail.deleteError'));
                   }
                 }},
               ]
@@ -144,20 +190,20 @@ const BudgetDetailScreen = () => {
               />
             </View>
             <Text style={styles.progressText}>
-              {progressPercentage.toFixed(1)}% đã sử dụng
+              {progressPercentage.toFixed(1)}% {t('budget.detail.progressUsed')}
             </Text>
           </View>
 
           {/* Amount Details */}
           <View style={styles.amountDetails}>
             <View style={styles.amountItem}>
-              <Text style={styles.amountLabel}>Đã chi</Text>
+              <Text style={styles.amountLabel}>{t('budget.detail.amountUsed')}</Text>
               <Text style={[styles.amountValue, { color: '#EF4444' }]}>
                 {spentAmount.toLocaleString()} ₫
               </Text>
             </View>
             <View style={styles.amountItem}>
-              <Text style={styles.amountLabel}>Còn lại</Text>
+              <Text style={styles.amountLabel}>{t('budget.detail.amountRemaining')}</Text>
               <Text style={[styles.amountValue, { color: '#10B981' }]}>
                 {(budget.budget_remaining_amount ?? 0).toLocaleString()} ₫
               </Text>
@@ -169,16 +215,16 @@ const BudgetDetailScreen = () => {
         <View style={styles.infoCard}>
           <View style={styles.infoHeader}>
             <Icon name="calendar-range" size={24} color="#1e90ff" />
-            <Text style={styles.infoTitle}>Thời gian áp dụng</Text>
+            <Text style={styles.infoTitle}>{t('budget.detail.timeRange')}</Text>
           </View>
           <View style={styles.dateRange}>
             <View style={styles.dateItem}>
-              <Text style={styles.dateLabel}>Từ ngày</Text>
+              <Text style={styles.dateLabel}>{t('budget.detail.fromDate')}</Text>
               <Text style={styles.dateValue}>{budget.start_date?.slice(0,10)}</Text>
             </View>
             <Icon name="arrow-right" size={16} color="#9CA3AF" />
             <View style={styles.dateItem}>
-              <Text style={styles.dateLabel}>Đến ngày</Text>
+              <Text style={styles.dateLabel}>{t('budget.detail.toDate')}</Text>
               <Text style={styles.dateValue}>{budget.end_date?.slice(0,10)}</Text>
             </View>
           </View>
@@ -189,7 +235,7 @@ const BudgetDetailScreen = () => {
           <View style={styles.infoCard}>
             <View style={styles.infoHeader}>
               <Icon name="shape" size={24} color="#1e90ff" />
-              <Text style={styles.infoTitle}>Danh mục áp dụng</Text>
+              <Text style={styles.infoTitle}>{t('budget.detail.appliedCategories')}</Text>
             </View>
             <View style={styles.categoriesContainer}>
               {budget.category_list.map((cat: any, index: number) => (
@@ -206,11 +252,11 @@ const BudgetDetailScreen = () => {
         <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.primaryButton}>
             <Icon name="chart-line" size={20} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>Xem báo cáo</Text>
+            <Text style={styles.primaryButtonText}>{t('budget.detail.viewReport')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryButton}>
             <Icon name="bell" size={20} color="#1e90ff" />
-            <Text style={styles.secondaryButtonText}>Cài đặt thông báo</Text>
+            <Text style={styles.secondaryButtonText}>{t('budget.detail.setNotification')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
