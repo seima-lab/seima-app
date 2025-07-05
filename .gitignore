@@ -18,13 +18,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Android
-android/app/build/
-android/app/release/
-android/app/debug/
-android/.gradle/
-android/build/
-android/gradle/
+# Loại trừ cache, nhưng giữ wrapper
+android/gradle/caches/
+android/gradle/daemon/
+android/gradle/native/
+android/gradle/notifications/
+android/gradle/transform/
+
 
 # iOS
 ios/build/

@@ -247,14 +247,18 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
     
     if (numericValue === '') return '';
     
-    // Giới hạn tối đa 15 chữ số
+    // Giới hạn tối đa 15 chữ số - không cho nhập tiếp nếu vượt quá
     if (numericValue.length > 15) {
-      return '';
+      // Trả về giá trị hiện tại thay vì chuỗi rỗng
+      return balance;
     }
     
-    // Chuyển thành số và format với dấu phẩy
+    // Chuyển thành số và format với dấu phẩy, chỉ hiển thị số nguyên
     const number = parseInt(numericValue, 10);
-    return number.toLocaleString('vi-VN');
+    return number.toLocaleString('vi-VN', { 
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0 
+    });
   };
 
   // Hàm lấy giá trị số từ text đã format
