@@ -1,37 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigationService } from '../navigation/NavigationService';
 import { CategoryResponse, categoryService, CategoryType } from '../services/categoryService';
 import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
-interface SelectCategoryScreenProps {
-  route: {
-    params: {
-      categoryType: 'expense' | 'income';
-      onSelectCategory: (category: CategoryResponse) => void;
-    };
-  };
-}
-
-const SelectCategoryScreen: React.FC<SelectCategoryScreenProps> = ({ route }) => {
-  const { categoryType, onSelectCategory } = route.params;
+const SelectCategoryScreen = () => {
+  const route = useRoute();
+  const navigation = useNavigation();
+  const { categoryType, onSelectCategories, selectedCategories: initialSelected = [] } = (route as any).params;
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<CategoryResponse[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<CategoryResponse[]>(initialSelected);
 
-  const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -70,28 +63,35 @@ const SelectCategoryScreen: React.FC<SelectCategoryScreenProps> = ({ route }) =>
     }
   };
 
-  const handleCategorySelect = (category: CategoryResponse) => {
-    onSelectCategory(category);
-    navigation.goBack();
+  const toggleCategory = (category: CategoryResponse) => {
+    setSelectedCategories((prev) => {
+      if (prev.some((c) => c.category_id === category.category_id)) {
+        return prev.filter((c) => c.category_id !== category.category_id);
+      }
+      return [...prev, category];
+    });
   };
 
   const renderCategoryItem = ({ item }: { item: CategoryResponse }) => {
     const iconName = getIconForCategory(item.category_icon_url, categoryType);
     const iconColor = getIconColor(iconName, categoryType);
+    const checked = selectedCategories.some((c) => c.category_id === item.category_id);
 
     return (
-      <TouchableOpacity 
-        style={styles.categoryItem} 
-        onPress={() => handleCategorySelect(item)}
+      <TouchableOpacity
+        style={styles.categoryItem}
+        onPress={() => toggleCategory(item)}
       >
         <View style={styles.categoryIconContainer}>
-          <Icon 
-            name={iconName} 
-            size={24} 
-            color={iconColor} 
-          />
+          <Icon name={iconName} size={24} color={iconColor} />
         </View>
         <Text style={styles.categoryName}>{item.category_name}</Text>
+        <Icon
+          name={checked ? 'checkbox-marked' : 'checkbox-blank-outline'}
+          size={24}
+          color={checked ? '#007AFF' : '#ccc'}
+          style={{ marginLeft: 'auto' }}
+        />
       </TouchableOpacity>
     );
   };
@@ -149,6 +149,16 @@ const SelectCategoryScreen: React.FC<SelectCategoryScreenProps> = ({ route }) =>
           </View>
         }
       />
+
+      <TouchableOpacity
+        style={{ backgroundColor: '#007AFF', padding: 16, borderRadius: 10, margin: 16 }}
+        onPress={() => {
+          onSelectCategories(selectedCategories);
+          navigation.goBack();
+        }}
+      >
+        <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>Xác nhận</Text>
+      </TouchableOpacity>
     </View>
   );
 };

@@ -27,11 +27,14 @@ export interface CreateBudgetRequest {
 
 // Category interface
 export interface Category {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  backgroundColor: string;
+  category_id: number;
+  user_id: number;
+  group_id: number;
+  category_name: string;
+  category_type: import('./categoryService').CategoryType;
+  category_icon_url: string;
+  parent_category_id: number | null;
+  is_system_defined: boolean;
 }
 
 // Converted structure (snake_case for app usage)
@@ -65,16 +68,16 @@ interface ApiBudgetResponse {
 }
 
 // Convert camelCase field names to snake_case only
-const convertToSnakeCase = (budget: BudgetResponseDto): Budget => {
+const convertToSnakeCase = (budget: any): Budget => {
   return {
-    budget_id: budget.budgetId,
-    budget_name: budget.budgetName,
-    start_date: budget.startDate,
-    end_date: budget.endDate,
-    period_type: budget.periodType,
-    overall_amount_limit: budget.overallAmountLimit,
-    budget_remaining_amount: budget.budgetRemainingAmount,
-    created_at: budget.createdAt,
+    budget_id: budget.budget_id,
+    budget_name: budget.budget_name,
+    start_date: budget.start_date,
+    end_date: budget.end_date,
+    period_type: budget.period_type,
+    overall_amount_limit: budget.overall_amount_limit,
+    budget_remaining_amount: budget.budget_remaining_amount,
+    created_at: budget.created_at,
   };
 };
 
@@ -136,28 +139,45 @@ export class BudgetService {
   async createBudget(request: CreateBudgetRequest): Promise<Budget> {
     try {
       console.log('🔄 Creating budget...');
-      console.log('📤 Request data (snake_case):', JSON.stringify(request, null, 2));
-      
-      // Convert to camelCase for API
-      const camelCaseRequest = convertToCamelCase(request);
-      console.log('📤 Request data (camelCase):', JSON.stringify(camelCaseRequest, null, 2));
-      
+      console.log('📤 Request data:', JSON.stringify(request, null, 2));
       const response = await apiService.post<any>(
         BUDGET_ENDPOINTS.CREATE,
-        camelCaseRequest
+        request
       );
-
       console.log('📥 Create budget response:', JSON.stringify(response, null, 2));
-
       if (response && response.data) {
+        // Convert to snake_case if needed
         const createdBudget = convertToSnakeCase(response.data);
         console.log('✅ Budget created successfully:', createdBudget);
         return createdBudget;
       }
-
       throw new Error('Invalid response format');
     } catch (error) {
       console.error('❌ Error creating budget:', error);
+      throw error;
+    }
+  }
+
+  // Lấy chi tiết budget theo id
+  async getBudgetDetail(id: number | string): Promise<any> {
+    try {
+      const response = await apiService.get<any>(`${BUDGET_ENDPOINTS.GET_BY_ID(id.toString())}`);
+      if (response && response.data) {
+        return response.data;
+      }
+      throw new Error('No data found');
+    } catch (error) {
+      console.error('❌ Error fetching budget detail:', error);
+      throw error;
+    }
+  }
+
+  // Xoá budget theo id
+  async deleteBudget(id: number | string): Promise<void> {
+    try {
+      await apiService.delete(BUDGET_ENDPOINTS.DELETE(id.toString()));
+    } catch (error) {
+      console.error('❌ Error deleting budget:', error);
       throw error;
     }
   }

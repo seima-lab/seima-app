@@ -15,6 +15,7 @@ import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
 import AddWalletScreen from '../screens/AddWalletScreen';
 import ApproveMembersScreen from '../screens/ApproveMembersScreen';
+import BudgetDetailScreen from '../screens/BudgetDetailScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
@@ -35,6 +36,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import OTPScreen from '../screens/OTPScreen';
 import ReportDetailScreen from '../screens/ReportDetailScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import SelectCategoryScreen from '../screens/SelectCategoryScreen';
 import SetBudgetLimitScreen from '../screens/SetBudgetLimitScreen';
 import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import LoginScreen from '../screens/login';
@@ -129,6 +131,8 @@ function AuthNavigator() {
       <Stack.Screen name="ApproveMembers" component={ApproveMembersScreen} />
       <Stack.Screen name="GroupMembers" component={GroupMembersScreenContainer} />
       <Stack.Screen name="ReportDetailScreen" component={ReportDetailScreen} />
+      <Stack.Screen name="SelectCategoryScreen" component={SelectCategoryScreen} />
+      <Stack.Screen name="BudgetDetailScreen" component={BudgetDetailScreen} />
     </Stack.Navigator>
   );
 }

@@ -111,7 +111,7 @@ export const BUDGET_ENDPOINTS = {
   CREATE: `${ApiConfig.API_PREFIX}/budgets`,
   GET_BY_ID: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,
   UPDATE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,
-  DELETE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,
+  DELETE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/delete/${id}`,
 } as const;
 
 // Initialize configuration logging

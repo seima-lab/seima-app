@@ -1,18 +1,18 @@
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
@@ -179,6 +179,7 @@ const BudgetScreen = () => {
           setIsLoading(true);
           console.log('🔄 Fetching budgets...');
           const budgetList = await budgetService.getBudgetList(0, 20);
+          console.log('📦 Raw budgets data:', JSON.stringify(budgetList, null, 2));
           setBudgets(budgetList);
           console.log('✅ Budgets fetched:', budgetList.length, 'items');
         } catch (error) {
@@ -240,8 +241,8 @@ const BudgetScreen = () => {
   };
 
   const BudgetItem = ({ budget }: { budget: Budget }) => {
-    const spent = budget.overall_amount_limit - budget.budget_remaining_amount;
-    const percentage = budget.overall_amount_limit > 0 ? (spent / budget.overall_amount_limit) * 100 : 0;
+    const spent = (budget.overall_amount_limit ?? 0) - (budget.budget_remaining_amount ?? 0);
+    const percentage = (budget.overall_amount_limit ?? 0) > 0 ? (spent / budget.overall_amount_limit) * 100 : 0;
     
     return (
       <View style={styles.budgetItemCard}>
@@ -258,7 +259,7 @@ const BudgetScreen = () => {
             </View>
           </View>
           <Text style={styles.budgetItemAmount}>
-            {budget.overall_amount_limit.toLocaleString()} {t('currency')}
+            {(budget.overall_amount_limit ?? 0).toLocaleString()} {t('currency')}
           </Text>
         </View>
         
@@ -270,10 +271,10 @@ const BudgetScreen = () => {
         
         <View style={styles.budgetItemFooter}>
           <Text style={styles.budgetItemRemaining}>
-            {t('budget.remaining')}: {budget.budget_remaining_amount.toLocaleString()} {t('currency')}
+            {t('budget.remaining')}: {(budget.budget_remaining_amount ?? 0).toLocaleString()} {t('currency')}
           </Text>
           <Text style={styles.budgetItemSpent}>
-            {t('budget.spent')}: {spent.toLocaleString()} {t('currency')}
+            {t('budget.spent')}: {(spent ?? 0).toLocaleString()} {t('currency')}
           </Text>
         </View>
       </View>
@@ -282,6 +283,10 @@ const BudgetScreen = () => {
 
   const handleAddBudget = () => {
     navigation.navigate('SetBudgetLimitScreen');
+  };
+
+  const handleBudgetPress = (budget: Budget) => {
+    navigation.navigate('BudgetDetailScreen', { budgetId: budget.budget_id });
   };
 
   if (isLoading) {
@@ -343,7 +348,9 @@ const BudgetScreen = () => {
           >
             <View style={styles.budgetsContainer}>
               {budgets.map((budget) => (
-                <BudgetItem key={budget.budget_id} budget={budget} />
+                <TouchableOpacity key={budget.budget_id || budget.budget_name} onPress={() => handleBudgetPress(budget)}>
+                  <BudgetItem budget={budget} />
+                </TouchableOpacity>
               ))}
             </View>
             

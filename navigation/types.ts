@@ -125,8 +125,10 @@ export type RootStackParamList = {
   };
   SelectCategoryScreen: {
     categoryType: 'expense' | 'income';
-    onSelectCategory: (category: import('../services/categoryService').CategoryResponse) => void;
+    selectedCategories?: import('../services/categoryService').CategoryResponse[];
+    onSelectCategories: (categories: import('../services/categoryService').CategoryResponse[]) => void;
   };
+  BudgetDetailScreen: { budgetId: number };
 };
 
 export type ScreenNames = keyof RootStackParamList; 
