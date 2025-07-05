@@ -755,6 +755,71 @@
       "nextMonth": "July 2025",
       "quarter": "Q2 2025",
       "year": "2025"
+    },
+    "setBudgetLimit": {
+      "title": "Add Budget Limit",
+      "editTitle": "Edit Budget Limit",
+      "amountPlaceholder": "Enter amount",
+      "budgetNamePlaceholder": "Enter budget name",
+      "selectCategory": "Select category",
+      "allAccounts": "All accounts",
+      "selectAccount": "Select account",
+      "selectAccountTitle": "Select Account",
+      "defaultAccount": "Default",
+      "close": "Close",
+      "repeat": "Repeat",
+      "selectRepeatTitle": "Select repeat cycle",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "selectStartDate": "Select start date",
+      "selectEndDate": "Select end date",
+      "confirm": "Confirm",
+      "save": "Save",
+      "update": "Update",
+      "loadingBudgetData": "Loading budget data...",
+      "validation": {
+        "endDateBeforeStart": "End date must be greater than start date!",
+        "budgetNameRequired": "Please enter budget name!",
+        "amountRequired": "Please enter a valid amount!",
+        "categoryRequired": "Please select at least 1 category!",
+        "walletRequired": "Please select an account!"
+      },
+      "success": {
+        "create": "Budget created successfully!",
+        "update": "Budget updated successfully!"
+      },
+      "error": {
+        "create": "Failed to create budget!",
+        "update": "Failed to update budget!",
+        "loadData": "Cannot load budget data!"
+      }
+    },
+    "detail": {
+      "title": "Budget Detail",
+      "budgetDetail": "Budget Detail",
+      "periodType": "Period",
+      "amountUsed": "Used",
+      "amountRemaining": "Remaining",
+      "progressUsed": "used",
+      "timeRange": "Application period",
+      "fromDate": "From date",
+      "toDate": "To date",
+      "appliedCategories": "Applied categories",
+      "viewReport": "View report",
+      "setNotification": "Set notification",
+      "confirmDelete": "Confirm delete",
+      "deleteMessage": "Are you sure you want to delete this budget?",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleteSuccess": "Budget deleted!",
+      "deleteError": "Failed to delete budget!",
+      "back": "Back",
+      "loading": "Loading...",
+      "loadError": "Cannot load budget detail.",
+      "retry": "Retry"
     }
   },
   

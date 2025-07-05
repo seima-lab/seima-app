@@ -1,34 +1,47 @@
+import { useRoute } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Calendar from 'react-native-calendars/src/calendar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigationService } from '../navigation/NavigationService';
-import { budgetService } from '../services/budgetService';
+import { Budget, budgetService } from '../services/budgetService';
 import { CategoryResponse } from '../services/categoryService';
 import { WalletResponse, walletService } from '../services/walletService';
 
 const { width } = Dimensions.get('window');
 
 const PERIOD_OPTIONS = [
-  { label: 'Hàng tuần', value: 'WEEKLY' },
-  { label: 'Hàng tháng', value: 'MONTHLY' },
-  { label: 'Hàng năm', value: 'YEARLY' },
+  { label: 'budget.setBudgetLimit.weekly', value: 'WEEKLY' },
+  { label: 'budget.setBudgetLimit.monthly', value: 'MONTHLY' },
+  { label: 'budget.setBudgetLimit.yearly', value: 'YEARLY' },
 ];
 
 const BudgetLimitScreen = () => {
+  const { t } = useTranslation();
+  
+  // Get route params for edit mode
+  const navigation = useNavigationService();
+  const route = useRoute();
+  const routeParams = route.params as any;
+  const isEditMode = routeParams?.editMode || false;
+  const budgetData = routeParams?.budgetData as Budget | null;
+  const budgetId = routeParams?.budgetId as number | null;
+
   const [amount, setAmount] = useState('');
   const [amountFontSize, setAmountFontSize] = useState(28);
   const [limitName, setLimitName] = useState('');
@@ -39,18 +52,121 @@ const BudgetLimitScreen = () => {
   const [periodType, setPeriodType] = useState('MONTHLY');
   const [showRepeatModal, setShowRepeatModal] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<CategoryResponse[]>([]);
+
+  // Debug selectedCategories changes
+  useEffect(() => {
+    console.log('🔄 selectedCategories state changed:', {
+      count: selectedCategories.length,
+      categories: selectedCategories.map(cat => ({
+        id: cat.category_id,
+        name: cat.category_name
+      }))
+    });
+  }, [selectedCategories]);
   const [wallets, setWallets] = useState<WalletResponse[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletResponse | null>(null);
   const [showWalletPicker, setShowWalletPicker] = useState(false);
-  const navigation = useNavigationService();
+  const [isLoading, setIsLoading] = useState(false);
   const insets = useSafeAreaInsets();
 
+  // Load budget data if in edit mode
+  useEffect(() => {
+    console.log('🔍 Edit mode useEffect triggered:', {
+      isEditMode,
+      budgetId,
+      budgetData: budgetData ? 'exists' : 'null'
+    });
+    
+    if (isEditMode && budgetId) {
+      console.log('🚀 Starting to load budget data...');
+      loadBudgetData();
+    }
+  }, [isEditMode, budgetId]);
+
+  // Load wallets
   useEffect(() => {
     walletService.getAllWallets().then((data) => {
       setWallets(data);
       if (data.length > 0) setSelectedWallet(data.find(w => w.is_default) || data[0]);
     });
   }, []);
+
+  const loadBudgetData = async () => {
+    console.log('🔄 loadBudgetData called with budgetId:', budgetId);
+    if (!budgetId) {
+      console.log('❌ No budgetId provided');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      console.log('📡 Calling budgetService.getBudgetDetail...');
+      const budgetDetail = await budgetService.getBudgetDetail(budgetId);
+      console.log('📊 Budget detail loaded:', budgetDetail);
+      console.log('📊 Budget detail type:', typeof budgetDetail);
+      console.log('📊 Budget detail keys:', budgetDetail ? Object.keys(budgetDetail) : 'null');
+      
+      // Fill form with budget data
+      if (budgetDetail) {
+        setLimitName(budgetDetail.budget_name || '');
+        setAmount(formatCurrency(budgetDetail.overall_amount_limit?.toString() || ''));
+        setPeriodType(budgetDetail.period_type || 'MONTHLY');
+        
+        // Set dates
+        if (budgetDetail.start_date) {
+          setStartDate(new Date(budgetDetail.start_date));
+        }
+        if (budgetDetail.end_date) {
+          setEndDate(new Date(budgetDetail.end_date));
+        }
+        
+        // Set categories if available
+        console.log('🔍 Checking categories in budgetDetail...');
+        console.log('🔍 budgetDetail.category_list:', budgetDetail.category_list);
+        console.log('🔍 budgetDetail.category_list type:', typeof budgetDetail.category_list);
+        console.log('🔍 budgetDetail.category_list isArray:', Array.isArray(budgetDetail.category_list));
+        
+        if (budgetDetail.category_list && Array.isArray(budgetDetail.category_list)) {
+          console.log('📊 Categories from API:', budgetDetail.category_list);
+          console.log('📊 First category sample:', budgetDetail.category_list[0]);
+          
+          // Convert to CategoryResponse format if needed
+          const categories = budgetDetail.category_list.map((cat: any) => ({
+            category_id: cat.category_id || cat.id,
+            category_name: cat.category_name || cat.name,
+            category_type: cat.category_type || cat.type,
+            category_icon_url: cat.category_icon_url || cat.icon_url,
+            user_id: cat.user_id,
+            group_id: cat.group_id,
+            parent_category_id: cat.parent_category_id,
+            is_system_defined: cat.is_system_defined
+          }));
+          console.log('🔄 Converted categories:', categories);
+          console.log('🔄 Setting selectedCategories with:', categories.length, 'items');
+          setSelectedCategories(categories);
+        } else {
+          console.log('⚠️ No categories found in budget detail');
+          console.log('🔍 Checking route params budgetData...');
+          console.log('🔍 budgetData:', budgetData);
+          console.log('🔍 budgetData?.category_list:', budgetData?.category_list);
+          
+          // If no categories in budget detail, try to load from route params
+          if (budgetData?.category_list && Array.isArray(budgetData.category_list)) {
+            console.log('📊 Using categories from route params:', budgetData.category_list);
+            console.log('📊 Route params categories count:', budgetData.category_list.length);
+            setSelectedCategories(budgetData.category_list);
+          } else {
+            console.log('❌ No categories found in both API and route params');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error loading budget data:', error);
+      alert(t('budget.setBudgetLimit.error.loadData'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const formatCurrency = (value: string) => {
     // Remove non-numeric characters
@@ -70,7 +186,7 @@ const BudgetLimitScreen = () => {
   const handleAmountChange = (text: string) => {
     // Remove non-numeric characters
     const cleanedText = text.replace(/[^0-9]/g, '');
-    // Limit to 15 digits
+    // Limit to 15 digits - không cho nhập nếu vượt quá 15 chữ số
     if (cleanedText.length > 15) return;
     setAmount(cleanedText);
     // Adjust font size based on length
@@ -139,7 +255,7 @@ const BudgetLimitScreen = () => {
         <View style={styles.dateModalContainer}>
           <View style={styles.dateModalHeader}>
             <Text style={styles.dateModalTitle}>
-              {isStartDate ? 'Chọn ngày bắt đầu' : 'Chọn ngày kết thúc'}
+              {isStartDate ? t('budget.setBudgetLimit.selectStartDate') : t('budget.setBudgetLimit.selectEndDate')}
             </Text>
             <TouchableOpacity onPress={() => setShowModal(false)}>
               <Icon name="close" size={24} color="#333" />
@@ -165,7 +281,7 @@ const BudgetLimitScreen = () => {
             style={styles.dateModalConfirmButton}
             onPress={() => setShowModal(false)}
           >
-            <Text style={styles.dateModalConfirmButtonText}>Xác nhận</Text>
+            <Text style={styles.dateModalConfirmButtonText}>{t('budget.setBudgetLimit.confirm')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -175,23 +291,23 @@ const BudgetLimitScreen = () => {
   const handleSave = async () => {
     // Validate ngày kết thúc phải lớn hơn ngày bắt đầu
     if (endDate && (endDate <= startDate)) {
-      alert('Ngày kết thúc phải lớn hơn ngày bắt đầu!');
+      alert(t('budget.setBudgetLimit.validation.endDateBeforeStart'));
       return;
     }
     if (!limitName.trim()) {
-      alert('Vui lòng nhập tên hạn mức!');
+      alert(t('budget.setBudgetLimit.validation.budgetNameRequired'));
       return;
     }
     if (!amount || Number(amount) <= 0) {
-      alert('Vui lòng nhập số tiền hợp lệ!');
+      alert(t('budget.setBudgetLimit.validation.amountRequired'));
       return;
     }
     if (selectedCategories.length === 0) {
-      alert('Vui lòng chọn ít nhất 1 thể loại!');
+      alert(t('budget.setBudgetLimit.validation.categoryRequired'));
       return;
     }
     if (!selectedWallet) {
-      alert('Vui lòng chọn tài khoản!');
+      alert(t('budget.setBudgetLimit.validation.walletRequired'));
       return;
     }
     try {
@@ -203,14 +319,23 @@ const BudgetLimitScreen = () => {
         period_type: periodType, // 'WEEKLY' | 'MONTHLY' | 'YEARLY'
         overall_amount_limit: Number(amount.replace(/[^0-9]/g, '')),
         budget_remaining_amount: Number(amount.replace(/[^0-9]/g, '')),
-        category_list: selectedCategories,
+        category_list: selectedCategories.map(category => ({ category_id: category.category_id })), // Array of objects with category_id
         // wallet_id: selectedWallet.id, // nếu backend hỗ trợ
       };
-      await budgetService.createBudget(request);
-      alert('Tạo hạn mức thành công!');
+
+      if (isEditMode && budgetId) {
+        // Update existing budget
+        await budgetService.updateBudget(budgetId, request);
+        alert(t('budget.setBudgetLimit.success.update'));
+      } else {
+        // Create new budget
+        await budgetService.createBudget(request);
+        alert(t('budget.setBudgetLimit.success.create'));
+      }
+      
       navigation.goBack();
     } catch (err) {
-      alert('Tạo hạn mức thất bại!');
+      alert(isEditMode ? t('budget.setBudgetLimit.error.update') : t('budget.setBudgetLimit.error.create'));
     }
   };
 
@@ -227,200 +352,228 @@ const BudgetLimitScreen = () => {
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <Icon name="arrow-left" size={24} color="#333" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Thêm hạn mức</Text>
+            <Text style={styles.headerTitle}>{isEditMode ? t('budget.setBudgetLimit.editTitle') : t('budget.setBudgetLimit.title')}</Text>
             <TouchableOpacity>
               <Icon name="check" size={24} color="#1e90ff" />
             </TouchableOpacity>
           </View>
 
-          {/* Amount */}
-          <View style={styles.amountBox}>
-            <TextInput
-              style={[styles.amount, { fontSize: amountFontSize }]}
-              value={formatCurrency(amount)}
-              onChangeText={handleAmountChange}
-              placeholder="Nhập số tiền"
-              keyboardType="numeric"
-              placeholderTextColor="#999"
-            />
-            <Text style={styles.currencySymbol}>₫</Text>
-          </View>
+          {/* Loading indicator for edit mode */}
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#1e90ff" />
+              <Text style={styles.loadingText}>{t('budget.setBudgetLimit.loadingBudgetData')}</Text>
+            </View>
+          )}
 
-          {/* Budget Limit Name */}
-          <View style={styles.item}>
-            <Icon name="text" size={24} color="#555" />
-            <TextInput
-              style={styles.nameInput}
-              value={limitName}
-              onChangeText={setLimitName}
-              placeholder="Nhập tên hạn mức"
-              placeholderTextColor="#999"
-              maxLength={50}
-            />
-          </View>
+          {/* Content - hide when loading in edit mode */}
+          {!isLoading && (
+            <>
+              {/* Amount */}
+              <View style={styles.amountBox}>
+                <TextInput
+                  style={[styles.amount, { fontSize: amountFontSize }]}
+                  value={formatCurrency(amount)}
+                  onChangeText={handleAmountChange}
+                  placeholder={t('budget.setBudgetLimit.amountPlaceholder')}
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                />
+                <Text style={styles.currencySymbol}>₫</Text>
+              </View>
 
-          {/* Category */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => {
-              navigation.navigate('SelectCategoryScreen', {
-                categoryType: 'expense',
-                selectedCategories,
-                onSelectCategories: (categories: CategoryResponse[]) => {
-                  setSelectedCategories(categories);
-                }
-              });
-            }}
-          >
-            <Icon name="food" size={24} color="#555" />
-            <Text style={styles.label}>
-              {selectedCategories.length > 0
-                ? selectedCategories.map(c => c.category_name).join(', ')
-                : 'Chọn thể loại'}
-            </Text>
-          </TouchableOpacity>
+              {/* Budget Limit Name */}
+              <View style={styles.item}>
+                <Icon name="text" size={24} color="#555" />
+                <TextInput
+                  style={styles.nameInput}
+                  value={limitName}
+                  onChangeText={setLimitName}
+                  placeholder={t('budget.setBudgetLimit.budgetNamePlaceholder')}
+                  placeholderTextColor="#999"
+                  maxLength={50}
+                />
+              </View>
 
-          {/* Account */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => setShowWalletPicker(true)}
-          >
-            <Icon name="wallet-outline" size={24} color="#555" />
-            <Text style={styles.label}>
-              {selectedWallet ? selectedWallet.wallet_name : 'Tất cả tài khoản'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Wallet Picker Modal */}
-          {showWalletPicker && (
-            <Modal visible={showWalletPicker} transparent animationType="fade">
+              {/* Category */}
               <TouchableOpacity
-                style={styles.modalOverlay}
-                activeOpacity={1}
-                onPress={() => setShowWalletPicker(false)}
+                style={styles.item}
+                onPress={() => {
+                  console.log('🎯 Category button pressed');
+                  console.log('🎯 Current selectedCategories:', selectedCategories);
+                  navigation.navigate('SelectCategoryScreen', {
+                    categoryType: 'expense',
+                    selectedCategories,
+                    onSelectCategories: (categories: CategoryResponse[]) => {
+                      console.log('🔄 onSelectCategories called with:', categories);
+                      setSelectedCategories(categories);
+                    }
+                  });
+                }}
               >
-                <View style={styles.modalContainer}>
-                  <Text style={styles.modalTitle}>Chọn tài khoản</Text>
-                  {wallets.map((wallet) => (
-                    <TouchableOpacity
-                      key={wallet.id}
-                      style={[
-                        styles.modalItem,
-                        selectedWallet?.id === wallet.id && styles.modalItemSelected
-                      ]}
-                      onPress={() => {
-                        setSelectedWallet(wallet);
-                        setShowWalletPicker(false);
-                      }}
-                    >
-                      <Text style={styles.modalItemText}>{wallet.wallet_name}</Text>
-                      {wallet.is_default && (
-                        <Text style={{ color: '#1e90ff', marginLeft: 8 }}>(Mặc định)</Text>
-                      )}
-                    </TouchableOpacity>
-                  ))}
+                <Icon name="food" size={24} color="#555" />
+                <Text style={styles.label}>
+                  {selectedCategories.length > 0
+                    ? selectedCategories.map(c => c.category_name).join(', ')
+                    : t('budget.setBudgetLimit.selectCategory')}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Account */}
+              <TouchableOpacity
+                style={styles.item}
+                onPress={() => setShowWalletPicker(true)}
+              >
+                <Icon name="wallet-outline" size={24} color="#555" />
+                <Text
+                  style={styles.label}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {selectedWallet ? selectedWallet.wallet_name : t('budget.setBudgetLimit.allAccounts')}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Wallet Picker Modal */}
+              {showWalletPicker && (
+                <Modal visible={showWalletPicker} transparent animationType="fade">
                   <TouchableOpacity
-                    style={styles.modalCloseButton}
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
                     onPress={() => setShowWalletPicker(false)}
                   >
-                    <Text style={styles.modalCloseButtonText}>Đóng</Text>
+                    <View style={styles.modalContainer}>
+                      <Text style={styles.modalTitle}>{t('budget.setBudgetLimit.selectAccountTitle')}</Text>
+                      {wallets.map((wallet) => (
+                        <TouchableOpacity
+                          key={wallet.id}
+                          style={[
+                            styles.modalItem,
+                            selectedWallet?.id === wallet.id && styles.modalItemSelected
+                          ]}
+                          onPress={() => {
+                            setSelectedWallet(wallet);
+                            setShowWalletPicker(false);
+                          }}
+                        >
+                          <Text
+                            style={styles.modalItemText}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {wallet.wallet_name}
+                          </Text>
+                          {wallet.is_default && (
+                            <Text style={{ color: '#1e90ff', marginLeft: 8 }}>({t('budget.setBudgetLimit.defaultAccount')})</Text>
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                      <TouchableOpacity
+                        style={styles.modalCloseButton}
+                        onPress={() => setShowWalletPicker(false)}
+                      >
+                        <Text style={styles.modalCloseButtonText}>{t('budget.setBudgetLimit.close')}</Text>
+                      </TouchableOpacity>
+                    </View>
                   </TouchableOpacity>
-                </View>
+                </Modal>
+              )}
+
+              {/* Repeat */}
+              <TouchableOpacity
+                style={styles.item}
+                onPress={() => setShowRepeatModal(true)}
+              >
+                <Icon name="repeat" size={24} color="#555" />
+                <Text style={styles.label}>
+                  {getPeriodLabel(periodType)}
+                </Text>
               </TouchableOpacity>
-            </Modal>
+
+              {/* Repeat Frequency Modal */}
+              <Modal
+                transparent={true}
+                visible={showRepeatModal}
+                animationType="slide"
+                onRequestClose={() => setShowRepeatModal(false)}
+              >
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalContainer}>
+                    <Text style={styles.modalTitle}>{t('budget.setBudgetLimit.selectRepeatTitle')}</Text>
+                    {PERIOD_OPTIONS.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.modalItem,
+                          periodType === option.value && styles.modalItemSelected
+                        ]}
+                        onPress={() => {
+                          setPeriodType(option.value);
+                          setShowRepeatModal(false);
+                        }}
+                      >
+                        <Text style={styles.modalItemText}>{t(option.label)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity
+                      style={styles.modalCloseButton}
+                      onPress={() => setShowRepeatModal(false)}
+                    >
+                      <Text style={styles.modalCloseButtonText}>{t('budget.setBudgetLimit.close')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </Modal>
+
+              {/* Start Date */}
+              <TouchableOpacity
+                style={styles.item}
+                onPress={() => setShowStartDateModal(true)}
+              >
+                <Icon name="calendar-start" size={24} color="#555" />
+                <Text style={styles.label}>
+                  {`${t('budget.setBudgetLimit.startDate')}: ${formatDate(startDate)}`}
+                </Text>
+              </TouchableOpacity>
+
+              {/* End Date */}
+              <TouchableOpacity
+                style={styles.item}
+                onPress={() => setShowEndDateModal(true)}
+              >
+                <Icon name="calendar-end" size={24} color="#555" />
+                <Text style={styles.label}>
+                  {endDate
+                    ? `${t('budget.setBudgetLimit.endDate')}: ${formatDate(endDate)}`
+                    : t('budget.setBudgetLimit.selectEndDate')}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Custom Date Picker Modals */}
+              {renderDatePickerModal(
+                true, 
+                startDate, 
+                showStartDateModal, 
+                setShowStartDateModal, 
+                handleStartDateSelect
+              )}
+
+              {renderDatePickerModal(
+                false, 
+                endDate || new Date(), 
+                showEndDateModal, 
+                setShowEndDateModal, 
+                handleEndDateSelect
+              )}
+
+              {/* Save Button */}
+              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                <Text style={styles.saveButtonText}>
+                  {isEditMode ? t('budget.setBudgetLimit.update') : t('budget.setBudgetLimit.save')}
+                </Text>
+              </TouchableOpacity>
+            </>
           )}
-
-          {/* Repeat */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => setShowRepeatModal(true)}
-          >
-            <Icon name="repeat" size={24} color="#555" />
-            <Text style={styles.label}>
-              {getPeriodLabel(periodType)}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Repeat Frequency Modal */}
-          <Modal
-            transparent={true}
-            visible={showRepeatModal}
-            animationType="slide"
-            onRequestClose={() => setShowRepeatModal(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContainer}>
-                <Text style={styles.modalTitle}>Chọn chu kỳ lặp</Text>
-                {PERIOD_OPTIONS.map((option) => (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.modalItem,
-                      periodType === option.value && styles.modalItemSelected
-                    ]}
-                    onPress={() => {
-                      setPeriodType(option.value);
-                      setShowRepeatModal(false);
-                    }}
-                  >
-                    <Text style={styles.modalItemText}>{option.label}</Text>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity
-                  style={styles.modalCloseButton}
-                  onPress={() => setShowRepeatModal(false)}
-                >
-                  <Text style={styles.modalCloseButtonText}>Đóng</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-
-          {/* Start Date */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => setShowStartDateModal(true)}
-          >
-            <Icon name="calendar-start" size={24} color="#555" />
-            <Text style={styles.label}>
-              {`Ngày bắt đầu: ${formatDate(startDate)}`}
-            </Text>
-          </TouchableOpacity>
-
-          {/* End Date */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => setShowEndDateModal(true)}
-          >
-            <Icon name="calendar-end" size={24} color="#555" />
-            <Text style={styles.label}>
-              {endDate
-                ? `Ngày kết thúc: ${formatDate(endDate)}`
-                : 'Chọn ngày kết thúc'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Custom Date Picker Modals */}
-          {renderDatePickerModal(
-            true, 
-            startDate, 
-            showStartDateModal, 
-            setShowStartDateModal, 
-            handleStartDateSelect
-          )}
-
-          {renderDatePickerModal(
-            false, 
-            endDate || new Date(), 
-            showEndDateModal, 
-            setShowEndDateModal, 
-            handleEndDateSelect
-          )}
-
-          {/* Save Button */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Lưu lại</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -654,5 +807,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
   },
 });

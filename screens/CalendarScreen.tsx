@@ -651,8 +651,17 @@ const CalendarScreen = () => {
             </View>
 
             <View style={styles.content}>
-                {/* Fixed Top Section */}
-                <View style={styles.fixedSection}>
+                {/* Scrollable All-in-One View */}
+                <ScrollView 
+                    style={styles.transactionsList} 
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                        />
+                    }
+                >
                     {/* Calendar */}
                     <View style={styles.calendarContainer}>
                         {loading ? (
@@ -727,19 +736,8 @@ const CalendarScreen = () => {
                             })}`
                         )}
                     </Text>
-                </View>
 
-                {/* Scrollable Transactions List */}
-                <ScrollView 
-                    style={styles.transactionsList} 
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                        />
-                    }
-                >
+                    {/* Transactions List */}
                     {loading ? (
                         <View style={styles.transactionLoadingContainer}>
                             <ActivityIndicator size="large" color="#007AFF" />
@@ -791,9 +789,6 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-    },
-    fixedSection: {
-        backgroundColor: '#FFFFFF',
     },
     calendarContainer: {
         backgroundColor: '#FFFFFF',

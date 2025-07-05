@@ -22,7 +22,7 @@ export interface CreateBudgetRequest {
   period_type: string;
   overall_amount_limit: number;
   budget_remaining_amount: number;
-  category_list: Category[];
+  category_list: { category_id: number }[]; // Array of objects with category_id
 }
 
 // Category interface
@@ -47,6 +47,7 @@ export interface Budget {
   overall_amount_limit: number;
   budget_remaining_amount: number;
   created_at: string;
+  category_list?: Category[]; // Optional categories
 }
 
 // API response structure
@@ -91,7 +92,7 @@ const convertToCamelCase = (request: CreateBudgetRequest): any => {
     periodType: request.period_type,
     overallAmountLimit: request.overall_amount_limit,
     budgetRemainingAmount: request.budget_remaining_amount,
-    categoryList: request.category_list,
+    categoryList: request.category_list, // Array of objects with category_id
   };
 };
 
@@ -159,15 +160,60 @@ export class BudgetService {
   }
 
   // Lấy chi tiết budget theo id
-  async getBudgetDetail(id: number | string): Promise<any> {
+  async getBudgetDetail(id: number | string): Promise<Budget> {
     try {
+      console.log('🔄 Getting budget detail for ID:', id);
       const response = await apiService.get<any>(`${BUDGET_ENDPOINTS.GET_BY_ID(id.toString())}`);
+      console.log('📥 Raw API response:', response);
+      
       if (response && response.data) {
-        return response.data;
+        console.log('📊 Response data:', response.data);
+        console.log('📊 Response data keys:', Object.keys(response.data));
+        
+        // Convert to Budget interface format
+        const budgetDetail: Budget = {
+          budget_id: response.data.budget_id || response.data.budgetId,
+          budget_name: response.data.budget_name || response.data.budgetName,
+          start_date: response.data.start_date || response.data.startDate,
+          end_date: response.data.end_date || response.data.endDate,
+          period_type: response.data.period_type || response.data.periodType,
+          overall_amount_limit: response.data.overall_amount_limit || response.data.overallAmountLimit,
+          budget_remaining_amount: response.data.budget_remaining_amount || response.data.budgetRemainingAmount,
+          created_at: response.data.created_at || response.data.createdAt,
+          category_list: response.data.category_list || response.data.categoryList || []
+        };
+        
+        console.log('🔄 Converted budget detail:', budgetDetail);
+        console.log('🔄 Categories in converted data:', budgetDetail.category_list);
+        
+        return budgetDetail;
       }
       throw new Error('No data found');
     } catch (error) {
       console.error('❌ Error fetching budget detail:', error);
+      throw error;
+    }
+  }
+
+  // Cập nhật budget theo id
+  async updateBudget(id: number | string, request: CreateBudgetRequest): Promise<Budget> {
+    try {
+      console.log('🔄 Updating budget with ID:', id);
+      console.log('📤 Request data:', JSON.stringify(request, null, 2));
+      const response = await apiService.put<any>(
+        `${BUDGET_ENDPOINTS.UPDATE(id.toString())}`,
+        request
+      );
+      console.log('📥 Update budget response:', JSON.stringify(response, null, 2));
+      if (response && response.data) {
+        // Convert to snake_case if needed
+        const updatedBudget = convertToSnakeCase(response.data);
+        console.log('✅ Budget updated successfully:', updatedBudget);
+        return updatedBudget;
+      }
+      throw new Error('Invalid response format');
+    } catch (error) {
+      console.error('❌ Error updating budget:', error);
       throw error;
     }
   }

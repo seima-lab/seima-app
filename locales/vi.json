@@ -810,6 +810,71 @@
       "nextMonth": "Tháng 7 2025",
       "quarter": "Quý 2 2025",
       "year": "Năm 2025"
+    },
+    "setBudgetLimit": {
+      "title": "Thêm hạn mức",
+      "editTitle": "Chỉnh sửa hạn mức",
+      "amountPlaceholder": "Nhập số tiền",
+      "budgetNamePlaceholder": "Nhập tên hạn mức",
+      "selectCategory": "Chọn thể loại",
+      "allAccounts": "Tất cả tài khoản",
+      "selectAccount": "Chọn tài khoản",
+      "selectAccountTitle": "Chọn tài khoản",
+      "defaultAccount": "Mặc định",
+      "close": "Đóng",
+      "repeat": "Lặp lại",
+      "selectRepeatTitle": "Chọn chu kỳ lặp",
+      "weekly": "Hàng tuần",
+      "monthly": "Hàng tháng",
+      "yearly": "Hàng năm",
+      "startDate": "Ngày bắt đầu",
+      "endDate": "Ngày kết thúc",
+      "selectStartDate": "Chọn ngày bắt đầu",
+      "selectEndDate": "Chọn ngày kết thúc",
+      "confirm": "Xác nhận",
+      "save": "Lưu lại",
+      "update": "Cập nhật",
+      "loadingBudgetData": "Đang tải dữ liệu hạn mức...",
+      "validation": {
+        "endDateBeforeStart": "Ngày kết thúc phải lớn hơn ngày bắt đầu!",
+        "budgetNameRequired": "Vui lòng nhập tên hạn mức!",
+        "amountRequired": "Vui lòng nhập số tiền hợp lệ!",
+        "categoryRequired": "Vui lòng chọn ít nhất 1 thể loại!",
+        "walletRequired": "Vui lòng chọn tài khoản!"
+      },
+      "success": {
+        "create": "Tạo hạn mức thành công!",
+        "update": "Cập nhật hạn mức thành công!"
+      },
+      "error": {
+        "create": "Tạo hạn mức thất bại!",
+        "update": "Cập nhật hạn mức thất bại!",
+        "loadData": "Không thể tải dữ liệu hạn mức!"
+      }
+    },
+    "detail": {
+      "title": "Chi tiết hạn mức",
+      "budgetDetail": "Chi tiết hạn mức",
+      "periodType": "Chu kỳ",
+      "amountUsed": "Đã sử dụng",
+      "amountRemaining": "Còn lại",
+      "progressUsed": "đã sử dụng",
+      "timeRange": "Thời gian áp dụng",
+      "fromDate": "Từ ngày",
+      "toDate": "Đến ngày",
+      "appliedCategories": "Danh mục áp dụng",
+      "viewReport": "Xem báo cáo",
+      "setNotification": "Cài đặt thông báo",
+      "confirmDelete": "Xác nhận xoá",
+      "deleteMessage": "Bạn có chắc chắn muốn xoá hạn mức này?",
+      "cancel": "Huỷ",
+      "delete": "Xoá",
+      "deleteSuccess": "Đã xoá hạn mức!",
+      "deleteError": "Xoá hạn mức thất bại!",
+      "back": "Quay lại",
+      "loading": "Đang tải...",
+      "loadError": "Không thể tải chi tiết hạn mức.",
+      "retry": "Thử lại"
     }
   }
 } 

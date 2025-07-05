@@ -509,7 +509,7 @@ const FinanceScreen = React.memo(() => {
       <StatusBar barStyle="light-content" backgroundColor="#4285F4" translucent={true} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + rp(20) }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <View style={styles.headerTop}>
           <View style={styles.profileSection}>
             <View style={styles.avatar}>
@@ -682,12 +682,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: rp(20),
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
+    paddingBottom: rp(10),
+ 
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: rp(30),
+    marginBottom: rp(20),
   },
   profileSection: {
     flexDirection: 'row',
@@ -756,13 +758,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   section: {
-    marginTop: rp(25),
+    marginTop: rp(1),
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: rp(20),
+    marginBottom: rp(10),
   },
   sectionTitle: {
     fontSize: rf(18),
@@ -936,8 +938,7 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: rp(30),
-    marginBottom: rp(20),
+    marginTop: rp(20),
   },
   iconButton: {
     width: rp(60),
