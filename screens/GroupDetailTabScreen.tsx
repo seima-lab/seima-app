@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import GroupTabNavigation from '../components/GroupTabNavigation';
 import { RootStackParamList } from '../navigation/types';
+import { GroupDetailResponse, groupService } from '../services/groupService';
 import GroupMembersScreen from './GroupMembersScreen';
 import GroupOverviewScreen from './GroupOverviewScreen';
 import GroupSettingsScreen from './GroupSettingsScreen';
@@ -13,14 +14,30 @@ import GroupSettingsScreen from './GroupSettingsScreen';
 type GroupDetailRouteProp = RouteProp<RootStackParamList, 'GroupDetail'>;
 type TabType = 'overview' | 'members' | 'settings';
 
+interface Props {
+  groupId: string;
+  groupName: string;
+}
+
 const GroupDetailTabScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<GroupDetailRouteProp>();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showMenu, setShowMenu] = useState(false);
+  const [groupDetail, setGroupDetail] = useState<GroupDetailResponse | null>(null);
 
   const { groupId, groupName } = route.params;
+
+  const fetchGroupDetail = async () => {
+    try {
+      const response = await groupService.getGroupDetail(Number(groupId));
+      setGroupDetail(response);
+      return response;
+    } catch (e) {
+      return null;
+    }
+  };
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -43,9 +60,21 @@ const GroupDetailTabScreen = () => {
     setShowMenu(true);
   };
 
-  const handleEditGroup = () => {
+  const handleEditGroup = async () => {
     setShowMenu(false);
-    navigation.navigate('EditGroup', { groupId, groupName });
+    let detail = groupDetail;
+    if (!detail) {
+      detail = await fetchGroupDetail();
+    }
+    if (!detail) return;
+    navigation.navigate('CreateGroup', {
+      mode: 'edit',
+      groupData: {
+        ...detail,
+        group_id: Number(groupId),
+        group_name: groupName,
+      }
+    });
   };
 
   const handleLeaveGroup = () => {
@@ -75,7 +104,7 @@ const GroupDetailTabScreen = () => {
       case 'overview':
         return <GroupOverviewScreen groupId={groupId} groupName={groupName} />;
       case 'members':
-        return <GroupMembersScreen groupId={groupId} groupName={groupName} />;
+        return <GroupMembersScreen />;
       case 'settings':
         return <GroupSettingsScreen groupId={groupId} groupName={groupName} />;
       default:

@@ -20,12 +20,12 @@ import { categoryService, CategoryService, CategoryType, LocalCategory } from '.
 import { GroupDetailResponse, GroupMemberResponse, groupService } from '../services/groupService';
 import { GroupTransactionResponse, transactionService, TransactionType } from '../services/transactionService';
 
-interface GroupOverviewScreenProps {
+interface Props {
   groupId: string;
   groupName: string;
 }
 
-const GroupOverviewScreen: React.FC<GroupOverviewScreenProps> = ({ groupId, groupName }) => {
+const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { t } = useTranslation();
   

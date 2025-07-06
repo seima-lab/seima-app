@@ -862,5 +862,10 @@
     },
     "update": "Update Wallet",
     "save": "Save Wallet"
+  },
+
+  "transaction": {
+    "edit": "Edit budget",
+    "delete": "Delete budget"
   }
 } 

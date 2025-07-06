@@ -2,19 +2,19 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Dimensions,
-    FlatList,
-    Image,
-    ListRenderItem,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  ListRenderItem,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -22,7 +22,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { GroupMemberListResponse, GroupMemberRole, groupService } from '../services/groupService';
 
-interface GroupMembersScreenProps {
+interface Props {
   groupId: string;
   groupName: string;
 }
@@ -267,7 +267,7 @@ const RoleBadge: React.FC<RoleBadgeProps> = ({ role, size = 'small' }) => {
   );
 };
 
-const GroupMembersScreen: React.FC<GroupMembersScreenProps> = ({ groupId, groupName }) => {
+const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const { t } = useTranslation();

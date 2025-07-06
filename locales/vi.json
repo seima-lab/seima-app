@@ -876,5 +876,9 @@
       "loadError": "Không thể tải chi tiết hạn mức.",
       "retry": "Thử lại"
     }
+  },
+  "transaction": {
+    "edit": "Chỉnh sửa ",
+    "delete": "Xóa"
   }
 } 
