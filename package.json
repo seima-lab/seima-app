@@ -3,6 +3,7 @@
   "main": "index.js",
   "version": "1.0.0",
   "scripts": {
+    "android": "node --max-old-space-size=4096 node_modules/.bin/expo run:android",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
@@ -27,6 +28,7 @@
     "expo": "~53.0.13",
     "expo-blur": "~14.1.5",
     "expo-constants": "~17.1.6",
+    "expo-dev-client": "~5.2.4",
     "expo-document-picker": "~13.1.6",
     "expo-font": "~13.3.1",
     "expo-haptics": "~14.1.4",
@@ -48,6 +50,7 @@
     "react-dom": "19.0.0",
     "react-i18next": "^15.5.2",
     "react-native": "0.79.4",
+    "react-native-branch": "^6.7.1",
     "react-native-calendars": "^1.1312.1",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-linear-gradient": "^2.8.3",
@@ -57,8 +60,7 @@
     "react-native-svg": "15.11.2",
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.20.0",
-    "react-native-webview": "13.13.5",
-    "expo-dev-client": "~5.2.4"
+    "react-native-webview": "13.13.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

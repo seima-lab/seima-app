@@ -1,3 +1,4 @@
+
 import { ApiService } from './apiService';
 import { SecureApiService } from './secureApiService';
 
@@ -73,6 +74,41 @@ export interface CreateGroupRequest {
 export interface UpdateGroupRequest {
   group_name?: string;
   image?: File | Blob | any; // Handle File/Blob for web, and React Native file objects
+}
+
+// Email invitation interfaces
+export interface EmailInvitationRequest {
+  group_id: number;
+  email: string;
+}
+
+export interface EmailInvitationResponse {
+  group_id: number;
+  group_name: string;
+  invited_email: string;
+  invite_link: string;
+  message: string;
+  email_sent: boolean;
+  user_exists: boolean;
+}
+
+export interface PendingGroupMemberResponse {
+  user_id: number;
+  user_full_name: string;
+  user_avatar_url: string;
+  user_email: string;
+  requested_at: string; // ISO string
+}
+
+export interface PendingGroupMemberListResponse {
+  group_id: number;
+  group_name: string;
+  total_pending_count: number;
+  pending_members: PendingGroupMemberResponse[];
+}
+
+export interface AcceptOrRejectGroupMemberRequest {
+  user_id: number;
 }
 
 class GroupService {
@@ -421,6 +457,63 @@ class GroupService {
       console.error('🔴 Failed to archive group:', error);
       throw new Error(error.message || 'Failed to archive group');
     }
+  }
+
+  // Send email invitation to join group
+  async sendEmailInvitation(request: EmailInvitationRequest): Promise<EmailInvitationResponse> {
+    try {
+      console.log('🟡 Sending email invitation request:', request);
+      
+      // Use makeAuthenticatedRequest with 30 seconds timeout for email sending
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+      
+      try {
+        const response = await secureApiService.makeAuthenticatedRequest<EmailInvitationResponse>(
+          '/api/v1/groups/invitations/email',
+          'POST',
+          request
+        );
+        
+        clearTimeout(timeoutId);
+        console.log('🟢 Email invitation response:', response);
+        return response;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
+    } catch (error: any) {
+      console.error('🔴 Email invitation error:', error);
+      throw error;
+    }
+  }
+
+  async getPendingGroupMembers(groupId: number): Promise<PendingGroupMemberListResponse> {
+    try {
+      const response = await secureApiService.makeAuthenticatedRequest<PendingGroupMemberListResponse>(
+        `/api/v1/group-acceptance/group/${groupId}/pending-requests`,
+        'GET'
+      );
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to load pending group members');
+    }
+  }
+
+  async acceptGroupMemberRequest(groupId: number, userId: number): Promise<void> {
+    await secureApiService.makeAuthenticatedRequest<Object>(
+      `/api/v1/group-acceptance/group/${groupId}/accept-request`,
+      'POST',
+      { user_id: userId }
+    );
+  }
+
+  async rejectGroupMemberRequest(groupId: number, userId: number): Promise<void> {
+    await secureApiService.makeAuthenticatedRequest<Object>(
+      `/api/v1/group-acceptance/group/${groupId}/reject-request`,
+      'POST',
+      { user_id: userId }
+    );
   }
 }
 

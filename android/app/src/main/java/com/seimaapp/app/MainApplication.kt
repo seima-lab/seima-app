@@ -3,6 +3,7 @@ import com.facebook.react.common.assets.ReactFontManager
 
 import android.app.Application
 import android.content.res.Configuration
+import io.branch.rnbranch.RNBranchModule
 
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -24,6 +25,7 @@ class MainApplication : Application(), ReactApplication {
         object : DefaultReactNativeHost(this) {
           override fun getPackages(): List<ReactPackage> {
             val packages = PackageList(this).packages
+            packages.add(io.branch.rnbranch.RNBranchPackage())
             // Packages that cannot be autolinked yet can be added manually here, for example:
             // packages.add(MyReactNativePackage())
             return packages
@@ -42,7 +44,9 @@ class MainApplication : Application(), ReactApplication {
     get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
 
   override fun onCreate() {
+   RNBranchModule.getAutoInstance(this)
     super.onCreate()
+     
     // @generated begin xml-fonts-init - expo prebuild (DO NOT MODIFY) sync-da39a3ee5e6b4b0d3255bfef95601890afd80709
 
     // @generated end xml-fonts-init
