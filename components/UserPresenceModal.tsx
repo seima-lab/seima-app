@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Dimensions,
     Modal,
@@ -24,6 +25,7 @@ const TokenExpiryModal: React.FC<TokenExpiryModalProps> = ({
   onRefresh,
   onLogout,
 }) => {
+  const { t } = useTranslation();
   return (
     <Modal
       visible={visible}
@@ -34,20 +36,19 @@ const TokenExpiryModal: React.FC<TokenExpiryModalProps> = ({
         <View style={styles.container}>
           <Icon name="access-time" size={64} color="#FF6B35" />
           
-          <Text style={styles.title}>Bạn còn ở đó không?</Text>
+          <Text style={styles.title}>{t('tokenExpiryModal.title')}</Text>
           
           <Text style={styles.message}>
-            Phiên đăng nhập sắp hết hạn trong {remainingTime} giây. 
-            Bạn có muốn tiếp tục không?
+            {t('tokenExpiryModal.message', { remainingTime })}
           </Text>
           
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-              <Text style={styles.refreshText}>Tôi vẫn ở đây</Text>
+              <Text style={styles.refreshText}>{t('tokenExpiryModal.stay')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-              <Text style={styles.logoutText}>Đăng xuất</Text>
+              <Text style={styles.logoutText}>{t('tokenExpiryModal.logout')}</Text>
             </TouchableOpacity>
           </View>
           

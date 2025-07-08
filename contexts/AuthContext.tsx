@@ -74,20 +74,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Logout function
   const logout = async () => {
+    // Xóa local state trước để UI về Login ngay
+    setUser(null);
+    setIsAuthenticated(false);
     try {
       console.log('🟡 Logging out...');
       await authService.logout();
-      setUser(null);
-      setIsAuthenticated(false);
       console.log('🟢 Logout successful');
-      
-      // Force navigation reset to login screen
-      // This will be handled by the AuthNavigator re-render
     } catch (error) {
       console.error('🔴 Logout error:', error);
-      // Even if logout API fails, clear local state
-      setUser(null);
-      setIsAuthenticated(false);
+      // Có thể show toast nếu cần
     }
   };
 

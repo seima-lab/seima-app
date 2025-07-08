@@ -260,12 +260,11 @@ const SettingScreen = () => {
       </ScrollView>
              <LogoutModal
          visible={logoutModalVisible}
-         userName={userProfile?.user_full_name?.split(' ')[0] || 'Bạn'}
+         userName={userProfile?.user_full_name?.split(' ')[0] || t('you')}
          onConfirm={async () => {
            setLogoutModalVisible(false);
            try {
              await logout();
-             navigation.replace('Login');
            } catch (error) {
              console.error('Logout error:', error);
            }

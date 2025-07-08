@@ -430,7 +430,6 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
                 />
                 <View style={styles.groupDetails}>
                   <Text style={styles.groupName}>{groupDetail.group_name}</Text>
-                  <Text style={styles.groupDescription}>{t('group.overview.groupDescription')}</Text>
                   <Text style={styles.groupMeta}>
                     {t('group.overview.totalMembers', { count: groupDetail.total_members_count })} • {t('group.overview.groupCreated')} {new Date(groupDetail.group_created_date).toLocaleDateString('vi-VN')}
                   </Text>
@@ -439,21 +438,6 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
                   <Icon name="edit" size={20} color="#1e90ff" />
                 </TouchableOpacity>
               </View>
-              
-              {/* Invite Code Section */}
-              {groupDetail.group_invite_link && (
-                <View style={styles.inviteCodeSection}>
-                  <Text style={styles.inviteCodeLabel}>{t('group.overview.inviteCode')}</Text>
-                  <TouchableOpacity 
-                    style={styles.inviteCodeContainer}
-                    onPress={handleCopyInviteCode}
-                  >
-                    <Text style={styles.inviteCodeText}>{groupDetail.group_invite_link}</Text>
-                    <Icon name="content-copy" size={18} color="#4A90E2" />
-                  </TouchableOpacity>
-                  <Text style={styles.inviteCodeHint}>{t('group.overview.inviteCodeHint')}</Text>
-                </View>
-              )}
             </>
           ) : null}
         </View>
@@ -587,11 +571,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333333',
-    marginBottom: 4,
-  },
-  groupDescription: {
-    fontSize: 14,
-    color: '#666666',
     marginBottom: 4,
   },
   groupMeta: {
@@ -811,41 +790,6 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: 8,
-  },
-  inviteCodeSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  inviteCodeLabel: {
-    fontSize: 12,
-    color: '#666666',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  inviteCodeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8F9FA',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    marginBottom: 6,
-  },
-  inviteCodeText: {
-    fontSize: 14,
-    color: '#333333',
-    fontWeight: '500',
-    fontFamily: 'monospace',
-    flex: 1,
-  },
-  inviteCodeHint: {
-    fontSize: 11,
-    color: '#999999',
-    fontStyle: 'italic',
   },
   errorText: {
     fontSize: 12,

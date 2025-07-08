@@ -1,3 +1,5 @@
+import { TabType } from '../utils/mainTabUtils';
+
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
@@ -40,7 +42,7 @@ export type RootStackParamList = {
   UpdateProfile: undefined;
   SettingScreen: undefined;
   MainTab: undefined;
-  MainTabScreen: undefined;
+  MainTabScreen: { initialTab?: TabType } | undefined;
   AddExpenseScreen: {
     fromGroupOverview?: boolean;
     fromGroupTransactionList?: boolean;
@@ -129,6 +131,13 @@ export type RootStackParamList = {
     onSelectCategories: (categories: import('../services/categoryService').CategoryResponse[]) => void;
   };
   BudgetDetailScreen: { budgetId: number };
+  StatusInviteMember: {
+    status: import('../screens/StatusInviteMember').GroupMemberStatus;
+    group_name?: string;
+    role?: string;
+    joined_at?: string;
+    invited_at?: string;
+  };
 };
 
 export type ScreenNames = keyof RootStackParamList; 

@@ -42,12 +42,11 @@ const LogoutModal: React.FC<LogoutModalProps> = ({
           </View>
           
           {/* Title */}
-          <Text style={styles.title}>Tạm biệt {userName}!</Text>
+          <Text style={styles.title}>{t('logoutModal.goodbye', { userName })}</Text>
           
           {/* Message */}
           <Text style={styles.message}>
-            Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không? 
-            Chúng tôi sẽ nhớ bạn! 💙
+            {t('logoutModal.confirmMessage')}
           </Text>
           
           {/* Buttons */}
@@ -58,7 +57,7 @@ const LogoutModal: React.FC<LogoutModalProps> = ({
               activeOpacity={0.8}
             >
               <Icon name="arrow-left" size={20} color="#4A90E2" />
-              <Text style={styles.cancelText}>Ở lại</Text>
+              <Text style={styles.cancelText}>{t('logoutModal.stay')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -67,13 +66,13 @@ const LogoutModal: React.FC<LogoutModalProps> = ({
               activeOpacity={0.8}
             >
               <Icon name="exit-to-app" size={20} color="white" />
-              <Text style={styles.confirmText}>Đăng xuất</Text>
+              <Text style={styles.confirmText}>{t('logoutModal.logout')}</Text>
             </TouchableOpacity>
           </View>
           
           {/* Footer message */}
           <Text style={styles.footerText}>
-            Hẹn gặp lại bạn sớm nhé! ✨
+            {t('logoutModal.footer')}
           </Text>
         </View>
       </View>

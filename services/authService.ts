@@ -21,7 +21,7 @@ const ENDPOINTS = {
   LOGOUT: AUTH_ENDPOINTS.LOGOUT,
   UPDATE_PROFILE: USER_ENDPOINTS.UPDATE_PROFILE,
   GET_PROFILE: USER_ENDPOINTS.GET_PROFILE,
-  UPLOAD_AVATAR: USER_ENDPOINTS.UPLOAD_AVATAR,
+
 };
 
 // Token storage keys
@@ -789,74 +789,7 @@ export class AuthService {
     }
   }
 
-  // Upload user avatar
-  async uploadAvatar(imageUri: string): Promise<string> {
-    try {
-      console.log('🟡 Uploading avatar...');
-      console.log('🟡 Image URI:', imageUri);
-      
-      const token = await this.getStoredToken();
-      if (!token) {
-        throw new Error('No access token available');
-      }
-
-      // Create FormData for file upload
-      const formData = new FormData();
-      
-      // Extract filename from URI or use default
-      const filename = imageUri.split('/').pop() || 'avatar.jpg';
-      
-      // Determine MIME type based on file extension
-      const extension = filename.split('.').pop()?.toLowerCase();
-      let mimeType = 'image/jpeg'; // default
-      
-      switch (extension) {
-        case 'png':
-          mimeType = 'image/png';
-          break;
-        case 'jpg':
-        case 'jpeg':
-          mimeType = 'image/jpeg';
-          break;
-        case 'gif':
-          mimeType = 'image/gif';
-          break;
-        case 'webp':
-          mimeType = 'image/webp';
-          break;
-      }
-      
-      // Append file to FormData
-      formData.append('avatar', {
-        uri: imageUri,
-        type: mimeType,
-        name: filename,
-      } as any);
-
-      const response = await fetch(this.buildUrl(ENDPOINTS.UPLOAD_AVATAR), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          // Don't set Content-Type for FormData, let browser set it with boundary
-        },
-        body: formData,
-      });
-
-      const result = await response.json();
-      console.log('🟡 Upload avatar response:', result);
-      
-      if (response.ok && result.data) {
-        const avatarUrl = result.data.avatar_url || result.data.url || result.data;
-        console.log('🟢 Avatar uploaded successfully:', avatarUrl);
-        return avatarUrl;
-      }
-      
-      throw new Error(result.message || 'Failed to upload avatar');
-    } catch (error) {
-      console.error('🔴 AuthService - Upload Avatar Error:', error);
-      throw error;
-    }
-  }
+ 
 
   // Logout
   async logout(): Promise<void> {

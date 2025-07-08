@@ -2,17 +2,19 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -415,171 +417,173 @@ export default function AddEditCategoryScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <SafeAreaView style={styles.safeAreaContent}>
-        <StatusBar 
-          barStyle="dark-content" 
-          backgroundColor="#fff" 
-          translucent={false}
-        />
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-left" size={24} color="#007aff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{title}</Text>
-          <View style={styles.placeholder} />
-        </View>
-
-        <View 
-          style={styles.content} 
-        >
-          {/* Name Input */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('categoryName')}</Text>
-            <TextInput
-              style={styles.nameInput}
-              placeholder={t('categoryNamePlaceholder')}
-              value={categoryName}
-              onChangeText={setCategoryName}
-              placeholderTextColor="#C7C7CC"
-              returnKeyType="done"
-              blurOnSubmit={false}
-            />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <SafeAreaView style={styles.safeAreaContent}>
+          <StatusBar 
+            barStyle="dark-content" 
+            backgroundColor="#fff" 
+            translucent={false}
+          />
+          
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => navigation.goBack()}
+            >
+              <Icon name="arrow-left" size={24} color="#007aff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{title}</Text>
+            <View style={styles.placeholder} />
           </View>
 
-          {/* Icon Selection */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('icon')}</Text>
-            <View style={styles.iconContainer}>
-              <FlatList
-                data={getIconsForCategoryType(type)}
-                renderItem={renderIconItem}
-                keyExtractor={item => item.name}
-                numColumns={4}
-                scrollEnabled={true}
-                showsVerticalScrollIndicator={true}
-                contentContainerStyle={[
-                  styles.iconGrid,
-                  { minHeight: '100%' } // Ensure content can fill container
-                ]}
-                removeClippedSubviews={false} // Important for scrollToIndex to work
-                initialNumToRender={20} // Render more items initially
-                maxToRenderPerBatch={20}
-                windowSize={10}
-                ref={iconFlatListRef}
-                getItemLayout={(data, index) => {
-                  // More precise calculation based on actual styles
-                  const itemSize = 80; // aspectRatio: 1, with flex: 1
-                  const itemMargin = 4; // margin: 4 around each item  
-                  const itemTotalSize = itemSize + (itemMargin * 2); // Total space per item including margins
-                  const row = Math.floor(index / 4);
-                  const col = index % 4;
-                  
-                  // For FlatList with numColumns, we need to calculate based on rows
-                  const rowHeight = itemTotalSize;
-                  
-                  return {
-                    length: rowHeight,
-                    offset: rowHeight * row,
-                    index,
-                  };
-                }}
-                onLayout={(event) => {
-                  const { height, width } = event.nativeEvent.layout;
-                  console.log('📐 FlatList onLayout:', { height, width });
-                  console.log('📐 Setting FlatList ready to true');
-                  
-                  // Debug: Check if FlatList can actually scroll
-                  setTimeout(() => {
-                    if (iconFlatListRef.current) {
-                      const availableIcons = getIconsForCategoryType(type);
-                      const totalRows = Math.ceil(availableIcons.length / 4);
-                      const totalContentHeight = totalRows * 88; // Approximate row height
-                      console.log(`📊 FlatList scroll capability:`, {
-                        containerHeight: height,
-                        totalContentHeight,
-                        canScroll: totalContentHeight > height,
-                        totalIcons: availableIcons.length,
-                        totalRows
-                      });
-                    }
-                  }, 100);
-                  
-                  setIsFlatListReady(true);
-                }}
-                onScrollToIndexFailed={(info) => {
-                  console.log('❌ ScrollToIndex failed in FlatList callback:', info);
-                  
-                  // Enhanced fallback logic
-                  setTimeout(() => {
-                    if (!iconFlatListRef.current) {
-                      console.log('❌ FlatList ref not available for fallback');
-                      return;
-                    }
-                    
-                    const availableIcons = getIconsForCategoryType(type);
-                    const rowHeight = 90;
-                    const totalRows = Math.ceil(availableIcons.length / 4);
-                    const targetRow = Math.floor(info.index / 4);
-                    
-                    console.log(`🔄 Fallback for index ${info.index}: row ${targetRow + 1}/${totalRows}`);
-                    
-                    // For bottom rows, use enhanced bottom logic
-                    if (targetRow >= totalRows - 6) {
-                      console.log('📍 Fallback: handling bottom section');
-                      
-                      const containerHeight = 500;
-                      const totalContentHeight = totalRows * rowHeight;
-                      const maxScrollOffset = Math.max(0, totalContentHeight - containerHeight + 50);
-                      const targetOffset = Math.min(maxScrollOffset, targetRow * rowHeight - 100);
-                      
-                      console.log(`📍 Fallback: scrollToOffset ${targetOffset}`);
-                      iconFlatListRef.current.scrollToOffset({
-                        offset: targetOffset,
-                        animated: true,
-                      });
-                      
-                      // Backup scrollToEnd
-                      setTimeout(() => {
-                        if (iconFlatListRef.current) {
-                          iconFlatListRef.current.scrollToEnd({ animated: true });
-                        }
-                      }, 200);
-                    } else {
-                      // Calculate offset with some padding
-                      const offset = Math.max(0, targetRow * rowHeight - 50);
-                      console.log(`📍 Fallback: scrollToOffset ${offset}`);
-                      iconFlatListRef.current.scrollToOffset({
-                        offset: offset,
-                        animated: true,
-                      });
-                    }
-                  }, 50);
-                }}
+          <View 
+            style={styles.content} 
+          >
+            {/* Name Input */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('categoryName')}</Text>
+              <TextInput
+                style={styles.nameInput}
+                placeholder={t('categoryNamePlaceholder')}
+                value={categoryName}
+                onChangeText={setCategoryName}
+                placeholderTextColor="#C7C7CC"
+                returnKeyType="done"
+                blurOnSubmit={false}
               />
             </View>
-          </View>
-        </View>
 
-        {/* Save Button */}
-        <View style={styles.bottomContainer}>
-          <TouchableOpacity 
-            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} 
-            onPress={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.saveButtonText}>{t('save')}</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+            {/* Icon Selection */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('icon')}</Text>
+              <View style={styles.iconContainer}>
+                <FlatList
+                  data={getIconsForCategoryType(type)}
+                  renderItem={renderIconItem}
+                  keyExtractor={item => item.name}
+                  numColumns={4}
+                  scrollEnabled={true}
+                  showsVerticalScrollIndicator={true}
+                  contentContainerStyle={[
+                    styles.iconGrid,
+                    { minHeight: '100%' } // Ensure content can fill container
+                  ]}
+                  removeClippedSubviews={false} // Important for scrollToIndex to work
+                  initialNumToRender={20} // Render more items initially
+                  maxToRenderPerBatch={20}
+                  windowSize={10}
+                  ref={iconFlatListRef}
+                  getItemLayout={(data, index) => {
+                    // More precise calculation based on actual styles
+                    const itemSize = 80; // aspectRatio: 1, with flex: 1
+                    const itemMargin = 4; // margin: 4 around each item  
+                    const itemTotalSize = itemSize + (itemMargin * 2); // Total space per item including margins
+                    const row = Math.floor(index / 4);
+                    const col = index % 4;
+                    
+                    // For FlatList with numColumns, we need to calculate based on rows
+                    const rowHeight = itemTotalSize;
+                    
+                    return {
+                      length: rowHeight,
+                      offset: rowHeight * row,
+                      index,
+                    };
+                  }}
+                  onLayout={(event) => {
+                    const { height, width } = event.nativeEvent.layout;
+                    console.log('📐 FlatList onLayout:', { height, width });
+                    console.log('📐 Setting FlatList ready to true');
+                    
+                    // Debug: Check if FlatList can actually scroll
+                    setTimeout(() => {
+                      if (iconFlatListRef.current) {
+                        const availableIcons = getIconsForCategoryType(type);
+                        const totalRows = Math.ceil(availableIcons.length / 4);
+                        const totalContentHeight = totalRows * 88; // Approximate row height
+                        console.log(`📊 FlatList scroll capability:`, {
+                          containerHeight: height,
+                          totalContentHeight,
+                          canScroll: totalContentHeight > height,
+                          totalIcons: availableIcons.length,
+                          totalRows
+                        });
+                      }
+                    }, 100);
+                    
+                    setIsFlatListReady(true);
+                  }}
+                  onScrollToIndexFailed={(info) => {
+                    console.log('❌ ScrollToIndex failed in FlatList callback:', info);
+                    
+                    // Enhanced fallback logic
+                    setTimeout(() => {
+                      if (!iconFlatListRef.current) {
+                        console.log('❌ FlatList ref not available for fallback');
+                        return;
+                      }
+                      
+                      const availableIcons = getIconsForCategoryType(type);
+                      const rowHeight = 90;
+                      const totalRows = Math.ceil(availableIcons.length / 4);
+                      const targetRow = Math.floor(info.index / 4);
+                      
+                      console.log(`🔄 Fallback for index ${info.index}: row ${targetRow + 1}/${totalRows}`);
+                      
+                      // For bottom rows, use enhanced bottom logic
+                      if (targetRow >= totalRows - 6) {
+                        console.log('📍 Fallback: handling bottom section');
+                        
+                        const containerHeight = 500;
+                        const totalContentHeight = totalRows * rowHeight;
+                        const maxScrollOffset = Math.max(0, totalContentHeight - containerHeight + 50);
+                        const targetOffset = Math.min(maxScrollOffset, targetRow * rowHeight - 100);
+                        
+                        console.log(`📍 Fallback: scrollToOffset ${targetOffset}`);
+                        iconFlatListRef.current.scrollToOffset({
+                          offset: targetOffset,
+                          animated: true,
+                        });
+                        
+                        // Backup scrollToEnd
+                        setTimeout(() => {
+                          if (iconFlatListRef.current) {
+                            iconFlatListRef.current.scrollToEnd({ animated: true });
+                          }
+                        }, 200);
+                      } else {
+                        // Calculate offset with some padding
+                        const offset = Math.max(0, targetRow * rowHeight - 50);
+                        console.log(`📍 Fallback: scrollToOffset ${offset}`);
+                        iconFlatListRef.current.scrollToOffset({
+                          offset: offset,
+                          animated: true,
+                        });
+                      }
+                    }, 50);
+                  }}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Save Button */}
+          <View style={styles.bottomContainer}>
+            <TouchableOpacity 
+              style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} 
+              onPress={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.saveButtonText}>{t('save')}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
