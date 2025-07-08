@@ -42,8 +42,7 @@ import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import LoginScreen from '../screens/login';
 import RegisterScreen from '../screens/register';
 import UpdateProfileScreen from '../screens/update-profile';
-
-
+import BranchService from '../services/branchService';
 const Stack = createNativeStackNavigator();
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -159,17 +158,14 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-
-  useEffect(() => { 
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
+  useEffect(() => {
+    BranchService.init();
+    return () => {
+      BranchService.cleanup();
+    };
+  }, []);
+ 
+  if (!loaded) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
