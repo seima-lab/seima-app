@@ -36,7 +36,7 @@ const STORAGE_KEYS = {
 const TOKEN_CONFIG = {
   ACCESS_TOKEN_DURATION: 3600 * 1000, // 1 hour in milliseconds
   REFRESH_TOKEN_DURATION: 604800 * 1000, // 7 days in milliseconds
-  WARNING_THRESHOLD: 60 * 60 * 1000, // Warn 1 minute before expiry
+  WARNING_THRESHOLD: 1 * 60 * 1000, // Warn 1 minute before expiry
   REFRESH_THRESHOLD: 15 * 60 * 1000, // Auto-refresh 15 minutes before expiry
 };
 
