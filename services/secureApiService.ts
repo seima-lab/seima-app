@@ -122,24 +122,7 @@ export class SecureApiService {
     throw new Error(response.message || 'Failed to create transaction');
   }
 
-  // ✅ Upload user avatar
-  async uploadAvatar(imageUri: string): Promise<{ avatarUrl: string }> {
-    const formData = new FormData();
-    formData.append('avatar', {
-      uri: imageUri,
-      type: 'image/jpeg',
-      name: 'avatar.jpg',
-    } as any);
-
-    const response = await apiService.post<{ avatarUrl: string }>(`${USER_ENDPOINTS.UPLOAD_AVATAR.replace('/users/upload-avatar', '/user/avatar')}`, formData, {
-      'Content-Type': 'multipart/form-data',
-    });
-
-    if (response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || 'Failed to upload avatar');
-  }
+  
 
   // ✅ Handle token refresh automatically
   async makeAuthenticatedRequest<T>(endpoint: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', data?: any): Promise<T> {

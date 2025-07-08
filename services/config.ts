@@ -69,7 +69,7 @@ export const AUTH_ENDPOINTS = {
 export const USER_ENDPOINTS = {
   GET_PROFILE: `${ApiConfig.API_PREFIX}/users/me`,
   UPDATE_PROFILE: `${ApiConfig.API_PREFIX}/users/update`,
-  UPLOAD_AVATAR: `${ApiConfig.API_PREFIX}/users/upload-avatar`,
+
 } as const;
 
 // Transaction endpoints

@@ -1,6 +1,6 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActionSheetIOS,
@@ -236,20 +236,19 @@ const UpdateProfile = () => {
         payload.birth_date = dateOfBirth.toISOString().split('T')[0];
       }
       
-      // If avatar was changed and is a local file (not a URL), upload it first
+      // If avatar was changed and is a local file (not a URL), add it to payload as image
       if (avatarUri && !avatarUri.startsWith('http')) {
-        try {
-          console.log('📤 Uploading new avatar...');
-          const newAvatarUrl = await userService.uploadAvatar(avatarUri);
-          console.log('✅ Avatar uploaded successfully:', newAvatarUrl);
-          payload.avatar_url = newAvatarUrl;
-        } catch (err: any) {
-          console.error('❌ Failed to upload avatar:', err);
-          showToast(t('updateProfilePage.avatarUploadFailed'), 'warning');
-          // Continue with profile update even if avatar upload fails
-        }
+        const filename = avatarUri.split('/').pop() || 'avatar.jpg';
+        let mimeType = 'image/jpeg';
+        if (filename.endsWith('.png')) mimeType = 'image/png';
+        if (filename.endsWith('.gif')) mimeType = 'image/gif';
+        if (filename.endsWith('.webp')) mimeType = 'image/webp';
+        payload.image = {
+          uri: avatarUri,
+          type: mimeType,
+          name: filename,
+        };
       }
-      
       // Update profile
       console.log('📤 Updating profile with payload:', payload);
       await userService.updateUserProfile(payload);

@@ -262,6 +262,29 @@
     "detail": {
       "editGroup": "Chỉnh sửa nhóm",
       "leaveGroup": "Rời khỏi nhóm"
+    },
+    "invitation": {
+      "title": "Mời thành viên",
+      "enterEmail": "Vui lòng nhập địa chỉ email.",
+      "invalidEmail": "Địa chỉ email không hợp lệ.",
+      "alreadyInvited": "Email này đã được mời.",
+      "sending": "Đang gửi lời mời...",
+      "sentToExistingUser": "Đã gửi lời mời đến người dùng đã có tài khoản: {{email}}.",
+      "sentToNewUser": "Đã gửi lời mời đến người dùng mới: {{email}}.",
+      "resentSuccess": "Gửi lại lời mời thành công!",
+      "sendFailed": "Gửi lời mời thất bại.",
+      "userNotFound": "Không tìm thấy người dùng.",
+      "pending": "Đang chờ...",
+      "removeInvite": "Xóa lời mời",
+      "confirmRemove": "Bạn có chắc muốn xóa lời mời cho {{email}}?",
+      "remove": "Xóa",
+      "cancel": "Hủy",
+      "sendInvite": "Gửi lời mời",
+      "resend": "Gửi lại",
+      "sentInvitations": "Lời mời đã gửi",
+      "instructions": "Nhập địa chỉ email để mời thành viên vào nhóm này. Người dùng sẽ nhận được email hướng dẫn tham gia.",
+      "enterEmailPlaceholder": "Nhập địa chỉ email",
+      "sendingMessage": "Vui lòng chờ trong khi chúng tôi gửi lời mời..."
     }
   },
   
@@ -880,5 +903,18 @@
   "transaction": {
     "edit": "Chỉnh sửa ",
     "delete": "Xóa"
+  },
+  "logoutModal": {
+    "goodbye": "Tạm biệt {{userName}}!",
+    "confirmMessage": "Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không? Chúng tôi sẽ nhớ bạn! 💙",
+    "stay": "Ở lại",
+    "logout": "Đăng xuất",
+    "footer": "Hẹn gặp lại bạn sớm nhé! ✨"
+  },
+  "tokenExpiryModal": {
+    "title": "Bạn còn ở đó không?",
+    "message": "Phiên đăng nhập sắp hết hạn trong {{remainingTime}} giây. Bạn có muốn tiếp tục không?",
+    "stay": "Tôi vẫn ở đây",
+    "logout": "Đăng xuất"
   }
 } 

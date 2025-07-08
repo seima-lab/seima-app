@@ -1,3 +1,5 @@
+import { TabType } from '../utils/mainTabUtils';
+
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
@@ -40,7 +42,7 @@ export type RootStackParamList = {
   UpdateProfile: undefined;
   SettingScreen: undefined;
   MainTab: undefined;
-  MainTabScreen: undefined;
+  MainTabScreen: { initialTab?: TabType } | undefined;
   AddExpenseScreen: {
     fromGroupOverview?: boolean;
     fromGroupTransactionList?: boolean;

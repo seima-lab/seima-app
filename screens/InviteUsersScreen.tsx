@@ -2,23 +2,23 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  ListRenderItem,
-  Modal,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    ListRenderItem,
+    Modal,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { RootStackParamList } from '../navigation/types';
-import { EmailInvitationResponse, GroupMemberResponse, groupService, PendingGroupMemberResponse } from '../services/groupService';
+import { EmailInvitationResponse, groupService, PendingGroupMemberResponse } from '../services/groupService';
 
 type InviteUsersRouteProp = RouteProp<RootStackParamList, 'InviteUsers'>;
 
@@ -42,8 +42,6 @@ const InviteUsersScreen = () => {
   const [pendingMembers, setPendingMembers] = useState<PendingGroupMemberResponse[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [loadingUserId, setLoadingUserId] = useState<number | null>(null);
-  const [acceptedMembers, setAcceptedMembers] = useState<GroupMemberResponse[]>([]);
-  const [acceptedLoading, setAcceptedLoading] = useState(false);
 
   const { groupId } = route.params;
 
@@ -304,21 +302,6 @@ const InviteUsersScreen = () => {
     fetchPending();
   }, [groupId]);
 
-  // Fetch accepted members on mount
-  useEffect(() => {
-    const fetchAccepted = async () => {
-      setAcceptedLoading(true);
-      try {
-        const res = await groupService.getActiveGroupMembers(Number(groupId));
-        setAcceptedMembers(res.members);
-      } catch (e) {
-        // handle error
-      }
-      setAcceptedLoading(false);
-    };
-    fetchAccepted();
-  }, [groupId]);
-
   // Accept/Reject handlers
   const handleAccept = async (userId: number) => {
     try {
@@ -328,9 +311,6 @@ const InviteUsersScreen = () => {
       // Reload pending list
       const res = await groupService.getPendingGroupMembers(Number(groupId));
       setPendingMembers(res.pending_members);
-      // Reload accepted members
-      const acceptedRes = await groupService.getActiveGroupMembers(Number(groupId));
-      setAcceptedMembers(acceptedRes.members);
     } catch (e: any) {
       Alert.alert('Lỗi', e.message || 'Không thể chấp nhận thành viên');
     } finally {
@@ -346,9 +326,6 @@ const InviteUsersScreen = () => {
       // Reload pending list
       const res = await groupService.getPendingGroupMembers(Number(groupId));
       setPendingMembers(res.pending_members);
-      // Reload accepted members
-      const acceptedRes = await groupService.getActiveGroupMembers(Number(groupId));
-      setAcceptedMembers(acceptedRes.members);
     } catch (e: any) {
       Alert.alert('Lỗi', e.message || 'Không thể từ chối thành viên');
     } finally {
@@ -399,30 +376,6 @@ const InviteUsersScreen = () => {
           <Icon name="close" size={22} color="#fff" />
         )}
       </TouchableOpacity>
-    </View>
-  );
-
-  // Render accepted member
-  const renderAcceptedMember = ({ item }: { item: GroupMemberResponse }) => (
-    <View style={styles.pendingCard}>
-      {item.user_avatar_url ? (
-        <View style={styles.avatarWrapper}>
-          <View style={styles.avatarBorder}>
-            <Image source={{ uri: item.user_avatar_url }} style={styles.avatarImg} />
-          </View>
-        </View>
-      ) : (
-        <View style={styles.avatarWrapper}>
-          <View style={styles.avatarBorder}>
-            <Icon name="person" size={40} color="#90caf9" />
-          </View>
-        </View>
-      )}
-      <View style={{ flex: 1, marginLeft: 12 }}>
-        <Text style={styles.pendingName}>{item.user_full_name}</Text>
-        <Text style={styles.pendingEmail}>{item.user_email}</Text>
-        {item.role && <Text style={styles.pendingTime}>Vai trò: {item.role}</Text>}
-      </View>
     </View>
   );
 
@@ -487,24 +440,9 @@ const InviteUsersScreen = () => {
           ) : (
             <FlatList
               data={pendingMembers}
-              keyExtractor={item => item.user_id.toString()}
+              keyExtractor={item => String(item.user_id)}
               renderItem={renderPendingMember}
               ListEmptyComponent={<Text style={{ color: '#999' }}>Không có ai đang chờ duyệt</Text>}
-            />
-          )}
-        </View>
-
-        {/* Accepted Members List */}
-        <View style={{ marginTop: 16 }}>
-          <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Thành viên đã tham gia</Text>
-          {acceptedLoading ? (
-            <ActivityIndicator size="small" color="#4A90E2" />
-          ) : (
-            <FlatList
-              data={acceptedMembers}
-              keyExtractor={item => item.user_id.toString()}
-              renderItem={renderAcceptedMember}
-              ListEmptyComponent={<Text style={{ color: '#999' }}>Chưa có thành viên nào</Text>}
             />
           )}
         </View>
@@ -521,7 +459,7 @@ const InviteUsersScreen = () => {
             <FlatList
               data={invites}
               renderItem={renderInviteItem}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => String(item.id)}
               style={styles.invitesList}
               showsVerticalScrollIndicator={false}
               ItemSeparatorComponent={() => <View style={styles.separator} />}

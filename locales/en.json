@@ -271,7 +271,30 @@
       "editGroup": "Edit Group",
       "leaveGroup": "Leave Group"
     },
-    "owner": "Owner"
+    "owner": "Owner",
+    "invitation": {
+      "title": "Invite Members",
+      "enterEmail": "Please enter an email address.",
+      "invalidEmail": "Invalid email address.",
+      "alreadyInvited": "This email has already been invited.",
+      "sending": "Sending invitation...",
+      "sentToExistingUser": "Invitation sent to existing user: {{email}}.",
+      "sentToNewUser": "Invitation sent to new user: {{email}}.",
+      "resentSuccess": "Invitation resent successfully!",
+      "sendFailed": "Failed to send invitation.",
+      "userNotFound": "User not found.",
+      "pending": "Pending...",
+      "removeInvite": "Remove Invitation",
+      "confirmRemove": "Are you sure you want to remove the invitation for {{email}}?",
+      "remove": "Remove",
+      "cancel": "Cancel",
+      "sendInvite": "Send Invite",
+      "resend": "Resend",
+      "sentInvitations": "Sent Invitations",
+      "instructions": "Enter an email address to invite a member to this group. The user will receive an email with instructions to join.",
+      "enterEmailPlaceholder": "Enter email address",
+      "sendingMessage": "Please wait while we send the invitation..."
+    }
   },
   
   "reports": {
@@ -867,5 +890,20 @@
   "transaction": {
     "edit": "Edit budget",
     "delete": "Delete budget"
+  },
+
+  "logoutModal": {
+    "goodbye": "Goodbye {{userName}}!",
+    "confirmMessage": "Are you sure you want to log out of your account? We'll miss you! 💙",
+    "stay": "Stay",
+    "logout": "Logout",
+    "footer": "See you again soon! ✨"
+  },
+
+  "tokenExpiryModal": {
+    "title": "Are you still there?",
+    "message": "Your session will expire in {{remainingTime}} seconds. Do you want to stay signed in?",
+    "stay": "I'm still here",
+    "logout": "Logout"
   }
 } 

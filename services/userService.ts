@@ -219,112 +219,71 @@ export class UserService {
     }
   }
 
-  // Cập nhật thông tin người dùng với snake_case payload
+  // Cập nhật thông tin người dùng với FormData (multipart/form-data)
   async updateUserProfile(payload: any): Promise<UserProfile> {
     try {
-      console.log('🔄 Starting profile update...');
+      console.log('🔄 Starting profile update (multipart)...');
       console.log('📋 Input payload:', JSON.stringify(payload, null, 2));
-      
+
       // Check if payload is empty
       if (!payload || Object.keys(payload).length === 0) {
         throw new Error('No fields to update. Please provide at least one field to update.');
       }
-      
-      // Send request directly with snake_case payload
-      console.log('🚀 Attempting to update user profile...');
-      const response = await apiService.put<ApiResponseData>(USER_ENDPOINTS.UPDATE_PROFILE, payload);
-      
+
+      // Prepare FormData for multipart request
+      const formData = new FormData();
+      if (payload.full_name) formData.append('fullName', payload.full_name);
+      if (payload.birth_date) formData.append('birthDate', payload.birth_date);
+      if (payload.phone_number) formData.append('phoneNumber', payload.phone_number);
+      if (payload.gender !== undefined && payload.gender !== null) formData.append('gender', String(payload.gender));
+      if (payload.remove_current_avatar !== undefined) formData.append('removeCurrentAvatar', String(payload.remove_current_avatar));
+      // Only append image if it's a local file (not a URL)
+      if (payload.image && payload.image.uri) {
+        const filename = payload.image.name || payload.image.uri.split('/').pop() || 'avatar.jpg';
+        let mimeType = 'image/jpeg';
+        if (filename.endsWith('.png')) mimeType = 'image/png';
+        if (filename.endsWith('.gif')) mimeType = 'image/gif';
+        if (filename.endsWith('.webp')) mimeType = 'image/webp';
+        const imageObj = {
+          uri: payload.image.uri,
+          type: mimeType,
+          name: filename,
+        };
+        console.log('[userService] Appending image to FormData:', imageObj);
+        formData.append('image', imageObj as any);
+      }
+
+      // Log toàn bộ FormData trước khi gửi (bao gồm cả file ảnh)
+      console.log('📝 [userService] FormData body to be sent:');
+      (formData as any)._parts?.forEach((part: any) => {
+        const [key, value] = part;
+        if (typeof value === 'object' && value && value.uri) {
+          console.log(
+            `  ${key}: [File] name=${value.name}, type=${value.type}, uri=${value.uri}, size=${value.size || 'unknown'}`
+          );
+        } else {
+          console.log(`  ${key}: ${value}`);
+        }
+      });
+
+      // Send multipart/form-data request
+      console.log('🚀 Attempting to update user profile (multipart, PUT)...');
+      const response = await apiService.putFormData<ApiResponseData>(USER_ENDPOINTS.UPDATE_PROFILE, formData);
+
       console.log('📥 Response received:', JSON.stringify(response, null, 2));
-      
+
       // Xử lý response
       if (response.data) {
         const userData = response.data.data || response.data;
         console.log('✅ User data updated:', JSON.stringify(userData, null, 2));
         return mapApiResponseToUserProfile(userData);
       }
-      
+
       throw new Error('No data received from server');
-      
     } catch (error: any) {
       console.error('❌ Update failed:', error.message);
       if (error.response) {
         console.error('📊 Error response:', JSON.stringify(error.response.data, null, 2));
-      }
-      throw error;
-    }
-  }
-
-  // Tải lên avatar người dùng
-  async uploadAvatar(imageUri: string): Promise<string> {
-    try {
-      console.log('🔄 Starting avatar upload process...');
-      console.log('📋 Input image URI:', imageUri);
-      
-      // Log detailed URI analysis
-      console.log('📊 URI Analysis:');
-      console.log('  - URI type:', imageUri.startsWith('file://') ? 'Local file' : imageUri.startsWith('http') ? 'Remote URL' : 'Unknown');
-      console.log('  - URI length:', imageUri.length);
-      
-      // Create FormData for file upload
-      const formData = new FormData();
-      
-      // Extract filename from URI or use default
-      const filename = imageUri.split('/').pop() || 'avatar.jpg';
-      console.log('📋 Extracted filename:', filename);
-      
-      // Determine MIME type based on file extension
-      const extension = filename.split('.').pop()?.toLowerCase();
-      let mimeType = 'image/jpeg'; // default
-      
-      switch (extension) {
-        case 'png':
-          mimeType = 'image/png';
-          break;
-        case 'jpg':
-        case 'jpeg':
-          mimeType = 'image/jpeg';
-          break;
-        case 'gif':
-          mimeType = 'image/gif';
-          break;
-        case 'webp':
-          mimeType = 'image/webp';
-          break;
-      }
-      
-      console.log('📋 Determined MIME type:', mimeType);
-      
-      // Append file to FormData
-      formData.append('avatar', {
-        uri: imageUri,
-        type: mimeType,
-        name: filename,
-      } as any);
-      
-      console.log('📤 Uploading avatar...');
-      
-      // Upload using apiService with FormData
-      const response = await apiService.postFormData<ApiResponseData>(USER_ENDPOINTS.UPLOAD_AVATAR, formData);
-      
-      console.log('📥 Upload response:', JSON.stringify(response, null, 2));
-      
-      // Extract avatar URL from response
-      if (response.data) {
-        const responseData = response.data as any;
-        const avatarUrl = responseData.avatar_url || responseData.user_avatar_url || responseData.url;
-        
-        if (avatarUrl) {
-          console.log('✅ Avatar uploaded successfully:', avatarUrl);
-          return avatarUrl;
-        }
-      }
-      
-      throw new Error('No avatar URL received from server');
-      
-    } catch (error: any) {
-      console.error('❌ Avatar upload failed:', error.message);
-      if (error.response) {
-        console.error('📊 Upload error response:', JSON.stringify(error.response.data, null, 2));
       }
       throw error;
     }

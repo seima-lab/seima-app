@@ -1,6 +1,10 @@
+import { TabType } from '@/utils/mainTabUtils';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { RootStackParamList } from '../navigation/types';
 
 export type GroupMemberStatus =
   | 'PENDING_APPROVAL'
@@ -56,33 +60,51 @@ const STATUS_CONFIG: Record<GroupMemberStatus, {
 };
 
 const StatusInviteMember: React.FC<StatusInviteMemberProps> = ({ status, group_name, role, joined_at, invited_at }) => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   console.log('StatusInviteMember props:', { status, group_name, role, joined_at, invited_at });
   if (!status) return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
       <Text style={{ color: '#EF5350', fontSize: 18 }}>Thiếu thông tin trạng thái</Text>
     </View>
   );
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING_APPROVAL;
+  const config = STATUS_CONFIG[status as GroupMemberStatus] || STATUS_CONFIG.PENDING_APPROVAL;
 
   return (
     <View style={styles.container}>
-      <View style={[styles.iconWrapper, { backgroundColor: config.color + '22' }]}> {/* 22 = opacity */}
-        <Icon name={config.icon} size={48} color={config.color} />
+      {/* Back Arrow */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => {
+          navigation.reset({
+            index: 0,
+            routes: [
+              { name: 'MainTabScreen', params: { initialTab: 'Finance' as TabType } }
+            ],
+          });
+        }}
+      >
+        <Icon name="arrow-back" size={28} color="#333" />
+      </TouchableOpacity>
+      {/* Main Content */}
+      <View style={styles.contentWrapper}>
+        <View style={[styles.iconWrapper, { backgroundColor: config.color + '22' }]}> {/* 22 = opacity */}
+          <Icon name={config.icon} size={48} color={config.color} />
+        </View>
+        <Text style={[styles.title, { color: config.color }]}>{config.title}</Text>
+        <Text style={styles.description}>{config.description}</Text>
+        {group_name && (
+          <Text style={styles.groupName}>Nhóm: <Text style={{ fontWeight: 'bold' }}>{group_name}</Text></Text>
+        )}
+        {role && (
+          <Text style={styles.info}>Vai trò: <Text style={{ fontWeight: 'bold' }}>{role}</Text></Text>
+        )}
+        {joined_at && (
+          <Text style={styles.info}>Tham gia lúc: <Text style={{ fontWeight: 'bold' }}>{joined_at}</Text></Text>
+        )}
+        {invited_at && (
+          <Text style={styles.info}>Được mời lúc: <Text style={{ fontWeight: 'bold' }}>{invited_at}</Text></Text>
+        )}
       </View>
-      <Text style={[styles.title, { color: config.color }]}>{config.title}</Text>
-      <Text style={styles.description}>{config.description}</Text>
-      {group_name && (
-        <Text style={styles.groupName}>Nhóm: <Text style={{ fontWeight: 'bold' }}>{group_name}</Text></Text>
-      )}
-      {role && (
-        <Text style={styles.info}>Vai trò: <Text style={{ fontWeight: 'bold' }}>{role}</Text></Text>
-      )}
-      {joined_at && (
-        <Text style={styles.info}>Tham gia lúc: <Text style={{ fontWeight: 'bold' }}>{joined_at}</Text></Text>
-      )}
-      {invited_at && (
-        <Text style={styles.info}>Được mời lúc: <Text style={{ fontWeight: 'bold' }}>{invited_at}</Text></Text>
-      )}
     </View>
   );
 };
@@ -94,6 +116,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     backgroundColor: '#F5F7FA',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 16,
+    zIndex: 10,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 4,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  contentWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
   },
   iconWrapper: {
     width: 90,

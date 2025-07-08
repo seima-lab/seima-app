@@ -6,14 +6,12 @@ import {
     Alert,
     FlatList,
     Image,
-    Modal,
     ScrollView,
     StatusBar,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -27,8 +25,6 @@ const GroupManagementScreen = () => {
   const { isAuthenticated } = useAuth();
   const [groups, setGroups] = useState<UserJoinedGroupResponse[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false);
-  const [joinCode, setJoinCode] = useState('');
 
   // Initial component logging
   console.log('📱 [GroupManagementScreen] Component initialized');
@@ -36,8 +32,6 @@ const GroupManagementScreen = () => {
   console.log('📊 [GroupManagementScreen] Current state:', {
     groupsCount: groups.length,
     loading,
-    showJoinModal,
-    joinCode,
   });
 
   // Load groups when screen comes into focus
@@ -243,12 +237,6 @@ const GroupManagementScreen = () => {
     navigation.navigate('CreateGroup');
   }, [navigation]);
 
-  const handleJoinGroup = useCallback(() => {
-    console.log('🔗 [GroupManagementScreen] Join group button pressed');
-    console.log('🪟 [GroupManagementScreen] Opening join group modal');
-    setShowJoinModal(true);
-  }, []);
-
   const handleGroupPress = useCallback(async (group: UserJoinedGroupResponse) => {
     console.log('🎯 [GroupManagementScreen] Group pressed:', {
       groupId: group.group_id,
@@ -297,61 +285,6 @@ const GroupManagementScreen = () => {
       );
     }
   }, [navigation, t]);
-
-  const handleJoinCodeChange = useCallback((value: string) => {
-    console.log('🔢 [GroupManagementScreen] Join code input changed:', {
-      value,
-      length: value.length,
-      isValidCode: /^[a-fA-F0-9]*$/.test(value)
-    });
-    
-    // Allow alphanumeric characters (for hex codes)
-    if (/^[a-fA-F0-9]*$/.test(value)) {
-      console.log('📝 [GroupManagementScreen] Updated join code:', value);
-      setJoinCode(value);
-    } else {
-      console.log('❌ [GroupManagementScreen] Invalid join code input rejected');
-    }
-  }, []);
-
-  const handleJoinGroupSubmit = useCallback(() => {
-    console.log('✅ [GroupManagementScreen] Join group submit attempted:', {
-      joinCode,
-      codeLength: joinCode.length,
-      isValidLength: joinCode.length >= 8 && joinCode.length <= 64
-    });
-    
-    if (joinCode.length >= 8 && joinCode.length <= 64) {
-      console.log('🎉 [GroupManagementScreen] Valid join code, proceeding with join');
-      // Mock API call to verify join code and join group
-      Alert.alert(
-        'Tham gia nhóm thành công!',
-        'Bạn đã tham gia nhóm thành công.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              console.log('🚪 [GroupManagementScreen] Closing join modal and resetting form');
-              setShowJoinModal(false);
-              setJoinCode('');
-              console.log('🔄 [GroupManagementScreen] Reloading groups after successful join');
-              // Reload groups
-              loadGroups();
-            }
-          }
-        ]
-      );
-    } else {
-      console.log('❌ [GroupManagementScreen] Invalid join code length, showing error');
-      Alert.alert('Lỗi', 'Vui lòng nhập mã mời hợp lệ (8-64 ký tự)');
-    }
-  }, [joinCode, loadGroups]);
-
-  const handleCloseJoinModal = useCallback(() => {
-    console.log('❌ [GroupManagementScreen] Closing join modal and resetting form');
-    setShowJoinModal(false);
-    setJoinCode('');
-  }, []);
 
   const renderGroupItem = useCallback(({ item }: { item: UserJoinedGroupResponse }) => {
     console.log('📋 [GroupManagementScreen] Rendering group item:', {
@@ -404,9 +337,7 @@ const GroupManagementScreen = () => {
   console.log('🎨 [GroupManagementScreen] Rendering with state:', {
     groupsCount: groups.length,
     loading,
-    showJoinModal,
     isAuthenticated,
-    currentJoinCode: joinCode,
   });
 
   return (
@@ -511,21 +442,6 @@ const GroupManagementScreen = () => {
                   <Icon name="chevron-right" size={20} color="#FFFFFF" />
                 </View>
               </TouchableOpacity>
-
-              <TouchableOpacity style={styles.secondaryActionButton} onPress={handleJoinGroup}>
-                <View style={styles.actionButtonContent}>
-                  <View style={styles.secondaryActionButtonIcon}>
-                    <Icon name="login" size={24} color="#4A90E2" />
-                  </View>
-                  <View style={styles.actionButtonText}>
-                    <Text style={styles.secondaryActionButtonTitle}>{t('group.joinGroup')}</Text>
-                    <Text style={styles.secondaryActionButtonSubtitle}>
-                      {t('group.emptyState.joinDescription')}
-                    </Text>
-                  </View>
-                  <Icon name="chevron-right" size={20} color="#4A90E2" />
-                </View>
-              </TouchableOpacity>
             </View>
 
             {/* Help Section */}
@@ -557,81 +473,11 @@ const GroupManagementScreen = () => {
                   <Text style={styles.actionText}>{t('group.createGroup')}</Text>
                   <Icon name="chevron-right" size={20} color="#CCCCCC" />
                 </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionItem} onPress={handleJoinGroup}>
-                  <Icon name="login" size={24} color="#4A90E2" />
-                  <Text style={styles.actionText}>{t('group.joinGroup')}</Text>
-                  <Icon name="chevron-right" size={20} color="#CCCCCC" />
-                </TouchableOpacity>
               </View>
             )}
           />
         )}
       </View>
-
-      {/* Join Group OTP Modal */}
-      <Modal
-        visible={showJoinModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCloseJoinModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {/* Header with icon */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalIcon}>
-                <Icon name="login" size={32} color="#FFFFFF" />
-              </View>
-              <Text style={styles.modalTitle}>Tham gia nhóm</Text>
-              <Text style={styles.modalSubtitle}>Nhập mã mời nhóm để tham gia</Text>
-            </View>
-            
-            {/* Join Code Input */}
-            <View style={styles.joinCodeContainer}>
-              <Text style={styles.joinCodeLabel}>Mã mời nhóm</Text>
-              <TextInput
-                style={[
-                  styles.joinCodeInput,
-                  joinCode.length > 0 ? styles.joinCodeInputFocused : null
-                ]}
-                value={joinCode}
-                onChangeText={handleJoinCodeChange}
-                placeholder="Nhập mã mời (ví dụ: ce2dddb9320d4bfc951e8d9d54ae889d)"
-                placeholderTextColor="#999999"
-                autoCapitalize="none"
-                autoCorrect={false}
-                multiline={true}
-                numberOfLines={2}
-                textAlignVertical="top"
-                autoFocus={true}
-              />
-            </View>
-
-            {/* Info text */}
-            <Text style={styles.infoText}>
-              Mã mời được chia sẻ bởi người tạo nhóm hoặc quản trị viên
-            </Text>
-
-            {/* Action Buttons */}
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelButton} onPress={handleCloseJoinModal}>
-                <Text style={styles.cancelButtonText}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[
-                  styles.joinButton, 
-                  joinCode.length >= 8 ? styles.joinButtonActive : styles.joinButtonInactive
-                ]} 
-                onPress={handleJoinGroupSubmit}
-              >
-                <Icon name="login" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                <Text style={styles.joinButtonText}>Tham gia</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -789,125 +635,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 12,
   },
-
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 30,
-    width: '90%',
-    maxWidth: 350,
-    alignItems: 'center',
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: 25,
-  },
-  modalIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#4A90E2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 8,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 30,
-    textAlign: 'center',
-  },
-  joinCodeContainer: {
-    width: '100%',
-    marginBottom: 20,
-  },
-  joinCodeLabel: {
-    fontSize: 14,
-    color: '#666666',
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  joinCodeInput: {
-    width: '100%',
-    minHeight: 80,
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    fontSize: 14,
-    color: '#333333',
-    backgroundColor: '#F8F9FA',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontFamily: 'monospace',
-  },
-  joinCodeInputFocused: {
-    borderColor: '#4A90E2',
-    backgroundColor: '#E8F0FE',
-  },
-  infoText: {
-    fontSize: 13,
-    color: '#666666',
-    textAlign: 'center',
-    marginBottom: 20,
-    fontStyle: 'italic',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CCCCCC',
-    marginRight: 10,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#666666',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  joinButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: '#4A90E2',
-    marginLeft: 10,
-  },
-  joinButtonActive: {
-    backgroundColor: '#4A90E2',
-  },
-  joinButtonInactive: {
-    backgroundColor: '#CCCCCC',
-  },
-  joinButtonText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
   scrollContainer: {
     flex: 1,
   },
@@ -1051,39 +778,6 @@ const styles = StyleSheet.create({
   actionButtonSubtitle: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
-  },
-  secondaryActionButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#4A90E2',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  secondaryActionButtonIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E3F2FD',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  secondaryActionButtonTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4A90E2',
-    marginBottom: 4,
-  },
-  secondaryActionButtonSubtitle: {
-    fontSize: 12,
-    color: '#666666',
   },
   helpContainer: {
     backgroundColor: '#F8F9FA',
