@@ -13,14 +13,16 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 
 class MainActivity : ReactActivity() {
-  override fun onStart() {
+override fun onStart() {
     super.onStart()
-    RNBranchModule.initSession(getIntent().getData(), this)
+    RNBranchModule.initSession(intent.data, this)
 }
+
 override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
-    RNBranchModule.reInitSession(this)
+    android.util.Log.d("BranchDebug", "Deep link onNewIntent: ${intent.data}")
+    RNBranchModule.onNewIntent(intent)
 }
   override fun onCreate(savedInstanceState: Bundle?) {
     // Set the theme to AppTheme BEFORE onCreate to support
