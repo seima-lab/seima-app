@@ -129,6 +129,13 @@ export type RootStackParamList = {
     onSelectCategories: (categories: import('../services/categoryService').CategoryResponse[]) => void;
   };
   BudgetDetailScreen: { budgetId: number };
+  StatusInviteMember: {
+    status: import('../screens/StatusInviteMember').GroupMemberStatus;
+    group_name?: string;
+    role?: string;
+    joined_at?: string;
+    invited_at?: string;
+  };
 };
 
 export type ScreenNames = keyof RootStackParamList; 

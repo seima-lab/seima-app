@@ -38,6 +38,7 @@ import ReportDetailScreen from '../screens/ReportDetailScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import SelectCategoryScreen from '../screens/SelectCategoryScreen';
 import SetBudgetLimitScreen from '../screens/SetBudgetLimitScreen';
+import StatusInviteMember, { GroupMemberStatus } from '../screens/StatusInviteMember';
 import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import LoginScreen from '../screens/login';
 import RegisterScreen from '../screens/register';
@@ -132,6 +133,13 @@ function AuthNavigator() {
       <Stack.Screen name="ReportDetailScreen" component={ReportDetailScreen} />
       <Stack.Screen name="SelectCategoryScreen" component={SelectCategoryScreen} />
       <Stack.Screen name="BudgetDetailScreen" component={BudgetDetailScreen} />
+      <Stack.Screen 
+        name="StatusInviteMember" 
+        options={{ headerShown: false }}
+        children={({ route }) => (
+          <StatusInviteMember {...route.params as { status: GroupMemberStatus }} />
+        )}
+      />
     </Stack.Navigator>
   );
 }
@@ -163,7 +171,7 @@ export default function RootLayout() {
     return () => {
       BranchService.cleanup();
     };
-  }, []);
+  }, []); // Dependencies rỗng để chỉ chạy một lần khi component mount
  
   if (!loaded) return null;
   return (

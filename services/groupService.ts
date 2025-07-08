@@ -1,4 +1,3 @@
-
 import { ApiService } from './apiService';
 import { SecureApiService } from './secureApiService';
 
@@ -109,6 +108,13 @@ export interface PendingGroupMemberListResponse {
 
 export interface AcceptOrRejectGroupMemberRequest {
   user_id: number;
+}
+
+export interface GroupMemberStatusResponse {
+  group_id: number; // hoặc groupId nếu bạn không dùng snake_case
+  status: 'ACTIVE' | 'PENDING_APPROVAL' | 'INVITED' | 'REJECTED' | null;
+  role?: 'OWNER' | 'ADMIN' | 'MEMBER'; // hoặc string nếu backend có thể mở rộng
+  group_exists: boolean;
 }
 
 class GroupService {
@@ -514,6 +520,18 @@ class GroupService {
       'POST',
       { user_id: userId }
     );
+  }
+
+  async getMyGroupStatus(groupId: number): Promise<GroupMemberStatusResponse> {
+    try {
+      const response = await secureApiService.makeAuthenticatedRequest<GroupMemberStatusResponse>(
+        `/api/v1/groups/${groupId}/my-status`,
+        'GET'
+      );
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to get my group status');
+    }
   }
 }
 

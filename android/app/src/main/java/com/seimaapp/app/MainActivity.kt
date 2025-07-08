@@ -13,6 +13,7 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 
 class MainActivity : ReactActivity() {
+  private var isBranchSessionInitialized = false
 override fun onStart() {
     super.onStart()
     RNBranchModule.initSession(intent.data, this)
