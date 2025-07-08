@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
 
 import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import { ActivityIndicator, LogBox, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import TokenExpiryProvider from '../components/UserPresenceProvider';
@@ -41,6 +42,7 @@ import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import LoginScreen from '../screens/login';
 import RegisterScreen from '../screens/register';
 import UpdateProfileScreen from '../screens/update-profile';
+import BranchService from '../services/branchService';
 const Stack = createNativeStackNavigator();
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -156,7 +158,12 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-
+  useEffect(() => {
+    BranchService.init();
+    return () => {
+      BranchService.cleanup();
+    };
+  }, []);
  
   if (!loaded) return null;
   return (
