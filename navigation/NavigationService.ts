@@ -41,10 +41,7 @@ export const useNavigationService = () => {
     
     replace: (name: RoutePath, params?: any) => {
       console.log('NavigationService - replace:', { name, params });
-      navigation.reset({
-        index: 0,
-        routes: [{ name, params } as any],
-      });
+      (navigation as any).replace(name, params);
     },
 
     goBack: () => {

@@ -51,8 +51,10 @@ MainTabScreen.displayName = 'MainTabScreen';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   screenContainer: {
+    backgroundColor: '#fff',
     flex: 1,
   },
 });

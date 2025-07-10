@@ -466,6 +466,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 8,
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   subtitle: {
     fontSize: 16,
@@ -473,6 +474,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     maxWidth: 300,
+    fontFamily: 'Roboto',
   },
   form: {
     width: '100%',
@@ -484,6 +486,7 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 6,
     marginTop: 4,
+    fontFamily: 'Roboto',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -503,6 +506,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#374151',
+    fontFamily: 'Roboto',
   },
   eyeButton: {
     padding: 4,
@@ -520,11 +524,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
     marginBottom: 6,
+    fontFamily: 'Roboto',
   },
   requirementText: {
     fontSize: 13,
     color: '#6B7280',
     marginBottom: 2,
+    fontFamily: 'Roboto',
   },
   changeButton: {
     width: '100%',
@@ -541,6 +547,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
+    fontFamily: 'Roboto',
   },
   tipContainer: {
     flexDirection: 'row',
@@ -559,6 +566,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1e40af',
     lineHeight: 18,
+    fontFamily: 'Roboto',
   },
   inputError: {
     borderColor: '#EF4444',
@@ -576,6 +584,7 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     marginLeft: 4,
     flex: 1,
+    fontFamily: 'Roboto',
   },
   validationContainer: {
     marginTop: 8,
@@ -590,5 +599,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 8,
     flex: 1,
+    fontFamily: 'Roboto',
   },
 }); 

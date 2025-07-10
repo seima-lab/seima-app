@@ -224,12 +224,12 @@ export class UserService {
     try {
       console.log('🔄 Starting profile update (multipart)...');
       console.log('📋 Input payload:', JSON.stringify(payload, null, 2));
-
+      
       // Check if payload is empty
       if (!payload || Object.keys(payload).length === 0) {
         throw new Error('No fields to update. Please provide at least one field to update.');
       }
-
+      
       // Prepare FormData for multipart request
       const formData = new FormData();
       if (payload.full_name) formData.append('fullName', payload.full_name);
@@ -269,16 +269,16 @@ export class UserService {
       // Send multipart/form-data request
       console.log('🚀 Attempting to update user profile (multipart, PUT)...');
       const response = await apiService.putFormData<ApiResponseData>(USER_ENDPOINTS.UPDATE_PROFILE, formData);
-
+      
       console.log('📥 Response received:', JSON.stringify(response, null, 2));
-
+      
       // Xử lý response
       if (response.data) {
         const userData = response.data.data || response.data;
         console.log('✅ User data updated:', JSON.stringify(userData, null, 2));
         return mapApiResponseToUserProfile(userData);
       }
-
+      
       throw new Error('No data received from server');
     } catch (error: any) {
       console.error('❌ Update failed:', error.message);

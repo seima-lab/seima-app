@@ -2,19 +2,19 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Modal,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Modal,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -571,7 +571,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontWeight: 'bold',
-    color: '#333',
+    color: 'black',
+    fontFamily: 'Roboto',
   },
   balanceCard: {
     backgroundColor: '#1e90ff',
@@ -585,12 +586,17 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   balanceLabel: {
+    fontSize: 16,
     color: '#fff',
-    opacity: 0.9,
+    fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   balanceAmount: {
+    fontSize: 32,
+    fontWeight: '700',
     color: '#fff',
-    fontWeight: 'bold',
+    marginVertical: 4,
+    fontFamily: 'Roboto',
   },
   balanceBreakdown: {
     flexDirection: 'row',
@@ -600,8 +606,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   balanceSubLabel: {
-    color: '#fff',
-    opacity: 0.8,
+    fontSize: 14,
+    color: '#FFF',
+    fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   balanceSubAmount: {
     color: '#fff',
@@ -611,8 +619,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   sectionTitle: {
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Roboto',
   },
   accountItem: {
     flexDirection: 'row',
@@ -703,8 +713,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   actionButtonText: {
-    color: '#1e90ff',
+    fontSize: 16,
     fontWeight: '600',
+    color: '#1e90ff',
+    fontFamily: 'Roboto',
   },
   menuContainer: {
     position: 'absolute',
@@ -836,9 +848,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#333',
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: 16,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   emptySubText: {
     color: '#666',

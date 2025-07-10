@@ -15,7 +15,7 @@ export interface CreateTransactionRequest {
   category_id: number;
   group_id?: number;
   amount: number;
-  currency_code: string;
+  currency_code: "VND";
   transaction_date: string; // ISO date string
   description?: string;
   receipt_image_url?: string | null; // Changed from receipt_image to receipt_image_url

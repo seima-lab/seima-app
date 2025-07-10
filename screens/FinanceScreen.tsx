@@ -10,18 +10,20 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Circle, G, Svg } from 'react-native-svg';
+import { Circle, Svg } from 'react-native-svg';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
+import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { TransactionReportResponse, transactionService } from '../services/transactionService';
 import { UserProfile, userService } from '../services/userService';
 import { WalletResponse, walletService } from '../services/walletService';
+import { getIconColor } from '../utils/iconUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -75,6 +77,14 @@ interface FinanceData {
   difference: number;
 }
 
+// Add report data interface
+interface ChartData {
+  income: number;
+  expenses: number;
+  difference: number;
+  isLoading: boolean;
+}
+
 // Hàm tính toán font size động cho balance
 const getDynamicBalanceFontSize = (balance: number): number => {
   const formattedBalance = balance.toLocaleString('vi-VN');
@@ -99,6 +109,114 @@ const getDynamicBalanceFontSize = (balance: number): number => {
   return baseFontSize; // Giữ nguyên kích thước gốc
 };
 
+// Helper function tính phần trăm an toàn
+const getPercent = (value: number, total: number) => {
+  if (!total || isNaN(value)) return '0%';
+  return `${((value / total) * 100).toFixed(1)}%`;
+};
+
+// --- Pie chart giống ReportScreen ---
+
+// Pie chart component giống ReportScreen
+const SimplePieChart: React.FC<{
+  data: any[];
+  size?: number;
+  categoryType: 'expense' | 'income';
+}> = ({ data, size = 140, categoryType }) => {
+  const { t } = useTranslation();
+  if (!data || data.length === 0) {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: '#999', fontSize: 14 }}>{t('reports.noData') || 'No data'}</Text>
+        </View>
+      </View>
+    );
+  }
+  // Chuẩn hóa dữ liệu
+  const chartData = data.map((item: any, idx: number) => {
+    const categoryName = item.category_name || item.categoryName || `Category ${idx + 1}`;
+    const percentage = item.percentage || 0;
+    const amount = item.amount || 0;
+    // Lấy màu từ iconUtils
+    const icon = item.category_icon_url || '';
+    const color = getIconColor(icon, categoryType);
+    return { categoryName, percentage, color, amount };
+  }).sort((a, b) => b.percentage - a.percentage);
+  // SVG Donut Chart
+  const radius = size * 0.4;
+  const strokeWidth = size * 0.18;
+  const circumference = 2 * Math.PI * radius;
+  let cumulativePercentage = 0;
+  // Hàm format tiền
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount).replace('₫', 'đ');
+  };
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', width: size * 1.7 }}>
+      <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#f0f0f0"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+          />
+          {chartData.map((item, index) => {
+            if (item.percentage <= 0) return null;
+            const segmentLength = (item.percentage / 100) * circumference;
+            const rotationAngle = (cumulativePercentage / 100) * 360;
+            cumulativePercentage += item.percentage;
+            return (
+              <Circle
+                key={index}
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                stroke={item.color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${segmentLength} ${circumference}`}
+                strokeLinecap="butt"
+                fill="transparent"
+                transform={`rotate(${rotationAngle - 90}, ${size / 2}, ${size / 2})`}
+              />
+            );
+          })}
+        </Svg>
+        {/* Center Icon */}
+        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+          <IconMC
+            name={categoryType === 'expense' ? 'trending-down' : 'trending-up'}
+            size={size * 0.15}
+            color={categoryType === 'expense' ? '#FF3B30' : '#34C759'}
+          />
+        </View>
+      </View>
+      {/* Legend mới: Tên | Số tiền | % */}
+      {/* Legend revert: chỉ hiện màu, tên, phần trăm */}
+      <View style={{ marginLeft: 60, justifyContent: 'center'}}>
+        {chartData
+          .filter(item => item.percentage > 0)
+          .slice(0, 6)
+          .map((item, index) => (
+            <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: item.color, marginRight: 8 }} />
+              <Text style={{ fontSize: 14, color: '#333' }} numberOfLines={1} ellipsizeMode="tail">{item.categoryName}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', marginLeft: 8, minWidth: 50, textAlign: 'right' }}>{item.percentage.toFixed(1)}%</Text>
+            </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
 const FinanceScreen = React.memo(() => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -119,17 +237,92 @@ const FinanceScreen = React.memo(() => {
   });
   const [walletLoading, setWalletLoading] = useState(true);
   
+  // State for chart data
+  const [chartData, setChartData] = useState<ChartData>({
+    income: 0,
+    expenses: 0,
+    difference: 0,
+    isLoading: false
+  });
+  const [reportData, setReportData] = useState<TransactionReportResponse | null>(null);
+  
   // UI state
-  const [selectedPeriod, setSelectedPeriod] = useState(t('finance.periods.thisMonth'));
-  const [isPeriodModalVisible, setIsPeriodModalVisible] = useState(false);
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [activeTab, setActiveTab] = useState('Overview');
   const [notificationCount, setNotificationCount] = useState(3);
+
+  // Mock data state and values - moved to top after other state declarations
+  const [useMockData, setUseMockData] = useState(true); // Toggle để test
+
+  // Mock data for testing
+  const mockChartData = {
+    income: 15000000, // 15M
+    expenses: 12000000, // 12M
+    difference: 3000000, // 3M
+    isLoading: false
+  };
+
+  const mockFinanceData = {
+    totalBalance: 50000000, // 50M
+    income: 15000000,
+    expenses: 12000000,
+    difference: 3000000
+  };
+
+  // 1. Thêm state và options cho dropdown filter
+  const PERIOD_OPTIONS = [
+    { label: t('finance.periods.thisDay') || 'Hôm nay', value: 'today' },
+    { label: t('finance.periods.thisWeek') || 'Tuần này', value: 'week' },
+    { label: t('finance.periods.thisMonth') || 'Tháng này', value: 'month' },
+    { label: t('finance.periods.thisYear') || 'Năm nay', value: 'year' },
+  ];
+  const [selectedPeriod, setSelectedPeriod] = useState(PERIOD_OPTIONS[2]); // Default: Tháng này
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Hàm tính toán khoảng thời gian theo filter
+  const getPeriodRange = (periodValue: string) => {
+    const now = new Date();
+    let startDate: Date, endDate: Date;
+    switch (periodValue) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'week': {
+        const day = now.getDay() || 7; // Chủ nhật là 0 => 7
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - day + 1);
+        startDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate());
+        endDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+        break;
+      }
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+        break;
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
+    return { startDate, endDate };
+  };
+
+  const handleSelectPeriod = (option: {label: string, value: string}) => {
+    setSelectedPeriod(option);
+    setIsDropdownOpen(false);
+    const { startDate, endDate } = getPeriodRange(option.value);
+    loadChartData(startDate, endDate);
+  };
 
   // Load user profile and wallet data
   useEffect(() => {
     loadUserProfile();
     loadWalletData();
+    loadChartData();
   }, [isAuthenticated]);
 
   // Listen to transaction changes to refresh wallet balance
@@ -137,6 +330,7 @@ const FinanceScreen = React.memo(() => {
     if (transactionRefreshTrigger > 0) {
       console.log('🔄 Transaction updated - refreshing finance data');
       loadWalletData();
+      loadChartData();
     }
   }, [transactionRefreshTrigger]);
 
@@ -147,9 +341,17 @@ const FinanceScreen = React.memo(() => {
         console.log('🔄 FinanceScreen focused, reloading data...');
         loadUserProfile();
         loadWalletData();
+        loadChartData();
       }
     }, [isAuthenticated])
   );
+
+  // Khi vào màn hình hoặc selectedPeriod đổi, tự động gọi loadChartData
+  useEffect(() => {
+    const { startDate, endDate } = getPeriodRange(selectedPeriod.value);
+    loadChartData(startDate, endDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, selectedPeriod.value, transactionRefreshTrigger]);
 
   const loadUserProfile = useCallback(async (forceRefresh: boolean = false) => {
     if (!isAuthenticated) {
@@ -180,6 +382,15 @@ const FinanceScreen = React.memo(() => {
     }
     return amount.toLocaleString('vi-VN');
   }, []);
+
+  // Format display number: nếu số quá dài thì chuyển sang dạng khoa học
+  const formatDisplayNumber = (amount: number): string => {
+    const str = amount.toLocaleString('vi-VN');
+    if (str.replace(/[^0-9]/g, '').length > 9) {
+      return amount.toExponential(2).replace('+', '');
+    }
+    return str;
+  };
 
   const loadWalletData = useCallback(async () => {
     if (!isAuthenticated) {
@@ -219,6 +430,57 @@ const FinanceScreen = React.memo(() => {
     }
   }, [isAuthenticated]);
 
+  // Load chart data from report API
+  const loadChartData = useCallback(async (startDate?: Date, endDate?: Date) => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    try {
+      setChartData(prev => ({ ...prev, isLoading: true }));
+      console.log('�� Loading chart data in FinanceScreen...');
+      
+      // Nếu không truyền vào thì mặc định là tháng này hoặc theo selectedPeriod
+      let _startDate = startDate, _endDate = endDate;
+      if (!_startDate || !_endDate) {
+        const range = getPeriodRange(selectedPeriod.value);
+        _startDate = range.startDate;
+        _endDate = range.endDate;
+      }
+      const startDateStr = _startDate.toISOString().split('T')[0];
+      const endDateStr = _endDate.toISOString().split('T')[0];
+      
+      console.log('📅 Loading report for period:', { selectedPeriod: 'This Month', startDateStr, endDateStr });
+      
+      const reportResponse = await transactionService.viewTransactionReport(
+        undefined, // categoryId - load all categories
+        startDateStr,
+        endDateStr
+      );
+      
+      console.log('✅ Chart data loaded:', reportResponse);
+      
+      // Extract data from snake_case API response
+      const summary = (reportResponse as any).summary || reportResponse.summary;
+      const income = summary?.total_income || summary?.totalIncome || 0;
+      const expenses = summary?.total_expense || summary?.totalExpense || 0;
+      const difference = income - expenses;
+      
+      setChartData({
+        income,
+        expenses,
+        difference,
+        isLoading: false
+      });
+      
+      setReportData(reportResponse);
+      
+    } catch (error: any) {
+      console.error('🔴 Failed to load chart data in FinanceScreen:', error);
+      setChartData(prev => ({ ...prev, isLoading: false }));
+    }
+  }, [isAuthenticated, selectedPeriod.value]);
+
   // Memoized expense data
   const expenseData: ExpenseData[] = useMemo(() => [
     { category: 'Leisure', percentage: 54.55, color: '#FFA726' },
@@ -249,85 +511,6 @@ const FinanceScreen = React.memo(() => {
     maxToRenderPerBatch: 10, // Performance optimization
     windowSize: 10, // Performance optimization
   }), [insets.bottom]);
-
-  // Component biểu đồ tròn - Memoized for performance
-  const PieChart = React.memo(({ data }: PieChartProps) => {
-    const radius = isSmallScreen ? rp(60) : rp(80);
-    const centerX = isSmallScreen ? rp(80) : rp(100);
-    const centerY = isSmallScreen ? rp(80) : rp(100);
-    const svgSize = isSmallScreen ? rp(160) : rp(200);
-
-    const { arcs, polarToCartesian } = useMemo(() => {
-      let cumulativePercentage = 0;
-
-      const createArc = (centerX: number, centerY: number, radius: number, startAngle: number, endAngle: number) => {
-        const start = polarToCartesian(centerX, centerY, radius, endAngle);
-        const end = polarToCartesian(centerX, centerY, radius, startAngle);
-        const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-        return [
-          "M", centerX, centerY,
-          "L", start.x, start.y,
-          "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y,
-          "Z"
-        ].join(" ");
-      };
-
-      const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
-        const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-        return {
-          x: centerX + (radius * Math.cos(angleInRadians)),
-          y: centerY + (radius * Math.sin(angleInRadians))
-        };
-      };
-
-      const arcs = data.map((item) => {
-        const startAngle = cumulativePercentage * 3.6;
-        const endAngle = (cumulativePercentage + item.percentage) * 3.6;
-        cumulativePercentage += item.percentage;
-        
-        return {
-          ...item,
-          startAngle,
-          endAngle,
-          strokeDasharray: `${item.percentage * 5.03} ${500}`,
-          strokeDashoffset: -startAngle * 1.4
-        };
-      });
-
-      return { arcs, polarToCartesian };
-    }, [data, centerX, centerY, radius]);
-    
-    return (
-      <View style={styles.chartContainer}>
-        <Svg width={svgSize} height={svgSize}>
-          {arcs.map((item, index) => (
-            <G key={`${item.category}-${index}`}>
-              <Circle
-                cx={centerX}
-                cy={centerY}
-                r={radius}
-                fill="none"
-                stroke={item.color}
-                strokeWidth={20}
-                strokeDasharray={item.strokeDasharray}
-                strokeDashoffset={item.strokeDashoffset}
-                transform={`rotate(-90 ${centerX} ${centerY})`}
-              />
-            </G>
-          ))}
-          {/* Vòng tròn trắng ở giữa */}
-          <Circle
-            cx={centerX}
-            cy={centerY}
-            r={isSmallScreen ? rp(35) : rp(50)}
-            fill="white"
-          />
-        </Svg>
-      </View>
-    );
-  });
-
-  PieChart.displayName = 'PieChart';
 
   // Memoized Icon Button Component
   const IconButton = React.memo(({ icon, label, isActive = false, iconColor = 'white' }: ButtonProps) => (
@@ -364,48 +547,6 @@ const FinanceScreen = React.memo(() => {
 
   BottomTabButton.displayName = 'BottomTabButton';
 
-  // Memoized Period Selector Component
-  const PeriodSelector = React.memo(() => (
-    <View style={styles.periodSelectorContainer}>
-      <TouchableOpacity 
-        style={styles.periodSelector}
-        onPress={() => setIsPeriodModalVisible(!isPeriodModalVisible)}
-      >
-        <Text style={styles.periodText}>{selectedPeriod}</Text>
-        <Text style={styles.dropdownIcon}>▼</Text>
-      </TouchableOpacity>
-
-      {isPeriodModalVisible && (
-        <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-          <View style={styles.dropdownMenu}>
-            {PERIODS.map((period) => (
-              <TouchableOpacity
-                key={period}
-                style={[
-                  styles.periodOption,
-                  selectedPeriod === period && styles.selectedPeriodOption
-                ]}
-                onPress={() => {
-                  setSelectedPeriod(period);
-                  setIsPeriodModalVisible(false);
-                }}
-              >
-                <Text style={[
-                  styles.periodOptionText,
-                  selectedPeriod === period && styles.selectedPeriodOptionText
-                ]}>
-                  {period}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableWithoutFeedback>
-      )}
-    </View>
-  ));
-
-  PeriodSelector.displayName = 'PeriodSelector';
-
   // Memoized Notification Icon Component
   const NotificationIcon = React.memo(() => (
     <View style={styles.headerIcon}>
@@ -421,15 +562,6 @@ const FinanceScreen = React.memo(() => {
   ));
 
   NotificationIcon.displayName = 'NotificationIcon';
-
-  // Memoized PERIODS array
-  const PERIODS = useMemo(() => [
-    t('finance.periods.thisDay'),
-    t('finance.periods.thisWeek'),
-    t('finance.periods.thisMonth'),
-    t('finance.periods.quarter'),
-    t('finance.periods.thisYear')
-  ], [t]);
 
   // Memoized avatar source
   const avatarSource = useMemo(() => {
@@ -448,12 +580,12 @@ const FinanceScreen = React.memo(() => {
     return require('../assets/images/Unknown.jpg');
   }, [userProfile?.user_avatar_url, userProfile?.user_gender]);
 
-  // Memoized formatted balance
+  // Memoized formatted balance - back to using real wallet data only
   const formattedBalance = useMemo(() => {
     return isBalanceVisible ? `${financeData.totalBalance.toLocaleString('vi-VN')} ${t('currency')}` : '********';
   }, [isBalanceVisible, financeData.totalBalance, t]);
 
-  // Memoized dynamic balance font size
+  // Memoized dynamic balance font size - back to using real wallet data only
   const dynamicBalanceFontSize = useMemo(() => {
     return getDynamicBalanceFontSize(financeData.totalBalance);
   }, [financeData.totalBalance]);
@@ -487,9 +619,88 @@ const FinanceScreen = React.memo(() => {
     navigation.navigate('BudgetScreen');
   }, [navigation]);
 
-  const handleClosePeriodModal = useCallback(() => {
-    setIsPeriodModalVisible(false);
-  }, []);
+  // Move getCategoryBreakdown here so it can access reportData
+  const getCategoryBreakdown = (type: 'expense' | 'income') => {
+    if (!reportData) return [];
+    const byCat = (reportData as any).transactionsByCategory || (reportData as any).transactions_by_category;
+    if (!byCat) return [];
+    return byCat[type] || [];
+  };
+
+  // Thêm mock data để test
+  // Mock data for testing
+  // Mock data for testing
+
+  // Thêm Financial Health Score calculation và helper functions
+  const calculateFinancialHealthScore = useCallback(() => {
+    let score = 100;
+    let suggestions: string[] = [];
+    let warnings: string[] = [];
+    let achievements: string[] = [];
+
+    // Sử dụng mock data hoặc real data
+    const currentChartData = useMockData ? mockChartData : chartData;
+    const currentFinanceData = useMockData ? mockFinanceData : financeData;
+
+    // 1. Tỷ lệ tiết kiệm (Savings Rate)
+    const totalFlow = currentChartData.income + Math.abs(currentChartData.expenses);
+    const savingsRate = totalFlow > 0 ? ((currentChartData.income - Math.abs(currentChartData.expenses)) / currentChartData.income) * 100 : 0;
+    
+    if (savingsRate < 5) {
+      score -= 30;
+      suggestions.push(t('finance.health.lowSavings') || 'Bạn chỉ tiết kiệm được dưới 5% thu nhập - hãy thử cắt giảm 1-2 khoản chi không thiết yếu.');
+    } else if (savingsRate < 10) {
+      score -= 20;
+      suggestions.push(t('finance.health.improveSavings') || 'Hãy cố gắng tăng tỷ lệ tiết kiệm lên trên 10% để an toàn hơn.');
+    } else if (savingsRate >= 20) {
+      achievements.push(t('finance.health.excellentSavings') || `Tuyệt vời! Bạn tiết kiệm được ${savingsRate.toFixed(1)}% thu nhập! 🎉`);
+    }
+
+    // 2. Xu hướng chi tiêu (Expense vs Income)
+    const expenseRatio = currentChartData.income > 0 ? (Math.abs(currentChartData.expenses) / currentChartData.income) * 100 : 0;
+    
+    if (expenseRatio > 100) {
+      score -= 40;
+      warnings.push(t('finance.health.overspending') || 'Bạn đang chi nhiều hơn thu - cần điều chỉnh ngay!');
+    } else if (expenseRatio > 90) {
+      score -= 25;
+      warnings.push(t('finance.health.highSpending') || 'Chi tiêu của bạn đang chiếm trên 90% thu nhập - hãy cẩn thận!');
+    }
+
+    // 3. Xu hướng tài sản (giả định so với tháng trước)
+    const previousMonthBalance = currentFinanceData.totalBalance * 0.85; // Mock data
+    const balanceChange = currentFinanceData.totalBalance - previousMonthBalance;
+    
+    if (balanceChange < -500000) {
+      score -= 20;
+      suggestions.push(t('finance.health.balanceDecline') || `Tài sản giảm ${Math.abs(balanceChange).toLocaleString('vi-VN')}₫ so với tháng trước - bạn đang chi nhiều hơn thu.`);
+    } else if (balanceChange > 1000000) {
+      achievements.push(t('finance.health.balanceGrowth') || `Tài sản tăng ${balanceChange.toLocaleString('vi-VN')}₫ so với tháng trước! 📈`);
+    }
+
+    // Đảm bảo score trong khoảng 0-100
+    score = Math.max(0, Math.min(100, score));
+    
+    return {
+      score: Math.round(score),
+      savingsRate: Math.max(0, savingsRate),
+      expenseRatio,
+      balanceChange,
+      suggestions,
+      warnings,
+      achievements
+    };
+  }, [chartData, financeData.totalBalance, useMockData, mockChartData, mockFinanceData, t]);
+
+  const getHealthStatus = (score: number) => {
+    if (score >= 80) return { label: 'Tốt', color: '#4CAF50', emoji: '🟩' };
+    if (score >= 60) return { label: 'Khá', color: '#FF9800', emoji: '🟨' };
+    if (score >= 40) return { label: 'Trung bình', color: '#FF5722', emoji: '🟧' };
+    return { label: 'Tệ', color: '#F44336', emoji: '🟥' };
+  };
+
+  const financialHealth = useMemo(() => calculateFinancialHealthScore(), [calculateFinancialHealthScore]);
+  const healthStatus = useMemo(() => getHealthStatus(financialHealth.score), [financialHealth.score]);
 
   // Show loading state
   if (loading || walletLoading) {
@@ -554,68 +765,131 @@ const FinanceScreen = React.memo(() => {
                 color="white" 
               />
             </TouchableOpacity>
+            {/* Removed Mock Data Toggle Button */}
           </View>
         </View>
       </View>
 
+      {/* Removed the healthStatusSection from here */}
+
              <ScrollView {...scrollViewProps}>
          <View style={styles.bodyContainer}>
-          {/* Income and Expenses Section */}
-          <TouchableWithoutFeedback onPress={handleClosePeriodModal}>
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('finance.incomeAndExpenses')}</Text>
-                <PeriodSelector />
-              </View>
-              {/* Bar Chart */}
-              <View style={styles.barChartContainer}>
-                <View style={styles.barChart}>
-                  <View style={styles.incomeBar}>
-                    <Text style={styles.barLabel}>{t('finance.incomeShort')}</Text>
-                  </View>
-                  <View style={styles.expenseBar}>
-                    <Text style={styles.barLabel}>{t('finance.expenseShort')}</Text>
-                  </View>
-                  <Text style={styles.differenceLabel}>{t('finance.difference')}</Text>
-                </View>
-                <View style={styles.amountsList}>
-                  <View style={styles.amountRow}>
-                    <Text style={styles.amountLabel}>{t('incomeLabel')}</Text>
-                    <Text style={styles.incomeAmount}>{formatMoney(financeData.income)} {t('currency')}</Text>
-                  </View>
-                  <View style={styles.amountRow}>
-                    <Text style={styles.amountLabel}>{t('finance.expenseShort')}</Text>
-                    <Text style={styles.expenseAmount}>{formatMoney(financeData.expenses)} {t('currency')}</Text>
-                  </View>
-                  <View style={styles.amountRow}>
-                    <Text style={styles.amountLabel}>{t('finance.difference')}</Text>
-                    <Text style={[
-                      styles.differenceAmount,
-                      financeData.difference >= 0 ? styles.incomeAmount : styles.expenseAmount
-                    ]}>
-                      {financeData.difference >= 0 ? '+' : ''}{formatMoney(Math.abs(financeData.difference))} {t('currency')}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-
-          {/* Pie Chart Section */}
+          
+          {/* Financial Health Status Section - moved up and using fixed text */}
           <View style={styles.section}>
-            <View style={styles.pieChartSection}>
-              <PieChart data={expenseData} />
-              <View style={styles.legendContainer}>
-                {expenseData.map((item, index) => (
-                  <View key={index} style={styles.legendItem}>
-                    <View style={[styles.legendColor, { backgroundColor: item.color }]} />
-                    <Text style={styles.legendLabel}>{item.category}</Text>
-                    <Text style={styles.legendPercentage}>{item.percentage} %</Text>
-                  </View>
-                ))}
+            <Text style={styles.sectionTitle}>
+              📊 Sức khỏe tài chính: 75/100 ⓘ
+            </Text>
+            
+            {/* Health Status Bar - using fixed data */}
+            <View style={styles.healthBarContainer}>
+              <View style={styles.healthBar}>
+                <View style={[
+                  styles.healthBarFill,
+                  {
+                    width: '75%',
+                    backgroundColor: '#FF9800'
+                  }
+                ]} />
+              </View>
+              <Text style={[styles.healthStatusText, { color: '#FF9800' }]}>
+                🟨 Khá – Cần điều chỉnh nhẹ
+              </Text>
+            </View>
+
+            {/* Fixed Suggestions and Warnings */}
+            <View style={styles.suggestionsContainer}>
+              <View style={[styles.suggestionItem, styles.warningItem]}>
+                <Text style={styles.suggestionText}>💡 Bạn đã vượt 95% hạn mức cho 'Ăn uống' khi mới đến ngày 20 – hãy cân nhắc giảm đơn hàng hoặc tăng ngân sách nếu cần thiết.</Text>
               </View>
             </View>
           </View>
+
+          {/* Income and Expenses Section */}
+          <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Thu nhập và Chi tiêu</Text>
+                <View style={{ position: 'relative' }}>
+                  <TouchableOpacity
+                    style={styles.newDropdownButton}
+                    onPress={() => setIsDropdownOpen((open) => !open)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.newDropdownButtonText}>{selectedPeriod.label}</Text>
+                    <Icon name={isDropdownOpen ? 'expand-less' : 'expand-more'} size={20} color="#333" />
+                  </TouchableOpacity>
+                  {isDropdownOpen && (
+                    <View style={styles.newDropdownMenu}>
+                      {PERIOD_OPTIONS.map((option) => (
+                        <TouchableOpacity
+                          key={option.value}
+                          style={[
+                            styles.newDropdownOption,
+                            selectedPeriod.value === option.value && styles.newDropdownOptionSelected,
+                          ]}
+                          onPress={() => handleSelectPeriod(option)}
+                        >
+                          <Text style={[
+                            styles.newDropdownOptionText,
+                            selectedPeriod.value === option.value && styles.newDropdownOptionTextSelected,
+                          ]}>
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
+              {/* Bar Chart - back to using real data, not mock */}
+              <View style={styles.barChartContainer}>
+                {chartData.isLoading ? (
+                  <View style={styles.chartLoadingContainer}>
+                    <ActivityIndicator size="small" color="#1e90ff" />
+                    <Text style={styles.chartLoadingText}>Đang tải...</Text>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.barChart}>
+                      <View style={[
+                        styles.incomeBar,
+                        { 
+                          height: chartData.income > 0 ? Math.max(rp(20), (chartData.income / Math.max(chartData.income, chartData.expenses)) * rp(100)) : rp(20)
+                        }
+                      ]}>
+                        <Text style={styles.barLabel}>Thu</Text>
+                      </View>
+                      <View style={[
+                        styles.expenseBar,
+                        { 
+                          height: chartData.expenses > 0 ? Math.max(rp(20), (chartData.expenses / Math.max(chartData.income, chartData.expenses)) * rp(100)) : rp(20)
+                        }
+                      ]}>
+                        <Text style={styles.barLabel}>Chi</Text>
+                      </View>
+                    </View>
+                    <View style={styles.amountsList}>
+                      <View style={styles.amountRow}>
+                        <Text style={styles.amountLabel}>Income</Text>
+                        <Text style={[styles.percentAmount, { color: '#4CAF50' }]}>
+                          {getPercent(chartData.income, chartData.income + chartData.expenses)}
+                        </Text>
+                      </View>
+                      <View style={styles.amountRow}>
+                        <Text style={styles.amountLabel}>Expense</Text>
+                        <Text style={[styles.percentAmount, { color: '#E91E63' }]}>
+                          {getPercent(chartData.expenses, chartData.income + chartData.expenses)}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                )}
+              </View>
+              
+              {/* Removed View Details Button */}
+            </View>
+
+          {/* Removed old Financial Health Section */}
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
@@ -658,13 +932,6 @@ const FinanceScreen = React.memo(() => {
           </View>
         </View>
       </ScrollView>
-
-      {/* Backdrop for dropdown - separate from scroll */}
-      {isPeriodModalVisible && (
-        <TouchableWithoutFeedback onPress={handleClosePeriodModal}>
-          <View style={styles.dropdownBackdrop} />
-        </TouchableWithoutFeedback>
-      )}
     </SafeAreaView>
   );
 });
@@ -714,11 +981,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: rf(16),
     fontWeight: '400',
+    fontFamily: 'Roboto',
   },
   userName: {
     color: 'white',
     fontSize: rf(18),
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   headerIcons: {  
     flexDirection: 'row',
@@ -730,6 +999,7 @@ const styles = StyleSheet.create({
   headerIconText: {
     color: 'white',
     fontSize: rf(20),
+    fontFamily: 'Roboto',
   },
   balanceSection: {
     alignItems: 'flex-start',
@@ -738,6 +1008,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontSize: rf(16),
     marginBottom: rp(8),
+    fontFamily: 'Roboto',
   },
   balanceRow: {
     flexDirection: 'row',
@@ -747,6 +1018,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     marginRight: rp(15),
+    fontFamily: 'Roboto',
   },
   eyeIcon: {
     fontSize: 20,
@@ -767,71 +1039,11 @@ const styles = StyleSheet.create({
     marginBottom: rp(10),
   },
   sectionTitle: {
+    marginTop: rp(20),
     fontSize: rf(18),
     fontWeight: '600',
     color: '#333',
-  },
-  periodSelectorContainer: {
-    position: 'relative',
-  },
-  periodSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8E8E8',
-    paddingHorizontal: rp(12),
-    paddingVertical: rp(6),
-    borderRadius: rp(15),
-  },
-  periodText: {
-    fontSize: rf(14),
-    color: '#666',
-    marginRight: rp(5),
-  },
-  dropdownIcon: {
-    fontSize: rf(10),
-    color: '#666',
-  },
-  dropdownMenu: {
-    position: 'absolute',
-    top: '100%',
-    right: 0,
-    backgroundColor: 'white',
-    borderRadius: rp(15),
-    padding: rp(8),
-    marginTop: rp(4),
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-    zIndex: 1000,
-    minWidth: rp(140),
-    maxWidth: rp(180),
-  },
-  periodOption: {
-    paddingVertical: rp(14),
-    paddingHorizontal: rp(20),
-    borderRadius: rp(8),
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: rp(2),
-  },
-  selectedPeriodOption: {
-    backgroundColor: '#E8F0FE',
-  },
-  periodOptionText: {
-    fontSize: rf(14),
-    color: '#666',
-    textAlign: 'center',
-    fontWeight: '500',
-    lineHeight: rf(16),
-  },
-  selectedPeriodOptionText: {
-    color: '#1e90ff',
-    fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   barChartContainer: {
     flexDirection: 'row',
@@ -855,7 +1067,16 @@ const styles = StyleSheet.create({
   expenseBar: {
     width: rp(30),
     height: rp(120),
-    backgroundColor: '#F44336',
+    backgroundColor: '#E91E63',
+    marginRight: rp(10),
+    borderRadius: rp(4),
+    justifyContent: 'flex-end',
+    paddingBottom: rp(5),
+  },
+  differenceBar: {
+    width: rp(30),
+    height: rp(120),
+    backgroundColor: '#FF9800', // Default color for difference
     marginRight: rp(20),
     borderRadius: rp(4),
     justifyContent: 'flex-end',
@@ -866,41 +1087,80 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     fontWeight: 'bold',
+    fontFamily: 'Roboto',
   },
   differenceLabel: {
     fontSize: rf(12),
     color: '#666',
     marginLeft: rp(10),
+    fontFamily: 'Roboto',
   },
   amountsList: {
-    flex: 1,
-    paddingLeft: rp(20),
+    alignItems: 'flex-start',
+    paddingLeft: 15,
+    minWidth: 150,
+    marginRight: rp(10),
+     // Thêm minWidth để đảm bảo có đủ không gian
   },
+  
   amountRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between', // Thay đổi thành space-between
     marginBottom: rp(8),
+    width: '100%', // Đảm bảo chiếm toàn bộ chiều rộng
+    minWidth: 120, // Thêm minWidth
   },
+  
   amountLabel: {
     fontSize: rf(14),
     color: '#666',
+    textAlign: 'left',
+    flex: 1, // Thêm flex để label chiếm không gian còn lại
+    fontFamily: 'Roboto',
   },
-  incomeAmount: {
+  
+  percentAmount: {
     fontSize: rf(14),
     color: '#4CAF50',
     fontWeight: '600',
+    textAlign: 'right',
+    minWidth: 50, // Đặt minWidth cố định cho phần trăm
+    fontFamily: 'Roboto',
   },
-  expenseAmount: {
-    fontSize: rf(14),
-    color: '#F44336',
-    fontWeight: '600',
-  },
-  differenceAmount: {
-    fontSize: rf(14),
-    color: '#F44336',
-    fontWeight: '600',
-  },
+incomeAmount: {
+  fontSize: rf(14),
+  color: '#4CAF50',
+  fontWeight: '600',
+  textAlign: 'left',
+  minWidth: 0,
+  maxWidth: '50%',
+  flexShrink: 1,
+  fontFamily: 'Roboto',
+ 
+},
+expenseAmount: {
+  fontSize: rf(14),
+  color: '#E91E63',
+  fontWeight: '600',
+  textAlign: 'left',
+  minWidth: 0,
+  maxWidth: '50%',
+  flexShrink: 1,
+  fontFamily: 'Roboto',
+  
+},
+differenceAmount: {
+  fontSize: rf(14),
+  color: '#FF9800',
+  fontWeight: '600',
+  textAlign: 'left',
+  minWidth: 0,
+  maxWidth: '50%',
+  flexShrink: 1,
+  fontFamily: 'Roboto',
+ 
+},
   pieChartSection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -911,30 +1171,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   legendContainer: {
-    flex: 1,
-    paddingLeft: isSmallScreen ? rp(10) : rp(20),
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginTop: rp(8),
     marginBottom: rp(8),
-  },
-  legendColor: {
-    width: rp(12),
-    height: rp(12),
-    borderRadius: rp(6),
-    marginRight: rp(8),
-  },
-  legendLabel: {
-    flex: 1,
-    fontSize: rf(12),
-    color: '#666',
-  },
-  legendPercentage: {
-    fontSize: rf(12),
-    color: '#333',
-    fontWeight: '600',
-  },
+    alignSelf: 'center',
+    width: rp(140),
+},
+legendRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginVertical: rp(2),
+},
+legendLabel: {
+  color: '#666',
+  fontSize: rf(15),
+  fontWeight: '400',
+  fontFamily: 'Roboto',
+},
+legendValue: {
+  fontSize: rf(15),
+  fontWeight: '600',
+  fontFamily: 'Roboto',
+},
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -958,6 +1216,7 @@ const styles = StyleSheet.create({
   iconText: {
     fontSize: 24,
     color: 'white',
+    fontFamily: 'Roboto',
   },
   bottomNavigation: {
     position: 'absolute',
@@ -993,6 +1252,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#999',
     fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   activeBottomTabLabel: {
     color: '#1e90ff',
@@ -1010,6 +1270,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 24,
     fontWeight: '300',
+    fontFamily: 'Roboto',
   },
   notificationBadge: {
     position: 'absolute',
@@ -1027,6 +1288,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: rf(10),
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   loadingContainer: {
     flex: 1,
@@ -1039,11 +1301,12 @@ const styles = StyleSheet.create({
     fontSize: rf(18),
     fontWeight: '600',
     marginTop: rp(20),
+    fontFamily: 'Roboto',
   },
   scrollContent: {
     paddingTop: rp(10),
   },
-  dropdownBackdrop: {
+  simpleBackdrop: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -1064,13 +1327,186 @@ const styles = StyleSheet.create({
     marginTop: rp(4),
     textAlign: 'center',
     fontWeight: '400',
+    fontFamily: 'Roboto',
   },
   stickySection: {
     backgroundColor: '#fff',
     zIndex: 2,
   },
   bodyContainer: {
-    paddingTop: rp(20),
+    paddingTop: rp(10),
+  },
+  chartLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: rp(20),
+  },
+  chartLoadingText: {
+    marginLeft: rp(10),
+    color: '#666',
+    fontSize: rf(14),
+    fontFamily: 'Roboto',
+  },
+  newDropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 20,
+    marginLeft: 8,
+    marginBottom: 0,
+    minWidth: 120,
+    // Removed shadow properties
+  },
+  newDropdownButtonText: {
+    marginLeft: 10,
+    fontSize: rf(14),
+    color: '#495057',
+    fontWeight: '500',
+    fontFamily: 'Roboto',
+  },
+  newDropdownMenu: {
+    position: 'absolute',
+    top: 40,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    // Reduced shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    zIndex: 2000,
+    paddingVertical: 4,
+  },
+  newDropdownOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  newDropdownOptionSelected: {
+    backgroundColor: '#F8F9FA',
+  },
+  newDropdownOptionText: {
+    fontSize: rf(14),
+    color: '#495057',
+    fontFamily: 'Roboto',
+  },
+  newDropdownOptionTextSelected: {
+    color: '#007BFF',
+    fontWeight: '600',
+    fontFamily: 'Roboto',
+  },
+  amountsAndDropdownContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginTop: rp(20),
+  },
+  dropdownContainer: {
+    alignItems: 'flex-end',
+    marginTop: rp(10),
+  },
+  healthBarContainer: {
+    marginTop: rp(15),
+    marginBottom: rp(10),
+    alignItems: 'center',
+  },
+  healthBar: {
+    width: '100%',
+    height: rp(10),
+    backgroundColor: '#E0E0E0',
+    borderRadius: rp(5),
+    overflow: 'hidden',
+  },
+  healthBarFill: {
+    height: '100%',
+    borderRadius: rp(5),
+  },
+  healthStatusText: {
+    fontSize: rf(14),
+    fontWeight: '600',
+    marginTop: rp(5),
+    fontFamily: 'Roboto',
+  },
+  healthMetrics: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: rp(10),
+    marginBottom: rp(15),
+  },
+  metricRow: {
+    alignItems: 'center',
+  },
+  metricIcon: {
+    fontSize: rf(20),
+    marginBottom: rp(4),
+  },
+  metricText: {
+    fontSize: rf(14),
+    color: '#666',
+    fontFamily: 'Roboto',
+  },
+  suggestionsContainer: {
+    marginTop: rp(10),
+    marginBottom: rp(15),
+  },
+  suggestionItem: {
+    paddingVertical: rp(8),
+    paddingHorizontal: rp(12),
+    borderRadius: rp(8),
+    marginBottom: rp(5),
+  },
+  warningItem: {
+    backgroundColor: '#FFF3CD',
+    borderLeftWidth: 5,
+    borderLeftColor: '#FFEEBA',
+  },
+  suggestionNormal: {
+    backgroundColor: '#E3F2FD',
+    borderLeftWidth: 5,
+    borderLeftColor: '#BBDEFB',
+  },
+  achievementItem: {
+    backgroundColor: '#E8F5E9',
+    borderLeftWidth: 5,
+    borderLeftColor: '#A5D6A7',
+  },
+  suggestionText: {
+    fontSize: rf(14),
+    color: '#333',
+    fontFamily: 'Roboto',
+  },
+  detailButton: {
+    backgroundColor: '#1976D2',
+    paddingVertical: rp(12),
+    paddingHorizontal: rp(20),
+    borderRadius: rp(10),
+    alignItems: 'center',
+    marginTop: rp(10),
+  },
+  detailButtonText: {
+    color: 'white',
+    fontSize: rf(16),
+    fontWeight: '600',
+    fontFamily: 'Roboto',
+  },
+  infoButton: {
+    marginLeft: rp(5),
+  },
+  infoIcon: {
+    fontSize: rf(16),
+    color: '#666',
+    fontFamily: 'Roboto',
   },
 });
 

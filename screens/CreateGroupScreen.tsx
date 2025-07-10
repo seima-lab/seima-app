@@ -635,10 +635,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333333',
-    flex: 1,
+    color: '#1F2937',
     textAlign: 'center',
-    marginHorizontal: 16,
+    fontFamily: 'Roboto',
   },
   placeholder: {
     width: 40,
@@ -709,6 +708,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: '#333333',
+    fontFamily: 'Roboto',
   },
 
   inputError: {
@@ -761,6 +761,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+    fontFamily: 'Roboto',
   },
   // Success Modal Styles
   successModalOverlay: {

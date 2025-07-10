@@ -44,9 +44,10 @@ class MainApplication : Application(), ReactApplication {
     get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
 
   override fun onCreate() {
-   RNBranchModule.getAutoInstance(this)
+   
     super.onCreate()
-     
+      RNBranchModule.enableLogging();
+    RNBranchModule.getAutoInstance(this);
     // @generated begin xml-fonts-init - expo prebuild (DO NOT MODIFY) sync-da39a3ee5e6b4b0d3255bfef95601890afd80709
 
     // @generated end xml-fonts-init

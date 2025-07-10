@@ -1014,11 +1014,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 2,
+    fontFamily: 'Roboto',
   },
   subtitle: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   cardContainer: {
     backgroundColor: '#FFFFFF',
@@ -1066,6 +1068,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#1e90ff',
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   form: {
     flex: 1,
@@ -1080,6 +1083,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
+    fontFamily: 'Roboto',
   },
   labelIcon: {
     marginRight: 4,
@@ -1118,6 +1122,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1F2937',
     fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   countryCode: {
     fontSize: 13,
@@ -1126,6 +1131,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     borderRightWidth: 1,
     borderRightColor: '#E5E7EB',
+    fontFamily: 'Roboto',
   },
   eyeButton: {
     padding: 2,
@@ -1144,6 +1150,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1F2937',
     fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   placeholderText: {
     color: '#9CA3AF',
@@ -1173,6 +1180,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   genderTextSelected: {
     color: '#FFFFFF',
@@ -1188,6 +1196,7 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     marginLeft: 3,
     flex: 1,
+    fontFamily: 'Roboto',
   },
   bottomSection: {
     marginTop: 16,
@@ -1217,6 +1226,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.5,
+    fontFamily: 'Roboto',
   },
   buttonIcon: {
     marginLeft: 6,
@@ -1228,10 +1238,12 @@ const styles = StyleSheet.create({
   backToLoginText: {
     fontSize: 12,
     color: '#6B7280',
+    fontFamily: 'Roboto',
   },
   backToLoginLink: {
     color: '#1e90ff',
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   googleDataIndicator: {
     flexDirection: 'row',
@@ -1244,6 +1256,7 @@ const styles = StyleSheet.create({
     color: '#4285F4',
     marginLeft: 6,
     fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   // Loading Modal Styles
   modalOverlay: {
@@ -1278,12 +1291,14 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 8,
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   loadingMessage: {
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+    fontFamily: 'Roboto',
   },
   successIcon: {
     marginBottom: 20,
@@ -1294,12 +1309,14 @@ const styles = StyleSheet.create({
     color: '#10B981',
     marginBottom: 8,
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   successMessage: {
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+    fontFamily: 'Roboto',
   },
   passwordRequirements: {
     marginTop: 6,
@@ -1315,12 +1332,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0369A1',
     marginBottom: 3,
+    fontFamily: 'Roboto',
   },
   requirementText: {
     fontSize: 10,
     color: '#0284C7',
     lineHeight: 14,
     marginBottom: 1,
+    fontFamily: 'Roboto',
   },
 });
 

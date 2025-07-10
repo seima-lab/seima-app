@@ -108,7 +108,7 @@ export default function OTPScreen({ route }: OTPScreenProps) {
 
   // Timer for resend OTP
   useEffect(() => {
-    let interval: number;
+    let interval: NodeJS.Timeout;
     if (timer > 0) {
       interval = setInterval(() => {
         setTimer(timer - 1);
@@ -359,10 +359,7 @@ export default function OTPScreen({ route }: OTPScreenProps) {
         // Update auth context with user data
         await login(userProfile);
         
-        console.log('🟢 Auto login complete, navigating to MainTab');
-        
-        // Navigate directly to main app
-        navigation.replace('MainTab');
+        console.log('🟢 Auto login complete - AuthNavigator will handle navigation');
         
       } catch (loginError: any) {
         console.error('🔴 Auto login failed:', loginError);
@@ -378,7 +375,7 @@ export default function OTPScreen({ route }: OTPScreenProps) {
 
   // Auto navigate countdown
   useEffect(() => {
-    let interval: number;
+    let interval: NodeJS.Timeout;
     if (showSuccessModal && autoNavigateTimer > 0) {
       interval = setInterval(() => {
         setAutoNavigateTimer(autoNavigateTimer - 1);

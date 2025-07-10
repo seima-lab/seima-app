@@ -643,7 +643,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#1F2937',
+    fontFamily: 'Roboto',
   },
   placeholder: {
     width: 40,
@@ -770,7 +771,9 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 14,
-    color: '#333',
+    fontWeight: '500',
+    color: '#374151',
+    fontFamily: 'Roboto',
   },
   categoryPercentage: {
     fontSize: 12,

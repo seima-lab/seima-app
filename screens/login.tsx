@@ -161,10 +161,7 @@ export default function LoginScreen() {
       // Update auth context with user data
       await login(userProfile);
       
-      console.log('🟢 Email login successful, navigating to MainTab');
-      
-      // Navigate immediately without delay
-      navigation.replace('MainTab');
+      console.log('🟢 Email login successful - AuthNavigator will handle navigation');
       
       setIsLoading(false);
       
@@ -230,8 +227,7 @@ export default function LoginScreen() {
           navigation.replace('Register', { googleUserData });
         } else {
           // Returning user (user_is_active = true) - go directly to main app
-          console.log('🟢 Returning user (user is active) - navigating to MainTab');
-          navigation.replace('MainTab');
+          console.log('🟢 Returning user (user is active) - AuthNavigator will handle navigation');
         }
       } else {
         console.log('🔴 Google Sign-In failed:', result.error);
@@ -555,6 +551,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     textAlign: 'center',
     marginBottom: rp(16),
+    fontFamily: 'Roboto',
   },
   inputContainer: {
     marginBottom: rp(12),
@@ -564,6 +561,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#374151',
     marginBottom: rp(6),
+    fontFamily: 'Roboto',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -582,6 +580,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: rf(16),
     color: '#1F2937',
+    fontFamily: 'Roboto',
   },
   eyeButton: {
     padding: rp(4),
@@ -608,6 +607,7 @@ const styles = StyleSheet.create({
   rememberMeText: {
     fontSize: rf(14),
     color: '#6B7280',
+    fontFamily: 'Roboto',
   },
   loginButton: {
     backgroundColor: '#1e90ff',
@@ -623,6 +623,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: rf(16),
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   forgotPasswordButton: {
     alignItems: 'center',
@@ -632,6 +633,7 @@ const styles = StyleSheet.create({
     color: '#1e90ff',
     fontSize: rf(14),
     fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -647,6 +649,7 @@ const styles = StyleSheet.create({
     marginHorizontal: rp(16),
     fontSize: rf(14),
     color: '#6B7280',
+    fontFamily: 'Roboto',
   },
   signupContainer: {
     flexDirection: 'row',
@@ -657,12 +660,14 @@ const styles = StyleSheet.create({
   signupText: {
     fontSize: rf(14),
     color: '#6B7280',
+    fontFamily: 'Roboto',
   },
   signupLink: {
     fontSize: rf(14),
     color: '#1e90ff',
     fontWeight: '600',
     marginLeft: rp(4),
+    fontFamily: 'Roboto',
   },
   footer: {
     width: '100%',
@@ -677,6 +682,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: rf(16),
+    fontFamily: 'Roboto',
   },
   autoFillContainer: {
     flexDirection: 'row',
@@ -687,6 +693,7 @@ const styles = StyleSheet.create({
     fontSize: rf(14),
     color: '#6B7280',
     marginLeft: rp(8),
+    fontFamily: 'Roboto',
   },
   modalOverlay: {
     flex: 1,
@@ -712,6 +719,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: rp(16),
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   modalMessage: {
     fontSize: rf(14),
@@ -719,6 +727,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: rp(20),
     lineHeight: rf(20),
+    fontFamily: 'Roboto',
   },
   modalButtonContainer: {
     flexDirection: 'row',
@@ -743,11 +752,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: rf(14),
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   activateButtonText: {
     color: '#fff',
     fontSize: rf(14),
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
 });
 

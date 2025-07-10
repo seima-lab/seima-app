@@ -789,6 +789,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#333',
+    fontFamily: 'Roboto',
   },
   backButton: {
     width: 40,
@@ -851,6 +852,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   editIcon: {
     marginLeft: 6,
@@ -870,6 +872,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flexDirection: 'row',
     alignItems: 'center',
+    fontFamily: 'Roboto',
   },
   inputIcon: {
     marginRight: 6,
@@ -887,6 +890,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
+    fontFamily: 'Roboto',
   },
   inputFocused: {
     borderColor: '#1e90ff',
@@ -910,10 +914,12 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     color: '#000',
+    fontFamily: 'Roboto',
   },
   readOnlyText: {
     fontSize: 16,
     color: '#6B7280',
+    fontFamily: 'Roboto',
   },
   genderContainer: {
     flexDirection: 'row',
@@ -968,6 +974,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flexDirection: 'row',
     alignItems: 'center',
+    fontFamily: 'Roboto',
   },
   genderTextSelected: {
     color: '#1e90ff',
@@ -1000,6 +1007,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   saveIcon: {
     marginLeft: 8,
@@ -1008,12 +1016,14 @@ const styles = StyleSheet.create({
     color: '#ff3b30',
     fontSize: 13,
     marginLeft: 4,
+    fontFamily: 'Roboto',
   },
   helperText: {
     color: '#8E8E93',
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
+    fontFamily: 'Roboto',
   },
 });
 

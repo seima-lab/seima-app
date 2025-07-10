@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   text: {
-    fontSize: 15,
+    fontSize: 10,
     color: '#b0b0b0',
     marginTop: 2,
     fontWeight: '400',
