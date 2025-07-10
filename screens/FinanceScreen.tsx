@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, Svg } from 'react-native-svg';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -248,7 +248,6 @@ const FinanceScreen = React.memo(() => {
   
   // UI state
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
-  const [activeTab, setActiveTab] = useState('Overview');
   const [notificationCount, setNotificationCount] = useState(3);
 
   // Mock data state and values - moved to top after other state declarations
@@ -495,7 +494,7 @@ const FinanceScreen = React.memo(() => {
     style: styles.content,
     contentContainerStyle: [
       styles.scrollContent,
-      { paddingBottom: rp(50) + insets.bottom }
+      { paddingBottom: rp(50) }
     ],
     showsVerticalScrollIndicator: false,
     keyboardShouldPersistTaps: 'handled' as const,
@@ -510,7 +509,7 @@ const FinanceScreen = React.memo(() => {
     removeClippedSubviews: true, // Performance optimization
     maxToRenderPerBatch: 10, // Performance optimization
     windowSize: 10, // Performance optimization
-  }), [insets.bottom]);
+  }), []);
 
   // Memoized Icon Button Component
   const IconButton = React.memo(({ icon, label, isActive = false, iconColor = 'white' }: ButtonProps) => (
@@ -526,26 +525,6 @@ const FinanceScreen = React.memo(() => {
   ));
 
   IconButton.displayName = 'IconButton';
-
-  // Memoized Bottom Tab Button
-  const BottomTabButton = React.memo(({ icon, label, isActive = false }: ButtonProps) => (
-    <TouchableOpacity 
-      style={styles.bottomTabButton}
-      onPress={() => setActiveTab(label)}
-    >
-      <Icon2 
-        name={icon} 
-        size={20} 
-        color={isActive ? '#1e90ff' : '#999'} 
-        style={styles.bottomTabIcon}
-      />
-      <Text style={[styles.bottomTabLabel, isActive && styles.activeBottomTabLabel]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  ));
-
-  BottomTabButton.displayName = 'BottomTabButton';
 
   // Memoized Notification Icon Component
   const NotificationIcon = React.memo(() => (
@@ -705,22 +684,22 @@ const FinanceScreen = React.memo(() => {
   // Show loading state
   if (loading || walletLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#4285F4" translucent={true} />
-        <View style={styles.loadingContainer}>
+        <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
           <ActivityIndicator size="large" color="#FFFFFF" />
           <Text style={styles.loadingText}>{t('common.loading')}...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#4285F4" translucent={true} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top + rp(10) }]}>
         <View style={styles.headerTop}>
           <View style={styles.profileSection}>
             <View style={styles.avatar}>
@@ -932,7 +911,7 @@ const FinanceScreen = React.memo(() => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 });
 
@@ -949,7 +928,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: rp(20),
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    paddingBottom: rp(10),
+    paddingBottom: rp(20),
  
   },
   headerTop: {
@@ -1051,39 +1030,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   barChart: {
+    height: rp(150),
     flexDirection: 'row',
     alignItems: 'flex-end',
     flex: 1,
   },
   incomeBar: {
-    width: rp(30),
+    width: rp(40),
     height: rp(40),
     backgroundColor: '#4CAF50',
-    marginRight: rp(10),
-    borderRadius: rp(4),
+    marginRight: rp(15),
+    borderRadius: rp(6),
     justifyContent: 'flex-end',
     paddingBottom: rp(5),
   },
   expenseBar: {
-    width: rp(30),
+    width: rp(40),
     height: rp(120),
     backgroundColor: '#E91E63',
-    marginRight: rp(10),
-    borderRadius: rp(4),
+    marginRight: rp(15),
+    borderRadius: rp(6),
     justifyContent: 'flex-end',
     paddingBottom: rp(5),
   },
   differenceBar: {
-    width: rp(30),
+    width: rp(40),
     height: rp(120),
     backgroundColor: '#FF9800', // Default color for difference
     marginRight: rp(20),
-    borderRadius: rp(4),
+    borderRadius: rp(6),
     justifyContent: 'flex-end',
     paddingBottom: rp(5),
   },
   barLabel: {
-    fontSize: rf(10),
+    fontSize: rf(12),
     color: 'white',
     textAlign: 'center',
     fontWeight: 'bold',
@@ -1199,8 +1179,8 @@ legendValue: {
     marginTop: rp(20),
   },
   iconButton: {
-    width: rp(60),
-    height: rp(60),
+    width: rp(50),
+    height: rp(50),
     backgroundColor: '#1e90ff',
     borderRadius: rp(15),
     justifyContent: 'center',
@@ -1216,78 +1196,6 @@ legendValue: {
   iconText: {
     fontSize: 24,
     color: 'white',
-    fontFamily: 'Roboto',
-  },
-  bottomNavigation: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  bottomTabButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    minWidth: 60,
-  },
-  bottomTabIcon: {
-    marginBottom: 4,
-  },
-  bottomTabLabel: {
-    fontSize: 10,
-    color: '#999',
-    fontWeight: '500',
-    fontFamily: 'Roboto',
-  },
-  activeBottomTabLabel: {
-    color: '#1e90ff',
-  },
-  addButton: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#1e90ff',
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 10,
-  },
-  addButtonText: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: '300',
-    fontFamily: 'Roboto',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: rp(-5),
-    right: rp(-5),
-    backgroundColor: '#FF3B30',
-    borderRadius: rp(10),
-    minWidth: rp(20),
-    height: rp(20),
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: rp(4),
-  },
-  notificationText: {
-    color: 'white',
-    fontSize: rf(10),
-    fontWeight: '600',
     fontFamily: 'Roboto',
   },
   loadingContainer: {
@@ -1506,6 +1414,24 @@ legendValue: {
   infoIcon: {
     fontSize: rf(16),
     color: '#666',
+    fontFamily: 'Roboto',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: rp(-5),
+    right: rp(-5),
+    backgroundColor: '#FF3B30',
+    borderRadius: rp(10),
+    minWidth: rp(20),
+    height: rp(20),
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: rp(4),
+  },
+  notificationText: {
+    color: 'white',
+    fontSize: rf(10),
+    fontWeight: '600',
     fontFamily: 'Roboto',
   },
 });

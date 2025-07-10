@@ -56,6 +56,7 @@ const styles = StyleSheet.create({
   screenContainer: {
     backgroundColor: '#fff',
     flex: 1,
+    overflow: 'hidden',
   },
 });
 
