@@ -347,8 +347,8 @@ const BudgetScreen = () => {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.budgetsContainer}>
-              {budgets.map((budget) => (
-                <TouchableOpacity key={budget.budget_id || budget.budget_name} onPress={() => handleBudgetPress(budget)}>
+              {budgets.map((budget, index) => (
+                <TouchableOpacity key={`${budget.budget_id}-${index}`} onPress={() => handleBudgetPress(budget)}>
                   <BudgetItem budget={budget} />
                 </TouchableOpacity>
               ))}

@@ -2,18 +2,18 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    ListRenderItem,
-    Modal,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  ListRenderItem,
+  Modal,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -307,12 +307,18 @@ const InviteUsersScreen = () => {
     try {
       setLoadingUserId(userId);
       await groupService.acceptGroupMemberRequest(Number(groupId), userId);
-      Alert.alert('Thành công', 'Đã chấp nhận thành viên!');
+      Alert.alert(
+        t('common.success'), 
+        t('group.invitation.memberAccepted')
+      );
       // Reload pending list
       const res = await groupService.getPendingGroupMembers(Number(groupId));
       setPendingMembers(res.pending_members);
     } catch (e: any) {
-      Alert.alert('Lỗi', e.message || 'Không thể chấp nhận thành viên');
+      Alert.alert(
+        t('common.error'), 
+        e.message || t('group.invitation.acceptFailed')
+      );
     } finally {
       setLoadingUserId(null);
     }
@@ -322,12 +328,18 @@ const InviteUsersScreen = () => {
     try {
       setLoadingUserId(userId);
       await groupService.rejectGroupMemberRequest(Number(groupId), userId);
-      Alert.alert('Thành công', 'Đã từ chối thành viên!');
+      Alert.alert(
+        t('common.success'), 
+        t('group.invitation.memberRejected')
+      );
       // Reload pending list
       const res = await groupService.getPendingGroupMembers(Number(groupId));
       setPendingMembers(res.pending_members);
     } catch (e: any) {
-      Alert.alert('Lỗi', e.message || 'Không thể từ chối thành viên');
+      Alert.alert(
+        t('common.error'), 
+        e.message || t('group.invitation.rejectFailed')
+      );
     } finally {
       setLoadingUserId(null);
     }
@@ -352,7 +364,9 @@ const InviteUsersScreen = () => {
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Text style={styles.pendingName}>{item.user_full_name}</Text>
         <Text style={styles.pendingEmail}>{item.user_email}</Text>
-        <Text style={styles.pendingTime}>Gửi lúc: {item.requested_at}</Text>
+        <Text style={styles.pendingTime}>
+          {t('group.invitation.requestedAt')}: {item.requested_at}
+        </Text>
       </View>
       <TouchableOpacity
         onPress={() => handleAccept(item.user_id)}
@@ -360,7 +374,7 @@ const InviteUsersScreen = () => {
         disabled={loadingUserId === item.user_id}
       >
         {loadingUserId === item.user_id ? (
-          <ActivityIndicator size={18} color="#fff" />
+          <ActivityIndicator size="small" color="#fff" />
         ) : (
           <Icon name="check" size={22} color="#fff" />
         )}
@@ -371,7 +385,7 @@ const InviteUsersScreen = () => {
         disabled={loadingUserId === item.user_id}
       >
         {loadingUserId === item.user_id ? (
-          <ActivityIndicator size={18} color="#fff" />
+          <ActivityIndicator size="small" color="#fff" />
         ) : (
           <Icon name="close" size={22} color="#fff" />
         )}
@@ -434,7 +448,9 @@ const InviteUsersScreen = () => {
 
         {/* Pending Members List */}
         <View style={{ marginTop: 16 }}>
-          <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Danh sách chờ duyệt</Text>
+          <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>
+            {t('group.invitation.pendingMembers')}
+          </Text>
           {pendingLoading ? (
             <ActivityIndicator size="small" color="#4A90E2" />
           ) : (
@@ -442,7 +458,11 @@ const InviteUsersScreen = () => {
               data={pendingMembers}
               keyExtractor={item => String(item.user_id)}
               renderItem={renderPendingMember}
-              ListEmptyComponent={<Text style={{ color: '#999' }}>Không có ai đang chờ duyệt</Text>}
+              ListEmptyComponent={
+                <Text style={{ color: '#999' }}>
+                  {t('group.invitation.noPendingMembers')}
+                </Text>
+              }
             />
           )}
         </View>

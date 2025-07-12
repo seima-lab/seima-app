@@ -2,14 +2,15 @@ import { NavigationProp, RouteProp, useFocusEffect, useNavigation, useRoute } fr
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -33,6 +34,14 @@ export default function EditCategoryScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  
+  // Custom modal state
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<{id: string, name: string} | null>(null);
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [infoMessage, setInfoMessage] = useState('');
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Sync activeTab with route params when navigating back
   useEffect(() => {
@@ -101,11 +110,8 @@ export default function EditCategoryScreen() {
       const defaultCategories = categoryService.getDefaultCategories(categoryType);
       setCategories(defaultCategories);
       
-      Alert.alert(
-        t('common.error'),
-        'Failed to load categories from server. Using default categories.',
-        [{ text: 'OK' }]
-      );
+      setInfoMessage('Failed to load categories from server. Using default categories.');
+      setInfoModalVisible(true);
     } finally {
       setLoading(false);
     }
@@ -138,47 +144,46 @@ export default function EditCategoryScreen() {
 
   const handleDeleteCategory = async (categoryId: string, categoryLabel: string) => {
     if (!user) {
-      Alert.alert(t('common.error'), 'User not authenticated');
+      setInfoMessage('User not authenticated');
+      setInfoModalVisible(true);
       return;
     }
 
-    Alert.alert(
-      t('deleteCategory'),
-      `Are you sure you want to delete "${categoryLabel}"?`,
-      [
-        { text: t('cancel'), style: 'cancel' },
-        { 
-          text: t('delete'), 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🗑️ Deleting category:', categoryId);
-              
-              // Call API to delete category
-              await categoryService.deleteCategory(parseInt(categoryId));
-              
-              console.log('✅ Category deleted successfully');
-              
-              // Refresh categories list
-              await loadCategories();
-              
-              Alert.alert(
-                t('common.success'),
-                'Category deleted successfully',
-                [{ text: 'OK' }]
-              );
-              
-            } catch (err: any) {
-              console.error('❌ Failed to delete category:', err);
-              Alert.alert(
-                t('common.error'),
-                err.message || 'Failed to delete category'
-              );
-            }
-          }
-        }
-      ]
-    );
+    setCategoryToDelete({ id: categoryId, name: categoryLabel });
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+
+    try {
+      console.log('🗑️ Deleting category:', categoryToDelete.id);
+      
+      setDeleteModalVisible(false);
+      setCategoryToDelete(null);
+      setLoading(true);
+      
+      // Call API to delete category
+      await categoryService.deleteCategory(parseInt(categoryToDelete.id));
+      
+      console.log('✅ Category deleted successfully');
+      
+      // Refresh categories list
+      await loadCategories();
+      
+      setSuccessMessage('Category deleted successfully');
+      setSuccessModalVisible(true);
+      
+    } catch (err: any) {
+      console.error('❌ Failed to delete category:', err);
+      setInfoMessage(err.message || 'Failed to delete category');
+      setInfoModalVisible(true);
+    }
+  };
+
+  const cancelDeleteCategory = () => {
+    setDeleteModalVisible(false);
+    setCategoryToDelete(null);
   };
 
   const handleCategoryPress = (item: LocalCategory) => {
@@ -187,22 +192,16 @@ export default function EditCategoryScreen() {
     } else if (isEditMode) {
       // Only allow deletion of non-system categories
       if (item.is_system_defined) {
-        Alert.alert(
-          t('common.info'),
-          'System categories cannot be deleted',
-          [{ text: 'OK' }]
-        );
+        setInfoMessage('System categories cannot be deleted');
+        setInfoModalVisible(true);
         return;
       }
       handleDeleteCategory(item.key, item.label);
     } else {
       // Check if it's a system category
       if (item.is_system_defined) {
-        Alert.alert(
-          t('common.info'),
-          'This is a default system category that cannot be edited',
-          [{ text: 'OK' }]
-        );
+        setInfoMessage('This is a default system category that cannot be edited');
+        setInfoModalVisible(true);
         return;
       }
       
@@ -285,6 +284,102 @@ export default function EditCategoryScreen() {
     ...categories
   ];
 
+  // Custom Modal Components
+  const renderDeleteModal = () => (
+    <Modal
+      transparent={true}
+      visible={deleteModalVisible}
+      animationType="fade"
+      onRequestClose={cancelDeleteCategory}
+    >
+      <TouchableWithoutFeedback onPress={cancelDeleteCategory}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalIconContainer}>
+                <Icon name="delete-outline" size={48} color="#ff3b30" />
+              </View>
+              <Text style={styles.modalTitle}>{t('deleteCategory')}</Text>
+              <Text style={styles.modalMessage}>
+                Are you sure you want to delete "{categoryToDelete?.name}"?
+              </Text>
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity style={styles.modalCancelButton} onPress={cancelDeleteCategory}>
+                  <Text style={styles.modalCancelText}>{t('cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalDeleteButton} onPress={confirmDeleteCategory}>
+                  <Text style={styles.modalDeleteText}>{t('delete')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+
+  const renderInfoModal = () => (
+    <Modal
+      transparent={true}
+      visible={infoModalVisible}
+      animationType="fade"
+      onRequestClose={() => setInfoModalVisible(false)}
+    >
+      <TouchableWithoutFeedback onPress={() => setInfoModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalIconContainer}>
+                <Icon name="information-outline" size={48} color="#007aff" />
+              </View>
+              <Text style={styles.modalTitle}>{t('common.info')}</Text>
+              <Text style={styles.modalMessage}>{infoMessage}</Text>
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity 
+                  style={styles.modalOkButton} 
+                  onPress={() => setInfoModalVisible(false)}
+                >
+                  <Text style={styles.modalOkText}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+
+  const renderSuccessModal = () => (
+    <Modal
+      transparent={true}
+      visible={successModalVisible}
+      animationType="fade"
+      onRequestClose={() => setSuccessModalVisible(false)}
+    >
+      <TouchableWithoutFeedback onPress={() => setSuccessModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalIconContainer}>
+                <Icon name="check-circle-outline" size={48} color="#34c759" />
+              </View>
+              <Text style={styles.modalTitle}>{t('common.success')}</Text>
+              <Text style={styles.modalMessage}>{successMessage}</Text>
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity 
+                  style={styles.modalOkButton} 
+                  onPress={() => setSuccessModalVisible(false)}
+                >
+                  <Text style={styles.modalOkText}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -361,6 +456,9 @@ export default function EditCategoryScreen() {
         refreshing={loading}
         onRefresh={loadCategories}
       />
+      {renderDeleteModal()}
+      {renderInfoModal()}
+      {renderSuccessModal()}
     </SafeAreaView>
   );
 }
@@ -379,6 +477,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#8e8e93',
+    fontFamily: 'Roboto',
   },
   errorContainer: {
     backgroundColor: '#fff2f2',
@@ -394,6 +493,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 8,
+    fontFamily: 'Roboto',
   },
   retryButton: {
     backgroundColor: '#007aff',
@@ -406,6 +506,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   header: {
     flexDirection: 'row',
@@ -453,9 +554,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#8e8e93',
+    fontFamily: 'Roboto',
   },
   tabTextActive: {
     color: '#fff',
+    fontFamily: 'Roboto',
   },
   editButton: {
     padding: 8,
@@ -464,6 +567,7 @@ const styles = StyleSheet.create({
     color: '#007aff',
     fontSize: 16,
     fontWeight: '400',
+    fontFamily: 'Roboto',
   },
   categoriesList: {
     flex: 1,
@@ -496,17 +600,20 @@ const styles = StyleSheet.create({
     color: '#000',
     marginLeft: 12,
     fontWeight: '400',
+    fontFamily: 'Roboto',
   },
   systemBadge: {
     fontSize: 12,
     color: '#8e8e93',
     fontWeight: '300',
+    fontFamily: 'Roboto',
   },
   addCategoryLabel: {
     fontSize: 16,
     color: '#007aff',
     marginLeft: 12,
     fontWeight: '400',
+    fontFamily: 'Roboto',
   },
   minusButton: {
     width: 20,
@@ -516,5 +623,87 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    width: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalIconContainer: {
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+    fontFamily: 'Roboto',
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: '#8e8e93',
+    textAlign: 'center',
+    marginBottom: 24,
+    fontFamily: 'Roboto',
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  modalCancelButton: {
+    backgroundColor: '#e0e0e0',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    width: '40%',
+  },
+  modalCancelText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    fontFamily: 'Roboto',
+  },
+  modalDeleteButton: {
+    backgroundColor: '#ff3b30',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    width: '40%',
+  },
+  modalDeleteText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    fontFamily: 'Roboto',
+  },
+  modalOkButton: {
+    backgroundColor: '#007aff',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    width: '100%',
+  },
+  modalOkText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    fontFamily: 'Roboto',
   },
 }); 

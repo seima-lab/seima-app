@@ -414,11 +414,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 2,
+    fontFamily: 'Roboto',
   },
   subtitle: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   cardContainer: {
     backgroundColor: '#FFFFFF',
@@ -459,12 +461,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1e90ff',
     marginLeft: 8,
+    fontFamily: 'Roboto',
   },
   infoText: {
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+    fontFamily: 'Roboto',
   },
   otpContainer: {
     marginBottom: 30,
@@ -475,6 +479,7 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 12,
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   otpInputContainer: {
     flexDirection: 'row',
@@ -492,6 +497,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     backgroundColor: '#F9FAFB',
+    fontFamily: 'Roboto',
   },
   otpInputFocused: {
     borderColor: '#1e90ff',
@@ -517,6 +523,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
     marginBottom: 8,
+    fontFamily: 'Roboto',
   },
   resendButton: {
     flexDirection: 'row',
@@ -537,6 +544,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1e90ff',
     marginLeft: 6,
+    fontFamily: 'Roboto',
   },
   resendButtonTextDisabled: {
     color: '#9CA3AF',
@@ -566,6 +574,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+    fontFamily: 'Roboto',
   },
   buttonIcon: {
     marginLeft: 8,
@@ -578,5 +587,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1e90ff',
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
 }); 

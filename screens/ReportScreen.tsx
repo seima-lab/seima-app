@@ -11,7 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, Svg } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -260,6 +260,7 @@ export default function ReportScreen() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
 
   // State
   const [isLoading, setIsLoading] = useState(false);
@@ -479,7 +480,7 @@ export default function ReportScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton}>
@@ -619,7 +620,7 @@ export default function ReportScreen() {
         type={toastType}
         onHide={() => setShowToast(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

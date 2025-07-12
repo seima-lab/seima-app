@@ -627,12 +627,12 @@ const FinanceScreen = React.memo(() => {
     
     if (savingsRate < 5) {
       score -= 30;
-      suggestions.push(t('finance.health.lowSavings') || 'Bạn chỉ tiết kiệm được dưới 5% thu nhập - hãy thử cắt giảm 1-2 khoản chi không thiết yếu.');
+      suggestions.push(t('finance.health.suggestions.lowSavings'));
     } else if (savingsRate < 10) {
       score -= 20;
-      suggestions.push(t('finance.health.improveSavings') || 'Hãy cố gắng tăng tỷ lệ tiết kiệm lên trên 10% để an toàn hơn.');
+      suggestions.push(t('finance.health.suggestions.improveSavings'));
     } else if (savingsRate >= 20) {
-      achievements.push(t('finance.health.excellentSavings') || `Tuyệt vời! Bạn tiết kiệm được ${savingsRate.toFixed(1)}% thu nhập! 🎉`);
+      achievements.push(t('finance.health.suggestions.excellentSavings', { rate: savingsRate.toFixed(1) }));
     }
 
     // 2. Xu hướng chi tiêu (Expense vs Income)
@@ -640,10 +640,10 @@ const FinanceScreen = React.memo(() => {
     
     if (expenseRatio > 100) {
       score -= 40;
-      warnings.push(t('finance.health.overspending') || 'Bạn đang chi nhiều hơn thu - cần điều chỉnh ngay!');
+      warnings.push(t('finance.health.suggestions.overspending'));
     } else if (expenseRatio > 90) {
       score -= 25;
-      warnings.push(t('finance.health.highSpending') || 'Chi tiêu của bạn đang chiếm trên 90% thu nhập - hãy cẩn thận!');
+      warnings.push(t('finance.health.suggestions.highSpending'));
     }
 
     // 3. Xu hướng tài sản (giả định so với tháng trước)
@@ -652,9 +652,9 @@ const FinanceScreen = React.memo(() => {
     
     if (balanceChange < -500000) {
       score -= 20;
-      suggestions.push(t('finance.health.balanceDecline') || `Tài sản giảm ${Math.abs(balanceChange).toLocaleString('vi-VN')}₫ so với tháng trước - bạn đang chi nhiều hơn thu.`);
+      suggestions.push(t('finance.health.suggestions.balanceDecline', { amount: Math.abs(balanceChange).toLocaleString('vi-VN') + '₫' }));
     } else if (balanceChange > 1000000) {
-      achievements.push(t('finance.health.balanceGrowth') || `Tài sản tăng ${balanceChange.toLocaleString('vi-VN')}₫ so với tháng trước! 📈`);
+      achievements.push(t('finance.health.suggestions.balanceGrowth', { amount: balanceChange.toLocaleString('vi-VN') + '₫' }));
     }
 
     // Đảm bảo score trong khoảng 0-100
@@ -672,10 +672,30 @@ const FinanceScreen = React.memo(() => {
   }, [chartData, financeData.totalBalance, useMockData, mockChartData, mockFinanceData, t]);
 
   const getHealthStatus = (score: number) => {
-    if (score >= 80) return { label: 'Tốt', color: '#4CAF50', emoji: '🟩' };
-    if (score >= 60) return { label: 'Khá', color: '#FF9800', emoji: '🟨' };
-    if (score >= 40) return { label: 'Trung bình', color: '#FF5722', emoji: '🟧' };
-    return { label: 'Tệ', color: '#F44336', emoji: '🟥' };
+    if (score >= 80) return { 
+      label: t('finance.health.status.excellent'), 
+      message: t('finance.health.statusMessage.excellent'),
+      color: '#4CAF50', 
+      emoji: '🟩' 
+    };
+    if (score >= 60) return { 
+      label: t('finance.health.status.good'), 
+      message: t('finance.health.statusMessage.good'),
+      color: '#FF9800', 
+      emoji: '🟨' 
+    };
+    if (score >= 40) return { 
+      label: t('finance.health.status.fair'), 
+      message: t('finance.health.statusMessage.fair'),
+      color: '#FF5722', 
+      emoji: '🟧' 
+    };
+    return { 
+      label: t('finance.health.status.poor'), 
+      message: t('finance.health.statusMessage.poor'),
+      color: '#F44336', 
+      emoji: '🟥' 
+    };
   };
 
   const financialHealth = useMemo(() => calculateFinancialHealthScore(), [calculateFinancialHealthScore]);
@@ -754,13 +774,13 @@ const FinanceScreen = React.memo(() => {
              <ScrollView {...scrollViewProps}>
          <View style={styles.bodyContainer}>
           
-          {/* Financial Health Status Section - moved up and using fixed text */}
+          {/* Financial Health Status Section - moved up and using translation */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              📊 Sức khỏe tài chính: 75/100 ⓘ
+              📊 {t('finance.health.title')}: 75/100 ⓘ
             </Text>
             
-            {/* Health Status Bar - using fixed data */}
+            {/* Health Status Bar - using fixed data but with translation */}
             <View style={styles.healthBarContainer}>
               <View style={styles.healthBar}>
                 <View style={[
@@ -772,14 +792,14 @@ const FinanceScreen = React.memo(() => {
                 ]} />
               </View>
               <Text style={[styles.healthStatusText, { color: '#FF9800' }]}>
-                🟨 Khá – Cần điều chỉnh nhẹ
+                {t('finance.health.statusMessage.good')}
               </Text>
             </View>
 
-            {/* Fixed Suggestions and Warnings */}
+            {/* Fixed Suggestions and Warnings with translation */}
             <View style={styles.suggestionsContainer}>
               <View style={[styles.suggestionItem, styles.warningItem]}>
-                <Text style={styles.suggestionText}>💡 Bạn đã vượt 95% hạn mức cho 'Ăn uống' khi mới đến ngày 20 – hãy cân nhắc giảm đơn hàng hoặc tăng ngân sách nếu cần thiết.</Text>
+                <Text style={styles.suggestionText}>{t('finance.health.budgetWarning', { category: 'Ăn uống', day: '20' })}</Text>
               </View>
             </View>
           </View>
@@ -787,7 +807,7 @@ const FinanceScreen = React.memo(() => {
           {/* Income and Expenses Section */}
           <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Thu nhập và Chi tiêu</Text>
+                <Text style={styles.sectionTitle}>{t('finance.incomeAndExpenses')}</Text>
                 <View style={{ position: 'relative' }}>
                   <TouchableOpacity
                     style={styles.newDropdownButton}
@@ -1018,7 +1038,7 @@ const styles = StyleSheet.create({
     marginBottom: rp(10),
   },
   sectionTitle: {
-    marginTop: rp(20),
+    marginTop: rp(1),
     fontSize: rf(18),
     fontWeight: '600',
     color: '#333',
@@ -1325,7 +1345,7 @@ legendValue: {
     marginTop: rp(10),
   },
   healthBarContainer: {
-    marginTop: rp(15),
+    marginTop: rp(10),
     marginBottom: rp(10),
     alignItems: 'center',
   },
@@ -1343,7 +1363,7 @@ legendValue: {
   healthStatusText: {
     fontSize: rf(14),
     fontWeight: '600',
-    marginTop: rp(5),
+    marginTop: rp(10),
     fontFamily: 'Roboto',
   },
   healthMetrics: {

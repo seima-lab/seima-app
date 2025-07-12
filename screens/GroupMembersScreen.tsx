@@ -272,7 +272,6 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [showAllMembers, setShowAllMembers] = useState(false);
-  const [groupCode] = useState('651251');
   const [loading, setLoading] = useState(true);
   const [memberData, setMemberData] = useState<GroupMemberListResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -357,10 +356,6 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString('vi-VN') + '₫';
-  };
-
-  const handleCopyCode = () => {
-    Alert.alert(t('common.success'), t('group.memberManagement.copyCode'));
   };
 
   const handleInviteUsers = () => {
@@ -504,10 +499,6 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
     );
   };
 
-  const handleApproveFundRequests = () => {
-    navigation.navigate('ApproveMembers', { groupId });
-  };
-
   // Enhanced member modal rendering with role management
   const renderMemberInModal: ListRenderItem<DisplayMember> = ({ item }) => {
     console.log('🎯 Rendering member in modal:', item.name);
@@ -553,20 +544,15 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
       <View style={[styles.memberItem, isRemoving && styles.memberItemRemoving]}>
         <Image source={item.avatar} style={styles.memberAvatar} />
         <View style={styles.memberInfo}>
-          <View style={styles.memberHeader}>
-            <Text style={styles.memberName}>{item.name}</Text>
-            <RoleBadge role={item.role} />
-          </View>
-        <Text style={styles.memberRole}>
-            {item.role === GroupMemberRole.OWNER ? 'Fund Creator' : 'Contributed'}
-        </Text>
-      </View>
-      <Text style={styles.memberContribution}>{formatCurrency(item.contribution)}</Text>
+          <Text style={styles.memberName}>{item.name}</Text>
+          <RoleBadge role={item.role} size="small" />
+        </View>
+        <Text style={styles.memberContribution}>{formatCurrency(item.contribution)}</Text>
         {isRemoving && (
           <ActivityIndicator size="small" color="#FF6B6B" style={{ marginLeft: 8 }} />
         )}
-    </View>
-  );
+      </View>
+    );
 
     return (
       <SwipeableRow
@@ -750,30 +736,7 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
             <Icon name="chevron-right" size={24} color="#CCCCCC" />
           </TouchableOpacity>
           
-          <View style={styles.separator} />
-          
-          <TouchableOpacity style={styles.managementItem} onPress={handleApproveFundRequests}>
-            <Icon name="approval" size={24} color="#4A90E2" />
-            <Text style={styles.managementText}>{t('group.memberManagement.approveFundRequests')}</Text>
-            <Icon name="chevron-right" size={24} color="#CCCCCC" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Group Code Section */}
-        <View style={styles.groupCodeCard}>
-          <TouchableOpacity style={styles.shareButton}>
-            <Text style={styles.shareButtonText}>{t('group.memberManagement.inviteViaCode')}</Text>
-          </TouchableOpacity>
-          
-          <View style={styles.codeSection}>
-            <Text style={styles.codeLabel}>{t('group.memberManagement.privateGroup')}</Text>
-            <View style={styles.codeRow}>
-              <Text style={styles.codeText}>{groupCode}</Text>
-              <TouchableOpacity onPress={handleCopyCode} style={styles.copyButton}>
-                <Icon name="content-copy" size={20} color="#4A90E2" />
-              </TouchableOpacity>
-            </View>
-          </View>
+          {/* Removed Approve Fund Requests section */}
         </View>
 
         {/* Members List */}
@@ -833,12 +796,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666666',
+    fontFamily: 'Roboto',
   },
   errorText: {
     marginTop: 16,
     fontSize: 16,
     color: '#FF6B6B',
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   retryButton: {
     marginTop: 16,
@@ -851,6 +816,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   scrollContent: {
     paddingBottom: 100, // Add padding bottom to account for the bottom navigation
@@ -889,61 +855,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333333',
     marginLeft: 16,
+    fontFamily: 'Roboto',
   },
   separator: {
     height: 1,
     backgroundColor: '#F0F0F0',
     marginHorizontal: 16,
-  },
-  groupCodeCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  shareButton: {
-    backgroundColor: '#4A90E2',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  shareButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  codeSection: {
-    alignItems: 'center',
-  },
-  codeLabel: {
-    fontSize: 12,
-    color: '#999999',
-    marginBottom: 8,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  codeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  codeText: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#333333',
-    letterSpacing: 2,
-    marginRight: 12,
-  },
-  copyButton: {
-    padding: 8,
   },
   membersCard: {
     backgroundColor: '#FFFFFF',
@@ -967,6 +884,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333333',
+    fontFamily: 'Roboto',
   },
   memberItem: {
     flexDirection: 'row',
@@ -987,19 +905,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333333',
     marginRight: 8,
-  },
-  memberRole: {
-    fontSize: 12,
-    color: '#666666',
+    fontFamily: 'Roboto',
   },
   memberEmail: {
     fontSize: 12,
     color: '#666666',
+    fontFamily: 'Roboto',
   },
   memberContribution: {
     fontSize: 14,
     fontWeight: '600',
     color: '#4A90E2',
+    fontFamily: 'Roboto',
   },
   memberSeparator: {
     height: 1,
@@ -1018,6 +935,7 @@ const styles = StyleSheet.create({
     color: '#4A90E2',
     fontWeight: '500',
     marginRight: 4,
+    fontFamily: 'Roboto',
   },
   modalOverlay: {
     flex: 1,
@@ -1045,6 +963,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333333',
+    fontFamily: 'Roboto',
   },
   modalCloseButton: {
     padding: 4,
@@ -1062,6 +981,7 @@ const styles = StyleSheet.create({
     color: '#1976D2',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   modalListContainer: {
     flex: 1,
@@ -1096,11 +1016,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#333333',
+    fontFamily: 'Roboto',
   },
   modalMemberEmail: {
     fontSize: 12,
     color: '#666666',
     marginTop: 2,
+    fontFamily: 'Roboto',
   },
   modalMemberFooter: {
     flexDirection: 'row',
@@ -1130,6 +1052,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   modalActionsContainer: {
     flexDirection: 'row',
@@ -1156,6 +1079,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
+    fontFamily: 'Roboto',
   },
   emptyStateContainer: {
     flex: 1,
@@ -1166,6 +1090,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666666',
+    fontFamily: 'Roboto',
   },
   modalFooterButton: {
     backgroundColor: '#4A90E2',
@@ -1179,6 +1104,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   swipeableContainer: {
     flexDirection: 'row',
@@ -1210,6 +1136,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     marginTop: 2,
+    fontFamily: 'Roboto',
   },
   swipeableContent: {
     flex: 1,
@@ -1228,6 +1155,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
     marginBottom: 12,
+    fontFamily: 'Roboto',
   },
   roleOptions: {
     flexDirection: 'row',
@@ -1260,34 +1188,32 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 4,
     color: '#666666',
+    fontFamily: 'Roboto',
   },
   selectedRoleOptionText: {
     color: '#FFFFFF',
     fontWeight: '600',
   },
   roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 0,
+    marginTop: 2,
+    alignSelf: 'flex-start',
   },
   roleBadgeSmall: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
   },
   roleBadgeText: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '600',
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   roleBadgeTextSmall: {
-    fontSize: 9,
-  },
-  memberHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    fontSize: 7,
   },
   roleManagementSection: {
     marginTop: 12,
@@ -1306,6 +1232,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4A90E2',
     fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   modalCloseFooterButton: {
     backgroundColor: '#4A90E2',
@@ -1318,6 +1245,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   simpleModalMemberItem: {
     flexDirection: 'row',
@@ -1335,6 +1263,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
   simpleRoleButtons: {
     flexDirection: 'row',
@@ -1349,6 +1278,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Roboto',
   },
 });
 

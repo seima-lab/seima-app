@@ -110,7 +110,7 @@ export const BUDGET_ENDPOINTS = {
   LIST: `${ApiConfig.API_PREFIX}/budgets`,
   CREATE: `${ApiConfig.API_PREFIX}/budgets`,
   GET_BY_ID: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,
-  UPDATE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,
+  UPDATE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/update/${id}`,
   DELETE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/delete/${id}`,
 } as const;
 

@@ -3,14 +3,15 @@ import { BUDGET_ENDPOINTS } from './config';
 
 // API Response structure (camelCase from backend)
 export interface BudgetResponseDto {
-  budgetId: number;
-  budgetName: string;
-  startDate: string; // "yyyy-MM-dd HH:mm:ss"
-  endDate: string; // "yyyy-MM-dd HH:mm:ss"
-  periodType: string;
-  overallAmountLimit: number;
-  budgetRemainingAmount: number;
-  createdAt: string; // "yyyy-MM-dd HH:mm:ss"
+  budget_id: number;
+  budget_name: string;
+  start_date: string; // "yyyy-MM-dd HH:mm:ss"
+  end_date: string; // "yyyy-MM-dd HH:mm:ss"
+  period_type: string;
+  overall_amount_limit: number;
+  budget_remaining_amount: number;
+  created_at: string; // "yyyy-MM-dd HH:mm:ss"
+  category_list: Category[]; // Thay đổi từ categories thành category_list để nhất quán
 }
 
 // Create Budget Request structure (snake_case for app usage)
@@ -79,22 +80,10 @@ const convertToSnakeCase = (budget: any): Budget => {
     overall_amount_limit: budget.overall_amount_limit,
     budget_remaining_amount: budget.budget_remaining_amount,
     created_at: budget.created_at,
+    category_list: budget.category_list || budget.categories || []
   };
 };
 
-// Convert snake_case to camelCase for API request
-const convertToCamelCase = (request: CreateBudgetRequest): any => {
-  return {
-    userId: request.user_id,
-    budgetName: request.budget_name,
-    startDate: request.start_date,
-    endDate: request.end_date,
-    periodType: request.period_type,
-    overallAmountLimit: request.overall_amount_limit,
-    budgetRemainingAmount: request.budget_remaining_amount,
-    categoryList: request.category_list, // Array of objects with category_id
-  };
-};
 
 export class BudgetService {
   private static instance: BudgetService;
@@ -180,7 +169,7 @@ export class BudgetService {
           overall_amount_limit: response.data.overall_amount_limit || response.data.overallAmountLimit,
           budget_remaining_amount: response.data.budget_remaining_amount || response.data.budgetRemainingAmount,
           created_at: response.data.created_at || response.data.createdAt,
-          category_list: response.data.category_list || response.data.categoryList || []
+          category_list: response.data.category_list || response.data.categories || response.data.categoryList || []
         };
         
         console.log('🔄 Converted budget detail:', budgetDetail);
@@ -198,22 +187,66 @@ export class BudgetService {
   // Cập nhật budget theo id
   async updateBudget(id: number | string, request: CreateBudgetRequest): Promise<Budget> {
     try {
-      console.log('🔄 Updating budget with ID:', id);
+      console.log('🔄 ===== UPDATE BUDGET START =====');
+      console.log('🆔 Budget ID to update:', id);
+      console.log('🆔 Budget ID type:', typeof id);
       console.log('📤 Request data:', JSON.stringify(request, null, 2));
+      console.log('📤 Request data type:', typeof request);
+      console.log('📤 Request keys:', Object.keys(request));
+      
+      // Log từng field trong request
+      console.log('📋 Request details:');
+      console.log('  - user_id:', request.user_id, '(type:', typeof request.user_id, ')');
+      console.log('  - budget_name:', request.budget_name, '(type:', typeof request.budget_name, ')');
+      console.log('  - start_date:', request.start_date, '(type:', typeof request.start_date, ')');
+      console.log('  - end_date:', request.end_date, '(type:', typeof request.end_date, ')');
+      console.log('  - period_type:', request.period_type, '(type:', typeof request.period_type, ')');
+      console.log('  - overall_amount_limit:', request.overall_amount_limit, '(type:', typeof request.overall_amount_limit, ')');
+      console.log('  - budget_remaining_amount:', request.budget_remaining_amount, '(type:', typeof request.budget_remaining_amount, ')');
+      console.log('  - category_list:', request.category_list, '(type:', typeof request.category_list, ')');
+      console.log('  - category_list length:', request.category_list?.length || 0);
+      
+      if (request.category_list && request.category_list.length > 0) {
+        console.log('  - category_list details:');
+        request.category_list.forEach((cat, index) => {
+          console.log(`    [${index}] category_id:`, cat.category_id, '(type:', typeof cat.category_id, ')');
+        });
+      }
+      
+      console.log('🌐 API Endpoint:', `${BUDGET_ENDPOINTS.UPDATE(id.toString())}`);
+      console.log('📡 Making PUT request...');
+      
       const response = await apiService.put<any>(
         `${BUDGET_ENDPOINTS.UPDATE(id.toString())}`,
         request
       );
-      console.log('📥 Update budget response:', JSON.stringify(response, null, 2));
+      
+      console.log('📥 Raw API response:', response);
+      console.log('📥 Response type:', typeof response);
+      console.log('📥 Response keys:', response ? Object.keys(response) : 'null');
+      
       if (response && response.data) {
+        console.log('📊 Response data:', JSON.stringify(response.data, null, 2));
+        console.log('📊 Response data type:', typeof response.data);
+        console.log('📊 Response data keys:', Object.keys(response.data));
+        
         // Convert to snake_case if needed
         const updatedBudget = convertToSnakeCase(response.data);
-        console.log('✅ Budget updated successfully:', updatedBudget);
+        console.log('✅ Converted budget data:', JSON.stringify(updatedBudget, null, 2));
+        console.log('✅ Budget updated successfully!');
+        console.log('🔄 ===== UPDATE BUDGET END =====');
         return updatedBudget;
       }
+      
+      console.log('❌ Invalid response format - no data found');
+      console.log('🔄 ===== UPDATE BUDGET END =====');
       throw new Error('Invalid response format');
     } catch (error) {
-      console.error('❌ Error updating budget:', error);
+      console.error('❌ ===== UPDATE BUDGET ERROR =====');
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error);
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('🔄 ===== UPDATE BUDGET END =====');
       throw error;
     }
   }

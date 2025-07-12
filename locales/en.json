@@ -70,6 +70,32 @@
       "thisMonth": "This Month",
       "quarter": "1 Quarter",
       "thisYear": "This Year"
+    },
+    "health": {
+      "title": "Financial Health",
+      "score": "Score",
+      "status": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "fair": "Fair",
+        "poor": "Poor"
+      },
+      "statusMessage": {
+        "excellent": "🟩 Excellent – Keep it up!",
+        "good": "🟨 Good – Minor adjustments needed",
+        "fair": "🟧 Fair – Needs improvement",
+        "poor": "🟥 Poor – Urgent action required"
+      },
+      "suggestions": {
+        "lowSavings": "You're only saving under 5% of income - try cutting 1-2 non-essential expenses.",
+        "improveSavings": "Try to increase your savings rate above 10% for better security.",
+        "overspending": "You're spending more than you earn - need immediate adjustment!",
+        "highSpending": "Your spending is over 90% of income - be careful!",
+        "balanceDecline": "Assets decreased by {{amount}} compared to last month - you're spending more than earning.",
+        "excellentSavings": "Excellent! You're saving {{rate}}% of your income! 🎉",
+        "balanceGrowth": "Assets increased by {{amount}} compared to last month! 📈"
+      },
+      "budgetWarning": "💡 You've exceeded 95% of your budget for '{{category}}' on day {{day}} – consider reducing orders or increasing budget if needed."
     }
   },
 
@@ -192,7 +218,7 @@
     },
     "memberManagement": {
       "title": "Manage Members",
-      "inviteUsers": "Invite Users with email/sms",
+      "inviteUsers": "Invite Users with email",
       "manageMembers": "Manage Members",
       "approveFundRequests": "Approve Fund Join Requests",
       "inviteViaCode": "Invite via Code",
@@ -293,7 +319,14 @@
       "sentInvitations": "Sent Invitations",
       "instructions": "Enter an email address to invite a member to this group. The user will receive an email with instructions to join.",
       "enterEmailPlaceholder": "Enter email address",
-      "sendingMessage": "Please wait while we send the invitation..."
+      "sendingMessage": "Please wait while we send the invitation...",
+      "pendingMembers": "Pending Members",
+      "noPendingMembers": "No pending members",
+      "requestedAt": "Requested at",
+      "memberAccepted": "Member accepted successfully!",
+      "memberRejected": "Member rejected successfully!",
+      "acceptFailed": "Failed to accept member",
+      "rejectFailed": "Failed to reject member"
     }
   },
   
@@ -365,7 +398,8 @@
     "editExpense": "Edit Expense",
     "editIncome": "Edit Income",
     "addExpense": "Add Expense",
-    "addIncome": "Add Income"
+    "addIncome": "Add Income",
+    "validation": "Validation"
   },
 
   "changePasswordBtn": "Change Password",
@@ -802,6 +836,8 @@
       "confirm": "Confirm",
       "save": "Save",
       "update": "Update",
+      "saving": "Saving...",
+      "updating": "Updating...",
       "loadingBudgetData": "Loading budget data...",
       "validation": {
         "endDateBeforeStart": "End date must be greater than start date!",
@@ -839,6 +875,7 @@
       "delete": "Delete",
       "deleteSuccess": "Budget deleted!",
       "deleteError": "Failed to delete budget!",
+      "deleting": "Deleting budget...",
       "back": "Back",
       "loading": "Loading...",
       "loadError": "Cannot load budget detail.",

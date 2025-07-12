@@ -22,6 +22,7 @@ import { useNavigationService } from '../navigation/NavigationService';
 import { Budget, budgetService } from '../services/budgetService';
 import { CategoryResponse } from '../services/categoryService';
 import { WalletResponse, walletService } from '../services/walletService';
+import { deduplicateCategories, getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -62,12 +63,97 @@ const BudgetLimitScreen = () => {
         name: cat.category_name
       }))
     });
+    
+    // Check for duplicates
+    const categoryIds = selectedCategories.map(cat => cat.category_id);
+    const uniqueIds = new Set(categoryIds);
+    if (categoryIds.length !== uniqueIds.size) {
+      console.warn('⚠️ DUPLICATE CATEGORIES DETECTED!', {
+        total: categoryIds.length,
+        unique: uniqueIds.size,
+        duplicates: categoryIds.length - uniqueIds.size
+      });
+      
+      // Find duplicates
+      const duplicates = categoryIds.filter((id, index) => categoryIds.indexOf(id) !== index);
+      console.warn('⚠️ Duplicate category IDs:', duplicates);
+    }
   }, [selectedCategories]);
+  
   const [wallets, setWallets] = useState<WalletResponse[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletResponse | null>(null);
   const [showWalletPicker, setShowWalletPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Custom modal states
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalTitle, setModalTitle] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  
   const insets = useSafeAreaInsets();
+
+  // Helper functions for modals
+  const showValidationError = (message: string) => {
+    setModalTitle(t('common.validation'));
+    setModalMessage(message);
+    setShowValidationModal(true);
+  };
+
+  const showSuccessMessage = (message: string) => {
+    setModalTitle(t('common.success'));
+    setModalMessage(message);
+    setShowSuccessModal(true);
+  };
+
+  const showErrorMessage = (message: string) => {
+    setModalTitle(t('common.error'));
+    setModalMessage(message);
+    setShowErrorModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowSuccessModal(false);
+    setShowErrorModal(false);
+    setShowValidationModal(false);
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    // Navigate back after success
+    navigation.goBack();
+  };
+
+  // Helper function to render category icons
+  const renderCategoryIcons = () => {
+    if (selectedCategories.length === 0) {
+      return <Text style={styles.label}>{t('budget.setBudgetLimit.selectCategory')}</Text>;
+    }
+
+    return (
+      <View style={styles.categoryIconsContainer}>
+        {selectedCategories.slice(0, 4).map((category, index) => {
+          const iconName = getIconForCategory(category.category_icon_url, 'expense');
+          const iconColor = getIconColor(iconName, 'expense');
+          
+          return (
+            <Icon
+              key={`${category.category_id}-${index}`}
+              name={iconName}
+              size={20}
+              color={iconColor}
+              style={styles.categoryIcon}
+            />
+          );
+        })}
+        {selectedCategories.length > 4 && (
+          <Text style={styles.moreText}>+{selectedCategories.length - 4}</Text>
+        )}
+      </View>
+    );
+  };
 
   // Load budget data if in edit mode
   useEffect(() => {
@@ -130,8 +216,8 @@ const BudgetLimitScreen = () => {
           console.log('📊 Categories from API:', budgetDetail.category_list);
           console.log('📊 First category sample:', budgetDetail.category_list[0]);
           
-          // Convert to CategoryResponse format if needed
-          const categories = budgetDetail.category_list.map((cat: any) => ({
+          // Convert to CategoryResponse format if needed and deduplicate
+          const convertedCategories = budgetDetail.category_list.map((cat: any) => ({
             category_id: cat.category_id || cat.id,
             category_name: cat.category_name || cat.name,
             category_type: cat.category_type || cat.type,
@@ -141,7 +227,8 @@ const BudgetLimitScreen = () => {
             parent_category_id: cat.parent_category_id,
             is_system_defined: cat.is_system_defined
           }));
-          console.log('🔄 Converted categories:', categories);
+          
+          const categories = deduplicateCategories(convertedCategories);
           console.log('🔄 Setting selectedCategories with:', categories.length, 'items');
           setSelectedCategories(categories);
         } else {
@@ -154,7 +241,10 @@ const BudgetLimitScreen = () => {
           if (budgetData?.category_list && Array.isArray(budgetData.category_list)) {
             console.log('📊 Using categories from route params:', budgetData.category_list);
             console.log('📊 Route params categories count:', budgetData.category_list.length);
-            setSelectedCategories(budgetData.category_list);
+            
+            const deduplicatedCategories = deduplicateCategories(budgetData.category_list);
+            console.log('🔄 Setting selectedCategories from route params:', deduplicatedCategories.length, 'items');
+            setSelectedCategories(deduplicatedCategories);
           } else {
             console.log('❌ No categories found in both API and route params');
           }
@@ -201,8 +291,16 @@ const BudgetLimitScreen = () => {
   };
 
   const getPeriodLabel = (value: string) => {
-    const option = PERIOD_OPTIONS.find(opt => opt.value === value);
-    return option ? option.label : 'Hàng tháng';
+    switch (value) {
+      case 'WEEKLY':
+        return t('budget.setBudgetLimit.weekly');
+      case 'MONTHLY':
+        return t('budget.setBudgetLimit.monthly');
+      case 'YEARLY':
+        return t('budget.setBudgetLimit.yearly');
+      default:
+        return t('budget.setBudgetLimit.monthly');
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -289,28 +387,53 @@ const BudgetLimitScreen = () => {
   );
 
   const handleSave = async () => {
+    console.log('🔄 ===== HANDLE SAVE START =====');
+    console.log('🎯 Edit mode:', isEditMode);
+    console.log('🆔 Budget ID:', budgetId);
+    
     // Validate ngày kết thúc phải lớn hơn ngày bắt đầu
     if (endDate && (endDate <= startDate)) {
-      alert(t('budget.setBudgetLimit.validation.endDateBeforeStart'));
+      showValidationError(t('budget.setBudgetLimit.validation.endDateBeforeStart'));
       return;
     }
     if (!limitName.trim()) {
-      alert(t('budget.setBudgetLimit.validation.budgetNameRequired'));
+      showValidationError(t('budget.setBudgetLimit.validation.budgetNameRequired'));
       return;
     }
     if (!amount || Number(amount) <= 0) {
-      alert(t('budget.setBudgetLimit.validation.amountRequired'));
+      showValidationError(t('budget.setBudgetLimit.validation.amountRequired'));
       return;
     }
     if (selectedCategories.length === 0) {
-      alert(t('budget.setBudgetLimit.validation.categoryRequired'));
+      showValidationError(t('budget.setBudgetLimit.validation.categoryRequired'));
       return;
     }
     if (!selectedWallet) {
-      alert(t('budget.setBudgetLimit.validation.walletRequired'));
+      showValidationError(t('budget.setBudgetLimit.validation.walletRequired'));
       return;
     }
+    
+    // Show loading state
+    setIsSaving(true);
+    
     try {
+      console.log('📋 Form data before creating request:');
+      console.log('  - limitName:', limitName);
+      console.log('  - amount (raw):', amount);
+      console.log('  - amount (numeric):', Number(amount.replace(/[^0-9]/g, '')));
+      console.log('  - startDate:', startDate);
+      console.log('  - endDate:', endDate);
+      console.log('  - periodType:', periodType);
+      console.log('  - selectedCategories count:', selectedCategories.length);
+      console.log('  - selectedCategories:', selectedCategories.map(cat => ({
+        id: cat.category_id,
+        name: cat.category_name
+      })));
+      console.log('  - selectedWallet:', selectedWallet ? {
+        id: selectedWallet.id,
+        name: selectedWallet.wallet_name
+      } : 'null');
+      
       const request = {
         user_id: 0, // hoặc lấy user_id thực tế nếu cần
         budget_name: limitName,
@@ -323,19 +446,32 @@ const BudgetLimitScreen = () => {
         // wallet_id: selectedWallet.id, // nếu backend hỗ trợ
       };
 
+      console.log('📤 Final request object:', JSON.stringify(request, null, 2));
+
       if (isEditMode && budgetId) {
+        console.log('🔄 Calling updateBudget API...');
         // Update existing budget
         await budgetService.updateBudget(budgetId, request);
-        alert(t('budget.setBudgetLimit.success.update'));
+        console.log('✅ Update successful!');
+        showSuccessMessage(t('budget.setBudgetLimit.success.update'));
       } else {
+        console.log('🔄 Calling createBudget API...');
         // Create new budget
         await budgetService.createBudget(request);
-        alert(t('budget.setBudgetLimit.success.create'));
+        console.log('✅ Create successful!');
+        showSuccessMessage(t('budget.setBudgetLimit.success.create'));
       }
       
-      navigation.goBack();
+      console.log('🔄 ===== HANDLE SAVE END =====');
     } catch (err) {
-      alert(isEditMode ? t('budget.setBudgetLimit.error.update') : t('budget.setBudgetLimit.error.create'));
+      console.error('❌ ===== HANDLE SAVE ERROR =====');
+      console.error('❌ Error:', err);
+      console.error('❌ Error type:', typeof err);
+      console.error('❌ Error message:', err instanceof Error ? err.message : 'Unknown error');
+      console.error('🔄 ===== HANDLE SAVE END =====');
+      showErrorMessage(isEditMode ? t('budget.setBudgetLimit.error.update') : t('budget.setBudgetLimit.error.create'));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -412,11 +548,7 @@ const BudgetLimitScreen = () => {
                 }}
               >
                 <Icon name="food" size={24} color="#555" />
-                <Text style={styles.label}>
-                  {selectedCategories.length > 0
-                    ? selectedCategories.map(c => c.category_name).join(', ')
-                    : t('budget.setBudgetLimit.selectCategory')}
-                </Text>
+                {renderCategoryIcons()}
               </TouchableOpacity>
 
               {/* Account */}
@@ -567,15 +699,102 @@ const BudgetLimitScreen = () => {
               )}
 
               {/* Save Button */}
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>
-                  {isEditMode ? t('budget.setBudgetLimit.update') : t('budget.setBudgetLimit.save')}
-                </Text>
+              <TouchableOpacity 
+                style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} 
+                onPress={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <View style={styles.saveButtonLoading}>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <Text style={styles.saveButtonText}>
+                      {isEditMode ? t('budget.setBudgetLimit.updating') : t('budget.setBudgetLimit.saving')}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.saveButtonText}>
+                    {isEditMode ? t('budget.setBudgetLimit.update') : t('budget.setBudgetLimit.save')}
+                  </Text>
+                )}
               </TouchableOpacity>
             </>
           )}
         </View>
       </ScrollView>
+
+      {/* Custom Modals */}
+      
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleSuccessModalClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.customModalContainer}>
+            <View style={styles.modalIconContainer}>
+              <Icon name="check-circle" size={48} color="#10B981" />
+            </View>
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
+            <Text style={styles.modalMessage}>{modalMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleSuccessModalClose}
+            >
+              <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Error Modal */}
+      <Modal
+        visible={showErrorModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleModalClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.customModalContainer}>
+            <View style={styles.modalIconContainer}>
+              <Icon name="alert-circle" size={48} color="#EF4444" />
+            </View>
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
+            <Text style={styles.modalMessage}>{modalMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleModalClose}
+            >
+              <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Validation Modal */}
+      <Modal
+        visible={showValidationModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleModalClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.customModalContainer}>
+            <View style={styles.modalIconContainer}>
+              <Icon name="alert" size={48} color="#F59E0B" />
+            </View>
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
+            <Text style={styles.modalMessage}>{modalMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleModalClose}
+            >
+              <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -598,6 +817,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   amountBox: {
     backgroundColor: '#fff',
@@ -614,12 +834,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     minWidth: 100,
+    fontFamily: 'Roboto',
   },
   currencySymbol: {
     fontSize: 28,
     color: '#007AFF',
     fontWeight: 'bold',
     marginLeft: 8,
+    fontFamily: 'Roboto',
   },
   item: {
     flexDirection: 'row',
@@ -633,6 +855,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 16,
     color: '#333',
+    fontFamily: 'Roboto',
   },
   saveButton: {
     backgroundColor: '#007AFF',
@@ -644,6 +867,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: 'Roboto',
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
+  },
+  saveButtonLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
   },
   walletListOverlay: {
     position: 'absolute',
@@ -670,6 +903,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
     color: '#222',
+    fontFamily: 'Roboto',
   },
   walletItem: {
     flexDirection: 'row',
@@ -689,10 +923,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#222',
     fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   walletBalance: {
     fontSize: 13,
     color: '#888',
+    fontFamily: 'Roboto',
   },
   walletListClose: {
     marginTop: 12,
@@ -702,12 +938,14 @@ const styles = StyleSheet.create({
     color: '#1e90ff',
     fontWeight: 'bold',
     fontSize: 15,
+    fontFamily: 'Roboto',
   },
   nameInput: {
     marginLeft: 12,
     fontSize: 16,
     color: '#333',
     flex: 1,
+    fontFamily: 'Roboto',
   },
   // Modal styles
   modalOverlay: {
@@ -729,6 +967,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 15,
     color: '#333',
+    fontFamily: 'Roboto',
   },
   modalItem: {
     width: '100%',
@@ -744,6 +983,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   modalCloseButton: {
     marginTop: 15,
@@ -755,6 +995,7 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: 'Roboto',
   },
   // New date-related styles
   endDateToggle: {
@@ -797,6 +1038,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+    fontFamily: 'Roboto',
   },
   dateModalConfirmButton: {
     backgroundColor: '#007AFF',
@@ -807,6 +1049,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: 'Roboto',
   },
   loadingContainer: {
     flex: 1,
@@ -818,5 +1061,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+    fontFamily: 'Roboto',
+  },
+  categoryIconsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  categoryIcon: {
+    marginHorizontal: 2,
+  },
+  moreText: {
+    fontSize: 14,
+    color: '#888',
+    fontFamily: 'Roboto',
+    marginLeft: 4,
+  },
+  // Custom modal styles
+  customModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: width * 0.8,
+    paddingVertical: 25,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+     modalIconContainer: {
+     marginBottom: 15,
+   },
+   modalMessage: {
+    fontSize: 15,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: 'Roboto',
+  },
+  modalButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'Roboto',
   },
 });

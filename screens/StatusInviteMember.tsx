@@ -64,7 +64,7 @@ const StatusInviteMember: React.FC<StatusInviteMemberProps> = ({ status, group_n
   console.log('StatusInviteMember props:', { status, group_name, role, joined_at, invited_at });
   if (!status) return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
-      <Text style={{ color: '#EF5350', fontSize: 18 }}>Thiếu thông tin trạng thái</Text>
+      <Text style={{ color: '#EF5350', fontSize: 18, fontFamily: 'Roboto' }}>Thiếu thông tin trạng thái</Text>
     </View>
   );
   const config = STATUS_CONFIG[status as GroupMemberStatus] || STATUS_CONFIG.PENDING_APPROVAL;
@@ -150,6 +150,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   description: {
     fontSize: 16,
@@ -157,18 +158,21 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     textAlign: 'center',
     lineHeight: 22,
+    fontFamily: 'Roboto',
   },
   groupName: {
     fontSize: 16,
     color: '#1976D2',
     marginBottom: 6,
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   info: {
     fontSize: 15,
     color: '#666',
     marginBottom: 4,
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
 });
 
