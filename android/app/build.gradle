@@ -1,6 +1,7 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: 'com.google.gms.google-services'
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -152,7 +153,8 @@ dependencies {
     implementation("com.facebook.react:react-android")
   implementation("io.branch.sdk.android:library:5.8.0")
   implementation("store.galaxy.samsung.installreferrer:samsung_galaxystore_install_referrer:4.0.0")
-      
+      implementation("com.google.firebase:firebase-messaging:23.4.1")
+
 	// Required if your app is in the Google Play Store
 	implementation("com.google.android.gms:play-services-ads-identifier:18.0.1")
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";

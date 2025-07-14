@@ -4,6 +4,7 @@ import com.facebook.react.common.assets.ReactFontManager
 import android.app.Application
 import android.content.res.Configuration
 import io.branch.rnbranch.RNBranchModule
+import io.invertase.firebase.messaging.ReactNativeFirebaseMessagingPackage;
 
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -26,6 +27,8 @@ class MainApplication : Application(), ReactApplication {
           override fun getPackages(): List<ReactPackage> {
             val packages = PackageList(this).packages
             packages.add(io.branch.rnbranch.RNBranchPackage())
+            packages.add(ReactNativeFirebaseMessagingPackage())
+
             // Packages that cannot be autolinked yet can be added manually here, for example:
             // packages.add(MyReactNativePackage())
             return packages

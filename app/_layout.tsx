@@ -1,11 +1,12 @@
+import messaging from '@react-native-firebase/messaging';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
-
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, LogBox, View } from 'react-native';
+import { ActivityIndicator, Alert, LogBox, PermissionsAndroid, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
@@ -202,6 +203,43 @@ export default function RootLayout() {
   });
   useEffect(() => {
     BranchService.init();
+    const setupFCM = async () => {
+      // Android 13+: cần xin quyền POST_NOTIFICATIONS
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+          {
+            title: 'Thông báo',
+            message: 'Ứng dụng cần quyền gửi thông báo.',
+            buttonPositive: 'Cho phép',
+          }
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          console.log('Quyền thông báo bị từ chối');
+          return;
+        }
+      }
+  
+      // Firebase permission (Android/iOS)
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+  
+      if (enabled) {
+        const fcmToken = await messaging().getToken();
+        console.log('📨 FCM Token:', fcmToken);
+      }
+  
+      // Lắng nghe tin nhắn foreground
+      const unsubscribe = messaging().onMessage(async remoteMessage => {
+        Alert.alert('Tin nhắn đến', JSON.stringify(remoteMessage.notification?.body || remoteMessage.data));
+      });
+  
+      return unsubscribe;
+    };
+  
+    setupFCM();
     return () => {
       BranchService.cleanup();
     };
