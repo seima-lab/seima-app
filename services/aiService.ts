@@ -5,8 +5,16 @@ export interface AIChatMessage {
   text_input: string;
 }
 
+export interface SuggestedWallet {
+  id: number;
+  name: string;
+  balance?: number;
+  currency?: string;
+}
+
 export interface AIChatResponse {
   message: string;
+  suggested_wallets?: SuggestedWallet[];
   status_code: number;
   data?: any;
 }
@@ -15,6 +23,7 @@ export interface AIChatResponse {
 interface ApiAIResponse {
   status_code: number;
   message: string;
+  suggested_wallets?: SuggestedWallet[];
   data: {
     response: string;
     timestamp: string;
@@ -34,7 +43,7 @@ export class AIService {
   }
 
   // Gửi message tới AI và nhận phản hồi
-  async sendMessage(userId: number, textInput: string): Promise<string> {
+  async sendMessage(userId: number, textInput: string): Promise<AIChatResponse> {
     try {
       console.log('🤖 === AI SERVICE DEBUG START ===');
       console.log('🤖 Sending message to AI:');
@@ -71,7 +80,10 @@ export class AIService {
 
       if (responseText.trim() === '') {
         console.log('⚠️ Response is empty');
-        return this.getFriendlyErrorMessage('empty_response');
+        return {
+          message: this.getFriendlyErrorMessage('empty_response'),
+          status_code: 500
+        };
       } else {
         try {
           responseData = JSON.parse(responseText);
@@ -79,22 +91,41 @@ export class AIService {
         } catch (parseError) {
           console.log('⚠️ Failed to parse JSON, treating as plain text');
           console.log('📝 Using raw text as response:', responseText);
-          return this.getFriendlyMessage(responseText);
+          return {
+            message: this.getFriendlyMessage(responseText),
+            status_code: 200
+          };
         }
       }
 
       console.log('🔄 Processing AI response...');
 
-      // Xử lý response từ API - chỉ có trường message
+      // Xử lý response từ API - có thể có message và suggested_wallets
       if (responseData && responseData.message) {
         console.log('✅ Found response in message field:', responseData.message);
+        
+        const result: AIChatResponse = {
+          message: responseData.message,
+          status_code: responseData.status_code || 200
+        };
+
+        // Kiểm tra và xử lý suggested_wallets
+        if (responseData.suggested_wallets && Array.isArray(responseData.suggested_wallets)) {
+          // Giới hạn tối đa 5 phần tử
+          result.suggested_wallets = responseData.suggested_wallets.slice(0, 5);
+          console.log('💼 Found suggested wallets:', result.suggested_wallets);
+        }
+
         console.log('🤖 === AI SERVICE DEBUG END ===');
-        return responseData.message;
+        return result;
       } else {
         console.log('⚠️ No message field found in response');
         console.log('⚠️ Full response structure:', JSON.stringify(responseData, null, 2));
         console.log('🤖 === AI SERVICE DEBUG END ===');
-        return this.getFriendlyErrorMessage('no_message');
+        return {
+          message: this.getFriendlyErrorMessage('no_message'),
+          status_code: 500
+        };
       }
     } catch (error) {
       console.error('❌ === AI SERVICE ERROR ===');
@@ -102,7 +133,10 @@ export class AIService {
       console.error('❌ Error details:', JSON.stringify(error, null, 2));
       console.error('❌ === AI SERVICE ERROR END ===');
       
-      return this.getFriendlyErrorMessage('network_error');
+      return {
+        message: this.getFriendlyErrorMessage('network_error'),
+        status_code: 500
+      };
     }
   }
 

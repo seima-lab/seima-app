@@ -1,18 +1,18 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    FlatList,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CategoryResponse, categoryService, CategoryType } from '../services/categoryService';
-import { getIconColor, getIconForCategory } from '../utils/iconUtils';
+import { deduplicateCategories, getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 const SelectCategoryScreen = () => {
   const route = useRoute();
@@ -26,6 +26,32 @@ const SelectCategoryScreen = () => {
   const [selectedCategories, setSelectedCategories] = useState<CategoryResponse[]>(initialSelected);
 
   const insets = useSafeAreaInsets();
+
+  // Debug selectedCategories changes
+  useEffect(() => {
+    console.log('🔄 SelectCategoryScreen - selectedCategories changed:', {
+      count: selectedCategories.length,
+      categories: selectedCategories.map(cat => ({
+        id: cat.category_id,
+        name: cat.category_name
+      }))
+    });
+    
+    // Check for duplicates
+    const categoryIds = selectedCategories.map(cat => cat.category_id);
+    const uniqueIds = new Set(categoryIds);
+    if (categoryIds.length !== uniqueIds.size) {
+      console.warn('⚠️ SelectCategoryScreen - DUPLICATE CATEGORIES DETECTED!', {
+        total: categoryIds.length,
+        unique: uniqueIds.size,
+        duplicates: categoryIds.length - uniqueIds.size
+      });
+      
+      // Find duplicates
+      const duplicates = categoryIds.filter((id, index) => categoryIds.indexOf(id) !== index);
+      console.warn('⚠️ SelectCategoryScreen - Duplicate category IDs:', duplicates);
+    }
+  }, [selectedCategories]);
 
   useEffect(() => {
     loadCategories();
@@ -64,11 +90,29 @@ const SelectCategoryScreen = () => {
   };
 
   const toggleCategory = (category: CategoryResponse) => {
+    console.log('🔄 toggleCategory called with:', {
+      category_id: category.category_id,
+      category_name: category.category_name,
+      current_selected_count: selectedCategories.length
+    });
+    
     setSelectedCategories((prev) => {
-      if (prev.some((c) => c.category_id === category.category_id)) {
-        return prev.filter((c) => c.category_id !== category.category_id);
+      // Check if category already exists by category_id
+      const existingIndex = prev.findIndex((c) => c.category_id === category.category_id);
+      
+      if (existingIndex !== -1) {
+        // Remove if exists
+        console.log('🗑️ Removing existing category:', category.category_name);
+        const newCategories = prev.filter((c) => c.category_id !== category.category_id);
+        console.log('✅ Categories after removal:', newCategories.length);
+        return newCategories;
+      } else {
+        // Add if not exists
+        console.log('➕ Adding new category:', category.category_name);
+        const newCategories = [...prev, category];
+        console.log('✅ Categories after addition:', newCategories.length);
+        return newCategories;
       }
-      return [...prev, category];
     });
   };
 
@@ -116,6 +160,23 @@ const SelectCategoryScreen = () => {
     );
   }
 
+  const handleConfirm = () => {
+    // Validate and clean up categories before sending back
+    const cleanedCategories = deduplicateCategories(selectedCategories);
+    
+    console.log('🔄 SelectCategoryScreen - Confirming categories:', {
+      original: selectedCategories.length,
+      cleaned: cleanedCategories.length
+    });
+    
+    if (cleanedCategories.length !== selectedCategories.length) {
+      console.warn('⚠️ SelectCategoryScreen - Removed duplicates before confirming');
+    }
+    
+    onSelectCategories(cleanedCategories);
+    navigation.goBack();
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -152,12 +213,9 @@ const SelectCategoryScreen = () => {
 
       <TouchableOpacity
         style={{ backgroundColor: '#007AFF', padding: 16, borderRadius: 10, margin: 16 }}
-        onPress={() => {
-          onSelectCategories(selectedCategories);
-          navigation.goBack();
-        }}
+        onPress={handleConfirm}
       >
-        <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>Xác nhận</Text>
+        <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold', fontFamily: 'Roboto' }}>Xác nhận</Text>
       </TouchableOpacity>
     </View>
   );
@@ -181,6 +239,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 16,
     color: '#333',
+    fontFamily: 'Roboto',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -203,6 +262,7 @@ const styles = StyleSheet.create({
     height: 48,
     fontSize: 16,
     color: '#333',
+    fontFamily: 'Roboto',
   },
   categoryList: {
     paddingHorizontal: 16,
@@ -233,6 +293,7 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 16,
     color: '#333',
+    fontFamily: 'Roboto',
   },
   loadingContainer: {
     flex: 1,
@@ -244,6 +305,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#666',
+    fontFamily: 'Roboto',
   },
   errorContainer: {
     flex: 1,
@@ -257,6 +319,7 @@ const styles = StyleSheet.create({
     color: '#ff375f',
     textAlign: 'center',
     marginBottom: 16,
+    fontFamily: 'Roboto',
   },
   retryButton: {
     backgroundColor: '#007AFF',
@@ -268,6 +331,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: 'Roboto',
   },
   emptyContainer: {
     flex: 1,
@@ -278,6 +342,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#999',
+    fontFamily: 'Roboto',
   },
 });
 

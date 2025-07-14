@@ -445,3 +445,49 @@ export const getIconsForCategoryType = (categoryType: 'expense' | 'income') => {
 export const hasIconColor = (iconName: string): boolean => {
   return iconName in ICON_COLOR_MAP;
 }; 
+
+/**
+ * Deduplicate categories by category_id to prevent duplicates
+ * @param categories Array of categories that might contain duplicates
+ * @returns Array of unique categories
+ */
+export const deduplicateCategories = (categories: any[]): any[] => {
+  if (!Array.isArray(categories)) {
+    console.warn('⚠️ deduplicateCategories: Input is not an array:', categories);
+    return [];
+  }
+  
+  const categoriesMap = new Map();
+  const duplicates: any[] = [];
+  
+  categories.forEach((cat: any) => {
+    const categoryId = cat.category_id || cat.id;
+    if (categoryId) {
+      if (categoriesMap.has(categoryId)) {
+        duplicates.push(cat);
+        console.warn('⚠️ Found duplicate category:', {
+          id: categoryId,
+          name: cat.category_name || cat.name,
+          existing: categoriesMap.get(categoryId)
+        });
+      } else {
+        categoriesMap.set(categoryId, cat);
+      }
+    } else {
+      console.warn('⚠️ Category without ID:', cat);
+    }
+  });
+  
+  if (duplicates.length > 0) {
+    console.warn('⚠️ Removed duplicate categories:', duplicates.length, 'duplicates found');
+  }
+  
+  const uniqueCategories = Array.from(categoriesMap.values());
+  console.log('✅ Deduplicated categories:', {
+    original: categories.length,
+    unique: uniqueCategories.length,
+    removed: duplicates.length
+  });
+  
+  return uniqueCategories;
+}; 

@@ -2,19 +2,19 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Modal,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Modal,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -72,7 +72,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   const insets = useSafeAreaInsets();
   const [menuVisible, setMenuVisible] = useState<string | null>(null);
   const [deleteAlertVisible, setDeleteAlertVisible] = useState(false);
-  const [deleteWalletInfo, setDeleteWalletInfo] = useState<{id: number, name: string} | null>(null);
+  const [deleteWalletInfo, setDeleteWalletInfo] = useState<{id: number, name: string, isDefault?: boolean} | null>(null);
   const navigation = useNavigationService();
   const isFirstRender = useRef(true);
   const shouldAutoRefresh = useRef(false);
@@ -219,26 +219,12 @@ const WalletScreen = ({ footerHeight = 0 }) => {
       return;
     }
 
-    if (wallet.is_default) {
-      Alert.alert(
-        'Delete Default Wallet',
-        `"${wallet.wallet_name}" is your default wallet. Are you sure you want to delete it? You'll need to set another wallet as default.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Delete', 
-            style: 'destructive',
-            onPress: () => {
-              setDeleteWalletInfo({ id: walletId, name: wallet.wallet_name });
-              setDeleteAlertVisible(true);
-            }
-          }
-        ]
-      );
-      return;
-    }
-
-    setDeleteWalletInfo({ id: walletId, name: wallet.wallet_name });
+    // Sử dụng modal tùy chỉnh cho tất cả các trường hợp
+    setDeleteWalletInfo({ 
+      id: walletId, 
+      name: wallet.wallet_name, 
+      isDefault: wallet.is_default 
+    });
     setDeleteAlertVisible(true);
   };
 
@@ -336,42 +322,6 @@ const WalletScreen = ({ footerHeight = 0 }) => {
     return [styles.accountIcon, styles.walletIcon];
   };
 
-  const renderWalletItem = (wallet: WalletResponse) => {
-    const isExcluded = wallet.exclude_from_total;
-    const balanceColor = isExcluded
-      ? styles.disabledAccountBalance.color
-      : wallet.current_balance > 0 ? '#22c55e' : '#333';
-    return (
-      <View key={wallet.id} style={[styles.accountItem, isExcluded && styles.disabledAccountItem]}>
-        <View style={[getWalletIconStyle(wallet.wallet_type_name), isExcluded && styles.disabledAccountIcon]}>
-          {getWalletIcon(wallet.wallet_type_name)}
-        </View>
-        <View style={styles.accountInfo}>
-          <View style={styles.walletNameContainer}>
-            <Text style={[styles.accountName, isExcluded && styles.disabledAccountName]}>{wallet.wallet_name}</Text>
-            {wallet.is_default && !isExcluded && (
-              <View style={styles.defaultBadge}>
-                <Text style={styles.defaultBadgeText}>{t('wallet.defaultWallet')}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={[styles.accountBalance, { color: balanceColor }]}> 
-            {wallet.current_balance.toLocaleString('vi-VN')} {t('currency')}
-          </Text>
-        </View>
-        <View style={styles.moreButtonContainer}>
-          <TouchableOpacity 
-            style={styles.moreButton}
-            onPress={() => handleMenuPress(wallet.id)}
-          >
-            <Icon name="more-vert" size={rf(24)} color="#666" />
-          </TouchableOpacity>
-          {renderMenu(wallet.id)}
-        </View>
-      </View>
-    );
-  };
-
   const renderCustomAlert = () => (
     <Modal
       transparent={true}
@@ -384,9 +334,14 @@ const WalletScreen = ({ footerHeight = 0 }) => {
           <View style={styles.alertIconContainer}>
             <Icon name="warning" size={rf(48)} color="#ff4757" />
           </View>
-          <Text style={styles.alertTitle}>{t('wallet.alertTitle')}</Text>
+          <Text style={styles.alertTitle}>
+            {deleteWalletInfo?.isDefault ? 'Delete Default Wallet' : t('wallet.alertTitle')}
+          </Text>
           <Text style={styles.alertMessage}>
-            {t('wallet.deleteMessage', { walletName: deleteWalletInfo?.name })}
+            {deleteWalletInfo?.isDefault 
+              ? `"${deleteWalletInfo.name}" is your default wallet. Are you sure you want to delete it? You'll need to set another wallet as default.`
+              : t('wallet.deleteMessage', { walletName: deleteWalletInfo?.name })
+            }
           </Text>
           <View style={styles.alertButtonContainer}>
             <TouchableOpacity style={styles.alertCancelButton} onPress={cancelDelete}>
@@ -512,7 +467,39 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                     if (a.exclude_from_total === b.exclude_from_total) return 0;
                     return a.exclude_from_total ? 1 : -1;
                   })
-                  .map(renderWalletItem)
+                  .map((wallet, index) => (
+                    <View key={`${wallet.id}-${index}`} style={[styles.accountItem, wallet.exclude_from_total && styles.disabledAccountItem]}>
+                      <View style={[getWalletIconStyle(wallet.wallet_type_name), wallet.exclude_from_total && styles.disabledAccountIcon]}>
+                        {getWalletIcon(wallet.wallet_type_name)}
+                      </View>
+                      <View style={styles.accountInfo}>
+                        <View style={styles.walletNameContainer}>
+                          <Text style={[styles.accountName, wallet.exclude_from_total && styles.disabledAccountName]}>{wallet.wallet_name}</Text>
+                          {wallet.is_default && !wallet.exclude_from_total && (
+                            <View style={styles.defaultBadge}>
+                              <Text style={styles.defaultBadgeText}>{t('wallet.defaultWallet')}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={[styles.accountBalance, { 
+                          color: wallet.exclude_from_total
+                            ? styles.disabledAccountBalance.color
+                            : wallet.current_balance > 0 ? '#22c55e' : '#333'
+                        }]}> 
+                          {wallet.current_balance.toLocaleString('vi-VN')} {t('currency')}
+                        </Text>
+                      </View>
+                      <View style={styles.moreButtonContainer}>
+                        <TouchableOpacity 
+                          style={styles.moreButton}
+                          onPress={() => handleMenuPress(wallet.id)}
+                        >
+                          <Icon name="more-vert" size={rf(24)} color="#666" />
+                        </TouchableOpacity>
+                        {renderMenu(wallet.id)}
+                      </View>
+                    </View>
+                  ))
               ) : (
                 <View style={styles.emptyContainer}>
                   <Text style={[styles.emptyText, { fontSize: rf(16), marginBottom: rp(8) }]}> 
@@ -668,6 +655,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
+    fontFamily: 'Roboto',
   },
   walletNameContainer: {
     flexDirection: 'column',
@@ -685,9 +673,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   accountBalance: {
     fontWeight: '500',
+    fontFamily: 'Roboto',
   },
   moreButtonContainer: {
     position: 'relative',
@@ -745,6 +735,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 8,
     color: '#333',
+    fontFamily: 'Roboto',
   },
   menuDivider: {
     height: 1,
@@ -782,12 +773,14 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 16,
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   alertMessage: {
     color: '#666',
     lineHeight: 22,
     marginBottom: 16,
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   alertButtonContainer: {
     flexDirection: 'row',
@@ -810,6 +803,7 @@ const styles = StyleSheet.create({
     color: '#495057',
     fontWeight: '600',
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   alertDeleteButton: {
     backgroundColor: '#dc3545',
@@ -832,6 +826,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   centerContent: {
     justifyContent: 'center',
@@ -841,6 +836,7 @@ const styles = StyleSheet.create({
     color: '#1e90ff',
     fontWeight: 'bold',
     marginTop: 16,
+    fontFamily: 'Roboto',
   },
   emptyContainer: {
     flex: 1,
@@ -855,6 +851,7 @@ const styles = StyleSheet.create({
   },
   emptySubText: {
     color: '#666',
+    fontFamily: 'Roboto',
   },
 });
 

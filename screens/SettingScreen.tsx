@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LogoutModal from '../components/LogoutModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -141,19 +141,19 @@ const SettingScreen = () => {
   // Show loading state
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#1e90ff" />
           <Text style={styles.loadingText}>{t('common.loading')}...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // Show login prompt if not authenticated
   if (!isAuthenticated) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <Text style={styles.errorText}>Please login to view settings</Text>
           <TouchableOpacity 
@@ -163,12 +163,12 @@ const SettingScreen = () => {
             <Text style={styles.loginBtnText}>Go to Login</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
       <ScrollView 
         style={styles.scrollView}
@@ -271,7 +271,7 @@ const SettingScreen = () => {
          }}
          onCancel={() => setLogoutModalVisible(false)}
        />
-    </SafeAreaView>
+    </View>
   );
 };
 

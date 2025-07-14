@@ -21,7 +21,7 @@ import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
-import { aiService } from '../services/aiService';
+import { aiService, SuggestedWallet } from '../services/aiService';
 import { UserService } from '../services/userService';
 
 const { width } = Dimensions.get('window');
@@ -31,6 +31,7 @@ interface Message {
     text: string;
     isUser: boolean;
     timestamp: Date;
+    suggestedWallets?: SuggestedWallet[];
 }
 
 // Typing indicator component with 3 bouncing dots
@@ -94,6 +95,47 @@ const Avatar = ({ isUser }: { isUser: boolean }) => {
                     <Icon2 name="robot" size={18} color="#FFFFFF" />
                 </LinearGradient>
             )}
+        </View>
+    );
+};
+
+// Suggested Wallets component
+const SuggestedWallets = ({ wallets, onWalletSelect }: { 
+    wallets: SuggestedWallet[], 
+    onWalletSelect: (wallet: SuggestedWallet) => void 
+}) => {
+    // Early return if no wallets or empty array
+    if (!wallets || wallets.length === 0) {
+        console.log('💼 No suggested wallets to display');
+        return null;
+    }
+
+    console.log('💼 Rendering suggested wallets:', wallets.length, 'wallets');
+
+    return (
+        <View style={styles.suggestedWalletsContainer}>
+            <Text style={styles.suggestedWalletsTitle}>💼 Ví được đề xuất:</Text>
+            <View style={styles.suggestedWalletsGrid}>
+                {wallets.map((wallet) => (
+                    <TouchableOpacity
+                        key={wallet.id}
+                        style={styles.suggestedWalletButton}
+                        onPress={() => onWalletSelect(wallet)}
+                    >
+                        <View style={styles.suggestedWalletContent}>
+                            <Icon name="account-balance-wallet" size={16} color="#1e90ff" />
+                            <Text style={styles.suggestedWalletName} numberOfLines={1}>
+                                {wallet.name}
+                            </Text>
+                            {wallet.balance !== undefined && (
+                                <Text style={styles.suggestedWalletBalance}>
+                                    {wallet.balance.toLocaleString('vi-VN')} {wallet.currency || 'đ'}
+                                </Text>
+                            )}
+                        </View>
+                    </TouchableOpacity>
+                ))}
+            </View>
         </View>
     );
 };
@@ -176,18 +218,20 @@ const ChatAIScreen = () => {
         setTimeout(() => setShowWelcome(false), 3000);
     }, []);
 
-    const handleSendMessage = async () => {
-        console.log('📤 === SEND MESSAGE DEBUG START ===');
-        console.log('📤 Input text:', inputText.trim());
-        console.log('📤 User ID:', userId);
-        console.log('📤 Can send?', inputText.trim() && userId);
+    const handleSendMessage = async (messageText?: string) => {
+        const textToSend = messageText || inputText.trim();
         
-        if (inputText.trim() && userId) {
+        console.log('📤 === SEND MESSAGE DEBUG START ===');
+        console.log('📤 Input text:', textToSend);
+        console.log('📤 User ID:', userId);
+        console.log('📤 Can send?', textToSend && userId);
+        
+        if (textToSend && userId) {
             console.log('✅ Conditions met, proceeding to send message');
             
             const userMessage: Message = {
                 id: Date.now().toString(),
-                text: inputText,
+                text: textToSend,
                 isUser: true,
                 timestamp: new Date(),
             };
@@ -195,25 +239,34 @@ const ChatAIScreen = () => {
             console.log('📝 User message created:', JSON.stringify(userMessage, null, 2));
             setMessages(prev => [...prev, userMessage]);
             
-            const currentInput = inputText;
-            setInputText('');
+            if (!messageText) {
+                setInputText('');
+            }
             setIsLoading(true);
             setShowWelcome(false);
             
-            console.log('🚀 Starting AI request with input:', currentInput);
+            console.log('🚀 Starting AI request with input:', textToSend);
             
             try {
                 // Gửi message tới AI API
                 console.log('🤖 Calling aiService.sendMessage...');
-                const aiResponse = await aiService.sendMessage(userId, currentInput);
+                const aiResponse = await aiService.sendMessage(userId, textToSend);
                 
                 console.log('✅ AI response received:', aiResponse);
+                console.log('📝 AI response structure:', {
+                    hasMessage: !!aiResponse.message,
+                    messageLength: aiResponse.message?.length,
+                    hasSuggestedWallets: !!aiResponse.suggested_wallets,
+                    suggestedWalletsCount: aiResponse.suggested_wallets?.length,
+                    suggestedWallets: aiResponse.suggested_wallets
+                });
                 
                 const aiMessage: Message = {
                     id: (Date.now() + 1).toString(),
-                    text: aiResponse,
+                    text: aiResponse.message,
                     isUser: false,
                     timestamp: new Date(),
+                    suggestedWallets: aiResponse.suggested_wallets || undefined,
                 };
                 
                 console.log('🤖 AI message created:', JSON.stringify(aiMessage, null, 2));
@@ -244,7 +297,7 @@ const ChatAIScreen = () => {
             }
         } else {
             console.log('❌ Cannot send message - missing conditions:');
-            console.log('   - Input text empty?', !inputText.trim());
+            console.log('   - Input text empty?', !textToSend);
             console.log('   - User ID missing?', !userId);
         }
     };
@@ -252,6 +305,11 @@ const ChatAIScreen = () => {
     const handleSuggestion = (suggestion: string) => {
         setInputText(suggestion);
         setShowWelcome(false);
+    };
+
+    const handleWalletSelect = (wallet: SuggestedWallet) => {
+        const walletMessage = wallet.name;
+        handleSendMessage(walletMessage);
     };
 
     const renderMessage = (message: Message) => (
@@ -271,6 +329,15 @@ const ChatAIScreen = () => {
                         {message.text}
                     </Text>
                 </View>
+                
+                {/* Suggested Wallets - Only show if wallets exist */}
+                {message.suggestedWallets && message.suggestedWallets.length > 0 && (
+                    <SuggestedWallets 
+                        wallets={message.suggestedWallets} 
+                        onWalletSelect={handleWalletSelect}
+                    />
+                )}
+                
                 <Text style={[
                     styles.timestamp,
                     message.isUser ? styles.userTimestamp : styles.aiTimestamp
@@ -350,8 +417,8 @@ const ChatAIScreen = () => {
                         )}
                     </ScrollView>
 
-                    {/* Suggestions */}
-                    <View style={styles.suggestionsContainer}>
+                    {/* Suggestions - Temporarily hidden */}
+                    {/* <View style={styles.suggestionsContainer}>
                         <Text style={styles.suggestionsTitle}>Gợi ý cho bạn:</Text>
                         <View style={styles.suggestionsGrid}>
                             {suggestions.map((suggestion, index) => (
@@ -365,7 +432,7 @@ const ChatAIScreen = () => {
                                 </TouchableOpacity>
                             ))}
                         </View>
-                    </View>
+                    </View> */}
 
                     {/* Input Area */}
                     <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 16 }]}>
@@ -399,7 +466,7 @@ const ChatAIScreen = () => {
                                             styles.sendButton, 
                                             (isLoading || !userId || !inputText.trim()) && styles.disabledButton
                                         ]}
-                                        onPress={handleSendMessage}
+                                        onPress={() => handleSendMessage()}
                                         disabled={isLoading || !userId || !inputText.trim()}
                                     >
                                         <LinearGradient
@@ -661,6 +728,51 @@ const styles = StyleSheet.create({
         marginLeft: 6,
         flexShrink: 1,
         flexWrap: 'wrap',
+    },
+    // Suggested Wallets styles
+    suggestedWalletsContainer: {
+        marginTop: 8,
+        marginBottom: 8,
+    },
+    suggestedWalletsTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#4a5568',
+        marginBottom: 8,
+    },
+    suggestedWalletsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    suggestedWalletButton: {
+        backgroundColor: '#f0f8ff',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#1e90ff',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        minWidth: 100,
+        maxWidth: '48%',
+    },
+    suggestedWalletContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+    },
+    suggestedWalletName: {
+        color: '#1e90ff',
+        fontSize: 13,
+        fontWeight: '600',
+        marginLeft: 6,
+        flex: 1,
+    },
+    suggestedWalletBalance: {
+        color: '#666',
+        fontSize: 11,
+        marginTop: 2,
+        width: '100%',
+        textAlign: 'center',
     },
     inputContainer: {
         paddingHorizontal: 16,

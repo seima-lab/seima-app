@@ -1,19 +1,19 @@
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -365,6 +365,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666',
+    fontFamily: 'Roboto',
   },
   header: {
     flexDirection: 'row',
@@ -386,6 +387,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     marginHorizontal: 16,
+    fontFamily: 'Roboto',
   },
   saveButton: {
     paddingHorizontal: 16,
@@ -398,6 +400,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1e90ff',
+    fontFamily: 'Roboto',
   },
   saveButtonTextDisabled: {
     color: '#aaa',
@@ -447,6 +450,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+    fontFamily: 'Roboto',
   },
   inputSection: {
     marginBottom: 24,
@@ -456,6 +460,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+    fontFamily: 'Roboto',
   },
   input: {
     borderWidth: 1,
@@ -466,6 +471,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     backgroundColor: '#f9f9f9',
+    fontFamily: 'Roboto',
   },
   textArea: {
     height: 100,
@@ -482,6 +488,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 12,
+    fontFamily: 'Roboto',
   },
   infoItem: {
     flexDirection: 'row',
@@ -492,6 +499,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginLeft: 8,
+    fontFamily: 'Roboto',
   },
   dangerSection: {
     backgroundColor: '#fff5f5',
@@ -506,6 +514,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#dc3545',
     marginBottom: 12,
+    fontFamily: 'Roboto',
   },
   deleteButton: {
     flexDirection: 'row',
@@ -523,10 +532,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#dc3545',
     marginLeft: 8,
+    fontFamily: 'Roboto',
   },
   deleteWarning: {
     fontSize: 12,
     color: '#6b7280',
     lineHeight: 16,
+    fontFamily: 'Roboto',
   },
 }); 

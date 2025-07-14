@@ -105,6 +105,9 @@ function AuthNavigator() {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
+        statusBarStyle: 'light',
+        statusBarBackgroundColor: 'transparent',
+        gestureEnabled: false,
       }}
     >
       {/* Main app screens - only available when authenticated */}
@@ -156,7 +159,38 @@ function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer 
+      ref={navigationRef}
+      theme={{
+        dark: false,
+        colors: {
+          primary: '#1e90ff',
+          background: '#fff',
+          card: '#fff',
+          text: '#000',
+          border: 'transparent',
+          notification: '#ff453a',
+        },
+        fonts: {
+          regular: {
+            fontFamily: 'System',
+            fontWeight: 'normal',
+          },
+          medium: {
+            fontFamily: 'System',
+            fontWeight: '500',
+          },
+          bold: {
+            fontFamily: 'System',
+            fontWeight: 'bold',
+          },
+          heavy: {
+            fontFamily: 'System',
+            fontWeight: '800',
+          },
+        },
+      }}
+    >
       <AuthNavigator />
     </NavigationContainer>
   );

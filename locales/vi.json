@@ -70,6 +70,32 @@
       "thisMonth": "Tháng này",
       "quarter": "1 Quý",
       "thisYear": "Năm nay"
+    },
+    "health": {
+      "title": "Sức khỏe tài chính",
+      "score": "Điểm",
+      "status": {
+        "excellent": "Xuất sắc",
+        "good": "Tốt",
+        "fair": "Khá",
+        "poor": "Tệ"
+      },
+      "statusMessage": {
+        "excellent": "🟩 Xuất sắc – Hãy duy trì!",
+        "good": "🟨 Tốt – Cần điều chỉnh nhẹ",
+        "fair": "🟧 Khá – Cần cải thiện",
+        "poor": "🟥 Tệ – Cần hành động khẩn cấp"
+      },
+      "suggestions": {
+        "lowSavings": "Bạn chỉ tiết kiệm được dưới 5% thu nhập - hãy thử cắt giảm 1-2 khoản chi không thiết yếu.",
+        "improveSavings": "Hãy cố gắng tăng tỷ lệ tiết kiệm lên trên 10% để an toàn hơn.",
+        "overspending": "Bạn đang chi nhiều hơn thu - cần điều chỉnh ngay!",
+        "highSpending": "Chi tiêu của bạn đang chiếm trên 90% thu nhập - hãy cẩn thận!",
+        "balanceDecline": "Tài sản giảm {{amount}} so với tháng trước - bạn đang chi nhiều hơn thu.",
+        "excellentSavings": "Tuyệt vời! Bạn tiết kiệm được {{rate}}% thu nhập! 🎉",
+        "balanceGrowth": "Tài sản tăng {{amount}} so với tháng trước! 📈"
+      },
+      "budgetWarning": "💡 Bạn đã vượt 95% hạn mức cho '{{category}}' khi mới đến ngày {{day}} – hãy cân nhắc giảm đơn hàng hoặc tăng ngân sách nếu cần thiết."
     }
   },
 
@@ -184,7 +210,7 @@
     },
     "memberManagement": {
       "title": "Quản lý thành viên",
-      "inviteUsers": "Mời người dùng qua email/sms",
+      "inviteUsers": "Mời người dùng qua email",
       "manageMembers": "Quản lý thành viên",
       "approveFundRequests": "Duyệt yêu cầu tham gia quỹ",
       "inviteViaCode": "Mời qua mã",
@@ -284,7 +310,14 @@
       "sentInvitations": "Lời mời đã gửi",
       "instructions": "Nhập địa chỉ email để mời thành viên vào nhóm này. Người dùng sẽ nhận được email hướng dẫn tham gia.",
       "enterEmailPlaceholder": "Nhập địa chỉ email",
-      "sendingMessage": "Vui lòng chờ trong khi chúng tôi gửi lời mời..."
+      "sendingMessage": "Vui lòng chờ trong khi chúng tôi gửi lời mời...",
+      "pendingMembers": "Danh sách chờ duyệt",
+      "noPendingMembers": "Không có ai đang chờ duyệt",
+      "requestedAt": "Gửi lúc",
+      "memberAccepted": "Đã chấp nhận thành viên!",
+      "memberRejected": "Đã từ chối thành viên!",
+      "acceptFailed": "Không thể chấp nhận thành viên",
+      "rejectFailed": "Không thể từ chối thành viên"
     }
   },
   
@@ -373,7 +406,8 @@
     "editExpense": "Sửa chi tiêu",
     "editIncome": "Sửa thu nhập",
     "addExpense": "Thêm chi tiêu",
-    "addIncome": "Thêm thu nhập"
+    "addIncome": "Thêm thu nhập",
+    "validation": "Xác thực"
   },
 
   "changePasswordBtn": "Đổi mật khẩu",
@@ -857,6 +891,8 @@
       "confirm": "Xác nhận",
       "save": "Lưu lại",
       "update": "Cập nhật",
+      "saving": "Đang lưu...",
+      "updating": "Đang cập nhật...",
       "loadingBudgetData": "Đang tải dữ liệu hạn mức...",
       "validation": {
         "endDateBeforeStart": "Ngày kết thúc phải lớn hơn ngày bắt đầu!",
@@ -894,6 +930,7 @@
       "delete": "Xoá",
       "deleteSuccess": "Đã xoá hạn mức!",
       "deleteError": "Xoá hạn mức thất bại!",
+      "deleting": "Đang xoá hạn mức...",
       "back": "Quay lại",
       "loading": "Đang tải...",
       "loadError": "Không thể tải chi tiết hạn mức.",

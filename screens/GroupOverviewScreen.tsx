@@ -3,15 +3,16 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
-    Alert,
     Clipboard,
     FlatList,
     Image,
     ListRenderItem,
+    Modal,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
+    TouchableWithoutFeedback,
     View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -50,6 +51,12 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
   const [incomeCategories, setIncomeCategories] = useState<LocalCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
+  // Custom modal state
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Load group detail data from API
   const loadGroupDetail = useCallback(async () => {
@@ -322,9 +329,11 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
     try {
       const inviteCode = groupDetail?.group_invite_link || t('group.overview.noInviteCode');
       await Clipboard.setString(inviteCode);
-      Alert.alert(t('common.success'), t('group.overview.copySuccess'));
+      setSuccessMessage(t('group.overview.copySuccess'));
+      setSuccessModalVisible(true);
     } catch (error) {
-      Alert.alert(t('common.error'), t('group.overview.copyError'));
+      setErrorMessage(t('group.overview.copyError'));
+      setErrorModalVisible(true);
     }
   };
 
@@ -407,6 +416,65 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
     <View key={member.user_id} style={[styles.memberAvatar, { marginLeft: index > 0 ? -8 : 0 }]}>
       <Image source={getAvatarSource(member)} style={styles.memberAvatarImage} />
     </View>
+  );
+
+  // Custom Modal Components
+  const renderSuccessModal = () => (
+    <Modal
+      transparent={true}
+      visible={successModalVisible}
+      animationType="fade"
+      onRequestClose={() => setSuccessModalVisible(false)}
+    >
+      <TouchableWithoutFeedback onPress={() => setSuccessModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalIconContainer}>
+                <Icon name="check-circle-outline" size={48} color="#4CAF50" />
+              </View>
+              <Text style={styles.modalTitle}>{t('common.success')}</Text>
+              <Text style={styles.modalMessage}>{successMessage}</Text>
+              <TouchableOpacity 
+                style={styles.modalOkButton} 
+                onPress={() => setSuccessModalVisible(false)}
+              >
+                <Text style={styles.modalOkText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+
+  const renderErrorModal = () => (
+    <Modal
+      transparent={true}
+      visible={errorModalVisible}
+      animationType="fade"
+      onRequestClose={() => setErrorModalVisible(false)}
+    >
+      <TouchableWithoutFeedback onPress={() => setErrorModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalIconContainer}>
+                <Icon name="error-outline" size={48} color="#F44336" />
+              </View>
+              <Text style={styles.modalTitle}>{t('common.error')}</Text>
+              <Text style={styles.modalMessage}>{errorMessage}</Text>
+              <TouchableOpacity 
+                style={styles.modalOkButton} 
+                onPress={() => setErrorModalVisible(false)}
+              >
+                <Text style={styles.modalOkText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
   );
 
   return (
@@ -533,6 +601,8 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
       <TouchableOpacity style={styles.fab} onPress={handleAddTransaction}>
         <Icon name="add" size={24} color="#FFFFFF" />
       </TouchableOpacity>
+      {renderSuccessModal()}
+      {renderErrorModal()}
     </View>
   );
 };
@@ -823,6 +893,56 @@ const styles = StyleSheet.create({
     color: '#999999',
     fontStyle: 'italic',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    width: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalIconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalOkButton: {
+    backgroundColor: '#4A90E2',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  modalOkText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
