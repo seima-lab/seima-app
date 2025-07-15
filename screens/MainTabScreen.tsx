@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import { useRoute } from '@react-navigation/native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import BottomNavigation from '../components/BottomNavigation';
@@ -13,7 +14,17 @@ import WalletScreen from './WalletScreen';
 const MainTabScreen = React.memo(() => {
   const { t } = useTranslation();
   const { language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<TabType>(getDefaultTab());
+  const route = useRoute();
+  const initialTabParam = (route.params as any)?.initialTab as TabType | undefined;
+  const [activeTab, setActiveTab] = useState<TabType>(initialTabParam || getDefaultTab());
+
+  // Lắng nghe param initialTab thay đổi để chuyển tab tương ứng
+  useEffect(() => {
+    if (initialTabParam && initialTabParam !== activeTab) {
+      setActiveTab(initialTabParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(route.params as any)?.initialTab]);
 
   const screenType = useMemo(() => getScreenForTab(activeTab), [activeTab]);
 

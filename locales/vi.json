@@ -1,6 +1,8 @@
 {
   "languageSettings": "Cài đặt ngôn ngữ",
   "selectLanguage": "Chọn ngôn ngữ bạn muốn sử dụng.",
+  "testNotification": "Thử nghiệm thông báo",
+  "resetNotification": "Reset thông báo demo",
   "darkMode": "Chế độ tối",
   "darkModeDesc": "Bật chế độ tối để có trải nghiệm xem tốt hơn vào ban đêm.",
   "enableDarkMode": "Bật chế độ tối",
@@ -24,7 +26,9 @@
   "note": "Ghi chú",
   "notePlaceholder": "Nhập ghi chú",
   "amount": "Số tiền",
-  "category": "Danh mục",
+  "category": {
+    "alreadyExists": "Tên danh mục đã tồn tại. Vui lòng chọn tên khác."
+  },
   "categories": "Danh mục",
   "addExpenseButton": "Nhập khoản chi",
   "addIncomeButton": "Nhập khoản thu",
@@ -98,7 +102,15 @@
       "budgetWarning": "💡 Bạn đã vượt 95% hạn mức cho '{{category}}' khi mới đến ngày {{day}} – hãy cân nhắc giảm đơn hàng hoặc tăng ngân sách nếu cần thiết."
     }
   },
-
+"category": {
+  "title": "Danh mục",
+  "alreadyExists": "Tên danh mục đã tồn tại. Vui lòng chọn tên khác.",
+  "saveFailed": "Lưu danh mục thất bại",
+  "notFound": "Danh mục không tồn tại",
+  "conflict": "Danh mục đã tồn tại",
+  "badRequest": "Yêu cầu không hợp lệ",
+  "validationError": "Dữ liệu danh mục không hợp lệ"
+},
   "group": {
     "title": "Nhóm",
     "createGroup": "Tạo nhóm",

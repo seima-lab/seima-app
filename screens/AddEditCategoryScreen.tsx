@@ -2,28 +2,27 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import CustomErrorModal from '../components/CustomErrorModal';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import type { RootStackParamList } from '../navigation/types';
-import { ApiService } from '../services/apiService';
 import { categoryService, CategoryType } from '../services/categoryService';
-import { secureApiService } from '../services/secureApiService';
 import { getIconColor, getIconsForCategoryType } from '../utils/iconUtils';
 
 export default function AddEditCategoryScreen() {
@@ -86,7 +85,29 @@ export default function AddEditCategoryScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isFlatListReady, setIsFlatListReady] = useState(false);
   
+  // State for CustomErrorModal
+  const [errorModal, setErrorModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'error' as 'error' | 'warning' | 'info' | 'success'
+  });
+  
   const title = mode === 'add' ? t('createNew') : t('editCategory');
+  
+  // Function to show error modal
+  const showError = (message: string, title?: string, type: 'error' | 'warning' | 'info' | 'success' = 'error') => {
+    setErrorModal({
+      visible: true,
+      title: title || t('common.error'),
+      message,
+      type
+    });
+  };
+  
+  const hideErrorModal = () => {
+    setErrorModal(prev => ({ ...prev, visible: false }));
+  };
   
   // Auto-scroll to selected icon when in edit mode and FlatList is ready
   useEffect(() => {
@@ -268,38 +289,52 @@ export default function AddEditCategoryScreen() {
     setIsSaving(true);
     
     try {
-      // Get user profile to get real userId
-      const userProfile = await secureApiService.getCurrentUserProfile();
-      const userId = userProfile.user_id;
+
       
       if (mode === 'add') {
-        // Create new category using API - Format exactly as shown by user
-        const createRequest = {
+        // Create new category using categoryService
+        const createRequest = { // Default group for user-specific categories
           category_name: categoryName.trim(),
           category_type: type === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME,
           category_icon_url: selectedIcon || "",
-          is_system_defined: 0,
-          user_id: userId
+          parent_category_id: 0,
+          is_system_defined: false
         };
 
-        console.log('🔄 Creating category with ApiService');
+        console.log('🔄 Creating category with categoryService');
+        console.log('📤 Create request:', JSON.stringify(createRequest, null, 2));
         
-        const apiService = ApiService.getInstance();
-        const result = await apiService.post('/api/v1/categories', createRequest);
+        const result = await categoryService.createCategory(createRequest);
         
         console.log('✅ Category created successfully:');
         console.log('📥 API Response:', JSON.stringify(result, null, 2));
         
-        Alert.alert(
-          t('common.success'), 
-          'Category created successfully!',
-          [
-            { 
-              text: 'OK', 
-              onPress: () => navigation.goBack()
-            }
-          ]
-        );
+        // Check if backend returned error first
+        if (result && (result as any).status_code && (result as any).status_code !== 200) {
+          // Backend returned error with status_code and message
+          const backendError = new Error((result as any).message || 'Backend error');
+          (backendError as any).response = {
+            status: (result as any).status_code,
+            data: result
+          };
+          throw backendError;
+        } else if (result && result.category_id) {
+          // Success case
+          Alert.alert(
+            t('common.success'), 
+            t('category.createSuccess') || 'Category created successfully!',
+            [
+              { 
+                text: 'OK', 
+                onPress: () => navigation.goBack()
+              }
+            ]
+          );
+        } else if ((result as any)?.message) {
+          throw new Error((result as any).message);
+        } else {
+          throw new Error('Invalid response structure from server');
+        }
         
       } else {
         // Edit existing category using API PUT
@@ -318,7 +353,7 @@ export default function AddEditCategoryScreen() {
           is_system_defined: (category as any).is_system_defined
         });
         console.log('🔧 Category ID to update:', categoryId);
-        console.log('👤 User ID:', userId);
+     
         console.log('📝 Form data:', {
           categoryName: categoryName.trim(),
           selectedIcon,
@@ -332,8 +367,7 @@ export default function AddEditCategoryScreen() {
           category_type: type === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME,
           category_icon_url: selectedIcon || "",
           is_system_defined: false,
-          user_id: userId,
-          group_id: 0 // Same as create - groupId = 0 for user-specific categories
+          parent_category_id: 0,
         };
         
         console.log('🔄 === SENDING UPDATE REQUEST ===');
@@ -346,16 +380,32 @@ export default function AddEditCategoryScreen() {
         console.log('✅ === UPDATE RESPONSE ===');
         console.log('📥 Update result:', JSON.stringify(updateResult, null, 2));
         
-        Alert.alert(
-          t('common.success'),
-          'Category updated successfully!',
-          [
-            { 
-              text: 'OK', 
-              onPress: () => navigation.goBack()
-            }
-          ]
-        );
+        // Check if backend returned error first  
+        if (updateResult && (updateResult as any).status_code && (updateResult as any).status_code !== 200) {
+          // Backend returned error with status_code and message
+          const backendError = new Error((updateResult as any).message || 'Backend error');
+          (backendError as any).response = {
+            status: (updateResult as any).status_code,
+            data: updateResult
+          };
+          throw backendError;
+        } else if (updateResult && updateResult.category_id) {
+          // Success case
+          Alert.alert(
+            t('common.success'),
+            t('category.updateSuccess') || 'Category updated successfully!',
+            [
+              { 
+                text: 'OK', 
+                onPress: () => navigation.goBack()
+              }
+            ]
+          );
+        } else if ((updateResult as any)?.message) {
+          throw new Error((updateResult as any).message);
+        } else {
+          throw new Error('Invalid response structure from server');
+        }
       }
       
     } catch (error: any) {
@@ -364,19 +414,65 @@ export default function AddEditCategoryScreen() {
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
       console.error('Error name:', error.name);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.status);
       
-      let errorMessage = 'Failed to save category';
-      if (error.message) {
-        errorMessage = error.message;
+      let errorMessage = '';
+      let statusCode = null;
+      let backendMessage = '';
+      
+      // Handle different types of errors
+      if (error.response) {
+        // Backend returned an error response
+        statusCode = error.response.status || error.status;
+        const responseData = error.response.data;
+        backendMessage = responseData?.message || '';
+        
+        // Custom message dựa vào status và backend message
+        if (statusCode === 400) {
+          if (backendMessage.toLowerCase().includes('already exist') || 
+              backendMessage.toLowerCase().includes('duplicate') ||
+              backendMessage.toLowerCase().includes('trùng') ||
+              backendMessage.toLowerCase().includes('tồn tại')) {
+            errorMessage = t('category.alreadyExists') || 'Tên danh mục đã tồn tại. Vui lòng chọn tên khác.';
+          } else if (backendMessage.toLowerCase().includes('invalid') ||
+                     backendMessage.toLowerCase().includes('validation')) {
+            errorMessage = t('category.validationError') || 'Dữ liệu không hợp lệ';
+          } else if (backendMessage) {
+            errorMessage = backendMessage;
+          } else {
+            errorMessage = t('category.badRequest') || 'Yêu cầu không hợp lệ';
+          }
+        } else if (statusCode === 401) {
+          errorMessage = t('common.unauthorized') || 'Không có quyền truy cập';
+        } else if (statusCode === 403) {
+          errorMessage = t('common.forbidden') || 'Bị từ chối truy cập';
+        } else if (statusCode === 404) {
+          errorMessage = t('category.notFound') || 'Không tìm thấy danh mục';
+        } else if (statusCode === 409) {
+          errorMessage = t('category.conflict') || 'Xung đột dữ liệu';
+        } else if (statusCode >= 500) {
+          errorMessage = t('common.serverError') || 'Lỗi server, vui lòng thử lại sau';
+        } else {
+          // Các status code khác, hiển thị message từ backend hoặc generic
+          errorMessage = backendMessage || t('common.unknownError') || 'Có lỗi xảy ra';
+        }
+      } else if (error.message) {
+        // Network or other error
+        if (error.message.includes('Network Error') || error.message.includes('timeout')) {
+          errorMessage = t('common.networkError') || 'Lỗi mạng, vui lòng kiểm tra kết nối';
+        } else if (error.message === 'Invalid response structure from server') {
+          errorMessage = t('common.invalidResponse') || 'Phản hồi từ server không hợp lệ';
+        } else {
+          errorMessage = error.message;
+        }
+      } else {
+        errorMessage = t('common.unknownError') || 'Có lỗi không xác định xảy ra';
       }
       
       console.error('Final error message to user:', errorMessage);
       
-      Alert.alert(
-        t('common.error'),
-        errorMessage,
-        [{ text: 'OK' }]
-      );
+      showError(errorMessage);
     } finally {
       console.log('🏁 === SAVE CATEGORY END ===');
       console.log('Setting isSaving to false');
@@ -582,6 +678,14 @@ export default function AddEditCategoryScreen() {
               )}
             </TouchableOpacity>
           </View>
+          {/* Custom Error Modal */}
+          <CustomErrorModal
+            visible={errorModal.visible}
+            title={errorModal.title}
+            message={errorModal.message}
+            type={errorModal.type}
+            onDismiss={hideErrorModal}
+          />
         </SafeAreaView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>

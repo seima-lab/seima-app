@@ -1,6 +1,8 @@
 {
   "languageSettings": "Language Settings",
   "selectLanguage": "Select your preferred language.",
+  "testNotification": "Test Notification",
+  "resetNotification": "Reset Mock Notification",
   "darkMode": "Dark Mode",
   "darkModeDesc": "Toggle dark mode for a better viewing experience at night.",
   "enableDarkMode": "Enable Dark Mode",
@@ -56,6 +58,7 @@
   "pleaseEnterCategoryName": "Please enter category name",
   "addCategorySuccess": "Category added successfully",
   "editCategorySuccess": "Category updated successfully",
+  "alreadyExists": "Category name already exists. Please choose another name.",
   
   "finance": {
     "hello": "Hello!",
@@ -605,7 +608,15 @@
     "verify": "Verify Code",
     "backToForgotPassword": "Back to Forgot Password"
   },
-  
+  "category": {
+    "title": "Category",
+    "alreadyExists": "Category already exists",
+    "saveFailed": "Failed to save category",
+    "notFound": "Category not found",
+    "conflict": "Category conflict",
+    "badRequest": "Bad request",
+    "validationError": "Invalid category data"
+  },
   "forgotPassword": {
     "title": "Forgot Password",
     "subtitle": "Enter your email address and we'll send you a verification code to reset your password.",

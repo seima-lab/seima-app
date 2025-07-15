@@ -1,14 +1,17 @@
+import notifee from '@notifee/react-native';
+import messaging from '@react-native-firebase/messaging';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
-
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, LogBox, View } from 'react-native';
+import { ActivityIndicator, LogBox, PermissionsAndroid, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
+import { NotificationProvider, useNotification } from '../contexts/NotificationContext';
 import '../i18n';
 import { navigationRef } from '../navigation/NavigationService';
 import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
@@ -44,6 +47,7 @@ import LoginScreen from '../screens/login';
 import RegisterScreen from '../screens/register';
 import UpdateProfileScreen from '../screens/update-profile';
 import BranchService from '../services/branchService';
+import { isMockNotificationShown, markMockNotificationAsShown } from '../utils/notificationUtils';
 const Stack = createNativeStackNavigator();
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -196,12 +200,230 @@ function AppNavigator() {
   );
 }
 
+// Component để xử lý notification khi app khởi động
+const NotificationHandler = () => {
+  const { isAuthenticated } = useAuth();
+  const { 
+    latestUnreadNotification, 
+    markNotificationAsDisplayed, 
+    isNotificationDisplayed,
+    markAsRead 
+  } = useNotification();
+
+  useEffect(() => {
+    if (isAuthenticated && latestUnreadNotification) {
+      const notificationId = latestUnreadNotification.notificationId;
+      
+      // Kiểm tra xem notification này đã hiển thị chưa
+      if (!isNotificationDisplayed(notificationId)) {
+        // Hiển thị notification bằng notifee
+        const displayNotification = async () => {
+          try {
+            await notifee.displayNotification({
+              title: latestUnreadNotification.title || 'Thông báo mới',
+              body: latestUnreadNotification.message || 'Bạn có thông báo mới',
+              android: {
+                channelId: 'default',
+                pressAction: {
+                  id: 'default',
+                },
+              },
+              ios: {
+                // iOS specific options
+                foregroundPresentationOptions: {
+                  badge: true,
+                  sound: true,
+                  banner: true,
+                  list: true,
+                },
+              }
+            });
+            
+            // Đánh dấu đã hiển thị
+            await markNotificationAsDisplayed(notificationId);
+            
+            console.log('🔔 Hiển thị notification khi app khởi động:', latestUnreadNotification);
+          } catch (error) {
+            console.log('🔴 Lỗi hiển thị notification:', error);
+          }
+        };
+        
+        displayNotification();
+      }
+    }
+  }, [isAuthenticated, latestUnreadNotification]);
+
+  return null; // Component này không render gì
+};
+
+// Component để hiển thị thông báo mock một lần duy nhất
+const MockNotificationHandler = () => {
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('🔔 MockNotificationHandler: User đã đăng nhập, chuẩn bị hiển thị thông báo mock...');
+      
+      const showMockNotification = async () => {
+        try {
+          console.log('🔔 MockNotificationHandler: Bắt đầu kiểm tra trạng thái thông báo mock...');
+          
+          // Kiểm tra xem đã hiển thị thông báo mock chưa
+          const mockNotificationShown = await isMockNotificationShown();
+          console.log('🔔 MockNotificationHandler: Trạng thái thông báo mock:', mockNotificationShown);
+          
+          if (!mockNotificationShown) {
+            console.log('🔔 MockNotificationHandler: Chuẩn bị hiển thị thông báo mock...');
+            
+            // Tạo thông báo mock với cấu hình hiển thị popup
+            const notificationId = await notifee.displayNotification({
+              id: 'mock_notification',
+              title: '🎉 Chào mừng đến với Seima!',
+              body: 'Đây là thông báo demo. Bạn sẽ chỉ thấy nó một lần duy nhất.',
+              android: {
+                channelId: 'default',
+                pressAction: {
+                  id: 'default',
+                },
+                // Thêm icon và màu sắc
+                smallIcon: 'ic_launcher',
+                color: '#1e90ff',
+                // Cấu hình để hiển thị popup ngay cả khi app đang foreground
+                importance: 4, // HIGH importance
+                // Thêm action buttons
+                actions: [
+                  {
+                    title: 'Xem chi tiết',
+                    pressAction: {
+                      id: 'view_details',
+                    },
+                  },
+                  {
+                    title: 'Đóng',
+                    pressAction: {
+                      id: 'dismiss',
+                    },
+                  },
+                ],
+                // Cấu hình để hiển thị popup
+                showTimestamp: true,
+                timestamp: Date.now(),
+                // Thêm sound và vibration
+                sound: 'default',
+                vibrationPattern: [300, 500],
+              },
+              ios: {
+                foregroundPresentationOptions: {
+                  badge: true,
+                  sound: true,
+                  banner: true,
+                  list: true,
+                },
+                // Thêm cấu hình để hiển thị popup trên iOS
+                interruptionLevel: 'active',
+              }
+            });
+            
+            console.log('🔔 MockNotificationHandler: Notification ID:', notificationId);
+            
+            // Đánh dấu đã hiển thị thông báo mock
+            await markMockNotificationAsShown();
+            
+            console.log('🔔 Đã hiển thị thông báo mock thành công!');
+          } else {
+            console.log('🔔 Thông báo mock đã được hiển thị trước đó');
+          }
+        } catch (error) {
+          console.log('🔴 Lỗi hiển thị thông báo mock:', error);
+        }
+      };
+      
+      // Delay 3 giây để đảm bảo app đã load xong và permission đã được xử lý
+      console.log('🔔 MockNotificationHandler: Đặt timer 3 giây để hiển thị thông báo...');
+      const timer = setTimeout(showMockNotification, 3000);
+      
+      return () => {
+        console.log('🔔 MockNotificationHandler: Clear timer');
+        clearTimeout(timer);
+      };
+    } else {
+      console.log('🔔 MockNotificationHandler: User chưa đăng nhập');
+    }
+  }, [isAuthenticated]);
+
+  return null; // Component này không render gì
+};
+
 export default function RootLayout() {
   const [loaded] = useFonts({
+    Roboto: require('../assets/fonts/Roboto-Regular.ttf'),
+    RobotoBold: require('../assets/fonts/Roboto-SemiBold.ttf'),
+    RobotoMedium: require('../assets/fonts/Roboto-Medium.ttf'),
+
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+
   useEffect(() => {
     BranchService.init();
+    
+    const init = async () => {
+      try {
+        // Tạo notification channel cho Android
+        if (Platform.OS === 'android') {
+          await notifee.createChannel({
+            id: 'default',
+            name: 'Default Channel',
+            sound: 'default',
+            importance: 4, // HIGH importance
+            vibration: true,
+            vibrationPattern: [300, 500],
+          });
+          console.log('📱 Đã tạo notification channel cho Android');
+        }
+
+        await messaging().registerDeviceForRemoteMessages();
+  
+        // Request notification permission cho Android 13+
+        if (Platform.OS === 'android' && Platform.Version >= 33) {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+            {
+              title: 'Thông báo',
+              message: 'Ứng dụng cần quyền gửi thông báo.',
+              buttonPositive: 'Cho phép',
+              buttonNegative: 'Không cho phép',
+              buttonNeutral: 'Hỏi sau'
+            }
+          );
+          
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            console.log('🔴 Quyền thông báo bị từ chối');
+            return;
+          }
+          console.log('✅ Quyền thông báo đã được cấp');
+        }
+        
+        // Request FCM permission
+        const authStatus = await messaging().requestPermission();
+        console.log('📨 FCM Permission status:', authStatus);
+        
+        if (
+          authStatus !== messaging.AuthorizationStatus.AUTHORIZED &&
+          authStatus !== messaging.AuthorizationStatus.PROVISIONAL
+        ) {
+          console.log('🔴 FCM permission bị từ chối');
+          return;
+        }
+  
+        const fcmToken = await messaging().getToken();
+        console.log('📨 FCM Token:', fcmToken);
+        // TODO: gửi token lên backend
+      } catch (error) {
+        console.log('🔴 Lỗi khởi tạo notification:', error);
+      }
+    };
+  
+    init();
     return () => {
       BranchService.cleanup();
     };
@@ -212,9 +434,13 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <LanguageProvider>
-          <TokenExpiryProvider>
-            <AppNavigator />
-          </TokenExpiryProvider>
+          <NotificationProvider>
+            <TokenExpiryProvider>
+              <AppNavigator />
+              <NotificationHandler />
+              <MockNotificationHandler />
+            </TokenExpiryProvider>
+          </NotificationProvider>
         </LanguageProvider>
       </AuthProvider>
     </GestureHandlerRootView>

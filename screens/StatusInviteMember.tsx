@@ -75,12 +75,7 @@ const StatusInviteMember: React.FC<StatusInviteMemberProps> = ({ status, group_n
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => {
-          navigation.reset({
-            index: 0,
-            routes: [
-              { name: 'MainTabScreen', params: { initialTab: 'Finance' as TabType } }
-            ],
-          });
+          navigation.navigate('MainTab', { initialTab: 'Finance' as TabType });
         }}
       >
         <Icon name="arrow-back" size={28} color="#333" />

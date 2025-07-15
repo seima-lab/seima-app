@@ -22,8 +22,6 @@ export interface CategoryResponse {
 }
 
 export interface CreateCategoryRequest {
-  user_id: number;
-  group_id: number;
   category_name: string;
   category_type: CategoryType;
   category_icon_url: string;
@@ -538,23 +536,79 @@ export class CategoryService {
   // Create new category
   async createCategory(request: CreateCategoryRequest): Promise<CategoryResponse> {
     try {
-      console.log('🔄 Creating category:', request);
+      console.log('🔄 Creating category with request:', JSON.stringify(request, null, 2));
       
       const response = await apiService.post<ApiResponseData<CategoryResponse>>(
         CATEGORY_ENDPOINTS.CREATE,
         request
       );
       
-      console.log('📊 Create category response:', response);
+      console.log('📊 Create category response:', JSON.stringify(response, null, 2));
       
-      if (response.data) {
-        const data = response.data as any;
-        return data.data || data;
+      // Check if backend returned error first
+      const responseAny = response as any;
+      if (responseAny.status_code && responseAny.status_code !== 200) {
+        // Backend returned error with status_code and message
+        console.log('🚨 Backend returned error:', {
+          status_code: responseAny.status_code,
+          message: responseAny.message
+        });
+        const backendError = new Error(responseAny.message || 'Backend error');
+        (backendError as any).response = {
+          status: responseAny.status_code,
+          data: responseAny
+        };
+        throw backendError;
       }
       
-      throw new Error('Failed to create category');
-    } catch (error) {
+      // Handle different response structures for success
+      let categoryData: CategoryResponse | null = null;
+      
+      if (responseAny.data) {
+        // Case 1: response.data.data (nested structure)
+        if (responseAny.data.data && responseAny.data.data.category_id) {
+          categoryData = responseAny.data.data;
+          console.log('📦 Found nested data structure');
+        }
+        // Case 2: response.data directly (direct structure)
+        else if (responseAny.data.category_id) {
+          categoryData = responseAny.data;
+          console.log('📦 Found direct data structure');
+        }
+        // Case 3: response.data is the category object
+        else if (typeof responseAny.data === 'object' && 'category_id' in responseAny.data) {
+          categoryData = responseAny.data as CategoryResponse;
+          console.log('📦 Found object data structure');
+        }
+      }
+      
+      if (categoryData) {
+        console.log('✅ Category created successfully:', {
+          id: categoryData.category_id,
+          name: categoryData.category_name,
+          type: categoryData.category_type
+        });
+        return categoryData;
+      }
+      
+      console.error('❌ Invalid response structure:', response);
+      throw new Error('Invalid response structure from server');
+    } catch (error: any) {
       console.error('❌ Error creating category:', error);
+      
+      // Re-throw with more context
+      if (error.response) {
+        const status = error.response.status;
+        const message = error.response.data?.message || error.message;
+        console.error('📊 Backend error details:', { status, message });
+        
+        // Create a more descriptive error
+        const enhancedError = new Error(message || 'Failed to create category');
+        (enhancedError as any).status = status;
+        (enhancedError as any).response = error.response;
+        throw enhancedError;
+      }
+      
       throw error;
     }
   }
@@ -577,16 +631,54 @@ export class CategoryService {
       console.log('Response keys:', Object.keys(response || {}));
       console.log('Full response:', JSON.stringify(response, null, 2));
       
-      if (response.data) {
-        const data = response.data as any;
-        console.log('✅ Response has data property');
-        console.log('Data keys:', Object.keys(data || {}));
-        console.log('Final result:', JSON.stringify(data.data || data, null, 2));
-        return data.data || data;
+      // Check if backend returned error first
+      const responseAny = response as any;
+      if (responseAny.status_code && responseAny.status_code !== 200) {
+        // Backend returned error with status_code and message
+        console.log('🚨 Backend returned error:', {
+          status_code: responseAny.status_code,
+          message: responseAny.message
+        });
+        const backendError = new Error(responseAny.message || 'Backend error');
+        (backendError as any).response = {
+          status: responseAny.status_code,
+          data: responseAny
+        };
+        throw backendError;
       }
       
-      console.error('❌ No data in response');
-      throw new Error('Failed to update category');
+      // Handle different response structures for success
+      let categoryData: CategoryResponse | null = null;
+      
+      if (responseAny.data) {
+        // Case 1: response.data.data (nested structure)
+        if (responseAny.data.data && responseAny.data.data.category_id) {
+          categoryData = responseAny.data.data;
+          console.log('📦 Found nested data structure');
+        }
+        // Case 2: response.data directly (direct structure)
+        else if (responseAny.data.category_id) {
+          categoryData = responseAny.data;
+          console.log('📦 Found direct data structure');
+        }
+        // Case 3: response.data is the category object
+        else if (typeof responseAny.data === 'object' && 'category_id' in responseAny.data) {
+          categoryData = responseAny.data as CategoryResponse;
+          console.log('📦 Found object data structure');
+        }
+      }
+      
+      if (categoryData) {
+        console.log('✅ Category updated successfully:', {
+          id: categoryData.category_id,
+          name: categoryData.category_name,
+          type: categoryData.category_type
+        });
+        return categoryData;
+      }
+      
+      console.error('❌ Invalid response structure:', response);
+      throw new Error('Invalid response structure from server');
     } catch (error: any) {
       console.error('❌ === CATEGORY UPDATE ERROR ===');
       console.error('Error type:', typeof error);
@@ -595,6 +687,20 @@ export class CategoryService {
       console.error('Error status:', error?.status);
       console.error('Error response:', error?.response);
       console.error('Full error object:', JSON.stringify(error, null, 2));
+      
+      // Re-throw with more context
+      if (error.response) {
+        const status = error.response.status;
+        const message = error.response.data?.message || error.message;
+        console.error('📊 Backend error details:', { status, message });
+        
+        // Create a more descriptive error
+        const enhancedError = new Error(message || 'Failed to update category');
+        (enhancedError as any).status = status;
+        (enhancedError as any).response = error.response;
+        throw enhancedError;
+      }
+      
       throw error;
     }
   }
@@ -647,13 +753,11 @@ export class CategoryService {
   // Convert local category to API format
   convertToApiCategory(
     localCategory: Partial<LocalCategory>,
-    userId: number,
-    groupId: number,
+  
     categoryType: CategoryType
   ): CreateCategoryRequest {
     return {
-      user_id: userId,
-      group_id: groupId,
+    
       category_name: localCategory.label || '',
       category_type: categoryType,
       category_icon_url: localCategory.icon || '',

@@ -41,7 +41,7 @@ export type RootStackParamList = {
   FinanceScreen: undefined;
   UpdateProfile: undefined;
   SettingScreen: undefined;
-  MainTab: undefined;
+  MainTab: { initialTab?: TabType } | undefined;
   MainTabScreen: { initialTab?: TabType } | undefined;
   AddExpenseScreen: {
     fromGroupOverview?: boolean;
