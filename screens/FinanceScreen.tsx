@@ -20,6 +20,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { getUnreadCount } from '../services/notificationService';
 import { TransactionReportResponse, transactionService } from '../services/transactionService';
 import { UserProfile, userService } from '../services/userService';
 import { WalletResponse, walletService } from '../services/walletService';
@@ -248,7 +249,7 @@ const FinanceScreen = React.memo(() => {
   
   // UI state
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
-  const [notificationCount, setNotificationCount] = useState(3);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   // Mock data state and values - moved to top after other state declarations
   const [useMockData, setUseMockData] = useState(true); // Toggle để test
@@ -322,6 +323,7 @@ const FinanceScreen = React.memo(() => {
     loadUserProfile();
     loadWalletData();
     loadChartData();
+    loadNotificationCount();
   }, [isAuthenticated]);
 
   // Listen to transaction changes to refresh wallet balance
@@ -330,6 +332,7 @@ const FinanceScreen = React.memo(() => {
       console.log('🔄 Transaction updated - refreshing finance data');
       loadWalletData();
       loadChartData();
+      loadNotificationCount();
     }
   }, [transactionRefreshTrigger]);
 
@@ -341,6 +344,7 @@ const FinanceScreen = React.memo(() => {
         loadUserProfile();
         loadWalletData();
         loadChartData();
+        loadNotificationCount();
       }
     }, [isAuthenticated])
   );
@@ -480,6 +484,55 @@ const FinanceScreen = React.memo(() => {
     }
   }, [isAuthenticated, selectedPeriod.value]);
 
+  // Load unread notification count
+  const loadNotificationCount = useCallback(async () => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    try {
+      console.log('🟡 Loading unread notification count...');
+      const response = await getUnreadCount();
+      console.log('📊 Notification count response:', JSON.stringify(response, null, 2));
+      
+      // Handle different response structures
+      let count = 0;
+      const responseAny = response as any;
+      
+      // Case 1: response.data.count (nested data structure)
+      if (responseAny?.data?.count !== undefined) {
+        count = responseAny.data.count;
+        console.log('📦 Found nested data structure, count:', count);
+      }
+      // Case 2: response.count (direct count)
+      else if (responseAny?.count !== undefined) {
+        count = responseAny.count;
+        console.log('📦 Found direct count structure, count:', count);
+      }
+      // Case 3: response.data is the count directly
+      else if (typeof responseAny?.data === 'number') {
+        count = responseAny.data;
+        console.log('📦 Found direct data as number, count:', count);
+      }
+      // Case 4: response is the count directly
+      else if (typeof responseAny === 'number') {
+        count = responseAny;
+        console.log('📦 Found response as number, count:', count);
+      }
+      // Case 5: response.data.data.count (double nested)
+      else if (responseAny?.data?.data?.count !== undefined) {
+        count = responseAny.data.data.count;
+        console.log('📦 Found double nested data structure, count:', count);
+      }
+      
+      console.log('🟢 Unread notification count loaded:', count);
+      setNotificationCount(count);
+    } catch (error: any) {
+      console.error('🔴 Failed to load unread notification count:', error);
+      setNotificationCount(0);
+    }
+  }, [isAuthenticated]);
+
   // Memoized expense data
   const expenseData: ExpenseData[] = useMemo(() => [
     { category: 'Leisure', percentage: 54.55, color: '#FFA726' },
@@ -580,7 +633,11 @@ const FinanceScreen = React.memo(() => {
 
   const handleNavigateToNotifications = useCallback(() => {
     navigation.navigate('Notifications');
-  }, [navigation]);
+    // Refresh notification count when returning from notifications screen
+    setTimeout(() => {
+      loadNotificationCount();
+    }, 1000);
+  }, [navigation, loadNotificationCount]);
 
   const handleNavigateToCalendar = useCallback(() => {
     navigation.navigate('Calendar');

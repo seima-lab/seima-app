@@ -356,6 +356,10 @@ const MockNotificationHandler = () => {
 
 export default function RootLayout() {
   const [loaded] = useFonts({
+    Roboto: require('../assets/fonts/Roboto-Regular.ttf'),
+    RobotoBold: require('../assets/fonts/Roboto-SemiBold.ttf'),
+    RobotoMedium: require('../assets/fonts/Roboto-Medium.ttf'),
+
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 

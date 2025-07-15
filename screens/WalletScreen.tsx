@@ -2,23 +2,24 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Modal,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Modal,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
 import { useNavigationService } from '../navigation/NavigationService';
 import { WalletResponse, walletService } from '../services/walletService';
 
@@ -322,6 +323,13 @@ const WalletScreen = ({ footerHeight = 0 }) => {
     return [styles.accountIcon, styles.walletIcon];
   };
 
+  function getBalanceColorStyle(wallet: WalletResponse) {
+    if (wallet.exclude_from_total) return styles.disabledAccountBalance;
+    if (wallet.current_balance > 0) return styles.balancePositive;
+    if (wallet.current_balance < 0) return styles.balanceNegative;
+    return styles.balanceZero;
+  }
+
   const renderCustomAlert = () => (
     <Modal
       transparent={true}
@@ -411,7 +419,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
               paddingVertical: rp(16),
               paddingTop: rp(20)
             }]}> 
-              <Text style={[styles.headerTitle, { fontSize: rf(20) }]}>{t('wallet.title')}</Text>
+              <Text style={[styles.headerTitle, typography.semibold]}>{t('wallet.title')}</Text>
               <TouchableOpacity onPress={() => loadWallets(true)} disabled={loading || refreshing}>
                 <Icon name="refresh" size={rf(24)} color={loading || refreshing ? "#ccc" : "#333"} />
               </TouchableOpacity>
@@ -424,26 +432,26 @@ const WalletScreen = ({ footerHeight = 0 }) => {
               borderRadius: rb(16),
               marginHorizontal: rp(16)
             }]}> 
-              <Text style={[styles.balanceLabel, { fontSize: rf(16), marginBottom: rp(8) }]}>
+              <Text style={[styles.balanceLabel, typography.medium]}>
                 {t('wallet.currentBalance')}
               </Text>
-              <Text style={[styles.balanceAmount, { fontSize: rf(32), marginBottom: rp(24) }]}> 
+              <Text style={[styles.balanceAmount, typography.bold]}> 
                 {totalBalance.toLocaleString('vi-VN')} {t('currency')} 
               </Text>
               <View style={styles.balanceBreakdown}>
                 <View style={styles.balanceItem}>
-                  <Text style={[styles.balanceSubLabel, { fontSize: rf(14), marginBottom: rp(4) }]}>
+                  <Text style={[styles.balanceSubLabel, typography.medium]}>
                     {t('wallet.totalAssets')}
                   </Text>
-                  <Text style={[styles.balanceSubAmount, { fontSize: rf(18) }]}> 
+                  <Text style={[styles.balanceSubAmount, typography.bold]}> 
                     {totalAssets.toLocaleString('vi-VN')} {t('currency')} 
                   </Text>
                 </View>
                 <View style={styles.balanceItem}>
-                  <Text style={[styles.balanceSubLabel, { fontSize: rf(14), marginBottom: rp(4) }]}>
+                  <Text style={[styles.balanceSubLabel, typography.medium]}>
                     {t('wallet.totalDebts')}
                   </Text>
-                  <Text style={[styles.balanceSubAmount, { fontSize: rf(18) }]}> 
+                  <Text style={[styles.balanceSubAmount, typography.bold]}> 
                     {totalDebts.toLocaleString('vi-VN')} {t('currency')} 
                   </Text>
                 </View>
@@ -457,7 +465,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
               borderRadius: rb(12), 
               padding: rp(16) 
             }]}> 
-              <Text style={[styles.sectionTitle, { fontSize: rf(18), marginBottom: rp(16) }]}> 
+              <Text style={[styles.sectionTitle, typography.semibold]}> 
                 {t('wallet.includeInTotal')} 
               </Text>
               {wallets.length > 0 ? (
@@ -474,18 +482,20 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                       </View>
                       <View style={styles.accountInfo}>
                         <View style={styles.walletNameContainer}>
-                          <Text style={[styles.accountName, wallet.exclude_from_total && styles.disabledAccountName]}>{wallet.wallet_name}</Text>
+                          <Text style={[styles.accountName, typography.medium, wallet.exclude_from_total && styles.disabledAccountName]}>{wallet.wallet_name}</Text>
                           {wallet.is_default && !wallet.exclude_from_total && (
                             <View style={styles.defaultBadge}>
                               <Text style={styles.defaultBadgeText}>{t('wallet.defaultWallet')}</Text>
                             </View>
                           )}
                         </View>
-                        <Text style={[styles.accountBalance, { 
-                          color: wallet.exclude_from_total
-                            ? styles.disabledAccountBalance.color
-                            : wallet.current_balance > 0 ? '#22c55e' : '#333'
-                        }]}> 
+                        <Text
+                          style={[
+                            styles.accountBalance,
+                            typography.medium,
+                            getBalanceColorStyle(wallet)
+                          ]}
+                        >
                           {wallet.current_balance.toLocaleString('vi-VN')} {t('currency')}
                         </Text>
                       </View>
@@ -502,10 +512,10 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                   ))
               ) : (
                 <View style={styles.emptyContainer}>
-                  <Text style={[styles.emptyText, { fontSize: rf(16), marginBottom: rp(8) }]}> 
+                  <Text style={[styles.emptyText, typography.regular]}> 
                     No wallets found
                   </Text>
-                  <Text style={[styles.emptySubText, { fontSize: rf(14) }]}> 
+                  <Text style={[styles.emptySubText, typography.regular]}> 
                     Add your first wallet to get started
                   </Text>
                 </View>
@@ -529,7 +539,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                 onPress={handleAddWallet}
               >
                 <Icon name="add" size={rf(24)} color="#1e90ff" />
-                <Text style={[styles.actionButtonText, { fontSize: rf(16), marginLeft: rp(8) }]}>
+                <Text style={[styles.actionButtonText, typography.semibold]}>
                   {t('wallet.addWallet')}
                 </Text>
               </TouchableOpacity>
@@ -557,9 +567,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   headerTitle: {
-    fontWeight: 'bold',
+    fontSize: 20,
     color: 'black',
-    fontFamily: 'Roboto',
   },
   balanceCard: {
     backgroundColor: '#1e90ff',
@@ -576,14 +585,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     fontWeight: '500',
-    fontFamily: 'Roboto',
   },
   balanceAmount: {
     fontSize: 32,
     fontWeight: '700',
     color: '#fff',
     marginVertical: 4,
-    fontFamily: 'Roboto',
   },
   balanceBreakdown: {
     flexDirection: 'row',
@@ -596,7 +603,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFF',
     fontWeight: '500',
-    fontFamily: 'Roboto',
   },
   balanceSubAmount: {
     color: '#fff',
@@ -609,7 +615,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
-    fontFamily: 'Roboto',
   },
   accountItem: {
     flexDirection: 'row',
@@ -655,7 +660,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
-    fontFamily: 'Roboto',
   },
   walletNameContainer: {
     flexDirection: 'column',
@@ -673,11 +677,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
-    fontFamily: 'Roboto',
   },
   accountBalance: {
     fontWeight: '500',
-    fontFamily: 'Roboto',
   },
   moreButtonContainer: {
     position: 'relative',
@@ -706,7 +708,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1e90ff',
-    fontFamily: 'Roboto',
   },
   menuContainer: {
     position: 'absolute',
@@ -735,7 +736,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 8,
     color: '#333',
-    fontFamily: 'Roboto',
   },
   menuDivider: {
     height: 1,
@@ -773,14 +773,12 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 16,
     textAlign: 'center',
-    fontFamily: 'Roboto',
   },
   alertMessage: {
     color: '#666',
     lineHeight: 22,
     marginBottom: 16,
     textAlign: 'center',
-    fontFamily: 'Roboto',
   },
   alertButtonContainer: {
     flexDirection: 'row',
@@ -803,7 +801,6 @@ const styles = StyleSheet.create({
     color: '#495057',
     fontWeight: '600',
     textAlign: 'center',
-    fontFamily: 'Roboto',
   },
   alertDeleteButton: {
     backgroundColor: '#dc3545',
@@ -826,7 +823,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     textAlign: 'center',
-    fontFamily: 'Roboto',
   },
   centerContent: {
     justifyContent: 'center',
@@ -836,7 +832,6 @@ const styles = StyleSheet.create({
     color: '#1e90ff',
     fontWeight: 'bold',
     marginTop: 16,
-    fontFamily: 'Roboto',
   },
   emptyContainer: {
     flex: 1,
@@ -847,11 +842,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#9CA3AF',
     textAlign: 'center',
-    fontFamily: 'Roboto',
   },
   emptySubText: {
     color: '#666',
-    fontFamily: 'Roboto',
+  },
+  balancePositive: {
+    color: '#22c55e',
+  },
+  balanceNegative: {
+    color: '#ef4444',
+  },
+  balanceZero: {
+    color: '#333',
   },
 });
 
