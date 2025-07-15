@@ -17,6 +17,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomErrorModal from '../components/CustomErrorModal';
+import { typography } from '../constants/typography';
 import { useNavigationService } from '../navigation/NavigationService';
 import { CreateWalletRequest, walletService } from '../services/walletService';
 
@@ -46,6 +48,9 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   const [excludeFromTotal, setExcludeFromTotal] = useState(walletData?.excludeFromTotal || false);
   const [showWalletTypes, setShowWalletTypes] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorTitle, setErrorTitle] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Add keyboard event listeners for debugging
   useEffect(() => {
@@ -185,12 +190,13 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
 
     } catch (error: any) {
       console.error('❌ Failed to save wallet:', error);
-      
-      Alert.alert(
-        t('common.error'),
-        error.message || 'Failed to save wallet. Please try again.',
-        [{ text: 'OK' }]
-      );
+      let message = error.message || 'Failed to save wallet. Please try again.';
+      if (typeof message === 'string' && message.toLowerCase().includes('maximum wallet limit')) {
+        message = t('wallet.maxWalletLimit');
+      }
+      setErrorTitle(t('common.error'));
+      setErrorMessage(message);
+      setShowErrorModal(true);
     } finally {
       setSaving(false);
     }
@@ -279,7 +285,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Icon name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, typography.bold]}>
             {editMode ? t('wallet.editWalletTitle') : t('wallet.addWalletTitle')}
           </Text>
           <TouchableOpacity onPress={handleSave} disabled={saving}>
@@ -294,7 +300,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
         >
           {/* Balance Field */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>
+            <Text style={[styles.sectionLabel, typography.semibold]}>
               {t('wallet.balanceRequired')} <Text style={styles.required}>*</Text>
             </Text>
             <View style={styles.inputContainer}>
@@ -320,7 +326,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
 
           {/* Wallet Name Field */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>
+            <Text style={[styles.sectionLabel, typography.semibold]}>
               {t('wallet.walletName')} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
@@ -342,7 +348,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
 
           {/* Wallet Type Field */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>
+            <Text style={[styles.sectionLabel, typography.semibold]}>
               {t('wallet.walletType')} <Text style={styles.required}>*</Text>
             </Text>
             {renderWalletTypeDropdown()}
@@ -351,7 +357,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
           {/* Bank Name Field - Conditional */}
           {walletType === t('wallet.walletTypes.bank') && (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>
+              <Text style={[styles.sectionLabel, typography.semibold]}>
                 {getFieldLabel()} <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
@@ -367,7 +373,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
           {/* Default Wallet Toggle */}
           <View style={styles.toggleSection}>
             <View style={styles.toggleContent}>
-              <Text style={styles.toggleTitle}>{t('wallet.isDefault')}</Text>
+              <Text style={[styles.toggleTitle, typography.semibold]}>{t('wallet.isDefault')}</Text>
               <Text style={styles.toggleSubtitle}>
                 {t('wallet.defaultDescription')}
               </Text>
@@ -384,7 +390,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
           {/* Exclude from Total Toggle */}
           <View style={styles.toggleSection}>
             <View style={styles.toggleContent}>
-              <Text style={styles.toggleTitle}>{t('wallet.excludeFromTotal')}</Text>
+              <Text style={[styles.toggleTitle, typography.semibold]}>{t('wallet.excludeFromTotal')}</Text>
               <Text style={styles.toggleSubtitle}>
                 {t('wallet.excludeDescription')}
               </Text>
@@ -392,7 +398,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
             <Switch
               value={excludeFromTotal}
               onValueChange={setExcludeFromTotal}
-              trackColor={{ false: '#d1d5db', true: '#9ca3af' }}
+              trackColor={{ false: '#d1d5db', true: '#1e90ff' }}
               thumbColor={excludeFromTotal ? '#fff' : '#f4f3f4'}
               disabled={saving}
             />
@@ -404,12 +410,19 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
             onPress={handleSave}
             disabled={saving}
           >
-            <Text style={styles.saveButtonText}>
+            <Text style={[styles.saveButtonText, typography.bold]}>
               {saving ? 'Saving...' : (editMode ? t('wallet.update') : t('wallet.save'))}
             </Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
+      <CustomErrorModal
+        visible={showErrorModal}
+        title={errorTitle}
+        message={errorMessage}
+        onDismiss={() => setShowErrorModal(false)}
+        type="error"
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -434,7 +447,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: '#333',
   },
   content: {
@@ -446,7 +458,6 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
     marginBottom: 8,
   },
@@ -539,7 +550,6 @@ const styles = StyleSheet.create({
   },
   toggleTitle: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
     marginBottom: 4,
   },
@@ -562,7 +572,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
   },
 });
 

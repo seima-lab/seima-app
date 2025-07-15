@@ -19,6 +19,7 @@ import { Calendar, DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
+import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
@@ -48,11 +49,23 @@ interface DayData {
 }
 
 // Format money helper function
-const formatMoney = (amount: number | undefined | null): string => {
+const formatMoney = (amount: number | undefined | null, maxLength?: number): string => {
     if (amount === null || amount === undefined || isNaN(amount)) {
         return '0đ';
     }
-    return amount.toLocaleString('vi-VN') + 'đ';
+    const formatted = amount.toLocaleString('vi-VN'); // chỉ lấy phần số
+    if (maxLength && formatted.replace(/\D/g, '').length > maxLength) {
+        // Nếu số lượng ký tự số > maxLength, lấy 7 ký tự đầu (bao gồm dấu .), thêm ...
+        let count = 0;
+        let result = '';
+        for (let i = 0; i < formatted.length; i++) {
+            if (/\d/.test(formatted[i])) count++;
+            result += formatted[i];
+            if (count === maxLength) break;
+        }
+        return result + '...' + 'đ';
+    }
+    return formatted + 'đ';
 };
 
 // Swipeable Transaction Item Component
@@ -547,26 +560,24 @@ const CalendarScreen = () => {
     const renderDayComponent = ({ date, state }: any) => {
         const dateStr = date.dateString;
         const data = dayData[dateStr];
-        
+
         return (
             <View style={styles.dayContainer}>
                 <Text style={styles.dayNumber}>
                     {date.day}
                 </Text>
-                {data && (
-                    <View style={styles.amountContainer}>
-                        {data.income > 0 && (
-                            <Text style={styles.incomeText}>
-                                {formatMoney(data.income)}
-                            </Text>
-                        )}
-                        {data.expense > 0 && (
-                            <Text style={styles.expenseText}>
-                                {formatMoney(data.expense)}
-                            </Text>
-                        )}
-                    </View>
-                )}
+                <View style={styles.amountContainerFixed}>
+                    {data && data.income > 0 && (
+                        <Text style={styles.incomeText}>
+                            {formatMoney(data.income, 7)}
+                        </Text>
+                    )}
+                    {data && data.expense > 0 && (
+                        <Text style={styles.expenseText}>
+                            {formatMoney(data.expense, 7)}
+                        </Text>
+                    )}
+                </View>
             </View>
         );
     };
@@ -708,11 +719,11 @@ const CalendarScreen = () => {
                     <View style={styles.summaryContainer}>
                         <View style={styles.summaryItem}>
                             <Text style={styles.summaryLabel}>{t('calendar.income')}</Text>
-                            <Text style={styles.incomeAmount}>{formatMoney(monthlyTotals.income)}</Text>
+                            <Text style={styles.incomeAmount}>{formatMoney(monthlyTotals.income, 7)}</Text>
                         </View>
                         <View style={styles.summaryItem}>
                             <Text style={styles.summaryLabel}>{t('calendar.expense')}</Text>
-                            <Text style={styles.expenseAmount}>{formatMoney(monthlyTotals.expense)}</Text>
+                            <Text style={styles.expenseAmount}>{formatMoney(monthlyTotals.expense, 7)}</Text>
                         </View>
                         <View style={styles.summaryItem}>
                             <Text style={styles.summaryLabel}>{t('calendar.total')}</Text>
@@ -720,7 +731,7 @@ const CalendarScreen = () => {
                                 styles.totalAmount,
                                 monthlyTotals.total >= 0 ? styles.positiveTotal : styles.negativeTotal
                             ]}>
-                                {monthlyTotals.total >= 0 ? '+' : ''}{formatMoney(monthlyTotals.total)}
+                                {monthlyTotals.total >= 0 ? '+' : ''}{formatMoney(Math.abs(monthlyTotals.total), 7)}
                             </Text>
                         </View>
                     </View>
@@ -779,7 +790,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: '600',
+        ...typography.semibold,
         color: '#333',
         flex: 1,
         textAlign: 'center',
@@ -812,36 +823,43 @@ const styles = StyleSheet.create({
     },
     dayNumber: {
         fontSize: 14,
+        ...typography.regular,
         color: '#333',
-        fontWeight: '400',
     },
     selectedDayText: {
+        ...typography.bold,
         color: '#FFFFFF',
-        fontWeight: 'bold',
     },
     disabledDayText: {
+        ...typography.regular,
         color: '#d9e1e8',
     },
     amountContainer: {
         alignItems: 'center',
         marginTop: 2,
     },
+    amountContainerFixed: {
+        alignItems: 'center',
+        marginTop: 2,
+        height: 16, // Chiều cao cố định để các ngày đều nhau
+        justifyContent: 'center',
+    },
     incomeText: {
         fontSize: 8,
         color: '#34C759',
-        fontWeight: '500',
+        ...typography.medium,
     },
     expenseText: {
         fontSize: 8,
         color: '#FF3B30',
-        fontWeight: '500',
+        ...typography.medium,
     },
     summaryContainer: {
         flexDirection: 'row',
         paddingHorizontal: 16,
         paddingVertical: 16,
         backgroundColor: '#F8F9FA',
-        marginHorizontal: 16,
+        // marginHorizontal: 16, // bỏ để mở rộng full width
         marginVertical: 8,
         borderRadius: 12,
     },
@@ -851,22 +869,23 @@ const styles = StyleSheet.create({
     },
     summaryLabel: {
         fontSize: 14,
+        ...typography.regular,
         color: '#666',
         marginBottom: 4,
     },
     incomeAmount: {
         fontSize: 16,
-        fontWeight: 'bold',
+        ...typography.bold,
         color: '#34C759',
     },
     expenseAmount: {
         fontSize: 16,
-        fontWeight: 'bold',
+        ...typography.bold,
         color: 'red',
     },
     totalAmount: {
         fontSize: 16,
-        fontWeight: 'bold',
+        ...typography.bold,
     },
     positiveTotal: {
         color: '#34C759',
@@ -876,7 +895,7 @@ const styles = StyleSheet.create({
     },
     selectedDateTitle: {
         fontSize: 16,
-        fontWeight: '600',
+        ...typography.semibold,
         color: '#333',
         paddingHorizontal: 16,
         paddingVertical: 8,
@@ -911,17 +930,18 @@ const styles = StyleSheet.create({
     },
     transactionCategory: {
         fontSize: 16,
-        fontWeight: '500',
+        ...typography.medium,
         color: '#333',
     },
     transactionDescription: {
         fontSize: 12,
+        ...typography.regular,
         color: '#666',
         marginTop: 2,
     },
     transactionAmount: {
         fontSize: 16,
-        fontWeight: '600',
+        ...typography.semibold,
         marginRight: 8,
     },
     noTransactions: {
@@ -930,6 +950,7 @@ const styles = StyleSheet.create({
     },
     noTransactionsText: {
         fontSize: 16,
+        ...typography.regular,
         color: '#666',
     },
     dayGroup: {
@@ -947,12 +968,12 @@ const styles = StyleSheet.create({
     },
     dayHeaderDate: {
         fontSize: 16,
-        fontWeight: '600',
+        ...typography.semibold,
         color: '#333',
     },
     dayHeaderTotal: {
         fontSize: 16,
-        fontWeight: 'bold',
+        ...typography.bold,
     },
     loadingContainer: {
         flex: 1,
@@ -969,6 +990,7 @@ const styles = StyleSheet.create({
     },
     loadingText: {
         fontSize: 16,
+        ...typography.regular,
         color: '#666',
         marginTop: 8,
     },
@@ -986,12 +1008,13 @@ const styles = StyleSheet.create({
     },
     navText: {
         fontSize: 12,
+        ...typography.regular,
         color: '#999',
         marginTop: 4,
     },
     activeNavText: {
         color: '#FF9500',
-        fontWeight: '500',
+        ...typography.medium,
     },
     swipeableContainer: {
         position: 'relative',
@@ -1020,7 +1043,7 @@ const styles = StyleSheet.create({
     },
     deleteText: {
         fontSize: 12,
-        fontWeight: 'bold',
+        ...typography.bold,
         color: '#FFFFFF',
         marginTop: 4,
     },

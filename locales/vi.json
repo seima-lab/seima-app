@@ -481,6 +481,7 @@
   },
   
   "wallet": {
+    "maxWalletLimit": "Bạn chỉ được tạo 5 ví",
     "title": "Ví của tôi",
     "currentBalance": "Tài chính hiện tại",
     "totalAssets": "Tổng có",
