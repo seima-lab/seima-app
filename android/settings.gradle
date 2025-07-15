@@ -1,3 +1,5 @@
+// android/settings.gradle
+
 pluginManagement {
   def reactNativeGradlePlugin = new File(
     providers.exec {
@@ -6,7 +8,7 @@ pluginManagement {
     }.standardOutput.asText.get().trim()
   ).getParentFile().absolutePath
   includeBuild(reactNativeGradlePlugin)
-  
+
   def expoPluginsPath = new File(
     providers.exec {
       workingDir(rootDir)
@@ -35,5 +37,28 @@ rootProject.name = 'seima-app'
 
 expoAutolinking.useExpoVersionCatalog()
 
+// --- KHỐI ĐIỀU CHỈNH CHÍNH CHO REPOSITORIES ---
+dependencyResolutionManagement {
+    // Chúng ta sẽ không sử dụng repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // để tránh xung đột với Expo và các khai báo repository khác.
+    repositories {
+      maven { url "https://notifee.github.io/maven" }
+      maven { url "https://jitpack.io" }
+        google()
+        mavenCentral()
+        // KHÔNG CẦN THÊM mavenLocal(), notifee, jitpack VÀO ĐÂY NỮA
+        // Vì chúng ta đã thêm vào allprojects trong build.gradle (cấp độ dự án)
+    }
+}
+// --- KẾT THÚC KHỐI ĐIỀU CHỈNH CHÍNH ---
+
+
 include ':app'
 includeBuild(expoAutolinking.reactNativeGradlePlugin)
+
+// Đảm bảo các module này được include đúng cách
+include ':notifee_react-native'
+project(':notifee_react-native').projectDir = new File(rootProject.projectDir, './../node_modules/@notifee/react-native/android')
+
+include ':@react-native-firebase_messaging'
+project(':@react-native-firebase_messaging').projectDir = new File(rootProject.projectDir, './../node_modules/@react-native-firebase/messaging/android')

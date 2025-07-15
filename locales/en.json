@@ -1,6 +1,8 @@
 {
   "languageSettings": "Language Settings",
   "selectLanguage": "Select your preferred language.",
+  "testNotification": "Test Notification",
+  "resetNotification": "Reset Mock Notification",
   "darkMode": "Dark Mode",
   "darkModeDesc": "Toggle dark mode for a better viewing experience at night.",
   "enableDarkMode": "Enable Dark Mode",

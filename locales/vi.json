@@ -1,6 +1,8 @@
 {
   "languageSettings": "Cài đặt ngôn ngữ",
   "selectLanguage": "Chọn ngôn ngữ bạn muốn sử dụng.",
+  "testNotification": "Thử nghiệm thông báo",
+  "resetNotification": "Reset thông báo demo",
   "darkMode": "Chế độ tối",
   "darkModeDesc": "Bật chế độ tối để có trải nghiệm xem tốt hơn vào ban đêm.",
   "enableDarkMode": "Bật chế độ tối",

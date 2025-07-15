@@ -1,3 +1,4 @@
+import messaging from '@react-native-firebase/messaging';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -15,6 +16,7 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomToast from '../components/CustomToast';
@@ -141,11 +143,16 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       console.log('🟡 Starting email login...');
-      
+      // Lấy device_id và fcm_token
+      const device_id = await DeviceInfo.getUniqueId();
+      const fcm_token = await messaging().getToken();
       // Prepare login request using pure function
-      const loginRequest = prepareEmailLoginRequest(email, password);
-      
-      console.log('🟡 Login request:', { email: loginRequest.email, password: '[HIDDEN]' });
+      const loginRequest = {
+        ...prepareEmailLoginRequest(email, password),
+        device_id,
+        fcm_token,
+      };
+      console.log('🟡 Login request:', { email: loginRequest.email, password: '[HIDDEN]', device_id, fcm_token });
       
       // Call email login API
       const response = await authService.emailLogin(loginRequest);

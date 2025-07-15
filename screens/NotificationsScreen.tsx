@@ -1,4 +1,4 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ScrollView,
@@ -13,10 +13,11 @@ import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { getNotifications } from '../services/notificationService';
 
 interface Notification {
     id: string;
-    type: 'payment' | 'expense' | 'transaction';
+    type: string;
     title: string;
     description: string;
     timestamp: string;
@@ -30,38 +31,32 @@ const NotificationsScreen = () => {
     const insets = useSafeAreaInsets();
     const navigation = useNavigationService();
 
-    const notifications: Notification[] = [
-        {
-            id: '1',
-            type: 'payment',
-            title: t('notifications.paymentDue'),
-            description: t('notifications.creditCardPaymentDue'),
-            timestamp: t('notifications.hoursAgo', { count: 2 }),
-            icon: 'warning',
-            iconColor: '#FFFFFF',
-            iconBackground: '#2196F3',
-        },
-        {
-            id: '2',
-            type: 'expense',
-            title: t('notifications.expenseAlert'),
-            description: t('notifications.diningBudgetExceeded'),
-            timestamp: t('notifications.hoursAgo', { count: 4 }),
-            icon: 'trending-up',
-            iconColor: '#FFFFFF',
-            iconBackground: '#2196F3',
-        },
-        {
-            id: '3',
-            type: 'transaction',
-            title: t('notifications.newTransaction'),
-            description: t('notifications.groceryTransaction'),
-            timestamp: t('notifications.dayAgo', { count: 1 }),
-            icon: 'notifications',
-            iconColor: '#FFFFFF',
-            iconBackground: '#2196F3',
-        },
-    ];
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setLoading(true);
+        getNotifications({ page: 0, size: 20 })
+            .then((res) => {
+                const apiData = (res.data && typeof res.data === 'object' && 'content' in res.data) ? (res.data as any).content : [];
+                setNotifications(apiData.map((item: any) => ({
+                    id: item.notificationId?.toString() ?? '',
+                    type: item.notificationType?.toLowerCase() ?? 'general',
+                    title: item.title,
+                    description: item.message,
+                    timestamp: item.createdAt,
+                    icon: 'notifications',
+                    iconColor: '#FFFFFF',
+                    iconBackground: '#2196F3',
+                })));
+                setError(null);
+            })
+            .catch(() => {
+                setError('Lỗi khi tải thông báo');
+            })
+            .finally(() => setLoading(false));
+    }, []);
 
     const renderNotification = (notification: Notification) => (
         <TouchableOpacity 
@@ -123,7 +118,13 @@ const NotificationsScreen = () => {
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
                 showsVerticalScrollIndicator={false}
             >
-                {notifications.map(renderNotification)}
+                {loading ? (
+                    <Text>Đang tải...</Text>
+                ) : error ? (
+                    <Text style={{ color: 'red' }}>{error}</Text>
+                ) : (
+                    notifications.map(renderNotification)
+                )}
             </ScrollView>
         </View>
     );

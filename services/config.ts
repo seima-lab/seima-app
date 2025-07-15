@@ -114,5 +114,15 @@ export const BUDGET_ENDPOINTS = {
   DELETE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/delete/${id}`,
 } as const;
 
+// Notification endpoints
+export const NOTIFICATION_ENDPOINTS = {
+  list: `${ApiConfig.API_PREFIX}/notifications`,
+  unread_count: `${ApiConfig.API_PREFIX}/notifications/unread-count`,
+  mark_as_read: (notification_id: number | string) => `${ApiConfig.API_PREFIX}/notifications/${notification_id}/read`,
+  mark_all_as_read: `${ApiConfig.API_PREFIX}/notifications/read-all`,
+  delete: (notification_id: number | string) => `${ApiConfig.API_PREFIX}/notifications/${notification_id}`,
+  delete_all: `${ApiConfig.API_PREFIX}/notifications/all`,
+} as const;
+
 // Initialize configuration logging
 ApiConfig.logConfig(); 
