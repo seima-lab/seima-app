@@ -3,21 +3,21 @@ import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -475,9 +475,6 @@ const UpdateProfile = () => {
                   }
                   style={styles.avatar}
                 />
-                <TouchableOpacity style={styles.cameraIconButton} onPress={handleChangeAvatar}>
-                  <Icon name="photo-camera" size={20} color="#ffffff" />
-                </TouchableOpacity>
               </View>
               <TouchableOpacity style={styles.changeAvatarButton} onPress={handleChangeAvatar}>
                 <Text style={styles.changeAvatarText}>{t('profile.changeAvatar')}</Text>
@@ -810,14 +807,7 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     overflow: 'hidden',
     marginBottom: 15,
-    borderWidth: 3,
-    borderColor: '#1e90ff',
     position: 'relative',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   avatar: {
     width: '100%',
