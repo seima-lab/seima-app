@@ -1,18 +1,21 @@
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  RefreshControl,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    FlatList,
+    Image,
+    RefreshControl,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { RootStackParamList } from '../navigation/types';
 import { categoryService, CategoryService, CategoryType, LocalCategory } from '../services/categoryService';
 import { GroupMemberResponse, groupService } from '../services/groupService';
@@ -38,7 +41,12 @@ const formatMoney = (amount: number): string => {
   return amount.toLocaleString('vi-VN') + '₫';
 };
 
+const TAB_MY = 'my';
+const TAB_GROUP = 'group';
+
 const GroupTransactionListScreen: React.FC = () => {
+  const { t } = useTranslation();
+  const { language } = useLanguage();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<GroupTransactionListScreenRouteProp>();
   const { groupId, groupName } = route.params;
@@ -50,6 +58,7 @@ const GroupTransactionListScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [selectedTab, setSelectedTab] = useState<string>(TAB_MY);
   
   // Members and categories state
   const [members, setMembers] = useState<GroupMemberResponse[]>([]);
@@ -264,7 +273,6 @@ const GroupTransactionListScreen: React.FC = () => {
             style={styles.transactionAvatarImage} 
           />
         </View>
-        
         {/* Transaction Content */}
         <View style={styles.transactionContent}>
           <View style={styles.transactionHeader}>
@@ -276,11 +284,9 @@ const GroupTransactionListScreen: React.FC = () => {
               {isIncome ? '+' : '-'}{formatMoney(item.amount)}
             </Text>
           </View>
-          
           <Text style={styles.transactionDescription}>
             {getCategoryName(item.category_id)}
           </Text>
-          
           <View style={styles.transactionMeta}>
             <View style={styles.transactionTypeContainer}>
               <View style={[
@@ -294,12 +300,11 @@ const GroupTransactionListScreen: React.FC = () => {
                 />
               </View>
               <Text style={styles.transactionType}>
-                {isIncome ? 'Thu nhập' : 'Chi tiêu'}
+                {isIncome ? t('groupTransaction.income') : t('groupTransaction.expense')}
               </Text>
             </View>
-            
             <Text style={styles.transactionDate}>
-              {new Date(item.transaction_date.replace(' ', 'T')).toLocaleString('vi-VN', {
+              {new Date(item.transaction_date.replace(' ', 'T')).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
@@ -333,17 +338,21 @@ const GroupTransactionListScreen: React.FC = () => {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Icon name="receipt-long" size={64} color="#D0D0D0" />
-      <Text style={styles.emptyStateTitle}>Chưa có giao dịch nào</Text>
+      <Text style={styles.emptyStateTitle}>{t('groupTransaction.emptyTitle')}</Text>
       <Text style={styles.emptyStateDescription}>
-        Nhóm {groupName} chưa có giao dịch nào được thực hiện
+        {t('groupTransaction.emptyDescription', { groupName })}
       </Text>
     </View>
   );
 
+  // Tạm thời chia transaction thành 2 loại theo userId (giả lập)
+  const myUserId = 0; // TODO: lấy userId thực tế từ context/auth
+  const myTransactions = transactions.filter(t => t.user_id === myUserId);
+  const groupTransactions = transactions;
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -351,35 +360,48 @@ const GroupTransactionListScreen: React.FC = () => {
         >
           <Icon name="arrow-back-ios" size={24} color="#4A90E2" />
         </TouchableOpacity>
-        
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Giao dịch nhóm</Text>
+          <Text style={styles.headerTitle}>{t('groupTransaction.title')}</Text>
           <Text style={styles.headerSubtitle}>{groupName}</Text>
         </View>
-        
         <View style={styles.headerRight} />
       </View>
-
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tabButton, selectedTab === TAB_MY && styles.tabButtonActive]}
+          onPress={() => setSelectedTab(TAB_MY)}
+        >
+          <Text style={[styles.tabText, selectedTab === TAB_MY && styles.tabTextActive]}>{t('groupTransaction.myTransactions')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, selectedTab === TAB_GROUP && styles.tabButtonActive]}
+          onPress={() => setSelectedTab(TAB_GROUP)}
+        >
+          <Text style={[styles.tabText, selectedTab === TAB_GROUP && styles.tabTextActive]}>{t('groupTransaction.groupTransactions')}</Text>
+        </TouchableOpacity>
+      </View>
+      {/* End Tabs */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Đang tải giao dịch...</Text>
+          <Text style={styles.loadingText}>{t('groupTransaction.loading')}</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
           <Icon name="error-outline" size={64} color="#F44336" />
-          <Text style={styles.errorTitle}>Có lỗi xảy ra</Text>
+          <Text style={styles.errorTitle}>{t('groupTransaction.errorTitle')}</Text>
           <Text style={styles.errorDescription}>{error}</Text>
           <TouchableOpacity 
             style={styles.retryButton}
             onPress={() => loadTransactions(0)}
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={styles.retryButtonText}>{t('groupTransaction.retry')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={transactions}
+          data={selectedTab === TAB_MY ? myTransactions : groupTransactions}
           renderItem={renderTransaction}
           keyExtractor={(item) => item.transaction_id.toString()}
           refreshControl={
@@ -426,13 +448,14 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333',
+    ...typography.medium,
   },
   headerSubtitle: {
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+    ...typography.regular,
   },
   headerRight: {
     width: 40,
@@ -468,20 +491,21 @@ const styles = StyleSheet.create({
   },
   transactionUserName: {
     fontSize: 15,
-    fontWeight: '600',
     color: '#333',
     flex: 1,
     marginRight: 8,
+    ...typography.medium,
   },
   transactionAmount: {
     fontSize: 15,
-    fontWeight: '700',
+    ...typography.medium,
   },
   transactionDescription: {
     fontSize: 13,
     color: '#666',
     marginBottom: 8,
     lineHeight: 18,
+    ...typography.regular,
   },
   transactionMeta: {
     flexDirection: 'row',
@@ -504,12 +528,12 @@ const styles = StyleSheet.create({
   transactionType: {
     fontSize: 12,
     color: '#666',
-    fontWeight: '500',
+    ...typography.medium,
   },
   transactionDate: {
     fontSize: 11,
     color: '#999',
-    fontWeight: '400',
+    ...typography.regular,
   },
   separator: {
     height: 1,
@@ -527,6 +551,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginLeft: 8,
+    ...typography.regular,
   },
   loadingContainer: {
     flex: 1,
@@ -537,6 +562,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginTop: 8,
+    ...typography.regular,
   },
   errorContainer: {
     flex: 1,
@@ -546,16 +572,17 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333',
     marginTop: 16,
     marginBottom: 8,
+    ...typography.medium,
   },
   errorDescription: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
     marginBottom: 24,
+    ...typography.regular,
   },
   retryButton: {
     backgroundColor: '#4A90E2',
@@ -565,8 +592,8 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     fontSize: 14,
-    fontWeight: '600',
     color: '#FFFFFF',
+    ...typography.medium,
   },
   emptyListContainer: {
     flexGrow: 1,
@@ -579,15 +606,41 @@ const styles = StyleSheet.create({
   },
   emptyStateTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333',
     marginTop: 16,
     marginBottom: 8,
+    ...typography.medium,
   },
   emptyStateDescription: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+    ...typography.regular,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F5F5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabButtonActive: {
+    borderBottomColor: '#4A90E2',
+    backgroundColor: '#FFFFFF',
+  },
+  tabText: {
+    fontSize: 15,
+    color: '#666',
+    ...typography.medium,
+  },
+  tabTextActive: {
+    color: '#4A90E2',
   },
 });
 

@@ -47,6 +47,7 @@ import LoginScreen from '../screens/login';
 import RegisterScreen from '../screens/register';
 import UpdateProfileScreen from '../screens/update-profile';
 import BranchService from '../services/branchService';
+import { getUnreadNotifications, type Notification } from '../services/notificationService';
 import { isMockNotificationShown, markMockNotificationAsShown } from '../utils/notificationUtils';
 const Stack = createNativeStackNavigator();
 
@@ -204,54 +205,137 @@ function AppNavigator() {
 const NotificationHandler = () => {
   const { isAuthenticated } = useAuth();
   const { 
-    latestUnreadNotification, 
     markNotificationAsDisplayed, 
     isNotificationDisplayed,
     markAsRead 
   } = useNotification();
 
-  useEffect(() => {
-    if (isAuthenticated && latestUnreadNotification) {
-      const notificationId = latestUnreadNotification.notificationId;
-      
-      // Kiểm tra xem notification này đã hiển thị chưa
-      if (!isNotificationDisplayed(notificationId)) {
-        // Hiển thị notification bằng notifee
-        const displayNotification = async () => {
-          try {
-            await notifee.displayNotification({
-              title: latestUnreadNotification.title || 'Thông báo mới',
-              body: latestUnreadNotification.message || 'Bạn có thông báo mới',
-              android: {
-                channelId: 'default',
-                pressAction: {
-                  id: 'default',
-                },
-              },
-              ios: {
-                // iOS specific options
-                foregroundPresentationOptions: {
-                  badge: true,
-                  sound: true,
-                  banner: true,
-                  list: true,
-                },
-              }
-            });
-            
-            // Đánh dấu đã hiển thị
-            await markNotificationAsDisplayed(notificationId);
-            
-            console.log('🔔 Hiển thị notification khi app khởi động:', latestUnreadNotification);
-          } catch (error) {
-            console.log('🔴 Lỗi hiển thị notification:', error);
-          }
-        };
-        
-        displayNotification();
+  // Debug function để xem tất cả notification ID đã lưu
+  const debugDisplayedNotifications = async () => {
+    try {
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      const stored = await AsyncStorage.getItem('displayed_notifications');
+      if (stored) {
+        const displayedIds = JSON.parse(stored);
+        console.log('🗃️ ASYNCSTORAGE DEBUG: Danh sách notification ID đã lưu vĩnh viễn:', displayedIds);
+        console.log('📊 ASYNCSTORAGE DEBUG: Tổng số notification đã hiển thị:', displayedIds.length);
+      } else {
+        console.log('🗃️ ASYNCSTORAGE DEBUG: Chưa có notification nào được lưu');
       }
+    } catch (error) {
+      console.log('🔴 ASYNCSTORAGE DEBUG ERROR:', error);
     }
-  }, [isAuthenticated, latestUnreadNotification]);
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Hàm để hiển thị tất cả notification chưa đọc
+      const displayAllUnreadNotifications = async () => {
+        try {
+          console.log('🔔 Đang lấy danh sách notification chưa đọc...');
+          console.log('📱 AsyncStorage: Đang load danh sách notification đã hiển thị từ thiết bị...');
+          
+          // Debug: Hiển thị tất cả notification ID đã lưu
+          await debugDisplayedNotifications();
+          
+          // Lấy tất cả notification chưa đọc
+          const response = await getUnreadNotifications({ size: 50 }); // Giới hạn 50 notification
+          
+          // Safely access the paginated response data
+          const responseData = response?.data as any;
+          const unreadNotifications: Notification[] = Array.isArray(responseData?.content) ? responseData.content : [];
+          
+          console.log('🔔 Số lượng notification chưa đọc:', unreadNotifications.length);
+          console.log('🔔 Chi tiết notifications:', unreadNotifications);
+          console.log('🔔 Full API response:', responseData);
+          
+          if (unreadNotifications.length > 0) {
+            let displayedCount = 0;
+            let skippedCount = 0;
+            
+            // Hiển thị từng notification một
+            for (let i = 0; i < unreadNotifications.length; i++) {
+              const notification = unreadNotifications[i];
+              const notificationId = notification.notification_id;
+              
+              // Kiểm tra xem notification này đã hiển thị chưa
+              const alreadyDisplayed = isNotificationDisplayed(notificationId);
+              console.log(`🔔 Notification ID ${notificationId}: "${notification.title}" - Đã hiển thị: ${alreadyDisplayed ? '✅ CÓ' : '❌ CHƯA'}`);
+              
+              if (!alreadyDisplayed) {
+                // Delay giữa các notification để tránh spam
+                if (displayedCount > 0) {
+                  console.log(`⏳ Delay 1 giây trước khi hiển thị notification tiếp theo...`);
+                  await new Promise(resolve => setTimeout(resolve, 1000)); // Delay 1 giây
+                }
+                
+                console.log(`🔔 Hiển thị notification ${displayedCount + 1} - ID: ${notificationId} - "${notification.title}"`);
+                
+                await notifee.displayNotification({
+                  id: `unread_${notificationId}_${Date.now()}`, // Thêm timestamp để đảm bảo unique
+                  title: notification.title || 'Thông báo mới',
+                  body: notification.message || 'Bạn có thông báo mới',
+                  data: {
+                    notificationId: notificationId.toString(),
+                    type: notification.notification_type,
+                    linkToEntity: notification.link_to_entity || ''
+                  },
+                  android: {
+                    channelId: 'default',
+                    pressAction: {
+                      id: 'default',
+                    },
+                    smallIcon: 'ic_launcher',
+                    color: '#1e90ff',
+                    importance: 4, // HIGH importance
+                    showTimestamp: true,
+                    timestamp: new Date(notification.created_at).getTime(),
+                    // Thêm sound và vibration để đảm bảo notification được chú ý
+                    sound: 'default',
+                    vibrationPattern: [300, 500],
+                  },
+                  ios: {
+                    foregroundPresentationOptions: {
+                      badge: true,
+                      sound: true,
+                      banner: true,
+                      list: true,
+                    },
+                    // Thêm interruptionLevel để đảm bảo hiển thị
+                    interruptionLevel: 'active',
+                  }
+                });
+                
+                console.log(`✅ Đã hiển thị notification ID: ${notificationId} - "${notification.title}"`);
+                
+                // Đánh dấu đã hiển thị và lưu vào AsyncStorage
+                console.log(`💾 Bắt đầu lưu trạng thái vào AsyncStorage cho notification ID: ${notificationId}`);
+                await markNotificationAsDisplayed(notificationId);
+                console.log(`✅ Đã lưu VĨNH VIỄN vào AsyncStorage - Notification ID: ${notificationId} sẽ không hiển thị lần nữa`);
+                
+                displayedCount++;
+              } else {
+                console.log(`⏭️ Bỏ qua notification ID: ${notificationId} - "${notification.title}" (đã hiển thị trước đó)`);
+                skippedCount++;
+              }
+            }
+            
+            console.log(`🎯 Tổng kết: Hiển thị ${displayedCount} notification mới, bỏ qua ${skippedCount} notification đã hiển thị`);
+            console.log('🔔 Đã xử lý tất cả notification chưa đọc khi app khởi động');
+          } else {
+            console.log('🔔 Không có notification chưa đọc nào');
+          }
+        } catch (error) {
+          console.log('🔴 Lỗi khi hiển thị notification chưa đọc:', error);
+        }
+      };
+      
+      // Delay 2 giây để đảm bảo app đã load xong
+      const timer = setTimeout(displayAllUnreadNotifications, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated]);
 
   return null; // Component này không render gì
 };

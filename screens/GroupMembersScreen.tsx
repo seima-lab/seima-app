@@ -317,7 +317,7 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
           ? { uri: memberData.group_leader.user_avatar_url }
           : require('../assets/images/maleavatar.png'),
         joinDate: new Date().toLocaleDateString('vi-VN'),
-      contribution: 700000,
+          contribution: (memberData.group_leader as any).contribution ?? 0,
         role: GroupMemberRole.OWNER, // Group leader is always OWNER
         email: memberData.group_leader.user_email || t('group.memberManagement.noEmail'), // Fix undefined email
         isCurrentUser: user?.id === memberData.group_leader.user_id.toString()
@@ -335,7 +335,7 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
               ? { uri: member.user_avatar_url }
               : require('../assets/images/femaleavatar.png'),
             joinDate: new Date().toLocaleDateString('vi-VN'),
-      contribution: 500000,
+            contribution: (member as any).contribution ?? 0,
             role: (member as any).role || GroupMemberRole.MEMBER, // FIX: Use role from API
             email: member.user_email || t('group.memberManagement.noEmail'), // Fix undefined email
             isCurrentUser: user?.id === member.user_id.toString()

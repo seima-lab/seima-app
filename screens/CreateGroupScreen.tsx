@@ -3,21 +3,22 @@ import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Clipboard,
-  Image,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Clipboard,
+    Image,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { GroupResponse, groupService } from '../services/groupService';
@@ -429,38 +430,8 @@ const CreateGroupScreen = () => {
             </View>
           </View>
 
-          {/* Invite Code Section - Only show for create mode */}
-          {!isEditMode && createdGroup?.group_invite_code && (
-            <View style={styles.inviteCodeSection}>
-              <Text style={styles.inviteCodeTitle}>
-                {t('group.create.success.inviteCode')}
-              </Text>
-              <TouchableOpacity 
-                style={styles.inviteCodeContainer}
-                onPress={handleCopyInviteCode}
-              >
-                <Text style={styles.inviteCodeText}>
-                  {createdGroup.group_invite_code}
-                </Text>
-                <Icon name="content-copy" size={20} color="#4A90E2" />
-              </TouchableOpacity>
-              <Text style={styles.inviteCodeHint}>
-                {t('group.create.success.inviteCodeDescription')}
-              </Text>
-            </View>
-          )}
-
           {/* Action Buttons */}
           <View style={styles.successActions}>
-            {!isEditMode && createdGroup?.group_invite_code && (
-              <TouchableOpacity 
-                style={styles.shareButton} 
-                onPress={handleCopyInviteCode}
-              >
-                <Icon name="share" size={20} color="#4A90E2" style={{ marginRight: 8 }} />
-                <Text style={styles.shareButtonText}>{t('group.create.success.shareButton')}</Text>
-              </TouchableOpacity>
-            )}
             
             <TouchableOpacity 
               style={styles.successButton} 
@@ -634,10 +605,9 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#1F2937',
     textAlign: 'center',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   placeholder: {
     width: 40,
@@ -651,15 +621,17 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333333',
     marginBottom: 12,
+    ...typography.medium,
   },
   required: {
     color: '#FF4444',
+    ...typography.regular,
   },
   optional: {
     color: '#999999',
+    ...typography.regular,
   },
   avatarContainer: {
     alignSelf: 'center',
@@ -685,6 +657,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999999',
     marginTop: 4,
+    ...typography.regular,
   },
   avatarEditIcon: {
     position: 'absolute',
@@ -708,7 +681,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: '#333333',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
 
   inputError: {
@@ -718,12 +691,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#FF4444',
     marginTop: 4,
+    ...typography.regular,
   },
   charCount: {
     fontSize: 12,
     color: '#999999',
     textAlign: 'right',
     marginTop: 4,
+    ...typography.regular,
   },
   infoSection: {
     flexDirection: 'row',
@@ -739,6 +714,7 @@ const styles = StyleSheet.create({
     color: '#4A90E2',
     marginLeft: 12,
     lineHeight: 20,
+    ...typography.regular,
   },
   footer: {
     padding: 16,
@@ -759,9 +735,8 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#FFFFFF',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   // Success Modal Styles
   successModalOverlay: {

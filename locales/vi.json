@@ -966,5 +966,17 @@
     "message": "Phiên đăng nhập sắp hết hạn trong {{remainingTime}} giây. Bạn có muốn tiếp tục không?",
     "stay": "Tôi vẫn ở đây",
     "logout": "Đăng xuất"
+  },
+  "groupTransaction": {
+    "title": "Giao dịch nhóm",
+    "myTransactions": "Giao dịch của tôi",
+    "groupTransactions": "Giao dịch nhóm",
+    "loading": "Đang tải giao dịch...",
+    "errorTitle": "Có lỗi xảy ra",
+    "retry": "Thử lại",
+    "emptyTitle": "Chưa có giao dịch nào",
+    "emptyDescription": "Nhóm {{groupName}} chưa có giao dịch nào được thực hiện",
+    "income": "Thu nhập",
+    "expense": "Chi tiêu"
   }
 } 

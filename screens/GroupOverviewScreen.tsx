@@ -2,20 +2,21 @@ import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Clipboard,
-    FlatList,
-    Image,
-    ListRenderItem,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Clipboard,
+  FlatList,
+  Image,
+  ListRenderItem,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
 import type { RootStackParamList } from '../navigation/types';
 import { categoryService, CategoryService, CategoryType, LocalCategory } from '../services/categoryService';
 import { GroupDetailResponse, GroupMemberResponse, groupService } from '../services/groupService';
@@ -28,7 +29,7 @@ interface Props {
 
 const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   
   // State management
   const [members, setMembers] = useState<GroupMemberResponse[]>([]);
@@ -349,6 +350,17 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
     });
   };
 
+  // Helper: format time luôn là AM/PM
+  const formatTimeAMPM = (date: Date) => {
+    return date.toLocaleString('en-US', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   const renderTransaction: ListRenderItem<GroupTransactionResponse> = ({ item }) => {
     const isIncome = item.transaction_type === TransactionType.INCOME;
     const isExpense = item.transaction_type === TransactionType.EXPENSE;
@@ -398,13 +410,7 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
             </View>
             
             <Text style={styles.transactionDate}>
-              {new Date(item.transaction_date).toLocaleString('vi-VN', {
-                day: '2-digit',
-                month: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-              })}
+              {formatTimeAMPM(new Date(item.transaction_date))}
             </Text>
           </View>
         </View>
@@ -502,9 +508,7 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
                     {t('group.overview.totalMembers', { count: groupDetail.total_members_count })} • {t('group.overview.groupCreated')} {new Date(groupDetail.group_created_date).toLocaleDateString('vi-VN')}
                   </Text>
                 </View>
-                <TouchableOpacity style={styles.editButton} onPress={handleEditGroup}>
-                  <Icon name="edit" size={20} color="#1e90ff" />
-                </TouchableOpacity>
+                {/* Đã xoá icon bút chì (edit) ở card tên group */}
               </View>
             </>
           ) : null}
@@ -639,13 +643,14 @@ const styles = StyleSheet.create({
   },
   groupName: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333333',
     marginBottom: 4,
+    ...typography.medium,
   },
   groupMeta: {
     fontSize: 12,
     color: '#999999',
+    ...typography.regular,
   },
   financialCard: {
     backgroundColor: '#FFFFFF',
@@ -661,9 +666,9 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333333',
     marginBottom: 16,
+    ...typography.medium,
   },
   financialRow: {
     flexDirection: 'row',
@@ -676,21 +681,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666666',
     marginBottom: 4,
+    ...typography.regular,
   },
   incomeAmount: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#4CAF50',
+    ...typography.medium,
   },
   expenseAmount: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#F44336',
+    ...typography.medium,
   },
   balanceAmount: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#4A90E2',
+    ...typography.medium,
   },
   membersCard: {
     backgroundColor: '#FFFFFF',
@@ -736,8 +742,8 @@ const styles = StyleSheet.create({
   },
   moreMembersText: {
     fontSize: 10,
-    fontWeight: '600',
     color: '#666666',
+    ...typography.regular,
   },
   transactionsCard: {
     backgroundColor: '#FFFFFF',
@@ -761,7 +767,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     color: '#4A90E2',
-    fontWeight: '500',
+    ...typography.medium,
   },
   transactionItem: {
     flexDirection: 'row',
@@ -793,20 +799,21 @@ const styles = StyleSheet.create({
   },
   transactionUserName: {
     fontSize: 15,
-    fontWeight: '600',
     color: '#333333',
     flex: 1,
     marginRight: 8,
+    ...typography.medium,
   },
   transactionDescription: {
     fontSize: 13,
     color: '#666666',
     marginBottom: 8,
     lineHeight: 18,
+    ...typography.regular,
   },
   transactionAmount: {
     fontSize: 15,
-    fontWeight: '700',
+    ...typography.medium,
   },
   transactionMeta: {
     flexDirection: 'row',
@@ -829,12 +836,13 @@ const styles = StyleSheet.create({
   transactionType: {
     fontSize: 12,
     color: '#666666',
-    fontWeight: '500',
+    ...typography.medium,
   },
   transactionDate: {
     fontSize: 11,
     color: '#999999',
-    fontWeight: '400',
+   
+    ...typography.regular,
   },
   separator: {
     height: 1,
@@ -865,17 +873,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#F44336',
     fontStyle: 'italic',
+    ...typography.regular,
   },
   memberCount: {
     fontSize: 12,
     color: '#666666',
     marginTop: 8,
     textAlign: 'center',
+    ...typography.regular,
   },
   noMembersText: {
     fontSize: 12,
     color: '#999999',
     fontStyle: 'italic',
+    ...typography.regular,
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -887,12 +898,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666666',
     marginLeft: 8,
+    ...typography.regular,
   },
   emptyText: {
     fontSize: 12,
     color: '#999999',
     fontStyle: 'italic',
     textAlign: 'center',
+    ...typography.regular,
   },
   modalOverlay: {
     flex: 1,
@@ -923,15 +936,16 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
     color: '#333333',
     marginBottom: 8,
+    ...typography.bold,
   },
   modalMessage: {
     fontSize: 14,
     color: '#666666',
     textAlign: 'center',
     marginBottom: 24,
+    ...typography.regular,
   },
   modalOkButton: {
     backgroundColor: '#4A90E2',
@@ -942,7 +956,7 @@ const styles = StyleSheet.create({
   modalOkText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.medium,
   },
 });
 

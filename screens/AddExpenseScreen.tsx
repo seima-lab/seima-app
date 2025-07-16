@@ -1415,7 +1415,11 @@ export default function AddExpenseScreen() {
             />
 
           {/* Save Button */}
-          <TouchableOpacity 
+          {/* LƯU Ý: XÓA nút Save khỏi ScrollView */}
+      </ScrollView>
+      {/* Đặt nút Save ra ngoài ScrollView, luôn cố định dưới cùng */}
+      <View style={styles.fixedSaveButtonContainer}>
+        <TouchableOpacity 
           style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={isSaving}
@@ -1431,7 +1435,7 @@ export default function AddExpenseScreen() {
             </Text>
             )}
           </TouchableOpacity>
-      </ScrollView>
+      </View>
 
       {/* Date Picker */}
       {showDatePicker && (
@@ -1615,6 +1619,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+    // paddingBottom: 64, // Đảm bảo không có paddingBottom lớn
   },
   header: {
     flexDirection: 'row',
@@ -2016,5 +2021,12 @@ const styles = StyleSheet.create({
     color: '#4A90E2',
     fontWeight: '500',
     marginLeft: 6,
+  },
+  // Thêm style mới cho container cố định nút Save
+  fixedSaveButtonContainer: {
+    paddingHorizontal: 16,
+    // giảm padding dọc để nút sát mép dưới hơn
+   
+ 
   },
 });

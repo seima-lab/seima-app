@@ -896,6 +896,7 @@
   
   "wallet": {
     "title": "My Wallet",
+    "maxWalletLimit": "You have only 5 wallets",
     "currentBalance": "Current Balance",
     "totalAssets": "Total Assets",
     "totalDebts": "Total Debts",
@@ -953,5 +954,17 @@
     "message": "Your session will expire in {{remainingTime}} seconds. Do you want to stay signed in?",
     "stay": "I'm still here",
     "logout": "Logout"
+  },
+  "groupTransaction": {
+    "title": "Group Transactions",
+    "myTransactions": "My Transactions",
+    "groupTransactions": "Group Transactions",
+    "loading": "Loading transactions...",
+    "errorTitle": "An error occurred",
+    "retry": "Retry",
+    "emptyTitle": "No transactions yet",
+    "emptyDescription": "Group {{groupName}} has no transactions yet",
+    "income": "Income",
+    "expense": "Expense"
   }
 } 

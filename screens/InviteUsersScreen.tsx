@@ -2,18 +2,17 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  ListRenderItem,
-  Modal,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Modal,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -22,21 +21,11 @@ import { EmailInvitationResponse, groupService, PendingGroupMemberResponse } fro
 
 type InviteUsersRouteProp = RouteProp<RootStackParamList, 'InviteUsers'>;
 
-interface InviteItem {
-  id: string;
-  email: string;
-  status: 'sending' | 'sent' | 'failed' | 'user_not_found';
-  message?: string;
-  userExists?: boolean;
-  inviteLink?: string;
-}
-
 const InviteUsersScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<InviteUsersRouteProp>();
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
-  const [invites, setInvites] = useState<InviteItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFullScreenLoading, setIsFullScreenLoading] = useState(false);
   const [pendingMembers, setPendingMembers] = useState<PendingGroupMemberResponse[]>([]);
@@ -61,26 +50,10 @@ const InviteUsersScreen = () => {
     }
 
     const trimmedEmail = email.trim().toLowerCase();
-    
-    // Check if email already invited
-    const existingInvite = invites.find(invite => invite.email === trimmedEmail);
-    if (existingInvite) {
-      Alert.alert(t('common.error'), t('group.invitation.alreadyInvited'));
-      return;
-    }
 
     setIsLoading(true);
-    setIsFullScreenLoading(true); // Show full screen loading
+    setIsFullScreenLoading(true);
     
-    // Add pending invite to the list
-    const pendingInvite: InviteItem = {
-      id: Date.now().toString(),
-      email: trimmedEmail,
-      status: 'sending',
-      message: t('group.invitation.sending')
-    };
-    
-    setInvites(prev => [pendingInvite, ...prev]);
     setEmail('');
 
     try {
@@ -92,17 +65,6 @@ const InviteUsersScreen = () => {
       });
       
       console.log('🟢 Invitation response:', response);
-      
-      // Update the invite item with the response
-      setInvites(prev => prev.map(invite => 
-        invite.id === pendingInvite.id ? {
-          ...invite,
-          status: response.email_sent ? 'sent' : 'failed',
-          message: response.message,
-          userExists: response.user_exists,
-          inviteLink: response.invite_link
-        } : invite
-      ));
 
       if (response.email_sent) {
         if (response.user_exists) {
@@ -122,169 +84,16 @@ const InviteUsersScreen = () => {
 
     } catch (error: any) {
       console.error('🔴 Failed to send invitation:', error);
-      
-      // Update invite status to failed
-      setInvites(prev => prev.map(invite => 
-        invite.id === pendingInvite.id ? {
-          ...invite,
-          status: 'failed',
-          message: error.message || t('group.invitation.sendFailed')
-        } : invite
-      ));
-      
       Alert.alert(t('common.error'), error.message || t('group.invitation.sendFailed'));
     } finally {
       setIsLoading(false);
-      setIsFullScreenLoading(false); // Hide full screen loading
+      setIsFullScreenLoading(false);
     }
-  };
-
-  const handleResendInvite = async (inviteItem: InviteItem) => {
-    setIsFullScreenLoading(true); // Show full screen loading
-    
-    setInvites(prev => prev.map(invite => 
-      invite.id === inviteItem.id ? {
-        ...invite,
-        status: 'sending',
-        message: t('group.invitation.sending')
-      } : invite
-    ));
-
-    try {
-      const response: EmailInvitationResponse = await groupService.sendEmailInvitation({
-        group_id: parseInt(groupId),
-        email: inviteItem.email
-      });
-      
-      setInvites(prev => prev.map(invite => 
-        invite.id === inviteItem.id ? {
-          ...invite,
-          status: response.email_sent ? 'sent' : 'failed',
-          message: response.message,
-          userExists: response.user_exists,
-          inviteLink: response.invite_link
-        } : invite
-      ));
-
-      if (response.email_sent) {
-        Alert.alert(t('common.success'), t('group.invitation.resentSuccess'));
-      } else {
-        Alert.alert(t('common.error'), response.message);
-      }
-
-    } catch (error: any) {
-      console.error('🔴 Failed to resend invitation:', error);
-      
-      setInvites(prev => prev.map(invite => 
-        invite.id === inviteItem.id ? {
-          ...invite,
-          status: 'failed',
-          message: error.message || t('group.invitation.sendFailed')
-        } : invite
-      ));
-      
-      Alert.alert(t('common.error'), error.message || t('group.invitation.sendFailed'));
-    } finally {
-      setIsFullScreenLoading(false); // Hide full screen loading
-    }
-  };
-
-  const handleRemoveInvite = (id: string) => {
-    const invite = invites.find(inv => inv.id === id);
-    if (!invite) return;
-
-    Alert.alert(
-      t('group.invitation.removeInvite'),
-      t('group.invitation.confirmRemove', { email: invite.email }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.remove'),
-          style: 'destructive',
-          onPress: () => {
-            setInvites(prev => prev.filter(invite => invite.id !== id));
-          }
-        }
-      ]
-    );
   };
 
   const isValidEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'sending':
-        return <ActivityIndicator size="small" color="#4A90E2" />;
-      case 'sent':
-        return <Icon name="check-circle" size={20} color="#4CAF50" />;
-      case 'failed':
-        return <Icon name="error" size={20} color="#F44336" />;
-      case 'user_not_found':
-        return <Icon name="person-off" size={20} color="#FF9800" />;
-      default:
-        return <Icon name="schedule" size={20} color="#9E9E9E" />;
-    }
-  };
-
-  const getStatusText = (invite: InviteItem) => {
-    switch (invite.status) {
-      case 'sending':
-        return { text: t('group.invitation.sending'), color: '#4A90E2' };
-      case 'sent':
-        if (invite.userExists) {
-          return { text: t('group.invitation.sentToExisting'), color: '#4CAF50' };
-        } else {
-          return { text: t('group.invitation.sentToNew'), color: '#4CAF50' };
-        }
-      case 'failed':
-        return { text: invite.message || t('group.invitation.sendFailed'), color: '#F44336' };
-      case 'user_not_found':
-        return { text: t('group.invitation.userNotFound'), color: '#FF9800' };
-      default:
-        return { text: t('group.invitation.pending'), color: '#9E9E9E' };
-    }
-  };
-
-  const renderInviteItem: ListRenderItem<InviteItem> = ({ item }) => {
-    const statusInfo = getStatusText(item);
-    
-    return (
-      <View style={styles.inviteItem}>
-        <View style={styles.inviteInfo}>
-          <Text style={styles.inviteEmail}>{item.email}</Text>
-          <View style={styles.statusContainer}>
-            {getStatusIcon(item.status)}
-            <Text style={[styles.inviteStatus, { color: statusInfo.color }]}>
-              {statusInfo.text}
-            </Text>
-          </View>
-        </View>
-        
-        <View style={styles.actionButtons}>
-          {item.status === 'failed' && (
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.resendButton]}
-              onPress={() => handleResendInvite(item)}
-            >
-              <Icon name="refresh" size={16} color="#4A90E2" />
-              <Text style={styles.resendButtonText}>{t('group.invitation.resend')}</Text>
-            </TouchableOpacity>
-          )}
-          
-          {item.status !== 'sending' && (
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.removeButton]}
-              onPress={() => handleRemoveInvite(item.id)}
-            >
-              <Icon name="delete" size={16} color="#F44336" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-    );
   };
 
   // Fetch pending members on mount
@@ -466,26 +275,6 @@ const InviteUsersScreen = () => {
             />
           )}
         </View>
-
-        {/* Invites List */}
-        {invites.length > 0 && (
-          <>
-            <View style={styles.listHeader}>
-              <Text style={styles.listHeaderText}>
-                {t('group.invitation.sentInvitations')} ({invites.length})
-              </Text>
-            </View>
-            
-            <FlatList
-              data={invites}
-              renderItem={renderInviteItem}
-              keyExtractor={(item) => String(item.id)}
-              style={styles.invitesList}
-              showsVerticalScrollIndicator={false}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-            />
-          </>
-        )}
       </View>
 
       {/* Full Screen Loading Modal */}
@@ -589,74 +378,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1976D2',
     lineHeight: 20,
-  },
-  listHeader: {
-    marginBottom: 12,
-  },
-  listHeaderText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
-  },
-  invitesList: {
-    flex: 1,
-  },
-  inviteItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  inviteInfo: {
-    flex: 1,
-  },
-  inviteEmail: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333333',
-    marginBottom: 6,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  inviteStatus: {
-    fontSize: 14,
-    marginLeft: 6,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    padding: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resendButton: {
-    backgroundColor: '#E3F2FD',
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-  },
-  resendButtonText: {
-    color: '#4A90E2',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  removeButton: {
-    backgroundColor: '#FFEBEE',
-  },
-  separator: {
-    height: 8,
   },
   // Loading Modal Styles
   loadingOverlay: {
