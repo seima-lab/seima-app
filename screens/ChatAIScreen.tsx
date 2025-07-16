@@ -252,13 +252,16 @@ const ChatAIScreen = () => {
                 console.log('🤖 Calling aiService.sendMessage...');
                 const aiResponse = await aiService.sendMessage(userId, textToSend);
                 
+                // Support both 'suggested_wallets' and 'suggest_wallet' (for API compatibility)
+                const suggestedWallets = aiResponse.suggested_wallets || (aiResponse as any).suggest_wallet || undefined;
+                
                 console.log('✅ AI response received:', aiResponse);
                 console.log('📝 AI response structure:', {
                     hasMessage: !!aiResponse.message,
                     messageLength: aiResponse.message?.length,
-                    hasSuggestedWallets: !!aiResponse.suggested_wallets,
-                    suggestedWalletsCount: aiResponse.suggested_wallets?.length,
-                    suggestedWallets: aiResponse.suggested_wallets
+                    hasSuggestedWallets: !!aiResponse.suggested_wallets || !!(aiResponse as any).suggest_wallet,
+                    suggestedWalletsCount: aiResponse.suggested_wallets?.length || (aiResponse as any).suggest_wallet?.length,
+                    suggestedWallets,
                 });
                 
                 const aiMessage: Message = {
@@ -266,7 +269,7 @@ const ChatAIScreen = () => {
                     text: aiResponse.message,
                     isUser: false,
                     timestamp: new Date(),
-                    suggestedWallets: aiResponse.suggested_wallets || undefined,
+                    suggestedWallets,
                 };
                 
                 console.log('🤖 AI message created:', JSON.stringify(aiMessage, null, 2));
@@ -370,7 +373,7 @@ const ChatAIScreen = () => {
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Icon name="arrow-back-ios" size={24} color="#FFFFFF" />
+                        <Icon name="chevron-left" size={28} color="#FFFFFF" style={{ alignSelf: 'center' }} />
                     </TouchableOpacity>
                     
                     <View style={styles.headerCenter}>

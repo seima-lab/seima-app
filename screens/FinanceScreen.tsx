@@ -2,15 +2,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, Svg } from 'react-native-svg';
@@ -1495,19 +1495,19 @@ legendValue: {
   },
   notificationBadge: {
     position: 'absolute',
-    top: rp(-5),
-    right: rp(-5),
+    top: rp(-4),
+    right: rp(-4),
     backgroundColor: '#FF3B30',
-    borderRadius: rp(10),
-    minWidth: rp(20),
-    height: rp(20),
+    borderRadius: rp(9),
+    minWidth: rp(18),
+    height: rp(18),
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: rp(4),
+    paddingHorizontal: rp(3),
   },
   notificationText: {
     color: 'white',
-    fontSize: rf(10),
+    fontSize: rf(9),
     fontWeight: '600',
     fontFamily: 'Roboto',
   },

@@ -103,7 +103,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       const response = await getNotifications({
         page: 0,
         size: 1,
-        is_read: false,
+        isRead: false,
       });
       
       const apiData = (response.data && typeof response.data === 'object' && 'content' in response.data) 
@@ -130,7 +130,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       const response = await getNotifications({
         page: 0,
         size: 1000, // Lấy tất cả để đếm
-        is_read: false,
+        isRead: false,
       });
       
       const apiData = (response.data && typeof response.data === 'object' && 'content' in response.data) 

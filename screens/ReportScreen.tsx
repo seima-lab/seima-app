@@ -169,7 +169,9 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
       percentage,
       color,
     };
-  }).sort((a, b) => b.percentage - a.percentage);
+  })
+  .filter(item => item.percentage > 0)
+  .sort((a, b) => b.percentage - a.percentage);
 
   // SVG Donut Chart Implementation
   const renderSvgChart = () => {

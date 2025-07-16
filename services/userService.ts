@@ -1,3 +1,5 @@
+import messaging from '@react-native-firebase/messaging';
+import DeviceInfo from 'react-native-device-info';
 import { apiService } from './apiService';
 import { USER_ENDPOINTS } from './config';
 
@@ -156,8 +158,23 @@ export class UserService {
         console.log('🔄 Force refreshing user profile...');
       }
       console.log('🔄 Calling API:', USER_ENDPOINTS.GET_PROFILE);
-      const response = await apiService.get<ApiResponseData>(USER_ENDPOINTS.GET_PROFILE);
       
+      // Lấy fcmToken và deviceId từ hệ thống
+      const fcmToken = await messaging().getToken();
+      const deviceId = await DeviceInfo.getUniqueId();
+      
+      console.log('📱 FCM Token:', fcmToken);
+      console.log('📱 Device ID:', deviceId);
+      
+      // Tạo request body với fcmToken và deviceId
+      const requestBody = {
+        fcm_token: fcmToken,
+        device_id: deviceId
+      };
+      
+      // Gọi API POST với fcmToken và deviceId
+      const response = await apiService.post<ApiResponseData>(USER_ENDPOINTS.GET_PROFILE, requestBody);
+      console.log('📊 ++++++++++++++++++++++++++++++++++++++++++++++++=Request Body:', JSON.stringify(requestBody, null, 2));
       console.log('📊 API Response:', JSON.stringify(response, null, 2));
       
       // Xử lý cấu trúc API response có data lồng nhau

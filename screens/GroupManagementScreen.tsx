@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { GroupMemberRole, groupService, UserJoinedGroupResponse } from '../services/groupService';
@@ -313,7 +314,11 @@ const GroupManagementScreen = () => {
           <View style={styles.groupInfo}>
             <Text style={styles.groupName}>{item.group_name}</Text>
             <Text style={styles.groupDate}>{formatDate(item.group_created_date)}</Text>
-            <Text style={[styles.userRole, { backgroundColor: roleColor.backgroundColor, borderColor: roleColor.borderColor, color: roleColor.textColor }]}>
+            <Text
+              style={[styles.userRole, { backgroundColor: roleColor.backgroundColor, borderColor: roleColor.borderColor, color: roleColor.textColor }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {getRoleText(item.user_role)}
             </Text>
           </View>
@@ -350,9 +355,7 @@ const GroupManagementScreen = () => {
           <Icon name="arrow-back" size={24} color="#333333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('group.title')}</Text>
-        <TouchableOpacity style={styles.settingsButton} onPress={handleSettingsPress}>
-          <Icon name="settings" size={24} color="#666666" />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.content}>
@@ -502,11 +505,11 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333333',
     flex: 1,
     textAlign: 'center',
     marginHorizontal: 16,
+    ...typography.medium,
   },
   settingsButton: {
     padding: 8,
@@ -525,6 +528,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#666666',
+    ...typography.regular,
   },
   groupsList: {
     paddingHorizontal: 16,
@@ -573,26 +577,29 @@ const styles = StyleSheet.create({
   },
   groupName: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333333',
     marginBottom: 4,
+    ...typography.medium,
   },
   groupDate: {
     fontSize: 12,
     color: '#666666',
     marginBottom: 2,
+    ...typography.regular,
   },
   userRole: {
     fontSize: 12,
-    color: '#4A90E2',
-    fontWeight: '500',
     backgroundColor: '#E8F0FE',
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     paddingVertical: 2,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#4A90E2',
     alignSelf: 'flex-start',
+    textAlign: 'center',
+    overflow: 'hidden',
+    flexShrink: 0, // đảm bảo badge không bị co lại
+    ...typography.regular,
   },
   groupItemRight: {
     alignItems: 'flex-end',
@@ -602,17 +609,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666666',
     marginBottom: 2,
+    ...typography.regular,
   },
   leaderText: {
     fontSize: 11,
     color: '#666666',
     marginBottom: 2,
     textAlign: 'right',
+    ...typography.regular,
   },
   joinedDate: {
     fontSize: 11,
     color: '#999999',
     textAlign: 'right',
+    ...typography.regular,
   },
   actionsContainer: {
     backgroundColor: '#FFFFFF',
@@ -632,8 +642,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333333',
-    fontWeight: '500',
     marginLeft: 12,
+    ...typography.medium,
   },
   scrollContainer: {
     flex: 1,
@@ -643,21 +653,22 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333333',
+    ...typography.medium,
   },
   emptyHeaderSection: {
     padding: 16,
   },
   emptyWelcomeTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333333',
     marginBottom: 8,
+    ...typography.medium,
   },
   emptyWelcomeSubtitle: {
     fontSize: 14,
     color: '#666666',
+    ...typography.regular,
   },
   emptyStateContainer: {
     flex: 1,
@@ -697,25 +708,26 @@ const styles = StyleSheet.create({
   },
   emptyStateTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333333',
     marginTop: 12,
     marginBottom: 8,
+    ...typography.medium,
   },
   emptyStateDescription: {
     fontSize: 14,
     color: '#666666',
     textAlign: 'center',
     paddingHorizontal: 20,
+    ...typography.regular,
   },
   benefitsContainer: {
     padding: 16,
   },
   benefitsTitle: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333333',
     marginBottom: 16,
+    ...typography.medium,
   },
   benefitItem: {
     flexDirection: 'row',
@@ -735,6 +747,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     flex: 1,
+    ...typography.regular,
   },
   primaryActionsContainer: {
     padding: 16,
@@ -768,16 +781,18 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     flex: 1,
+    ...typography.regular,
   },
   actionButtonTitle: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 4,
+    ...typography.medium,
   },
   actionButtonSubtitle: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
+    ...typography.regular,
   },
   helpContainer: {
     backgroundColor: '#F8F9FA',
@@ -789,14 +804,15 @@ const styles = StyleSheet.create({
   },
   helpTitle: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333333',
     marginBottom: 8,
+    ...typography.medium,
   },
   helpText: {
     fontSize: 14,
     color: '#666666',
     lineHeight: 20,
+    ...typography.regular,
   },
 });
 
