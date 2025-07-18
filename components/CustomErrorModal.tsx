@@ -1,3 +1,4 @@
+import { typography } from '@/constants/typography';
 import React from 'react';
 import {
     Animated,
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 18,
-        fontWeight: '600',
+        ...typography.semibold,
         color: '#333',
         marginLeft: 12,
         flex: 1,
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     buttonText: {
         color: '#fff',
         fontSize: 16,
-        fontWeight: '600',
+        ...typography.semibold,
     },
 });
 

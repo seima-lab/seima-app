@@ -99,7 +99,9 @@
         "excellentSavings": "Tuyệt vời! Bạn tiết kiệm được {{rate}}% thu nhập! 🎉",
         "balanceGrowth": "Tài sản tăng {{amount}} so với tháng trước! 📈"
       },
-      "budgetWarning": "💡 Bạn đã vượt 95% hạn mức cho '{{category}}' khi mới đến ngày {{day}} – hãy cân nhắc giảm đơn hàng hoặc tăng ngân sách nếu cần thiết."
+      "budgetWarning": "💡 Bạn đã vượt 95% hạn mức cho '{{category}}' khi mới đến ngày {{day}} – hãy cân nhắc giảm đơn hàng hoặc tăng ngân sách nếu cần thiết.",
+      "realTimeData": "Dữ liệu trực tiếp từ server",
+      "fallbackData": "Đang sử dụng dữ liệu dự phòng"
     }
   },
 "category": {
@@ -112,10 +114,10 @@
   "validationError": "Dữ liệu danh mục không hợp lệ"
 },
   "group": {
+
     "title": "Nhóm",
     "createGroup": "Tạo nhóm",
     "joinGroup": "Tham gia nhóm",
-    "settings": "Cài đặt",
     "groupSettings": "Chức năng cài đặt nhóm",
     "members": "thành viên",
     "member": "Thành viên",
@@ -295,7 +297,22 @@
       "deletingGroup": "Đang xóa nhóm...",
       "deleteSuccess": "Nhóm đã được xóa thành công",
       "deleteFailed": "Không thể xóa nhóm. Vui lòng thử lại.",
-      "doNotCloseApp": "Vui lòng không tắt ứng dụng..."
+      "doNotCloseApp": "Vui lòng không tắt ứng dụng...",
+      "youAreOwner": "Bạn là chủ nhóm",
+      "ownerExitMessage": "Như là chủ nhóm, bạn phải chuyển quyền sở hữu hoặc xóa nhóm trước khi rời khỏi.",
+      "ownerLeaveMessage": "Để rời khỏi nhóm, bạn cần chuyển giao quyền chủ nhóm cho thành viên khác. Hiện có {{count}} thành viên đủ điều kiện.",
+      "transferOwnership": "Chuyển quyền sở hữu",
+      "selectNewOwner": "Chọn người mới",
+      "selectMemberDesc": "Chọn thành viên để chuyển quyền sở hữu:",
+      "selectMemberFirst": "Vui lòng chọn thành viên trước",
+      "confirmTransfer": "Xác nhận chuyển quyền sở hữu",
+      "loadingMembers": "Đang tải thành viên...",
+      "loadMembersFailed": "Không thể tải thành viên",
+      "transferringOwnership": "Đang chuyển quyền sở hữu...",
+      "transferAndExitSuccess": "Quyền sở hữu đã được chuyển đến {{memberName}} và bạn đã rời khỏi nhóm",
+      "transferFailed": "Không thể chuyển quyền sở hữu",
+      "exitingGroup": "Đang rời khỏi nhóm...",
+      "exitSuccess": "Đã rời khỏi nhóm thành công"
     },
     "detail": {
       "editGroup": "Chỉnh sửa nhóm",
@@ -479,7 +496,7 @@
     "groups": "Nhóm",
     "budget": "Ngân sách"
   },
-  
+
   "wallet": {
     "maxWalletLimit": "Bạn chỉ được tạo 5 ví",
     "title": "Ví của tôi",
@@ -887,6 +904,7 @@
       "amountPlaceholder": "Nhập số tiền",
       "budgetNamePlaceholder": "Nhập tên hạn mức",
       "selectCategory": "Chọn thể loại",
+      "allCategories": "Tất cả hạng mục",
       "allAccounts": "Tất cả tài khoản",
       "selectAccount": "Chọn tài khoản",
       "selectAccountTitle": "Chọn tài khoản",
@@ -907,12 +925,17 @@
       "saving": "Đang lưu...",
       "updating": "Đang cập nhật...",
       "loadingBudgetData": "Đang tải dữ liệu hạn mức...",
+      "autoCalculated": "Tự động tính theo chu kỳ",
       "validation": {
         "endDateBeforeStart": "Ngày kết thúc phải lớn hơn ngày bắt đầu!",
         "budgetNameRequired": "Vui lòng nhập tên hạn mức!",
         "amountRequired": "Vui lòng nhập số tiền hợp lệ!",
         "categoryRequired": "Vui lòng chọn ít nhất 1 thể loại!",
-        "walletRequired": "Vui lòng chọn tài khoản!"
+        "walletRequired": "Vui lòng chọn tài khoản!",
+        "weeklyPeriodRequired": "Chu kỳ hàng tuần phải ít nhất 7 ngày! Ngày kết thúc đã được tự động điều chỉnh.",
+        "monthlyPeriodRequired": "Chu kỳ hàng tháng phải ít nhất 1 tháng! Ngày kết thúc đã được tự động điều chỉnh.",
+        "yearlyPeriodRequired": "Chu kỳ hàng năm phải ít nhất 1 năm! Ngày kết thúc đã được tự động điều chỉnh.",
+        "invalidPeriod": "Ngày kết thúc không phù hợp với chu kỳ đã chọn!"
       },
       "success": {
         "create": "Tạo hạn mức thành công!",

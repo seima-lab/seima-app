@@ -1,3 +1,4 @@
+import { typography } from '@/constants/typography';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
@@ -784,9 +785,9 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    ...typography.semibold,
     color: '#333',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   backButton: {
     width: 40,
@@ -841,7 +842,7 @@ const styles = StyleSheet.create({
   changeAvatarText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
     fontFamily: 'Roboto',
   },
   editIcon: {
@@ -859,7 +860,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#424242',
     marginBottom: 8,
-    fontWeight: '500',
+    ...typography.semibold,
     flexDirection: 'row',
     alignItems: 'center',
     fontFamily: 'Roboto',
@@ -961,14 +962,14 @@ const styles = StyleSheet.create({
   genderText: {
     fontSize: 16,
     color: '#666',
-    fontWeight: '500',
+    ...typography.semibold,
     flexDirection: 'row',
     alignItems: 'center',
     fontFamily: 'Roboto',
   },
   genderTextSelected: {
     color: '#1e90ff',
-    fontWeight: '600',
+    ...typography.semibold,
   },
   genderIcon: {
     marginRight: 4,
@@ -996,7 +997,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: 'white',
     fontSize: 18,
-    fontWeight: '600',
+    ...typography.semibold,
     fontFamily: 'Roboto',
   },
   saveIcon: {

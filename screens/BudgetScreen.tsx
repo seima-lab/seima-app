@@ -3,20 +3,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { Budget, budgetService } from '../services/budgetService';
@@ -240,6 +241,20 @@ const BudgetScreen = () => {
     );
   };
 
+  // Helper function to get period type label
+  const getPeriodTypeLabel = (periodType: string) => {
+    switch (periodType) {
+      case 'WEEKLY':
+        return t('budget.setBudgetLimit.weekly');
+      case 'MONTHLY':
+        return t('budget.setBudgetLimit.monthly');
+      case 'YEARLY':
+        return t('budget.setBudgetLimit.yearly');
+      default:
+        return t('budget.setBudgetLimit.monthly');
+    }
+  };
+
   const BudgetItem = ({ budget }: { budget: Budget }) => {
     const spent = (budget.overall_amount_limit ?? 0) - (budget.budget_remaining_amount ?? 0);
     const percentage = (budget.overall_amount_limit ?? 0) > 0 ? (spent / budget.overall_amount_limit) * 100 : 0;
@@ -258,9 +273,14 @@ const BudgetScreen = () => {
               </Text>
             </View>
           </View>
-          <Text style={styles.budgetItemAmount}>
-            {(budget.overall_amount_limit ?? 0).toLocaleString()} {t('currency')}
-          </Text>
+          <View style={styles.budgetItemRightSection}>
+            <View style={styles.periodTypeBadge}>
+              <Text style={styles.periodTypeText}>{getPeriodTypeLabel(budget.period_type)}</Text>
+            </View>
+            <Text style={styles.budgetItemAmount}>
+              {(budget.overall_amount_limit ?? 0).toLocaleString()} {t('currency')}
+            </Text>
+          </View>
         </View>
         
         <View style={styles.progressBarContainer}>
@@ -395,9 +415,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: 'white',
     fontSize: 18,
-    fontWeight: '600',
     flex: 1,
     textAlign: 'center',
+    ...typography.semibold,
   },
   headerSpacer: {
     width: 24,
@@ -414,6 +434,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666',
+    ...typography.regular,
   },
   // Empty State Styles
   emptyContainer: {
@@ -434,10 +455,10 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333',
     textAlign: 'center',
     marginBottom: 40,
+    ...typography.semibold,
   },
   addBudgetButtonPrimary: {
     borderRadius: 25,
@@ -459,13 +480,13 @@ const styles = StyleSheet.create({
   addBudgetTextPrimary: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
     marginLeft: 8,
+    ...typography.semibold,
   },
   whatIsBudgetText: {
     fontSize: 16,
     color: '#2196F3',
-    fontWeight: '500',
+    ...typography.medium,
   },
   // Budget List Styles
   budgetsList: {
@@ -511,18 +532,34 @@ const styles = StyleSheet.create({
   },
   budgetItemName: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
     marginBottom: 4,
+    ...typography.semibold,
   },
   budgetItemPeriod: {
     fontSize: 14,
     color: '#666',
+    ...typography.regular,
   },
   budgetItemAmount: {
     fontSize: 16,
-    fontWeight: '700',
     color: '#2196F3',
+    ...typography.semibold,
+  },
+  budgetItemRightSection: {
+    alignItems: 'flex-end',
+  },
+  periodTypeBadge: {
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  periodTypeText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    ...typography.medium,
   },
   progressBarContainer: {
     marginBottom: 16,
@@ -545,11 +582,12 @@ const styles = StyleSheet.create({
   budgetItemRemaining: {
     fontSize: 14,
     color: '#4CAF50',
-    fontWeight: '500',
+    ...typography.medium,
   },
   budgetItemSpent: {
     fontSize: 14,
     color: '#666',
+    ...typography.regular,
   },
   addMoreBudgetButton: {
     flexDirection: 'row',
@@ -566,8 +604,8 @@ const styles = StyleSheet.create({
   addMoreBudgetText: {
     fontSize: 16,
     color: '#2196F3',
-    fontWeight: '500',
     marginLeft: 8,
+    ...typography.medium,
   },
   // Modal Styles
   modalOverlay: {
@@ -580,14 +618,15 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
-    maxHeight: '80%',
-  },
-  whatIsBudgetExplanation: {
+        maxHeight: '80%',
+      },
+      whatIsBudgetExplanation: {
     fontSize: 16,
     color: '#333',
     lineHeight: 24,
     marginBottom: 24,
     textAlign: 'center',
+    ...typography.regular,
   },
   budgetExampleCard: {
     backgroundColor: '#F8F9FA',
@@ -617,18 +656,19 @@ const styles = StyleSheet.create({
   },
   budgetExampleTitle: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
     marginBottom: 2,
+    ...typography.semibold,
   },
   budgetExamplePeriod: {
     fontSize: 12,
     color: '#666',
+    ...typography.regular,
   },
   budgetExampleAmount: {
     fontSize: 16,
-    fontWeight: '700',
     color: '#2196F3',
+    ...typography.semibold,
   },
   budgetExampleFooter: {
     flexDirection: 'row',
@@ -638,11 +678,12 @@ const styles = StyleSheet.create({
   daysLeftText: {
     fontSize: 14,
     color: '#666',
+    ...typography.regular,
   },
   remainingAmount: {
     fontSize: 14,
-    fontWeight: '600',
     color: '#4CAF50',
+    ...typography.semibold,
   },
   continueContainer: {
     alignItems: 'center',
@@ -654,7 +695,7 @@ const styles = StyleSheet.create({
   continueText: {
     fontSize: 12,
     color: '#2196F3',
-    fontWeight: '500',
+    ...typography.medium,
   },
   modalButtonContainer: {
     flexDirection: 'row',
@@ -672,7 +713,7 @@ const styles = StyleSheet.create({
   modalButtonSecondaryText: {
     fontSize: 16,
     color: '#333',
-    fontWeight: '500',
+    ...typography.medium,
   },
   modalButtonPrimary: {
     flex: 1,
@@ -685,8 +726,8 @@ const styles = StyleSheet.create({
   },
   modalButtonPrimaryText: {
     fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: '#FFFFFF',     
+    ...typography.semibold,
   },
   // Legacy styles (keeping for compatibility)
   circularProgressContainer: {

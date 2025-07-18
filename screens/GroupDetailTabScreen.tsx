@@ -1,3 +1,4 @@
+import { typography } from '@/constants/typography';
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -169,6 +170,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
+
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -182,8 +184,9 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...typography.semibold,
+    fontSize: 20,
+
     color: '#333333',
     flex: 1,
     textAlign: 'center',
@@ -222,6 +225,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
   },
   menuItemText: {
+
     fontSize: 16,
     color: '#333',
     marginLeft: 12,

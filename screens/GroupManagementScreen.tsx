@@ -222,7 +222,8 @@ const GroupManagementScreen = () => {
 
   const handleBackPress = useCallback(() => {
     console.log('⬅️ [GroupManagementScreen] Back button pressed');
-    navigation.goBack();
+    // Navigate back to MainTab instead of goBack() to avoid navigation stack issues
+    navigation.navigate('MainTab');
   }, [navigation]);
 
   const handleSettingsPress = useCallback(() => {

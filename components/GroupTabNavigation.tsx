@@ -1,3 +1,4 @@
+import { typography } from '@/constants/typography';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -112,13 +113,13 @@ const styles = StyleSheet.create({
     fontSize: rf(11),
     color: '#999999',
     marginTop: rp(4),
-    fontWeight: '500',
+    ...typography.semibold,
     textAlign: 'center',
     lineHeight: rf(14),
   },
   tabTextActive: {
     color: '#4A90E2',
-    fontWeight: '600',
+    ...typography.semibold,
   },
 });
 

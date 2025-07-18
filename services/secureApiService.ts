@@ -1,3 +1,5 @@
+import messaging from '@react-native-firebase/messaging';
+import DeviceInfo from 'react-native-device-info';
 import { apiService } from './apiService';
 import { authService } from './authService';
 import { TRANSACTION_ENDPOINTS, USER_ENDPOINTS } from './config';
@@ -59,19 +61,30 @@ export class SecureApiService {
   async getCurrentUserProfile(): Promise<UserData> {
     try {
       console.log('🟡 Making request to /api/v1/users/me...');
-      const response = await apiService.get<any>(USER_ENDPOINTS.GET_PROFILE);
+      
+      // Lấy device_id và fcm_token
+      const device_id = await DeviceInfo.getUniqueId();  // Giả sử có phương thức để lấy device_id
+      const fcm_token = await messaging().getToken();;  // Giả sử có phương thức để lấy fcm_token
+  
+      // Tạo body request với device_id và fcm_token
+      const body = {
+        device_id: device_id,
+        fcm_token: fcm_token
+      };
+  
+      const response = await apiService.post<any>(USER_ENDPOINTS.GET_PROFILE, body);  // Gửi body đi cùng yêu cầu POST
       
       console.log('🟢 Full response:', JSON.stringify(response, null, 2));
       console.log('🟢 Response.data:', response.data);
       
-      // Check if response has the expected structure
+      // Kiểm tra nếu phản hồi có cấu trúc dữ liệu mong đợi
       if (response.data) {
-        // If data is nested in response.data.data (standard API format)
+        // Nếu dữ liệu nằm trong response.data.data (định dạng API chuẩn)
         if (response.data.data) {
           console.log('🟢 Using nested data structure');
           return response.data.data as UserData;
         }
-        // If data is directly in response.data (some APIs return this way)
+        // Nếu dữ liệu trực tiếp trong response.data (các API trả về theo cách này)
         else if (response.data.user_id) {
           console.log('🟢 Using direct data structure');
           return response.data as UserData;
@@ -85,6 +98,7 @@ export class SecureApiService {
       throw error;
     }
   }
+  
 
   // ✅ Get user profile (with automatic Authorization header from SecureStore)
   async getUserProfile(): Promise<UserData> {

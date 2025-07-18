@@ -11,28 +11,22 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-interface CustomConfirmModalProps {
+interface CustomSuccessModalProps {
     visible: boolean;
     title: string;
     message: string;
-    confirmText: string;
-    cancelText: string;
+    buttonText: string;
     onConfirm: () => void;
-    onCancel: () => void;
-    type?: 'danger' | 'warning' | 'info';
     iconName?: string;
 }
 
-const CustomConfirmModal: React.FC<CustomConfirmModalProps> = ({
+const CustomSuccessModal: React.FC<CustomSuccessModalProps> = ({
     visible,
     title,
     message,
-    confirmText,
-    cancelText,
+    buttonText,
     onConfirm,
-    onCancel,
-    type = 'danger',
-    iconName = 'delete'
+    iconName = 'check-circle'
 }) => {
     const scaleValue = new Animated.Value(0);
 
@@ -49,27 +43,12 @@ const CustomConfirmModal: React.FC<CustomConfirmModalProps> = ({
         }
     }, [visible]);
 
-    const getTypeColor = () => {
-        switch (type) {
-            case 'danger':
-                return '#FF3B30';
-            case 'warning':
-                return '#FF9500';
-            case 'info':
-                return '#007AFF';
-            default:
-                return '#FF3B30';
-        }
-    };
-
-    const typeColor = getTypeColor();
-
     return (
         <Modal
             transparent
             visible={visible}
             animationType="fade"
-            onRequestClose={onCancel}
+            onRequestClose={onConfirm}
         >
             <View style={styles.overlay}>
                 <Animated.View
@@ -79,8 +58,8 @@ const CustomConfirmModal: React.FC<CustomConfirmModalProps> = ({
                     ]}
                 >
                     {/* Icon */}
-                    <View style={[styles.iconContainer, { backgroundColor: typeColor + '20' }]}>
-                        <Icon name={iconName} size={40} color={typeColor} />
+                    <View style={styles.iconContainer}>
+                        <Icon name={iconName} size={48} color="#4CAF50" />
                     </View>
 
                     {/* Title */}
@@ -89,24 +68,14 @@ const CustomConfirmModal: React.FC<CustomConfirmModalProps> = ({
                     {/* Message */}
                     <Text style={styles.message}>{message}</Text>
 
-                    {/* Buttons */}
-                    <View style={styles.buttonContainer}>
-                        <TouchableOpacity
-                            style={[styles.button, styles.cancelButton]}
-                            onPress={onCancel}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.cancelButtonText}>{cancelText}</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.button, styles.confirmButton, { backgroundColor: typeColor }]}
-                            onPress={onConfirm}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.confirmButtonText}>{confirmText}</Text>
-                        </TouchableOpacity>
-                    </View>
+                    {/* Button */}
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={onConfirm}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.buttonText}>{buttonText}</Text>
+                    </TouchableOpacity>
                 </Animated.View>
             </View>
         </Modal>
@@ -144,6 +113,7 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
+        backgroundColor: '#E8F5E8',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,
@@ -162,36 +132,20 @@ const styles = StyleSheet.create({
         lineHeight: 22,
         marginBottom: 30,
     },
-    buttonContainer: {
-        flexDirection: 'row',
-        gap: 12,
-        width: '100%',
-    },
     button: {
-        flex: 1,
+        backgroundColor: '#4CAF50',
         paddingVertical: 14,
+        paddingHorizontal: 40,
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
+        minWidth: 120,
     },
-    cancelButton: {
-        backgroundColor: '#F8F9FA',
-        borderWidth: 1,
-        borderColor: '#E5E5E5',
-    },
-    confirmButton: {
-        // backgroundColor will be set dynamically based on type
-    },
-    cancelButtonText: {
-        fontSize: 16,
-        ...typography.semibold,
-        color: '#666',
-    },
-    confirmButtonText: {
+    buttonText: {
         fontSize: 16,
         ...typography.semibold,
         color: '#FFFFFF',
     },
 });
 
-export default CustomConfirmModal; 
+export default CustomSuccessModal; 
