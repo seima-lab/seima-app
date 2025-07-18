@@ -1,23 +1,24 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { typography } from '../constants/typography';
 import { CategoryResponse, categoryService, CategoryType } from '../services/categoryService';
 import { deduplicateCategories, getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 const SelectCategoryScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { categoryType, onSelectCategories, selectedCategories: initialSelected = [] } = (route as any).params;
+  const { categoryType, onSelectCategories, selectedCategories: initialSelected = [], selectAllDefault = false } = (route as any).params;
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<CategoryResponse[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,6 +82,9 @@ const SelectCategoryScreen = () => {
       
       setCategories(loadedCategories);
       setFilteredCategories(loadedCategories);
+      if (selectAllDefault && initialSelected.length === 0) {
+        setSelectedCategories(loadedCategories);
+      }
       setLoading(false);
     } catch (err) {
       console.error('Error loading categories:', err);
@@ -114,6 +118,22 @@ const SelectCategoryScreen = () => {
         return newCategories;
       }
     });
+  };
+
+  const areAllFilteredSelected = () => {
+    if (filteredCategories.length === 0) return false;
+    return filteredCategories.every(cat => selectedCategories.some(sel => sel.category_id === cat.category_id));
+  };
+
+  const handleSelectAllFiltered = () => {
+    if (areAllFilteredSelected()) {
+      // Deselect all filtered
+      const filteredIds = new Set(filteredCategories.map(c => c.category_id));
+      setSelectedCategories(prev => prev.filter(c => !filteredIds.has(c.category_id)));
+    } else {
+      // Select all filtered
+      setSelectedCategories(prev => deduplicateCategories([...prev, ...filteredCategories]));
+    }
   };
 
   const renderCategoryItem = ({ item }: { item: CategoryResponse }) => {
@@ -186,6 +206,9 @@ const SelectCategoryScreen = () => {
         <Text style={styles.headerTitle}>
           {categoryType === 'expense' ? 'Chọn hạng mục chi' : 'Chọn hạng mục thu'}
         </Text>
+        <TouchableOpacity onPress={handleSelectAllFiltered} style={{ marginLeft: 'auto' }}>
+          <Text style={styles.selectAllText}>{areAllFilteredSelected() ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>
@@ -215,7 +238,7 @@ const SelectCategoryScreen = () => {
         style={{ backgroundColor: '#007AFF', padding: 16, borderRadius: 10, margin: 16 }}
         onPress={handleConfirm}
       >
-        <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold', fontFamily: 'Roboto' }}>Xác nhận</Text>
+        <Text style={{ color: '#fff', textAlign: 'center', ...typography.semibold }}>Xác nhận</Text>
       </TouchableOpacity>
     </View>
   );
@@ -236,10 +259,14 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     marginLeft: 16,
     color: '#333',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
+  },
+  selectAllText: {
+    fontSize: 14,
+    color: '#007AFF',
+    ...typography.semibold,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -262,7 +289,7 @@ const styles = StyleSheet.create({
     height: 48,
     fontSize: 16,
     color: '#333',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   categoryList: {
     paddingHorizontal: 16,
@@ -293,7 +320,7 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 16,
     color: '#333',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   loadingContainer: {
     flex: 1,
@@ -305,7 +332,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#666',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   errorContainer: {
     flex: 1,
@@ -319,7 +346,7 @@ const styles = StyleSheet.create({
     color: '#ff375f',
     textAlign: 'center',
     marginBottom: 16,
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   retryButton: {
     backgroundColor: '#007AFF',
@@ -330,8 +357,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   emptyContainer: {
     flex: 1,
@@ -342,7 +368,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#999',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
 });
 

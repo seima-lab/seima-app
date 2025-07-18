@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import * as DeviceInfo from 'react-native-device-info';
 import { ApiConfig, AUTH_ENDPOINTS, USER_ENDPOINTS } from './config';
 
 // API endpoints - using centralized configuration
@@ -799,6 +800,8 @@ export class AuthService {
   async logout(): Promise<void> {
     try {
       const refresh_token = await this.getStoredRefreshToken();
+      const device_id = await DeviceInfo.getUniqueId(); // Giả sử có phương thức để lấy device_id
+  
       if (refresh_token) {
         await fetch(this.buildUrl(ENDPOINTS.LOGOUT), {
           method: 'POST',
@@ -806,6 +809,9 @@ export class AuthService {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${refresh_token}`,
           },
+          body: JSON.stringify({ 
+            device_id: device_id  // Thêm device_id vào body của yêu cầu
+          }),
         });
       }
     } catch (error) {
@@ -814,6 +820,7 @@ export class AuthService {
       await this.clearTokens();
     }
   }
+  
 
   // Store tokens securely
   private async storeTokens(access_token: string, refresh_token: string): Promise<void> {

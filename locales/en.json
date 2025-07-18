@@ -98,7 +98,9 @@
         "excellentSavings": "Excellent! You're saving {{rate}}% of your income! 🎉",
         "balanceGrowth": "Assets increased by {{amount}} compared to last month! 📈"
       },
-      "budgetWarning": "💡 You've exceeded 95% of your budget for '{{category}}' on day {{day}} – consider reducing orders or increasing budget if needed."
+      "budgetWarning": "💡 You've exceeded 95% of your budget for '{{category}}' on day {{day}} – consider reducing orders or increasing budget if needed.",
+      "realTimeData": "Live data from server",
+      "fallbackData": "Using fallback data"
     }
   },
 
@@ -106,7 +108,6 @@
     "title": "Groups",
     "createGroup": "Create Group",
     "joinGroup": "Join Group",
-    "settings": "Settings",
     "groupSettings": "Group settings functionality",
     "groupDetail": "Group Detail",
     "members": "members",
@@ -139,6 +140,7 @@
       "joinGroup": "Join group feature",
       "viewDetail": "View group detail"
     },
+
     "create": {
       "title": "Create Group",
       "avatar": "Group Avatar",
@@ -294,7 +296,23 @@
       "deletingGroup": "Deleting group...",
       "deleteSuccess": "Group has been deleted successfully",
       "deleteFailed": "Unable to delete group. Please try again.",
-      "doNotCloseApp": "Please do not close the app..."
+      "doNotCloseApp": "Please do not close the app...",
+      "youAreOwner": "You are the Group Owner",
+      "ownerExitMessage": "As the owner, you must transfer ownership or delete the group before leaving.",
+      "ownerLeaveMessage": "To leave the group, you need to transfer ownership to another member. There are {{count}} eligible members available.",
+      "transferOwnership": "Transfer Ownership",
+      "selectNewOwner": "Select New Owner",
+      "selectMemberDesc": "Choose a member to transfer ownership to:",
+      "selectMemberFirst": "Please select a member first",
+      "confirmTransfer": "Confirm Transfer",
+      "loadingMembers": "Loading members...",
+      "loadMembersFailed": "Failed to load members",
+      "transferringOwnership": "Transferring ownership...",
+      "transferAndExitSuccess": "Ownership transferred to {{memberName}} and successfully left the group",
+      "transferFailed": "Failed to transfer ownership",
+      "exitingGroup": "Exiting group...",
+      "exitSuccess": "Successfully left the group",
+      "exitFailed": "Failed to leave the group"
     },
     "detail": {
       "editGroup": "Edit Group",
@@ -830,6 +848,7 @@
       "amountPlaceholder": "Enter amount",
       "budgetNamePlaceholder": "Enter budget name",
       "selectCategory": "Select category",
+      "allCategories": "All categories",
       "allAccounts": "All accounts",
       "selectAccount": "Select account",
       "selectAccountTitle": "Select Account",
@@ -850,12 +869,17 @@
       "saving": "Saving...",
       "updating": "Updating...",
       "loadingBudgetData": "Loading budget data...",
+      "autoCalculated": "Auto-calculated by period",
       "validation": {
         "endDateBeforeStart": "End date must be greater than start date!",
         "budgetNameRequired": "Please enter budget name!",
         "amountRequired": "Please enter a valid amount!",
         "categoryRequired": "Please select at least 1 category!",
-        "walletRequired": "Please select an account!"
+        "walletRequired": "Please select an account!",
+        "weeklyPeriodRequired": "Weekly period must be at least 7 days! End date has been automatically adjusted.",
+        "monthlyPeriodRequired": "Monthly period must be at least 1 month! End date has been automatically adjusted.",
+        "yearlyPeriodRequired": "Yearly period must be at least 1 year! End date has been automatically adjusted.",
+        "invalidPeriod": "End date does not match the selected period!"
       },
       "success": {
         "create": "Budget created successfully!",
@@ -965,6 +989,50 @@
     "emptyTitle": "No transactions yet",
     "emptyDescription": "Group {{groupName}} has no transactions yet",
     "income": "Income",
-    "expense": "Expense"
+    "expense": "Expense",
+    "settings": {
+      "groupManagement": "Group Management",
+      "editGroupInfo": "Edit Group Info",
+      "editGroupInfoDesc": "Change group name and avatar",
+      "dangerZone": "Danger Zone",
+      "leaveGroup": "Leave Group",
+      "leaveGroupDesc": "Exit this group permanently",
+      "deleteGroup": "Delete Group",
+      "deleteGroupDesc": "Permanently delete this group",
+      "information": "Information",
+      "groupId": "Group ID",
+      "groupName": "Group Name",
+      "createdDate": "Created Date",
+      "version": "Version",
+      "confirmLeave": "Leave Group?",
+      "confirmLeaveDesc": "Are you sure you want to leave this group? This action cannot be undone.",
+      "leave": "Leave",
+      "confirmDelete": "Delete Group?",
+      "confirmDeleteDesc": "Are you sure you want to permanently delete this group? All data will be lost.",
+      "exitingGroup": "Leaving group...",
+      "exitSuccess": "Successfully left the group",
+      "exitFailed": "Failed to leave group",
+      "youAreOwner": "You are the Group Owner",
+      "ownerExitMessage": "As the owner, you must transfer ownership or delete the group before leaving.",
+      "transferOwnership": "Transfer Ownership",
+      "selectNewOwner": "Select New Owner",
+      "selectMemberDesc": "Choose a member to transfer ownership to:",
+      "selectMemberFirst": "Please select a member first",
+      "confirmTransfer": "Confirm Transfer",
+      "loadingMembers": "Loading members...",
+      "loadMembersFailed": "Failed to load members",
+      "transferringOwnership": "Transferring ownership...",
+      "transferAndExitSuccess": "Ownership transferred to {{memberName}} and successfully left the group",
+      "transferFailed": "Failed to transfer ownership",
+      "deletingGroup": "Deleting group...",
+      "deleteSuccess": "Group deleted successfully",
+      "deleteFailed": "Failed to delete group",
+      "doNotCloseApp": "Please do not close the app during this process",
+      "continueAnyway": "Continue anyway",
+   
+      "errors": {
+        "updateFailed": "Failed to update group. Please try again."
+      }
+    }
   }
 } 

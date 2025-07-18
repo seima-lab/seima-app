@@ -2,22 +2,23 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  ListRenderItem,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    FlatList,
+    Image,
+    ListRenderItem,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { GroupMemberListResponse, GroupMemberRole, groupService } from '../services/groupService';
@@ -796,14 +797,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666666',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   errorText: {
     marginTop: 16,
     fontSize: 16,
     color: '#FF6B6B',
     textAlign: 'center',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   retryButton: {
     marginTop: 16,
@@ -815,8 +816,7 @@ const styles = StyleSheet.create({
   retryText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   scrollContent: {
     paddingBottom: 100, // Add padding bottom to account for the bottom navigation
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333333',
     marginLeft: 16,
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   separator: {
     height: 1,
@@ -882,9 +882,8 @@ const styles = StyleSheet.create({
   },
   membersTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333333',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   memberItem: {
     flexDirection: 'row',
@@ -902,21 +901,19 @@ const styles = StyleSheet.create({
   },
   memberName: {
     fontSize: 16,
-    fontWeight: '500',
     color: '#333333',
     marginRight: 8,
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   memberEmail: {
     fontSize: 12,
     color: '#666666',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   memberContribution: {
     fontSize: 14,
-    fontWeight: '600',
     color: '#4A90E2',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   memberSeparator: {
     height: 1,
@@ -933,9 +930,8 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     color: '#4A90E2',
-    fontWeight: '500',
+    ...typography.medium,
     marginRight: 4,
-    fontFamily: 'Roboto',
   },
   modalOverlay: {
     flex: 1,
@@ -961,9 +957,8 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333333',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   modalCloseButton: {
     padding: 4,
@@ -980,8 +975,7 @@ const styles = StyleSheet.create({
   memberCountText: {
     color: '#1976D2',
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   modalListContainer: {
     flex: 1,
@@ -1014,15 +1008,14 @@ const styles = StyleSheet.create({
   },
   modalMemberName: {
     fontSize: 16,
-    fontWeight: '500',
     color: '#333333',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   modalMemberEmail: {
     fontSize: 12,
     color: '#666666',
     marginTop: 2,
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   modalMemberFooter: {
     flexDirection: 'row',
@@ -1051,8 +1044,7 @@ const styles = StyleSheet.create({
   roleTagText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   modalActionsContainer: {
     flexDirection: 'row',
@@ -1077,9 +1069,8 @@ const styles = StyleSheet.create({
   actionButtonText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
+    ...typography.medium,
     marginLeft: 4,
-    fontFamily: 'Roboto',
   },
   emptyStateContainer: {
     flex: 1,
@@ -1090,7 +1081,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666666',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   modalFooterButton: {
     backgroundColor: '#4A90E2',
@@ -1103,8 +1094,7 @@ const styles = StyleSheet.create({
   modalFooterButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   swipeableContainer: {
     flexDirection: 'row',
@@ -1134,9 +1124,8 @@ const styles = StyleSheet.create({
   swipeRemoveButtonText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '600',
+    ...typography.medium,
     marginTop: 2,
-    fontFamily: 'Roboto',
   },
   swipeableContent: {
     flex: 1,
@@ -1152,10 +1141,9 @@ const styles = StyleSheet.create({
   },
   roleSelectorTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    ...typography.medium,
     color: '#333333',
     marginBottom: 12,
-    fontFamily: 'Roboto',
   },
   roleOptions: {
     flexDirection: 'row',
@@ -1185,14 +1173,13 @@ const styles = StyleSheet.create({
   },
   roleOptionText: {
     fontSize: 12,
-    fontWeight: '500',
+    ...typography.medium,
     marginLeft: 4,
     color: '#666666',
-    fontFamily: 'Roboto',
   },
   selectedRoleOptionText: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    ...typography.medium,
   },
   roleBadge: {
     paddingHorizontal: 4,
@@ -1208,9 +1195,8 @@ const styles = StyleSheet.create({
   },
   roleBadgeText: {
     fontSize: 8,
-    fontWeight: '600',
+    ...typography.medium,
     textAlign: 'center',
-    fontFamily: 'Roboto',
   },
   roleBadgeTextSmall: {
     fontSize: 7,
@@ -1231,8 +1217,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     color: '#4A90E2',
-    fontWeight: '500',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   modalCloseFooterButton: {
     backgroundColor: '#4A90E2',
@@ -1244,8 +1229,7 @@ const styles = StyleSheet.create({
   modalCloseFooterText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   simpleModalMemberItem: {
     flexDirection: 'row',
@@ -1262,8 +1246,7 @@ const styles = StyleSheet.create({
   simpleBadgeText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   simpleRoleButtons: {
     flexDirection: 'row',
@@ -1277,8 +1260,7 @@ const styles = StyleSheet.create({
   simpleRoleButtonText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
 });
 

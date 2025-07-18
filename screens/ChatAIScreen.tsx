@@ -173,6 +173,7 @@ const ChatAIScreen = () => {
     const insets = useSafeAreaInsets();
     const navigation = useNavigationService();
     const scrollViewRef = useRef<ScrollView>(null);
+    const textInputRef = useRef<TextInput>(null);
     
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -187,6 +188,8 @@ const ChatAIScreen = () => {
     const [userId, setUserId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showWelcome, setShowWelcome] = useState(true);
+    const [isInputFocused, setIsInputFocused] = useState(false);
+    const [showExtraButtons, setShowExtraButtons] = useState(true);
     
     const suggestions = [
         { text: 'Tôi tiêu 50k cho ăn uống 🍜', icon: 'restaurant' },
@@ -216,6 +219,17 @@ const ChatAIScreen = () => {
         
         // Hide welcome message after 3 seconds
         setTimeout(() => setShowWelcome(false), 3000);
+        
+        // Listen to keyboard events
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+            setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+        });
+
+        return () => {
+            keyboardDidShowListener?.remove();
+        };
     }, []);
 
     const handleSendMessage = async (messageText?: string) => {
@@ -244,6 +258,8 @@ const ChatAIScreen = () => {
             }
             setIsLoading(true);
             setShowWelcome(false);
+            
+            // Keep input focused after sending message for continuous chatting
             
             console.log('🚀 Starting AI request with input:', textToSend);
             
@@ -394,6 +410,7 @@ const ChatAIScreen = () => {
                 <KeyboardAvoidingView 
                     style={styles.chatContainer}
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
                 >
                     {/* Messages */}
                     <ScrollView 
@@ -403,6 +420,11 @@ const ChatAIScreen = () => {
                         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="interactive"
+                        maintainVisibleContentPosition={{
+                            minIndexForVisible: 0,
+                            autoscrollToTopThreshold: 10
+                        }}
                     >
                         {showWelcome && <WelcomeMessage />}
                         
@@ -444,50 +466,81 @@ const ChatAIScreen = () => {
                             style={styles.inputGradient}
                         >
                             <View style={styles.inputRow}>
-                                <View style={styles.textInputContainer}>
+                                {showExtraButtons ? (
+                                    <View style={styles.inputButtons}>
+                                        <TouchableOpacity style={styles.inputButton}>
+                                            <Icon name="photo-camera" size={20} color="#1e90ff" />
+                                        </TouchableOpacity>
+                                        
+                                        <TouchableOpacity style={styles.inputButton}>
+                                            <Icon name="mic" size={20} color="#1e90ff" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity 
+                                        style={styles.smallArrowButton}
+                                        onPress={() => setShowExtraButtons(true)}
+                                    >
+                                        <Icon name="keyboard-arrow-right" size={16} color="#1e90ff" />
+                                    </TouchableOpacity>
+                                )}
+                                
+                                <View style={[
+                                    styles.textInputContainer,
+                                    !showExtraButtons && styles.expandedInput
+                                ]}>
                                     <TextInput
+                                        ref={textInputRef}
                                         style={styles.textInput}
                                         value={inputText}
                                         onChangeText={setInputText}
-                                        placeholder="Nhập tin nhắn của bạn..."
+                                        onContentSizeChange={() => {
+                                            // Scroll to bottom when input expands
+                                            setTimeout(() => {
+                                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                                            }, 100);
+                                        }}
+                                        onFocus={() => {
+                                            setIsInputFocused(true);
+                                            setShowExtraButtons(false);
+                                            // Scroll to bottom when focusing
+                                            setTimeout(() => {
+                                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                                            }, 300);
+                                        }}
+                                        onBlur={() => {
+                                            setIsInputFocused(false);
+                                            setShowExtraButtons(true);
+                                        }}
+                                        placeholder={showExtraButtons ? "Tin nhắn..." : "Nhập tin nhắn của bạn..."}
                                         placeholderTextColor="#8e9aaf"
                                         multiline
                                     />
                                 </View>
                                 
-                                <View style={styles.inputButtons}>
-                                    <TouchableOpacity style={styles.inputButton}>
-                                        <Icon name="photo-camera" size={20} color="#1e90ff" />
-                                    </TouchableOpacity>
-                                    
-                                    <TouchableOpacity style={styles.inputButton}>
-                                        <Icon name="mic" size={20} color="#1e90ff" />
-                                    </TouchableOpacity>
-                                    
-                                    <TouchableOpacity 
-                                        style={[
-                                            styles.sendButton, 
-                                            (isLoading || !userId || !inputText.trim()) && styles.disabledButton
-                                        ]}
-                                        onPress={() => handleSendMessage()}
-                                        disabled={isLoading || !userId || !inputText.trim()}
+                                <TouchableOpacity 
+                                    style={[
+                                        styles.sendButton, 
+                                        (isLoading || !userId || !inputText.trim()) && styles.disabledButton
+                                    ]}
+                                    onPress={() => handleSendMessage()}
+                                    disabled={isLoading || !userId || !inputText.trim()}
+                                >
+                                    <LinearGradient
+                                        colors={
+                                            (isLoading || !userId || !inputText.trim()) 
+                                                ? ['#ccc', '#999'] 
+                                                : ['#1e90ff', '#0066cc']
+                                        }
+                                        style={styles.sendButtonGradient}
                                     >
-                                        <LinearGradient
-                                            colors={
-                                                (isLoading || !userId || !inputText.trim()) 
-                                                    ? ['#ccc', '#999'] 
-                                                    : ['#1e90ff', '#0066cc']
-                                            }
-                                            style={styles.sendButtonGradient}
-                                        >
-                                            <Icon 
-                                                name={isLoading ? "hourglass-empty" : "send"} 
-                                                size={20} 
-                                                color="#FFFFFF" 
-                                            />
-                                        </LinearGradient>
-                                    </TouchableOpacity>
-                                </View>
+                                        <Icon 
+                                            name={isLoading ? "hourglass-empty" : "send"} 
+                                            size={20} 
+                                            color="#FFFFFF" 
+                                        />
+                                    </LinearGradient>
+                                </TouchableOpacity>
                             </View>
                         </LinearGradient>
                     </View>
@@ -564,6 +617,7 @@ const styles = StyleSheet.create({
     },
     messagesContent: {
         paddingVertical: 20,
+        paddingBottom: 40,
     },
     welcomeContainer: {
         alignItems: 'center',
@@ -626,7 +680,7 @@ const styles = StyleSheet.create({
     },
     messageContent: {
         flex: 1,
-        maxWidth: width * 0.75,
+        maxWidth: width * 0.85,
     },
     messageContainer: {
         borderRadius: 20,
@@ -638,6 +692,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
+        flexShrink: 1,
     },
     userMessage: {
         backgroundColor: '#1e90ff',
@@ -657,6 +712,8 @@ const styles = StyleSheet.create({
     messageText: {
         fontSize: 16,
         lineHeight: 22,
+        flexWrap: 'wrap',
+        flexShrink: 1,
     },
     userMessageText: {
         color: '#FFFFFF',
@@ -722,7 +779,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#e2e8f0',
         width: '48%',
-        minHeight: 44,
+        minHeight: 40,
     },
     suggestionText: {
         color: '#4a5568',
@@ -790,50 +847,67 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
     },
-    inputRow: {
+        inputRow: {
         flexDirection: 'row',
-        alignItems: 'flex-end',
+        alignItems: 'center',
         gap: 12,
-    },
-    textInputContainer: {
-        flex: 1,
-        backgroundColor: '#f7fafc',
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-    },
-    textInput: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        fontSize: 16,
-        maxHeight: 100,
-        color: '#2d3748',
-        lineHeight: 22,
     },
     inputButtons: {
         flexDirection: 'row',
         gap: 8,
     },
+    textInputContainer: {
+        flex: 1,
+        minHeight: 40,
+        backgroundColor: '#f7fafc',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        justifyContent: 'center',
+    },
+    expandedInput: {
+        marginLeft: -10,
+    },
+    textInput: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        fontSize: 14,
+        color: '#2d3748',
+        lineHeight: 20,
+        textAlignVertical: 'top',
+        maxHeight: 100,
+    },
     inputButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#f7fafc',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: '#f7fafc',
+    },
+    smallArrowButton: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#f7fafc',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#f7fafc',
+        marginRight: 4,
     },
     sendButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         overflow: 'hidden',
     },
     sendButtonGradient: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
     },

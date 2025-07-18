@@ -117,6 +117,26 @@ export interface GroupMemberStatusResponse {
   group_exists: boolean;
 }
 
+// Exit Group interfaces
+export interface OwnerExitOptionsResponse {
+  canTransferOwnership: boolean;
+  canDeleteGroup: boolean;
+  eligibleMembersCount: number;
+  message: string;
+}
+
+export interface EligibleMemberResponse {
+  user_id: number;
+  user_full_name: string;
+  user_avatar_url?: string;
+  user_email?: string;
+  role: GroupMemberRole;
+}
+
+export interface TransferOwnershipRequest {
+  new_owner_user_id: number;
+}
+
 class GroupService {
   // Get all groups that current user has joined
   async getUserJoinedGroups(): Promise<UserJoinedGroupResponse[]> {
@@ -531,6 +551,86 @@ class GroupService {
       return response;
     } catch (error: any) {
       throw new Error(error.message || 'Failed to get my group status');
+    }
+  }
+
+  // Exit Group APIs
+  async exitGroup(groupId: number): Promise<void> {
+    try {
+      console.log('🟡 Attempting to exit group:', groupId);
+      const { GROUP_MEMBER_ENDPOINTS } = await import('./config');
+      await secureApiService.makeAuthenticatedRequest<void>(
+        GROUP_MEMBER_ENDPOINTS.EXIT_GROUP(groupId.toString()),
+        'POST'
+      );
+      console.log('🟢 Successfully exited group:', groupId);
+    } catch (error: any) {
+      console.error('🔴 Failed to exit group:', error);
+      throw error; // Re-throw to handle in component
+    }
+  }
+
+  async getOwnerExitOptions(groupId: number): Promise<OwnerExitOptionsResponse> {
+    try {
+      console.log('🟡 Getting owner exit options for group:', groupId);
+      const { GROUP_MEMBER_ENDPOINTS } = await import('./config');
+      const response = await secureApiService.makeAuthenticatedRequest<OwnerExitOptionsResponse>(
+        GROUP_MEMBER_ENDPOINTS.GET_OPTIONS(groupId.toString()),
+        'GET'
+      );
+      console.log('🟢 Owner exit options:', response);
+      return response;
+    } catch (error: any) {
+      console.error('🔴 Failed to get owner exit options:', error);
+      throw new Error(error.message || 'Failed to get exit options');
+    }
+  }
+
+  async getEligibleMembersForOwnership(groupId: number): Promise<EligibleMemberResponse[]> {
+    try {
+      console.log('🟡 Getting eligible members for ownership transfer:', groupId);
+      const { GROUP_MEMBER_ENDPOINTS } = await import('./config');
+      const response = await secureApiService.makeAuthenticatedRequest<EligibleMemberResponse[]>(
+        GROUP_MEMBER_ENDPOINTS.GET_MEMBERS(groupId.toString()),
+        'GET'
+      );
+      console.log('🟢 Eligible members:', response);
+      return response;
+    } catch (error: any) {
+      console.error('🔴 Failed to get eligible members:', error);
+      throw new Error(error.message || 'Failed to get eligible members');
+    }
+  }
+
+  async transferOwnership(groupId: number, newOwnerUserId: number): Promise<void> {
+    try {
+      console.log('🟡 Transferring ownership:', { groupId, newOwnerUserId });
+      const { GROUP_MEMBER_ENDPOINTS } = await import('./config');
+      const request: TransferOwnershipRequest = { new_owner_user_id: newOwnerUserId };
+      await secureApiService.makeAuthenticatedRequest<void>(
+        GROUP_MEMBER_ENDPOINTS.TRANSFER(groupId.toString()),
+        'POST',
+        request
+      );
+      console.log('🟢 Ownership transferred successfully');
+    } catch (error: any) {
+      console.error('🔴 Failed to transfer ownership:', error);
+      throw new Error(error.message || 'Failed to transfer ownership');
+    }
+  }
+
+  async deleteGroup(groupId: number): Promise<void> {
+    try {
+      console.log('🟡 Deleting group:', groupId);
+      const { GROUP_MEMBER_ENDPOINTS } = await import('./config');
+      await secureApiService.makeAuthenticatedRequest<void>(
+        GROUP_MEMBER_ENDPOINTS.DELETE_GROUP(groupId.toString()),
+        'DELETE'
+      );
+      console.log('🟢 Group deleted successfully');
+    } catch (error: any) {
+      console.error('🔴 Failed to delete group:', error);
+      throw new Error(error.message || 'Failed to delete group');
     }
   }
 }

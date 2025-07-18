@@ -1,3 +1,4 @@
+import { typography } from '@/constants/typography';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -284,15 +285,15 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1e90ff', flex: 1, fontFamily: 'Roboto' },
   profileSection: { backgroundColor: '#fff', alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16 },
   avatar: { width: 120, height: 120, borderRadius: 60, marginBottom: 12 },
-  name: { fontSize: 26, fontWeight: '600', color: '#333', marginBottom: 12, fontFamily: 'Roboto' },
+    name: { fontSize: 26, ...typography.semibold, color: '#333', marginBottom: 12, fontFamily: 'Roboto' },
   infoBlock: { marginBottom: 12 },
   infoText: { fontSize: 15, color: '#444', marginBottom: 2, fontFamily: 'Roboto' },
   updateBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10, minWidth: 200, alignItems: 'center' },
-  updateBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16, fontFamily: 'Roboto' },
+  updateBtnText: { color: '#fff', ...typography.semibold, fontSize: 16, fontFamily: 'Roboto' },
   changePasswordBtn: { backgroundColor: '#1e90ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10, minWidth: 200, alignItems: 'center' },
-  changePasswordBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16, fontFamily: 'Roboto' },
+  changePasswordBtnText: { color: '#fff', ...typography.semibold, fontSize: 16, fontFamily: 'Roboto' },
   card: { backgroundColor: '#fff', borderRadius: 18, marginHorizontal: 16, marginTop: 18, padding: 18, elevation: 1 },
-  cardTitle: { fontSize: 20, fontWeight: 'bold', color: '#222', marginBottom: 6, fontFamily: 'Roboto' },
+  cardTitle: { fontSize: 20, ...typography.semibold, color: '#222', marginBottom: 6, fontFamily: 'Roboto' },
   cardDesc: { color: '#888', marginBottom: 12, fontFamily: 'Roboto' },
   langRow: { flexDirection: 'row', justifyContent: 'space-between' },
   langBtn: { flexDirection: 'row', alignItems: 'center', padding: 8, borderRadius: 8, flex: 1, marginRight: 8 },

@@ -2,25 +2,26 @@ import { useRoute } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Calendar from 'react-native-calendars/src/calendar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { typography } from '../constants/typography';
 import { useNavigationService } from '../navigation/NavigationService';
 import { Budget, budgetService } from '../services/budgetService';
-import { CategoryResponse } from '../services/categoryService';
+import { CategoryResponse, categoryService, CategoryType } from '../services/categoryService';
 import { WalletResponse, walletService } from '../services/walletService';
 import { deduplicateCategories, getIconColor, getIconForCategory } from '../utils/iconUtils';
 
@@ -53,6 +54,7 @@ const BudgetLimitScreen = () => {
   const [periodType, setPeriodType] = useState('MONTHLY');
   const [showRepeatModal, setShowRepeatModal] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<CategoryResponse[]>([]);
+  const [allAvailableCategories, setAllAvailableCategories] = useState<CategoryResponse[]>([]);
 
   // Debug selectedCategories changes
   useEffect(() => {
@@ -79,6 +81,19 @@ const BudgetLimitScreen = () => {
       console.warn('⚠️ Duplicate category IDs:', duplicates);
     }
   }, [selectedCategories]);
+
+  // Load all available categories to compare with selected ones
+  useEffect(() => {
+    const loadAllCategories = async () => {
+      try {
+        const categories = await categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0, 1);
+        setAllAvailableCategories(categories);
+      } catch (error) {
+        console.error('Error loading all available categories:', error);
+      }
+    };
+    loadAllCategories();
+  }, []);
   
   const [wallets, setWallets] = useState<WalletResponse[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletResponse | null>(null);
@@ -94,6 +109,55 @@ const BudgetLimitScreen = () => {
   const [isSaving, setIsSaving] = useState(false);
   
   const insets = useSafeAreaInsets();
+
+  // Helper function to calculate end date based on period type
+  const calculateEndDateFromPeriod = (periodType: string, startDate: Date) => {
+    let calculatedEndDate = new Date(startDate);
+    
+    switch (periodType) {
+      case 'WEEKLY':
+        // Add 1 week (7 days) from start date
+        calculatedEndDate.setDate(startDate.getDate() + 7);
+        break;
+      case 'MONTHLY':
+        // Add 1 month from start date
+        calculatedEndDate.setMonth(startDate.getMonth() + 1);
+        break;
+      case 'YEARLY':
+        // Add 1 year from start date
+        calculatedEndDate.setFullYear(startDate.getFullYear() + 1);
+        break;
+      default:
+        return;
+    }
+    
+    setEndDate(calculatedEndDate);
+  };
+
+  // Load initial categories for new budget
+  useEffect(() => {
+    if (!isEditMode) {
+      const loadInitialCategories = async () => {
+        try {
+          const allExpenseCategories = await categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0, 1);
+          setSelectedCategories(allExpenseCategories);
+        } catch (error) {
+          console.error('Failed to load initial categories:', error);
+        }
+      };
+      loadInitialCategories();
+      
+      // Set default end date for new budget based on default period type (MONTHLY)
+      calculateEndDateFromPeriod(periodType, startDate);
+    }
+  }, [isEditMode]);
+
+  // Recalculate end date when startDate or periodType changes for new budgets
+  useEffect(() => {
+    if (!isEditMode && startDate) {
+      calculateEndDateFromPeriod(periodType, startDate);
+    }
+  }, [startDate, periodType, isEditMode]);
 
   // Helper functions for modals
   const showValidationError = (message: string) => {
@@ -130,6 +194,11 @@ const BudgetLimitScreen = () => {
   const renderCategoryIcons = () => {
     if (selectedCategories.length === 0) {
       return <Text style={styles.label}>{t('budget.setBudgetLimit.selectCategory')}</Text>;
+    }
+
+    // If all available categories are selected, show "Tất cả hạng mục" text
+    if (allAvailableCategories.length > 0 && selectedCategories.length === allAvailableCategories.length) {
+      return <Text style={styles.label}>{t('budget.setBudgetLimit.allCategories')}</Text>;
     }
 
     return (
@@ -288,6 +357,9 @@ const BudgetLimitScreen = () => {
   const handleRepeatSelect = (frequency: string) => {
     setPeriodType(frequency);
     setShowRepeatModal(false);
+    
+    // Auto-calculate end date based on period type and start date
+    calculateEndDateFromPeriod(frequency, startDate);
   };
 
   const getPeriodLabel = (value: string) => {
@@ -316,16 +388,64 @@ const BudgetLimitScreen = () => {
     setStartDate(selectedDate);
     setShowStartDateModal(false);
 
-    // Reset end date if it's before the new start date
-    if (endDate && selectedDate > endDate) {
-      setEndDate(null);
-    }
+    // Auto-calculate end date based on current period type and new start date
+    calculateEndDateFromPeriod(periodType, selectedDate);
   };
 
   const handleEndDateSelect = (day: { dateString: string }) => {
     const selectedDate = new Date(day.dateString);
+    
+    // Validate if the selected end date matches the period requirement
+    if (!validateEndDateForPeriod(selectedDate, startDate, periodType)) {
+      // Show warning and auto-correct the end date
+      const correctEndDate = new Date(startDate);
+      calculateEndDateFromPeriod(periodType, startDate);
+      
+      // Show validation warning
+      showValidationError(getInvalidPeriodMessage(periodType));
+      return;
+    }
+    
     setEndDate(selectedDate);
     setShowEndDateModal(false);
+  };
+
+  // Helper function to validate if end date meets minimum period requirement
+  const validateEndDateForPeriod = (endDate: Date, startDate: Date, periodType: string): boolean => {
+    const timeDiff = endDate.getTime() - startDate.getTime();
+    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    
+    switch (periodType) {
+      case 'WEEKLY':
+        // Must be at least 7 days (can be more)
+        return daysDiff >= 7;
+      case 'MONTHLY':
+        // Must be at least 1 month (can be more)
+        const minimumMonthlyEnd = new Date(startDate);
+        minimumMonthlyEnd.setMonth(startDate.getMonth() + 1);
+        return endDate >= minimumMonthlyEnd;
+      case 'YEARLY':
+        // Must be at least 1 year (can be more)
+        const minimumYearlyEnd = new Date(startDate);
+        minimumYearlyEnd.setFullYear(startDate.getFullYear() + 1);
+        return endDate >= minimumYearlyEnd;
+      default:
+        return true;
+    }
+  };
+
+  // Helper function to get validation message for period type
+  const getInvalidPeriodMessage = (periodType: string): string => {
+    switch (periodType) {
+      case 'WEEKLY':
+        return t('budget.setBudgetLimit.validation.weeklyPeriodRequired');
+      case 'MONTHLY':
+        return t('budget.setBudgetLimit.validation.monthlyPeriodRequired');
+      case 'YEARLY':
+        return t('budget.setBudgetLimit.validation.yearlyPeriodRequired');
+      default:
+        return t('budget.setBudgetLimit.validation.invalidPeriod');
+    }
   };
 
   const toggleEndDate = () => {
@@ -543,12 +663,16 @@ const BudgetLimitScreen = () => {
                     onSelectCategories: (categories: CategoryResponse[]) => {
                       console.log('🔄 onSelectCategories called with:', categories);
                       setSelectedCategories(categories);
-                    }
+                    },
+                    selectAllDefault: !isEditMode,
                   });
                 }}
               >
                 <Icon name="food" size={24} color="#555" />
-                {renderCategoryIcons()}
+                <View style={styles.itemContent}>
+                  {renderCategoryIcons()}
+                </View>
+                <Icon name="chevron-right" size={20} color="#999" />
               </TouchableOpacity>
 
               {/* Account */}
@@ -557,13 +681,16 @@ const BudgetLimitScreen = () => {
                 onPress={() => setShowWalletPicker(true)}
               >
                 <Icon name="wallet-outline" size={24} color="#555" />
-                <Text
-                  style={styles.label}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {selectedWallet ? selectedWallet.wallet_name : t('budget.setBudgetLimit.allAccounts')}
-                </Text>
+                <View style={styles.itemContent}>
+                  <Text
+                    style={[styles.label, { marginLeft: 0 }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {selectedWallet ? selectedWallet.wallet_name : t('budget.setBudgetLimit.allAccounts')}
+                  </Text>
+                </View>
+                <Icon name="chevron-right" size={20} color="#999" />
               </TouchableOpacity>
 
               {/* Wallet Picker Modal */}
@@ -674,11 +801,16 @@ const BudgetLimitScreen = () => {
                 onPress={() => setShowEndDateModal(true)}
               >
                 <Icon name="calendar-end" size={24} color="#555" />
-                <Text style={styles.label}>
-                  {endDate
-                    ? `${t('budget.setBudgetLimit.endDate')}: ${formatDate(endDate)}`
-                    : t('budget.setBudgetLimit.selectEndDate')}
-                </Text>
+                <View style={styles.dateContainer}>
+                  <Text style={styles.label}>
+                    {endDate
+                      ? `${t('budget.setBudgetLimit.endDate')}: ${formatDate(endDate)}`
+                      : t('budget.setBudgetLimit.selectEndDate')}
+                  </Text>
+                  <Text style={styles.helperText}>
+                    {t('budget.setBudgetLimit.autoCalculated')}
+                  </Text>
+                </View>
               </TouchableOpacity>
 
               {/* Custom Date Picker Modals */}
@@ -815,9 +947,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     textAlign: 'center',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   amountBox: {
     backgroundColor: '#fff',
@@ -831,17 +962,15 @@ const styles = StyleSheet.create({
   amount: {
     fontSize: 28,
     color: '#007AFF',
-    fontWeight: 'bold',
     textAlign: 'center',
     minWidth: 100,
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   currencySymbol: {
     fontSize: 28,
     color: '#007AFF',
-    fontWeight: 'bold',
     marginLeft: 8,
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   item: {
     flexDirection: 'row',
@@ -855,7 +984,11 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 16,
     color: '#333',
-    fontFamily: 'Roboto',
+    ...typography.regular,
+  },
+  itemContent: {
+    flex: 1,
+    marginLeft: 12,
   },
   saveButton: {
     backgroundColor: '#007AFF',
@@ -865,9 +998,8 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Roboto',
+    fontSize: 16,     
+    ...typography.semibold,
   },
   saveButtonDisabled: {
     opacity: 0.7,
@@ -899,11 +1031,10 @@ const styles = StyleSheet.create({
   },
   walletListTitle: {
     fontSize: 17,
-    fontWeight: 'bold',
     marginBottom: 12,
     textAlign: 'center',
     color: '#222',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   walletItem: {
     flexDirection: 'row',
@@ -922,13 +1053,12 @@ const styles = StyleSheet.create({
   walletName: {
     fontSize: 15,
     color: '#222',
-    fontWeight: '500',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   walletBalance: {
     fontSize: 13,
     color: '#888',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   walletListClose: {
     marginTop: 12,
@@ -936,16 +1066,15 @@ const styles = StyleSheet.create({
   },
   walletListCloseText: {
     color: '#1e90ff',
-    fontWeight: 'bold',
     fontSize: 15,
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   nameInput: {
     marginLeft: 12,
     fontSize: 16,
     color: '#333',
     flex: 1,
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   // Modal styles
   modalOverlay: {
@@ -964,10 +1093,9 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     marginBottom: 15,
     color: '#333',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   modalItem: {
     width: '100%',
@@ -983,7 +1111,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     textAlign: 'center',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   modalCloseButton: {
     marginTop: 15,
@@ -994,8 +1122,7 @@ const styles = StyleSheet.create({
   modalCloseButtonText: {
     color: '#007AFF',
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   // New date-related styles
   endDateToggle: {
@@ -1036,9 +1163,8 @@ const styles = StyleSheet.create({
   },
   dateModalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: '#333',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   dateModalConfirmButton: {
     backgroundColor: '#007AFF',
@@ -1048,8 +1174,7 @@ const styles = StyleSheet.create({
   dateModalConfirmButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   loadingContainer: {
     flex: 1,
@@ -1058,10 +1183,9 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 16, 
     color: '#333',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   categoryIconsContainer: {
     flexDirection: 'row',
@@ -1076,8 +1200,8 @@ const styles = StyleSheet.create({
   moreText: {
     fontSize: 14,
     color: '#888',
-    fontFamily: 'Roboto',
     marginLeft: 4,
+    ...typography.regular,
   },
   // Custom modal styles
   customModalContainer: {
@@ -1101,7 +1225,7 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginBottom: 20,
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   modalButton: {
     backgroundColor: '#007AFF',
@@ -1111,8 +1235,17 @@ const styles = StyleSheet.create({
   },
   modalButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Roboto',
+    fontSize: 16, 
+    ...typography.semibold,
+  },
+  dateContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+    ...typography.regular,
   },
 });

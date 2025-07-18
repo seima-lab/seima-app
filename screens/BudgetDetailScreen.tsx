@@ -14,6 +14,7 @@ import {
     View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { typography } from '../constants/typography';
 import { budgetService } from '../services/budgetService';
 import { deduplicateCategories, getIconColor, getIconForCategory } from '../utils/iconUtils';
 
@@ -466,6 +467,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#6B7280',
+    ...typography.regular,
   },
   errorContainer: {
     flex: 1,
@@ -480,6 +482,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     marginBottom: 24,
+    ...typography.regular,
   },
   retryButton: {
     backgroundColor: '#1e90ff',
@@ -490,7 +493,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   
   // Header
@@ -515,8 +518,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#FFFFFF',
+    ...typography.semibold,
   },
   moreButton: {
     padding: 8,
@@ -542,10 +545,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   menuText: {
-    fontWeight: '500',
     marginLeft: 8,
     color: '#333',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   menuDivider: {
     height: 1,
@@ -582,9 +584,9 @@ const styles = StyleSheet.create({
   },
   budgetName: {
     fontSize: 20,
-    fontWeight: '700',
     color: '#1F2937',
     flex: 1,
+    ...typography.bold,
   },
   periodBadge: {
     backgroundColor: '#EEF2FF',
@@ -594,14 +596,14 @@ const styles = StyleSheet.create({
   },
   periodText: {
     fontSize: 12,
-    fontWeight: '600',
     color: '#1e90ff',
+    ...typography.semibold,
   },
   budgetAmount: {
     fontSize: 32,
-    fontWeight: '800',
     color: '#1e90ff',
     marginBottom: 20,
+    ...typography.bold,
   },
   progressContainer: {
     marginBottom: 20,
@@ -621,6 +623,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
+    ...typography.regular,
   },
   amountDetails: {
     flexDirection: 'row',
@@ -633,10 +636,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 4,
+    ...typography.regular,
   },
   amountValue: {
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   
   // Info Cards
@@ -658,9 +662,9 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#1F2937',
     marginLeft: 12,
+    ...typography.semibold,
   },
   dateRange: {
     flexDirection: 'row',
@@ -675,11 +679,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 4,
+    ...typography.regular,
   },
   dateValue: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#1F2937',
+    ...typography.semibold,
   },
   
   // Categories
@@ -703,7 +708,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#374151',
     marginLeft: 6,
-    fontWeight: '500',
+    ...typography.medium,
   },
   
   // Action Buttons
@@ -724,8 +729,8 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
     marginLeft: 8,
+    ...typography.semibold,
   },
   secondaryButton: {
     flex: 1,
@@ -741,8 +746,8 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#1e90ff',
     fontSize: 16,
-    fontWeight: '600',
     marginLeft: 8,
+    ...typography.semibold,
   },
 
   // Modal Styles
@@ -769,16 +774,17 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
     color: '#1F2937',
     marginBottom: 8,
     textAlign: 'center',
+    ...typography.bold,
   },
   modalMessage: {
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
     marginBottom: 24,
+    ...typography.regular,
   },
   modalButtonsContainer: {
     flexDirection: 'row',
@@ -793,7 +799,7 @@ const styles = StyleSheet.create({
   modalButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   modalButtonSecondary: {
     backgroundColor: '#E5E7EB',
@@ -803,7 +809,7 @@ const styles = StyleSheet.create({
   modalButtonSecondaryText: {
     color: '#374151',
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   modalButtonDanger: {
     backgroundColor: '#EF4444',
@@ -819,6 +825,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#FFFFFF',
+    ...typography.regular,
   },
 });
 

@@ -938,7 +938,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#333333',
     marginBottom: 8,
-    ...typography.bold,
+    ...typography.semibold,
   },
   modalMessage: {
     fontSize: 14,

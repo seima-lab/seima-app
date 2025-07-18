@@ -2,15 +2,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, Svg } from 'react-native-svg';
@@ -21,6 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { getUnreadCount } from '../services/notificationService';
+import { HealthStatusData, statusService } from '../services/statusService';
 import { TransactionReportResponse, transactionService } from '../services/transactionService';
 import { UserProfile, userService } from '../services/userService';
 import { WalletResponse, walletService } from '../services/walletService';
@@ -251,23 +252,9 @@ const FinanceScreen = React.memo(() => {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [notificationCount, setNotificationCount] = useState(0);
 
-  // Mock data state and values - moved to top after other state declarations
-  const [useMockData, setUseMockData] = useState(true); // Toggle để test
-
-  // Mock data for testing
-  const mockChartData = {
-    income: 15000000, // 15M
-    expenses: 12000000, // 12M
-    difference: 3000000, // 3M
-    isLoading: false
-  };
-
-  const mockFinanceData = {
-    totalBalance: 50000000, // 50M
-    income: 15000000,
-    expenses: 12000000,
-    difference: 3000000
-  };
+  // Health status state from API
+  const [apiHealthStatus, setApiHealthStatus] = useState<HealthStatusData | null>(null);
+  const [healthStatusLoading, setHealthStatusLoading] = useState(false);
 
   // 1. Thêm state và options cho dropdown filter
   const PERIOD_OPTIONS = [
@@ -324,6 +311,7 @@ const FinanceScreen = React.memo(() => {
     loadWalletData();
     loadChartData();
     loadNotificationCount();
+    loadHealthStatus(); // Load health status on mount
   }, [isAuthenticated]);
 
   // Listen to transaction changes to refresh wallet balance
@@ -333,6 +321,7 @@ const FinanceScreen = React.memo(() => {
       loadWalletData();
       loadChartData();
       loadNotificationCount();
+      loadHealthStatus(); // Refresh health status on transaction update
     }
   }, [transactionRefreshTrigger]);
 
@@ -345,6 +334,7 @@ const FinanceScreen = React.memo(() => {
         loadWalletData();
         loadChartData();
         loadNotificationCount();
+        loadHealthStatus(); // Refresh health status on focus
       }
     }, [isAuthenticated])
   );
@@ -533,6 +523,29 @@ const FinanceScreen = React.memo(() => {
     }
   }, [isAuthenticated]);
 
+  // Load health status from API
+  const loadHealthStatus = useCallback(async () => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    try {
+      setHealthStatusLoading(true);
+      console.log('🟡 Loading health status from API...');
+      
+      const healthData = await statusService.getHealthStatus();
+      console.log('🟢 Health status loaded:', healthData);
+      
+      setApiHealthStatus(healthData);
+    } catch (error: any) {
+      console.error('🔴 Failed to load health status:', error);
+      // Don't set error state, just keep using mock data
+      setApiHealthStatus(null);
+    } finally {
+      setHealthStatusLoading(false);
+    }
+  }, [isAuthenticated]);
+
   // Memoized expense data
   const expenseData: ExpenseData[] = useMemo(() => [
     { category: 'Leisure', percentage: 54.55, color: '#FFA726' },
@@ -675,8 +688,8 @@ const FinanceScreen = React.memo(() => {
     let achievements: string[] = [];
 
     // Sử dụng mock data hoặc real data
-    const currentChartData = useMockData ? mockChartData : chartData;
-    const currentFinanceData = useMockData ? mockFinanceData : financeData;
+    const currentChartData = chartData;
+    const currentFinanceData = financeData;
 
     // 1. Tỷ lệ tiết kiệm (Savings Rate)
     const totalFlow = currentChartData.income + Math.abs(currentChartData.expenses);
@@ -726,32 +739,32 @@ const FinanceScreen = React.memo(() => {
       warnings,
       achievements
     };
-  }, [chartData, financeData.totalBalance, useMockData, mockChartData, mockFinanceData, t]);
+  }, [chartData, financeData.totalBalance, t]);
 
   const getHealthStatus = (score: number) => {
     if (score >= 80) return { 
       label: t('finance.health.status.excellent'), 
       message: t('finance.health.statusMessage.excellent'),
       color: '#4CAF50', 
-      emoji: '🟩' 
+      
     };
     if (score >= 60) return { 
       label: t('finance.health.status.good'), 
       message: t('finance.health.statusMessage.good'),
       color: '#FF9800', 
-      emoji: '🟨' 
+     
     };
     if (score >= 40) return { 
       label: t('finance.health.status.fair'), 
       message: t('finance.health.statusMessage.fair'),
       color: '#FF5722', 
-      emoji: '🟧' 
+      
     };
     return { 
       label: t('finance.health.status.poor'), 
       message: t('finance.health.statusMessage.poor'),
       color: '#F44336', 
-      emoji: '🟥' 
+    
     };
   };
 
@@ -831,34 +844,40 @@ const FinanceScreen = React.memo(() => {
              <ScrollView {...scrollViewProps}>
          <View style={styles.bodyContainer}>
           
-          {/* Financial Health Status Section - moved up and using translation */}
+          {/* Financial Health Status Section - now using real API data */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              📊 {t('finance.health.title')}: 75/100 ⓘ
-            </Text>
-            
-            {/* Health Status Bar - using fixed data but with translation */}
-            <View style={styles.healthBarContainer}>
-              <View style={styles.healthBar}>
-                <View style={[
-                  styles.healthBarFill,
-                  {
-                    width: '75%',
-                    backgroundColor: '#FF9800'
-                  }
-                ]} />
+            {healthStatusLoading ? (
+              <View style={styles.healthLoadingContainer}>
+                <ActivityIndicator size="small" color="#1e90ff" />
+                <Text style={styles.healthLoadingText}>{t('common.loading')}...</Text>
               </View>
-              <Text style={[styles.healthStatusText, { color: '#FF9800' }]}>
-                {t('finance.health.statusMessage.good')}
-              </Text>
-            </View>
+            ) : (
+              <>
+                <Text style={styles.sectionTitle}>
+                  📊 {t('finance.health.title')}: {apiHealthStatus?.score || 75}/100 ⓘ
+                </Text>
+                
+                {/* Health Status Bar - using real API data */}
+                <View style={styles.healthBarContainer}>
+                  <View style={styles.healthBar}>
+                    <View style={[
+                      styles.healthBarFill,
+                      {
+                        width: `${Math.max(0, Math.min(100, apiHealthStatus?.score || 75))}%`,
+                        backgroundColor: statusService.getHealthDescription(apiHealthStatus?.level || 'good').color
+                      }
+                    ]} />
+                  </View>
+                  <Text style={[styles.healthStatusText, { 
+                    color: statusService.getHealthDescription(apiHealthStatus?.level || 'good').color 
+                  }]}>
+                    {statusService.getHealthDescription(apiHealthStatus?.level || 'good').message}
+                  </Text>
+                </View>
 
-            {/* Fixed Suggestions and Warnings with translation */}
-            <View style={styles.suggestionsContainer}>
-              <View style={[styles.suggestionItem, styles.warningItem]}>
-                <Text style={styles.suggestionText}>{t('finance.health.budgetWarning', { category: 'Ăn uống', day: '20' })}</Text>
-              </View>
-            </View>
+          
+              </>
+            )}
           </View>
 
           {/* Income and Expenses Section */}
@@ -1509,6 +1528,33 @@ legendValue: {
     color: 'white',
     fontSize: rf(9),
     fontWeight: '600',
+    fontFamily: 'Roboto',
+  },
+  healthLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: rp(20),
+  },
+  healthLoadingText: {
+    marginLeft: rp(10),
+    color: '#666',
+    fontSize: rf(14),
+    fontFamily: 'Roboto',
+  },
+  healthStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: rp(10),
+  },
+  healthStatusEmoji: {
+    fontSize: rf(24),
+    marginRight: rp(5),
+  },
+  healthStatusLabel: {
+    fontSize: rf(16),
+    fontWeight: '600',
+    color: '#333',
     fontFamily: 'Roboto',
   },
 });

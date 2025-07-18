@@ -99,10 +99,16 @@ export const CATEGORY_ENDPOINTS = {
   GET_BY_TYPE_AND_USER: (type: string, userId: string, groupId: string) => `${ApiConfig.API_PREFIX}/categories/type/${type}/user/${userId}/group/${groupId}`,
   GET_BY_USER: (userId: string, groupId: string) => `${ApiConfig.API_PREFIX}/categories/user/${userId}/group/${groupId}`,
 } as const;
-
+export const GROUP_MEMBER_ENDPOINTS = {
+  EXIT_GROUP: (groupId: string) => `${ApiConfig.API_PREFIX}/group-members/group/${groupId}/exit`,
+  GET_OPTIONS: (groupId: string) => `${ApiConfig.API_PREFIX}/group-members/group/${groupId}/owner-exit-options`,
+  GET_MEMBERS: (groupId: string) => `${ApiConfig.API_PREFIX}/group-members/group/${groupId}/eligible-for-ownership`,
+  TRANSFER: (groupId: string) => `${ApiConfig.API_PREFIX}/group-members/group/${groupId}/transfer-ownership`,
+  DELETE_GROUP: (groupId: string) => `${ApiConfig.API_PREFIX}/groups/${groupId}`, 
+} as const;
 // AI Chat endpoints
 export const AI_CHAT_ENDPOINTS = {
-  SEND_MESSAGE: 'https://andt20042003.app.n8n.cloud/webhook/seima_chatbot',
+  SEND_MESSAGE: 'https://vyntthe173293.app.n8n.cloud/webhook/seima_chatbot',
 } as const;
 
 // Budget endpoints
@@ -122,6 +128,11 @@ export const NOTIFICATION_ENDPOINTS = {
   mark_all_as_read: `${ApiConfig.API_PREFIX}/notifications/read-all`,
   delete: (notification_id: number | string) => `${ApiConfig.API_PREFIX}/notifications/${notification_id}`,
   delete_all: `${ApiConfig.API_PREFIX}/notifications/all`,
+} as const;
+
+// Financial Health Status endpoints
+export const STATUS_ENDPOINTS = {
+  GET_HEALTH_STATUS: `${ApiConfig.API_PREFIX}/transactions/financial-health`,
 } as const;
 
 // Initialize configuration logging

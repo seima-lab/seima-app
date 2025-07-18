@@ -2,18 +2,22 @@ import { NavigationProp, useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomConfirmModal from '../components/CustomConfirmModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
+import { typography } from '../constants/typography';
 import { RootStackParamList } from '../navigation/types';
+import { EligibleMemberResponse, OwnerExitOptionsResponse } from '../services/groupService';
 
 interface Props {
   groupId: string;
@@ -30,10 +34,23 @@ const GroupSettingsScreen: React.FC<Props> = ({
 }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { t } = useTranslation();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [autoApproveEnabled, setAutoApproveEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
+  
+  // Exit Group Modal States
+  const [leaveGroupModalVisible, setLeaveGroupModalVisible] = useState(false);
+  const [ownerExitOptionsModalVisible, setOwnerExitOptionsModalVisible] = useState(false);
+  const [ownerLeaveConfirmModalVisible, setOwnerLeaveConfirmModalVisible] = useState(false);
+  const [memberSelectionModalVisible, setMemberSelectionModalVisible] = useState(false);
+  const [deleteGroupConfirmModalVisible, setDeleteGroupConfirmModalVisible] = useState(false);
+  const [ownerExitOptions, setOwnerExitOptions] = useState<OwnerExitOptionsResponse | null>(null);
+  const [eligibleMembers, setEligibleMembers] = useState<EligibleMemberResponse[]>([]);
+  const [selectedMember, setSelectedMember] = useState<EligibleMemberResponse | null>(null);
+  
+  // Success Modal States
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successModalTitle, setSuccessModalTitle] = useState('');
+  const [successModalMessage, setSuccessModalMessage] = useState('');
 
   const handleEditGroup = async () => {
     try {
@@ -58,7 +75,7 @@ const GroupSettingsScreen: React.FC<Props> = ({
         [
           { text: t('common.cancel'), style: 'cancel' },
           {
-            text: t('group.continueAnyway'),
+            text: t('group.settings.continueAnyway'),
             onPress: () => {
               // Fallback: navigate with basic data in GroupDetailResponse format
               navigation.navigate('CreateGroup', {
@@ -86,87 +103,215 @@ const GroupSettingsScreen: React.FC<Props> = ({
     }
   };
 
-  const handleManagePermissions = () => {
-    Alert.alert(t('group.settings.managePermissions'), t('group.settings.managePermissionsDesc'));
-  };
-
-  const handleViewReports = () => {
-    Alert.alert(t('group.settings.viewReports'), t('group.settings.viewReportsDesc'));
-  };
-
-  const handleExportData = () => {
-    Alert.alert(t('group.settings.exportData'), t('group.settings.exportDataDesc'));
-  };
-
-  const handleBackupData = () => {
-    Alert.alert(t('group.settings.backupData'), t('group.settings.backupDataDesc'));
-  };
-
   const handleLeaveGroup = () => {
-    Alert.alert(
-      t('group.settings.confirmLeave'),
-      t('group.settings.confirmLeaveDesc'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('group.settings.leave'), style: 'destructive', onPress: () => console.log('Left group') }
-      ]
-    );
+    setLeaveGroupModalVisible(true);
+  };
+
+  const handleExitGroupConfirm = async () => {
+    setLeaveGroupModalVisible(false);
+    
+    try {
+      console.log('🟡 [GroupSettingsScreen] Attempting to exit group:', groupId);
+      setLoading(true);
+      setLoadingText(t('group.settings.exitingGroup'));
+
+      const { groupService } = await import('../services/groupService');
+      await groupService.exitGroup(Number(groupId));
+
+      // Success - exit immediately (ADMIN/MEMBER case)
+      console.log('✅ [GroupSettingsScreen] Successfully exited group');
+      setLoading(false);
+
+      // Show success modal instead of Alert
+      setSuccessModalTitle(t('common.success'));
+      setSuccessModalMessage(t('group.settings.exitSuccess'));
+      setSuccessModalVisible(true);
+
+    } catch (error: any) {
+      setLoading(false);
+      console.error('🔴 [GroupSettingsScreen] Exit group error:', error);
+
+      // Check if it's the owner case
+      if (error.message?.includes('transfer ownership') || error.message?.includes('delete the group')) {
+        // OWNER case - show simplified leave confirmation modal
+        try {
+          console.log('🟡 [GroupSettingsScreen] Owner detected, getting exit options...');
+          const { groupService } = await import('../services/groupService');
+          const options = await groupService.getOwnerExitOptions(Number(groupId));
+          setOwnerExitOptions(options);
+          setOwnerLeaveConfirmModalVisible(true);
+        } catch (optionsError: any) {
+          console.error('🔴 [GroupSettingsScreen] Failed to get owner options:', optionsError);
+          Alert.alert(
+            t('common.error'),
+            optionsError.message || t('group.settings.exitFailed'),
+            [{ text: t('common.ok') }]
+          );
+        }
+      } else {
+        // Other errors
+        Alert.alert(
+          t('common.error'),
+          error.message || t('group.settings.exitFailed'),
+          [{ text: t('common.ok') }]
+        );
+      }
+    }
+  };
+
+  const handleTransferOwnership = async () => {
+    setOwnerExitOptionsModalVisible(false);
+    
+    try {
+      console.log('🟡 [GroupSettingsScreen] Getting eligible members for transfer...');
+      setLoading(true);
+      setLoadingText(t('group.settings.loadingMembers'));
+
+      const { groupService } = await import('../services/groupService');
+      const response: any = await groupService.getEligibleMembersForOwnership(Number(groupId));
+      
+      console.log('🔍 [GroupSettingsScreen] Raw API response:', response);
+      
+      // Extract members from the response data structure
+      let members: EligibleMemberResponse[] = [];
+      
+      if (response && typeof response === 'object') {
+        // Check if response has data.members structure
+        if (response.data && Array.isArray(response.data.members)) {
+          members = response.data.members;
+          console.log('✅ [GroupSettingsScreen] Extracted members from response.data.members:', members);
+        }
+        // Check if response is directly an array (fallback)
+        else if (Array.isArray(response)) {
+          members = response;
+          console.log('✅ [GroupSettingsScreen] Using response as direct array:', members);
+        }
+        // Check if response has members property directly
+        else if (Array.isArray(response.members)) {
+          members = response.members;
+          console.log('✅ [GroupSettingsScreen] Extracted members from response.members:', members);
+        }
+      }
+      
+      console.log('👥 [GroupSettingsScreen] Final members array:', members);
+      console.log('📊 [GroupSettingsScreen] Members count:', members.length);
+      
+      if (members.length === 0) {
+        Alert.alert(
+          t('common.error'),
+          'Không có thành viên nào đủ điều kiện để chuyển giao quyền sở hữu.',
+          [{ text: t('common.ok') }]
+        );
+        return;
+      }
+      
+      setEligibleMembers(members);
+      setLoading(false);
+      
+      // Delay một chút để đảm bảo state đã update
+      setTimeout(() => {
+        console.log('🎭 [GroupSettingsScreen] Setting memberSelectionModalVisible to true');
+        setMemberSelectionModalVisible(true);
+      }, 100);
+
+    } catch (error: any) {
+      setLoading(false);
+      console.error('🔴 [GroupSettingsScreen] Failed to get eligible members:', error);
+      Alert.alert(
+        t('common.error'),
+        error.message || t('group.settings.loadMembersFailed'),
+        [{ text: t('common.ok') }]
+      );
+    }
+  };
+
+  const handleConfirmTransferOwnership = async () => {
+    if (!selectedMember) {
+      Alert.alert(t('common.error'), t('group.settings.selectMemberFirst'));
+      return;
+    }
+
+    setMemberSelectionModalVisible(false);
+    
+    try {
+      console.log('🟡 [GroupSettingsScreen] Transferring ownership to:', selectedMember.user_full_name);
+      setLoading(true);
+      setLoadingText(t('group.settings.transferringOwnership'));
+
+      const { groupService } = await import('../services/groupService');
+      
+      // Step 1: Transfer ownership
+      await groupService.transferOwnership(Number(groupId), selectedMember.user_id);
+      
+      // Step 2: Exit group (now as member)
+      await groupService.exitGroup(Number(groupId));
+
+      setLoading(false);
+      
+      // Show success modal instead of Alert
+      setSuccessModalTitle(t('common.success'));
+      setSuccessModalMessage(t('group.settings.transferAndExitSuccess', { memberName: selectedMember.user_full_name }));
+      setSuccessModalVisible(true);
+
+    } catch (error: any) {
+      setLoading(false);
+      console.error('🔴 [GroupSettingsScreen] Transfer ownership failed:', error);
+      Alert.alert(
+        t('common.error'),
+        error.message || t('group.settings.transferFailed'),
+        [{ text: t('common.ok') }]
+      );
+    }
+  };
+
+  const handleOwnerDeleteGroup = () => {
+    setOwnerExitOptionsModalVisible(false);
+    setDeleteGroupConfirmModalVisible(true);
   };
 
   const handleDeleteGroup = () => {
-    Alert.alert(
-      t('group.settings.confirmDelete'),
-      t('group.settings.confirmDeleteDesc'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('group.settings.deleteGroup'), 
-          style: 'destructive', 
-          onPress: async () => {
-            try {
-              console.log('🗑️ [GroupSettingsScreen] Starting group deletion...');
-              setLoading(true);
-              setLoadingText(t('group.settings.deletingGroup'));
+    setDeleteGroupConfirmModalVisible(true);
+  };
 
-              // Import and call archive API
-              const { groupService } = await import('../services/groupService');
-              await groupService.archiveGroup(Number(groupId));
+  const handleConfirmDeleteGroup = async () => {
+    setDeleteGroupConfirmModalVisible(false);
+    
+    try {
+      console.log('🗑️ [GroupSettingsScreen] Starting group deletion...');
+      setLoading(true);
+      setLoadingText(t('group.settings.deletingGroup'));
 
-              console.log('✅ [GroupSettingsScreen] Group archived successfully');
-              setLoading(false);
+      // Use deleteGroup API instead of archiveGroup
+      const { groupService } = await import('../services/groupService');
+      await groupService.deleteGroup(Number(groupId));
 
-              // Show success message and navigate back
-              Alert.alert(
-                t('common.success'),
-                t('group.settings.deleteSuccess'),
-                [
-                  {
-                    text: t('common.ok'),
-                    onPress: () => {
-                      // Navigate back to group list
-                      navigation.reset({
-                        index: 0,
-                        routes: [{ name: 'MainTab' }],
-                      });
-                    }
-                  }
-                ]
-              );
+      console.log('✅ [GroupSettingsScreen] Group deleted successfully');
+      setLoading(false);
 
-            } catch (error: any) {
-              console.error('🔴 [GroupSettingsScreen] Failed to archive group:', error);
-              setLoading(false);
-              
-              Alert.alert(
-                t('common.error'),
-                error.message || t('group.settings.deleteFailed'),
-                [{ text: t('common.ok') }]
-              );
-            }
-          }
-        }
-      ]
-    );
+      // Show success modal instead of Alert
+      setSuccessModalTitle(t('common.success'));
+      setSuccessModalMessage(t('group.settings.deleteSuccess'));
+      setSuccessModalVisible(true);
+
+    } catch (error: any) {
+      console.error('🔴 [GroupSettingsScreen] Failed to delete group:', error);
+      setLoading(false);
+      
+      Alert.alert(
+        t('common.error'),
+        error.message || t('group.settings.deleteFailed'),
+        [{ text: t('common.ok') }]
+      );
+    }
+  };
+
+  const handleSuccessModalConfirm = () => {
+    setSuccessModalVisible(false);
+    // Navigate back to MainTab instead of GroupManagement to maintain proper navigation stack
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'GroupManagement' }],
+    });
   };
 
   const SettingItem = ({ 
@@ -222,11 +367,11 @@ const GroupSettingsScreen: React.FC<Props> = ({
         <View style={styles.loadingModalContent}>
           {/* Loading Animation */}
           <View style={styles.loadingAnimationContainer}>
-            <ActivityIndicator size="large" color="#F44336" />
+            <ActivityIndicator size="large" color="#4A90E2" />
           </View>
           
           {/* Loading Text */}
-          <Text style={styles.loadingTitle}>{t('group.settings.deleteGroup')}</Text>
+          <Text style={styles.loadingTitle}>{t('common.loading')}</Text>
           <Text style={styles.loadingMessage}>{loadingText}</Text>
           
           {/* Warning */}
@@ -237,6 +382,212 @@ const GroupSettingsScreen: React.FC<Props> = ({
       </View>
     </Modal>
   );
+
+  const renderOwnerLeaveConfirmModal = () => (
+    <Modal
+      visible={ownerLeaveConfirmModalVisible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setOwnerLeaveConfirmModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.ownerExitModalContent}>
+          <View style={styles.ownerExitIconContainer}>
+            <Icon name="account-circle" size={48} color="#4A90E2" />
+          </View>
+          
+          <Text style={styles.ownerExitTitle}>{t('group.settings.youAreOwner')}</Text>
+          <Text style={styles.ownerExitMessage}>
+            {t('group.settings.ownerLeaveMessage', { count: ownerExitOptions?.eligibleMembersCount || 0 })}
+          </Text>
+
+          <View style={styles.ownerExitButtonContainer}>
+            <TouchableOpacity
+              style={[styles.ownerExitButton, styles.transferButton]}
+              onPress={() => {
+                setOwnerLeaveConfirmModalVisible(false);
+                handleTransferOwnership();
+              }}
+            >
+              <Icon name="swap-horiz" size={20} color="#FFFFFF" />
+              <Text style={styles.ownerExitButtonText}>
+                {t('group.settings.transferOwnership')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.ownerExitButton, styles.cancelButton]}
+              onPress={() => setOwnerLeaveConfirmModalVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderOwnerExitOptionsModal = () => (
+    <Modal
+      visible={ownerExitOptionsModalVisible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setOwnerExitOptionsModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.ownerExitModalContent}>
+          <View style={styles.ownerExitIconContainer}>
+            <Icon name="account-circle" size={48} color="#4A90E2" />
+          </View>
+          
+          <Text style={styles.ownerExitTitle}>{t('group.settings.youAreOwner')}</Text>
+          <Text style={styles.ownerExitMessage}>
+            {t('group.settings.ownerExitMessage', { count: ownerExitOptions?.eligibleMembersCount || 0 })}
+          </Text>
+
+          <View style={styles.ownerExitButtonContainer}>
+            {ownerExitOptions?.canTransferOwnership && (
+              <TouchableOpacity
+                style={[styles.ownerExitButton, styles.transferButton]}
+                onPress={handleTransferOwnership}
+              >
+                <Icon name="swap-horiz" size={20} color="#FFFFFF" />
+                <Text style={styles.ownerExitButtonText}>
+                  {t('group.settings.transferOwnership')}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {ownerExitOptions?.canDeleteGroup && (
+              <TouchableOpacity
+                style={[styles.ownerExitButton, styles.deleteButton]}
+                onPress={handleOwnerDeleteGroup}
+              >
+                <Icon name="delete-forever" size={20} color="#FFFFFF" />
+                <Text style={styles.ownerExitButtonText}>
+                  {t('group.settings.deleteGroup')}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.ownerExitButton, styles.cancelButton]}
+              onPress={() => setOwnerExitOptionsModalVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderMemberSelectionModal = () => {
+    console.log('🎭 [GroupSettingsScreen] Rendering member selection modal');
+    console.log('👥 [GroupSettingsScreen] EligibleMembers state:', eligibleMembers);
+    console.log('📊 [GroupSettingsScreen] EligibleMembers length:', eligibleMembers.length);
+    console.log('🏁 [GroupSettingsScreen] Modal visible:', memberSelectionModalVisible);
+    
+    return (
+      <Modal
+        visible={memberSelectionModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setMemberSelectionModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modernMemberSelectionModal}>
+            {/* Header với icon */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconContainer}>
+                <Icon name="swap-horiz" size={32} color="#4A90E2" />
+              </View>
+              <Text style={styles.modernModalTitle}>
+                Chuyển giao quyền chủ nhóm
+              </Text>
+              <Text style={styles.modernModalSubtitle}>
+                Chọn thành viên sẽ trở thành chủ nhóm mới
+              </Text>
+            </View>
+
+            {/* Members List */}
+            <View style={styles.membersContainer}>
+              {eligibleMembers.map((item) => (
+                <TouchableOpacity
+                  key={item.user_id}
+                  style={[
+                    styles.modernMemberItem,
+                    selectedMember?.user_id === item.user_id && styles.modernMemberItemSelected
+                  ]}
+                  onPress={() => {
+                    console.log('👆 [GroupSettingsScreen] Member selected:', item);
+                    setSelectedMember(item);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {/* Avatar */}
+                  <View style={styles.modernAvatarContainer}>
+                    {item.user_avatar_url ? (
+                      <Image source={{ uri: item.user_avatar_url }} style={styles.modernAvatar} />
+                    ) : (
+                      <View style={styles.modernAvatarPlaceholder}>
+                        <Icon name="person" size={28} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </View>
+                  
+                  {/* Member Info */}
+                  <View style={styles.modernMemberInfo}>
+                    <Text style={styles.modernMemberName}>{item.user_full_name}</Text>
+                    <Text style={styles.modernMemberRole}>Thành viên</Text>
+                  </View>
+                  
+                  {/* Selection Indicator */}
+                  <View style={styles.modernSelectionIndicator}>
+                    {selectedMember?.user_id === item.user_id ? (
+                      <View style={styles.modernSelectedCircle}>
+                        <Icon name="check" size={16} color="#FFFFFF" />
+                      </View>
+                    ) : (
+                      <View style={styles.modernUnselectedCircle} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.modernButtonContainer}>
+              <TouchableOpacity
+                style={styles.modernCancelButton}
+                onPress={() => setMemberSelectionModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modernCancelButtonText}>Hủy</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.modernConfirmButton,
+                  !selectedMember && styles.modernConfirmButtonDisabled
+                ]}
+                onPress={handleConfirmTransferOwnership}
+                disabled={!selectedMember}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.modernConfirmButtonText,
+                  !selectedMember && styles.modernConfirmButtonTextDisabled
+                ]}>
+                  Xác nhận
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -250,76 +601,6 @@ const GroupSettingsScreen: React.FC<Props> = ({
               title={t('group.settings.editGroupInfo')}
               subtitle={t('group.settings.editGroupInfoDesc')}
               onPress={handleEditGroup}
-            />
-            <View style={styles.separator} />
-            <SettingItem
-              icon="security"
-              title={t('group.settings.managePermissions')}
-              subtitle={t('group.settings.managePermissionsDesc')}
-              onPress={handleManagePermissions}
-            />
-          </View>
-        </View>
-
-        {/* Notifications */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('group.settings.notifications')}</Text>
-          <View style={styles.settingsCard}>
-            <SettingItem
-              icon="notifications"
-              title={t('group.settings.transactionNotifications')}
-              subtitle={t('group.settings.transactionNotificationsDesc')}
-              showArrow={false}
-              rightComponent={
-                <Switch
-                  value={notificationsEnabled}
-                  onValueChange={setNotificationsEnabled}
-                  trackColor={{ false: '#E0E0E0', true: '#4A90E2' }}
-                  thumbColor={notificationsEnabled ? '#FFFFFF' : '#FFFFFF'}
-                />
-              }
-            />
-            <View style={styles.separator} />
-            <SettingItem
-              icon="auto-awesome"
-              title={t('group.settings.autoApprove')}
-              subtitle={t('group.settings.autoApproveDesc')}
-              showArrow={false}
-              rightComponent={
-                <Switch
-                  value={autoApproveEnabled}
-                  onValueChange={setAutoApproveEnabled}
-                  trackColor={{ false: '#E0E0E0', true: '#4A90E2' }}
-                  thumbColor={autoApproveEnabled ? '#FFFFFF' : '#FFFFFF'}
-                />
-              }
-            />
-          </View>
-        </View>
-
-        {/* Reports & Data */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('group.settings.reportsAndData')}</Text>
-          <View style={styles.settingsCard}>
-            <SettingItem
-              icon="assessment"
-              title={t('group.settings.viewReports')}
-              subtitle={t('group.settings.viewReportsDesc')}
-              onPress={handleViewReports}
-            />
-            <View style={styles.separator} />
-            <SettingItem
-              icon="file-download"
-              title={t('group.settings.exportData')}
-              subtitle={t('group.settings.exportDataDesc')}
-              onPress={handleExportData}
-            />
-            <View style={styles.separator} />
-            <SettingItem
-              icon="backup"
-              title={t('group.settings.backupData')}
-              subtitle={t('group.settings.backupDataDesc')}
-              onPress={handleBackupData}
             />
           </View>
         </View>
@@ -369,7 +650,48 @@ const GroupSettingsScreen: React.FC<Props> = ({
           </View>
         </View>
       </ScrollView>
+
+      {/* Modals */}
       {renderLoadingModal()}
+      {renderOwnerLeaveConfirmModal()}
+      {renderOwnerExitOptionsModal()}
+      {renderMemberSelectionModal()}
+
+      {/* Leave Group Confirmation Modal */}
+      <CustomConfirmModal
+        visible={leaveGroupModalVisible}
+        title={t('group.settings.confirmLeave')}
+        message={t('group.settings.confirmLeaveDesc')}
+        confirmText={t('group.settings.leave')}
+        cancelText={t('common.cancel')}
+        onConfirm={handleExitGroupConfirm}
+        onCancel={() => setLeaveGroupModalVisible(false)}
+        type="warning"
+        iconName="exit-to-app"
+      />
+
+      {/* Delete Group Confirmation Modal */}
+      <CustomConfirmModal
+        visible={deleteGroupConfirmModalVisible}
+        title={t('group.settings.confirmDelete')}
+        message={t('group.settings.confirmDeleteDesc')}
+        confirmText={t('group.settings.deleteGroup')}
+        cancelText={t('common.cancel')}
+        onConfirm={handleConfirmDeleteGroup}
+        onCancel={() => setDeleteGroupConfirmModalVisible(false)}
+        type="danger"
+        iconName="delete-forever"
+      />
+
+      {/* Success Modal */}
+      <CustomSuccessModal
+        visible={successModalVisible}
+        title={successModalTitle}
+        message={successModalMessage}
+        buttonText={t('common.ok')}
+        onConfirm={handleSuccessModalConfirm}
+        iconName="check-circle"
+      />
     </View>
   );
 };
@@ -385,10 +707,10 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333333',
     marginBottom: 12,
     marginLeft: 4,
+    ...typography.medium,
   },
   settingsCard: {
     backgroundColor: '#FFFFFF',
@@ -413,13 +735,14 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 16,
-    fontWeight: '500',
     color: '#333333',
     marginBottom: 2,
+    ...typography.medium,
   },
   settingSubtitle: {
     fontSize: 12,
     color: '#666666',
+    ...typography.regular,
   },
   dangerText: {
     color: '#F44336',
@@ -448,11 +771,12 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 14,
     color: '#666666',
+    ...typography.regular,
   },
   infoValue: {
     fontSize: 14,
     color: '#333333',
-    fontWeight: '500',
+    ...typography.medium,
   },
   loadingModalOverlay: {
     flex: 1,
@@ -472,18 +796,402 @@ const styles = StyleSheet.create({
   },
   loadingTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333333',
     marginBottom: 8,
+    ...typography.medium,
   },
   loadingMessage: {
     fontSize: 14,
     color: '#666666',
     marginBottom: 16,
+    ...typography.regular,
   },
   loadingWarning: {
     fontSize: 12,
     color: '#F44336',
+    ...typography.regular,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ownerExitModalContent: {
+    ...typography.medium,
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 12,
+    width: '80%',
+    alignItems: 'center',
+  },
+  ownerExitIconContainer: {
+    marginBottom: 16,
+  },
+  ownerExitTitle: {
+    fontSize: 20,
+    color: '#333333',
+    marginBottom: 8,
+    ...typography.medium,
+  },
+  ownerExitMessage: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 24,
+    ...typography.regular,
+  },
+  ownerExitButtonContainer: {
+    width: '100%',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  ownerExitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  transferButton: {
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+    borderColor: '#F44336',
+  },
+  cancelButton: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#E0E0E0',
+  },
+  ownerExitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginLeft: 8,
+    ...typography.medium,
+  },
+  cancelButtonText: {
+    color: '#333333',
+    fontSize: 16,
+    ...typography.medium,
+  },
+  memberSelectionModalContent: {
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 12,
+    width: '80%',
+    alignItems: 'center',
+  },
+  memberSelectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  memberSelectionSubtitle: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  membersList: {
+    width: '100%',
+    flex: 1,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  memberItemSelected: {
+    backgroundColor: '#E0E0E0',
+  },
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  memberAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  memberAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  memberDetails: {
+    flex: 1,
+  },
+  memberName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333333',
+  },
+  memberEmail: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
+  },
+  memberRole: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
+  },
+  radioContainer: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#CCCCCC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioCircleSelected: {
+    borderColor: '#4A90E2',
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#4A90E2',
+  },
+  simpleMemberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  memberSelectionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: 24,
+  },
+  memberSelectionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  memberCancelButton: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#E0E0E0',
+    marginRight: 6,
+  },
+  memberCancelButtonText: {
+    color: '#333333',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  memberConfirmButton: {
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
+    marginLeft: 6,
+  },
+  memberConfirmButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+    borderColor: '#CCCCCC',
+  },
+  memberConfirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  memberConfirmButtonTextDisabled: {
+    color: '#999999',
+    ...typography.regular,
+  },
+  modernMemberSelectionModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 400,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
+  },
+  modalIconContainer: {
+    backgroundColor: '#E0E0E0',
+    borderRadius: 20,
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modernModalTitle: {
+    fontSize: 22,
+    color: '#333333',
+    textAlign: 'center',
+    marginBottom: 4,
+    ...typography.semibold,
+  },
+  modernModalSubtitle: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    ...typography.regular,
+  },
+  membersContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  modernMemberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#F8F8F8',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  modernMemberItemSelected: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#CCCCCC',
+  },
+  modernAvatarContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E0E0E0',
+  },
+  modernAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 25,
+  },
+  modernAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 25,
+    backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modernMemberInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  modernMemberName: {
+    fontSize: 16,
+    color: '#333333',
+    ...typography.medium,
+  },
+  modernMemberRole: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
+    ...typography.regular,
+  },
+  modernSelectionIndicator: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modernSelectedCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#4A90E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modernUnselectedCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: '#CCCCCC',
+  },
+  modernButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  modernCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#E0E0E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  modernCancelButtonText: {
+    color: '#333333',
+    fontSize: 16,
+    textAlign: 'center',
+    ...typography.medium,
+  },
+  modernConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#4A90E2',
+    backgroundColor: '#4A90E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
+  modernConfirmButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+    borderColor: '#CCCCCC',
+  },
+  modernConfirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    ...typography.medium,
+  },
+  modernConfirmButtonTextDisabled: {
+    color: '#999999',
+    ...typography.regular,
   },
 });
 
