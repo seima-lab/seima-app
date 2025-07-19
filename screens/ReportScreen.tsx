@@ -1,15 +1,18 @@
+import { typography } from '@/constants/typography';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, Svg } from 'react-native-svg';
@@ -19,9 +22,9 @@ import CustomToast from '../components/CustomToast';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import {
-    ReportByCategory,
-    TransactionReportResponse,
-    transactionService,
+  ReportByCategory,
+  TransactionReportResponse,
+  transactionService,
 } from '../services/transactionService';
 // Import getIconColor to match colors with AddExpenseScreen
 import { RootStackParamList } from '../navigation/types';
@@ -258,6 +261,9 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
   );
 };
 
+// Add period type enum
+type PeriodType = 'today' | 'thisWeek' | 'thisMonth' | 'thisYear' | 'custom';
+
 export default function ReportScreen() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
@@ -267,10 +273,27 @@ export default function ReportScreen() {
   // State
   const [isLoading, setIsLoading] = useState(false);
   const [reportData, setReportData] = useState<TransactionReportResponse | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState(() => {
+  const [selectedPeriodType, setSelectedPeriodType] = useState<PeriodType>('thisMonth');
+  const [selectedPeriod, setSelectedPeriod] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+  
+  // Period dropdown state
+  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
+  
+  // Custom date picker state
+  const [customStartDate, setCustomStartDate] = useState(new Date());
+  const [customEndDate, setCustomEndDate] = useState(new Date());
+  
+  // Custom date modal state
+  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
+  const [tempStartDate, setTempStartDate] = useState(new Date());
+  const [tempEndDate, setTempEndDate] = useState(new Date());
+  const [focusedInput, setFocusedInput] = useState<'start' | 'end' | null>(null);
+  
+  // Week reference date for navigation
+  const [weekReferenceDate, setWeekReferenceDate] = useState(new Date());
 
   // Toast state
   const [showToast, setShowToast] = useState(false);
@@ -283,80 +306,197 @@ export default function ReportScreen() {
     setShowToast(true);
   }, []);
 
+  // Get date range based on period type and selected period
+  const getDateRange = useCallback((): { startDate: string; endDate: string } => {
+    const now = new Date();
+    
+    try {
+      switch (selectedPeriodType) {
+        case 'today': {
+          // For today, use selectedPeriod if it's a valid date string, otherwise use current date
+          let targetDate = now;
+          if (selectedPeriod && selectedPeriod !== 'today') {
+            const parsedDate = new Date(selectedPeriod);
+            if (!isNaN(parsedDate.getTime())) {
+              targetDate = parsedDate;
+            }
+          }
+          const dateStr = targetDate.toISOString().split('T')[0];
+          return { startDate: dateStr, endDate: dateStr };
+        }
+        
+        case 'thisWeek': {
+          // Use weekReferenceDate for week calculation
+          const referenceDate = weekReferenceDate || new Date();
+          const dayOfWeek = referenceDate.getDay();
+          const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Monday as start of week
+          
+          const startOfWeek = new Date(referenceDate);
+          startOfWeek.setDate(referenceDate.getDate() + mondayOffset);
+          
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(startOfWeek.getDate() + 6);
+          
+          return {
+            startDate: startOfWeek.toISOString().split('T')[0],
+            endDate: endOfWeek.toISOString().split('T')[0]
+          };
+        }
+        
+        case 'thisMonth': {
+          // Parse selectedPeriod as month (format: "YYYY-MM")
+          let year = now.getFullYear();
+          let month = now.getMonth() + 1;
+          
+          if (selectedPeriod && selectedPeriod.includes('-')) {
+            const parts = selectedPeriod.split('-');
+            if (parts.length === 2) {
+              const parsedYear = parseInt(parts[0]);
+              const parsedMonth = parseInt(parts[1]);
+              if (!isNaN(parsedYear) && !isNaN(parsedMonth) && parsedYear > 1900 && parsedYear < 3000 && parsedMonth >= 1 && parsedMonth <= 12) {
+                year = parsedYear;
+                month = parsedMonth;
+              }
+            }
+          }
+          
+          const startDate = new Date(year, month - 1, 1);
+          const endDate = new Date(year, month, 0); // Last day of month
+          
+          return {
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0]
+          };
+        }
+        
+        case 'thisYear': {
+          // Parse selectedPeriod as year (format: "YYYY")
+          let year = now.getFullYear();
+          
+          if (selectedPeriod) {
+            const parsedYear = parseInt(selectedPeriod);
+            if (!isNaN(parsedYear) && parsedYear > 1900 && parsedYear < 3000) {
+              year = parsedYear;
+            }
+          }
+          
+          const startDate = new Date(year, 0, 1);
+          const endDate = new Date(year, 11, 31);
+          
+          return {
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0]
+          };
+        }
+        
+        case 'custom': {
+          // Validate custom dates
+          if (!customStartDate || !customEndDate || isNaN(customStartDate.getTime()) || isNaN(customEndDate.getTime())) {
+            // Fallback to current month if custom dates are invalid
+            const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            return {
+              startDate: startDate.toISOString().split('T')[0],
+              endDate: endDate.toISOString().split('T')[0]
+            };
+          }
+          
+          return {
+            startDate: customStartDate.toISOString().split('T')[0],
+            endDate: customEndDate.toISOString().split('T')[0]
+          };
+        }
+        
+        default:
+          return {
+            startDate: now.toISOString().split('T')[0],
+            endDate: now.toISOString().split('T')[0]
+          };
+      }
+    } catch (error) {
+      console.error('Error in getDateRange:', error);
+      // Fallback to current date if any error occurs
+      const dateStr = now.toISOString().split('T')[0];
+      return { startDate: dateStr, endDate: dateStr };
+    }
+  }, [selectedPeriodType, selectedPeriod, customStartDate, customEndDate, weekReferenceDate]);
+
+  // Initialize selectedPeriod based on period type
+  const initializePeriod = useCallback((periodType: PeriodType) => {
+    const now = new Date();
+    
+    try {
+      switch (periodType) {
+        case 'today':
+          setSelectedPeriod(now.toISOString().split('T')[0]);
+          break;
+          
+        case 'thisWeek':
+          // For week, we'll use current date as reference
+          setWeekReferenceDate(new Date());
+          setSelectedPeriod('current-week');
+          break;
+        
+        case 'thisMonth':
+          setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+          break;
+          
+        case 'thisYear':
+          setSelectedPeriod(now.getFullYear().toString());
+          break;
+          
+        case 'custom':
+          setCustomStartDate(new Date(now.getFullYear(), now.getMonth(), 1));
+          setCustomEndDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+          setSelectedPeriod('custom');
+          break;
+      }
+    } catch (error) {
+      console.error('Error in initializePeriod:', error);
+      // Fallback to current month
+      setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    }
+  }, []);
+
   // Load report data
   const loadReportData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Calculate start and end dates for the selected month
-      const [year, month] = selectedMonth.split('-').map(Number);
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0); // Last day of the month
-
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = endDate.toISOString().split('T')[0];
+      const { startDate, endDate } = getDateRange();
 
       console.log('🔄 Loading report data for:', { 
-        selectedMonth,
-        startDate: startDateStr, 
-        endDate: endDateStr,
-        year,
-        month 
+        selectedPeriodType,
+        selectedPeriod,
+        startDate, 
+        endDate
       });
 
       const data = await transactionService.viewTransactionReport(
         undefined, // categoryId - load all categories
-        startDateStr,
-        endDateStr
+        startDate,
+        endDate
       );
 
       console.log('✅ Raw API Response:', data);
-      console.log('🏷️ Response Type:', typeof data);
-      console.log('🔍 Response Keys:', Object.keys(data || {}));
-      
-      if (data?.summary) {
-        console.log('💰 Summary Data:', {
-          totalExpense: data.summary.totalExpense || (data.summary as any).total_expense,
-          totalIncome: data.summary.totalIncome || (data.summary as any).total_income,
-          fullSummary: data.summary
-        });
-      }
-      
-      if (data?.transactionsByCategory) {
-        console.log('📊 TransactionsByCategory structure:', {
-          type: typeof data.transactionsByCategory,
-          keys: Object.keys(data.transactionsByCategory),
-          fullData: data.transactionsByCategory
-        });
-      }
-      
-      // Check for snake_case version too
-      if ((data as any)?.transactions_by_category) {
-        console.log('📊 transactions_by_category structure:', {
-          type: typeof (data as any).transactions_by_category,
-          keys: Object.keys((data as any).transactions_by_category),
-          fullData: (data as any).transactions_by_category
-        });
-      }
-
       setReportData(data);
       console.log('✅ Report data loaded and set to state');
     } catch (error: any) {
       console.error('❌ Failed to load report data:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        stack: error.stack,
-        response: error.response?.data
-      });
       showToastMessage(error.message || t('reports.loadingReport'));
     } finally {
       setIsLoading(false);
     }
-  }, [selectedMonth, showToastMessage, t]);
+  }, [selectedPeriodType, selectedPeriod, customStartDate, customEndDate, weekReferenceDate, getDateRange, showToastMessage, t]);
 
-  // Load data on mount and when month changes
+  // Load data on mount and when period changes
   useEffect(() => {
     loadReportData();
   }, [loadReportData]);
+
+  // Initialize period when period type changes
+  useEffect(() => {
+    initializePeriod(selectedPeriodType);
+  }, [selectedPeriodType, initializePeriod]);
 
   // Format currency
   const formatCurrency = (amount: number): string => {
@@ -368,27 +508,286 @@ export default function ReportScreen() {
     }).format(amount).replace('₫', 'đ');
   };
 
-  // Get month display text
-  const getMonthDisplayText = (): string => {
-    const [year, month] = selectedMonth.split('-').map(Number);
-    const date = new Date(year, month - 1);
+  // Get period display text
+  const getPeriodDisplayText = (): string => {
     const locale = i18n.language === 'vi' ? 'vi-VN' : 'en-US';
-    return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+    
+    try {
+      switch (selectedPeriodType) {
+        case 'today': {
+          let targetDate = new Date();
+          
+          if (selectedPeriod && selectedPeriod !== 'today') {
+            const parsedDate = new Date(selectedPeriod);
+            if (!isNaN(parsedDate.getTime())) {
+              targetDate = parsedDate;
+            }
+          }
+          
+          return targetDate.toLocaleDateString(locale, { 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric' 
+          });
+        }
+        
+        case 'thisWeek': {
+          // Calculate week range using weekReferenceDate
+          const referenceDate = weekReferenceDate || new Date();
+          const dayOfWeek = referenceDate.getDay();
+          const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+          
+          const startOfWeek = new Date(referenceDate);
+          startOfWeek.setDate(referenceDate.getDate() + mondayOffset);
+          
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(startOfWeek.getDate() + 6);
+          
+          return `${startOfWeek.toLocaleDateString(locale, { day: 'numeric', month: 'short' })} - ${endOfWeek.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        }
+        
+        case 'thisMonth': {
+          let year = new Date().getFullYear();
+          let month = new Date().getMonth() + 1;
+          
+          if (selectedPeriod && selectedPeriod.includes('-')) {
+            const parts = selectedPeriod.split('-');
+            if (parts.length === 2) {
+              const parsedYear = parseInt(parts[0]);
+              const parsedMonth = parseInt(parts[1]);
+              if (!isNaN(parsedYear) && !isNaN(parsedMonth) && parsedYear > 1900 && parsedYear < 3000 && parsedMonth >= 1 && parsedMonth <= 12) {
+                year = parsedYear;
+                month = parsedMonth;
+              }
+            }
+          }
+          
+          const date = new Date(year, month - 1);
+          return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+        }
+        
+        case 'thisYear': {
+          let year = new Date().getFullYear();
+          
+          if (selectedPeriod) {
+            const parsedYear = parseInt(selectedPeriod);
+            if (!isNaN(parsedYear) && parsedYear > 1900 && parsedYear < 3000) {
+              year = parsedYear;
+            }
+          }
+          
+          return year.toString();
+        }
+        
+        case 'custom': {
+          if (!customStartDate || !customEndDate || isNaN(customStartDate.getTime()) || isNaN(customEndDate.getTime())) {
+            return t('reports.custom');
+          }
+          
+          return `${customStartDate.toLocaleDateString(locale, { day: 'numeric', month: 'short' })} - ${customEndDate.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        }
+        
+        default:
+          return '';
+      }
+    } catch (error) {
+      console.error('Error in getPeriodDisplayText:', error);
+      return '';
+    }
   };
 
-  // Navigate month
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const [year, month] = selectedMonth.split('-').map(Number);
-    const newDate = new Date(year, month - 1);
-    
-    if (direction === 'prev') {
-      newDate.setMonth(newDate.getMonth() - 1);
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1);
+  // Navigate period
+  const navigatePeriod = (direction: 'prev' | 'next') => {
+    try {
+      switch (selectedPeriodType) {
+        case 'today': {
+          let currentDate = new Date();
+          
+          // If selectedPeriod is a valid date string, use it; otherwise use current date
+          if (selectedPeriod && selectedPeriod !== 'today') {
+            const parsedDate = new Date(selectedPeriod);
+            if (!isNaN(parsedDate.getTime())) {
+              currentDate = parsedDate;
+            }
+          }
+          
+          const newDate = new Date(currentDate);
+          newDate.setDate(currentDate.getDate() + (direction === 'next' ? 1 : -1));
+          setSelectedPeriod(newDate.toISOString().split('T')[0]);
+          break;
+        }
+        
+        case 'thisWeek': {
+          // Move weekReferenceDate by 7 days
+          const newReferenceDate = new Date(weekReferenceDate);
+          newReferenceDate.setDate(weekReferenceDate.getDate() + (direction === 'next' ? 7 : -7));
+          
+          setWeekReferenceDate(newReferenceDate);
+          // Keep selectedPeriod as 'current-week' to trigger re-render
+          setSelectedPeriod('current-week');
+          break;
+        }
+        
+        case 'thisMonth': {
+          let year = new Date().getFullYear();
+          let month = new Date().getMonth() + 1;
+          
+          if (selectedPeriod && selectedPeriod.includes('-')) {
+            const parts = selectedPeriod.split('-');
+            if (parts.length === 2) {
+              const parsedYear = parseInt(parts[0]);
+              const parsedMonth = parseInt(parts[1]);
+              if (!isNaN(parsedYear) && !isNaN(parsedMonth) && parsedYear > 1900 && parsedYear < 3000 && parsedMonth >= 1 && parsedMonth <= 12) {
+                year = parsedYear;
+                month = parsedMonth;
+              }
+            }
+          }
+          
+          const newDate = new Date(year, month - 1);
+          newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
+          
+          const newMonth = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`;
+          setSelectedPeriod(newMonth);
+          break;
+        }
+        
+        case 'thisYear': {
+          let year = new Date().getFullYear();
+          
+          if (selectedPeriod) {
+            const parsedYear = parseInt(selectedPeriod);
+            if (!isNaN(parsedYear) && parsedYear > 1900 && parsedYear < 3000) {
+              year = parsedYear;
+            }
+          }
+          
+          const newYear = direction === 'next' ? year + 1 : year - 1;
+          if (newYear > 1900 && newYear < 3000) {
+            setSelectedPeriod(newYear.toString());
+          }
+          break;
+        }
+        
+        case 'custom': {
+          // For custom, navigate by the same time span
+          if (!customStartDate || !customEndDate || isNaN(customStartDate.getTime()) || isNaN(customEndDate.getTime())) {
+            return; // Don't navigate if dates are invalid
+          }
+          
+          const daysDiff = Math.ceil((customEndDate.getTime() - customStartDate.getTime()) / (24 * 60 * 60 * 1000));
+          const multiplier = direction === 'next' ? 1 : -1;
+          
+          const newStartDate = new Date(customStartDate);
+          newStartDate.setDate(customStartDate.getDate() + (daysDiff + 1) * multiplier);
+          
+          const newEndDate = new Date(customEndDate);
+          newEndDate.setDate(customEndDate.getDate() + (daysDiff + 1) * multiplier);
+          
+          // Validate the new dates
+          if (!isNaN(newStartDate.getTime()) && !isNaN(newEndDate.getTime())) {
+            setCustomStartDate(newStartDate);
+            setCustomEndDate(newEndDate);
+          }
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('Error in navigatePeriod:', error);
     }
+  };
+
+  // Get period type options
+  const periodTypeOptions = [
+    { value: 'today', label: t('reports.today') },
+    { value: 'thisWeek', label: t('reports.thisWeek') },
+    { value: 'thisMonth', label: t('reports.thisMonth') },
+    { value: 'thisYear', label: t('reports.thisYear') },
+    { value: 'custom', label: t('reports.custom') },
+  ];
+
+
+
+
+
+  // Get current period type label with smart detection
+  const getCurrentPeriodTypeLabel = () => {
+    const today = new Date();
     
-    const newMonth = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`;
-    setSelectedMonth(newMonth);
+    switch (selectedPeriodType) {
+      case 'today': {
+        // Check if selected date is today
+        let targetDate = today;
+        if (selectedPeriod && selectedPeriod !== 'today') {
+          const parsedDate = new Date(selectedPeriod);
+          if (!isNaN(parsedDate.getTime())) {
+            targetDate = parsedDate;
+          }
+        }
+        
+        const isToday = targetDate.toDateString() === today.toDateString();
+        return isToday ? t('reports.today') : t('reports.date');
+      }
+      
+      case 'thisWeek': {
+        const referenceDate = weekReferenceDate || today;
+        
+        // Check if weekReferenceDate is in the same week as today
+        const todayStartOfWeek = new Date(today);
+        const todayDayOfWeek = today.getDay();
+        const todayMondayOffset = todayDayOfWeek === 0 ? -6 : 1 - todayDayOfWeek;
+        todayStartOfWeek.setDate(today.getDate() + todayMondayOffset);
+        
+        const refStartOfWeek = new Date(referenceDate);
+        const refDayOfWeek = referenceDate.getDay();
+        const refMondayOffset = refDayOfWeek === 0 ? -6 : 1 - refDayOfWeek;
+        refStartOfWeek.setDate(referenceDate.getDate() + refMondayOffset);
+        
+        // Compare the Monday dates
+        const isSameWeek = todayStartOfWeek.toDateString() === refStartOfWeek.toDateString();
+        return isSameWeek ? t('reports.thisWeek') : t('reports.week');
+      }
+      
+      case 'thisMonth': {
+        // Check if selected month is current month
+        const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        const isCurrentMonth = selectedPeriod === currentMonth;
+        return isCurrentMonth ? t('reports.thisMonth') : t('reports.month');
+      }
+      
+      case 'thisYear': {
+        // Check if selected year is current year
+        const currentYear = today.getFullYear().toString();
+        const isCurrentYear = selectedPeriod === currentYear;
+        return isCurrentYear ? t('reports.thisYear') : t('reports.year');
+      }
+      
+      case 'custom':
+        return t('reports.custom');
+        
+      default:
+        return periodTypeOptions.find(option => option.value === selectedPeriodType)?.label || '';
+    }
+  };
+
+  // Handle date selection
+  const handleDateSelect = (type: 'start' | 'end') => {
+    const currentDate = type === 'start' ? tempStartDate : tempEndDate;
+    
+    DateTimePickerAndroid.open({
+      value: currentDate,
+      onChange: (event: any, selectedDate?: Date) => {
+        if (selectedDate) {
+          if (type === 'start') {
+            setTempStartDate(selectedDate);
+          } else {
+            setTempEndDate(selectedDate);
+          }
+        }
+      },
+      mode: 'date',
+      is24Hour: true,
+    });
   };
 
   // Get expense data for pie chart
@@ -492,16 +891,178 @@ export default function ReportScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Month Selector */}
+      {/* Period Navigation */}
       <View style={styles.monthSelector}>
-        <TouchableOpacity onPress={() => navigateMonth('prev')}>
+        <TouchableOpacity onPress={() => navigatePeriod('prev')}>
           <Icon name="chevron-left" size={24} color="#666" />
         </TouchableOpacity>
-        <Text style={styles.monthText}>{getMonthDisplayText()}</Text>
-        <TouchableOpacity onPress={() => navigateMonth('next')}>
+        <TouchableOpacity 
+          style={styles.periodDisplayContainer}
+          onPress={() => setShowPeriodDropdown(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.periodTypeIndicator}>
+            <Text style={styles.periodTypeLabel}>{getCurrentPeriodTypeLabel()}</Text>
+            <Icon name="chevron-down" size={16} color="#666" />
+          </View>
+          <View style={styles.periodTextContainer}>
+            <Text style={styles.monthText}>{getPeriodDisplayText()}</Text>
+            
+          </View>
+
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigatePeriod('next')}>
           <Icon name="chevron-right" size={24} color="#666" />
         </TouchableOpacity>
       </View>
+
+      {/* Period Type Dropdown Modal */}
+      <Modal
+        visible={showPeriodDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPeriodDropdown(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPeriodDropdown(false)}
+        >
+          <View style={styles.dropdownContainer}>
+            {periodTypeOptions.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.dropdownOption,
+                  selectedPeriodType === option.value && styles.selectedDropdownOption
+                ]}
+                onPress={() => {
+                  setSelectedPeriodType(option.value as PeriodType);
+                  setShowPeriodDropdown(false);
+                  // Open custom date modal if custom is selected
+                  if (option.value === 'custom') {
+                    setTempStartDate(customStartDate);
+                    setTempEndDate(customEndDate);
+                    setShowCustomDateModal(true);
+                  }
+                }}
+              >
+                <Text style={[
+                  styles.dropdownOptionText,
+                  selectedPeriodType === option.value && styles.selectedDropdownOptionText
+                ]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Custom Date Modal */}
+      <Modal
+        visible={showCustomDateModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCustomDateModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.customDateModalContainer}>
+            <View style={styles.customDateModalHeader}>
+              <Text style={styles.customDateModalTitle}>{t('reports.selectDateRange')}</Text>
+              <TouchableOpacity onPress={() => setShowCustomDateModal(false)}>
+                <Icon name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.customDateModalContent}>
+              {/* Current Range Display */}
+              <View style={styles.currentRangeDisplay}>
+                <Text style={styles.currentRangeText}>
+                  {tempStartDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { 
+                    day: 'numeric', 
+                    month: 'short' 
+                  })} - {tempEndDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { 
+                    day: 'numeric', 
+                    month: 'short' 
+                  })}
+                </Text>
+                <Icon name="calendar" size={20} color="#007AFF" />
+              </View>
+
+              {/* Date Input Fields */}
+              <View style={styles.dateInputFields}>
+                <View style={styles.dateInputField}>
+                  <Text style={styles.dateInputLabel}>{t('reports.startDate')}</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.dateInputButton,
+                      focusedInput === 'start' && styles.dateInputButtonActive
+                    ]}
+                    onPress={() => handleDateSelect('start')}
+                  >
+                    <Text style={styles.dateInputText}>
+                      {tempStartDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.dateInputField}>
+                  <Text style={styles.dateInputLabel}>{t('reports.endDate')}</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.dateInputButton,
+                      focusedInput === 'end' && styles.dateInputButtonActive
+                    ]}
+                    onPress={() => handleDateSelect('end')}
+                  >
+                    <Text style={styles.dateInputText}>
+                      {tempEndDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.customDateModalActions}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => setShowCustomDateModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.confirmButton,
+                    tempStartDate > tempEndDate && styles.disabledButton
+                  ]}
+                  disabled={tempStartDate > tempEndDate}
+                  onPress={() => {
+                    if (tempStartDate <= tempEndDate) {
+                      setCustomStartDate(tempStartDate);
+                      setCustomEndDate(tempEndDate);
+                      setShowCustomDateModal(false);
+                    }
+                  }}
+                >
+                  <Text style={[
+                    styles.confirmButtonText,
+                    tempStartDate > tempEndDate && styles.disabledButtonText
+                  ]}>
+                    {t('common.ok')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+
+
+
+
+
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -644,10 +1205,9 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   headerTitle: {
+    ...typography.medium,
     fontSize: 18,
-    fontWeight: '600',
     color: '#1F2937',
-    fontFamily: 'Roboto',
   },
   placeholder: {
     width: 40,
@@ -655,15 +1215,90 @@ const styles = StyleSheet.create({
   monthSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 16,
+    paddingHorizontal: 20,
     backgroundColor: '#f8f9fa',
   },
+  periodDisplayContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    marginHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e1e5e9',
+    minHeight: 60,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  periodTypeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  periodTypeLabel: {
+    fontSize: 11,
+    color: '#8e9aaf',
+    marginRight: 3,
+    marginLeft: 10,
+    ...typography.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   monthText: {
-    fontSize: 16,
-    fontWeight: '500',
+    ...typography.medium,
+    fontSize: 15,
+    color: '#2d3748',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  periodTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    paddingHorizontal: 8,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
     marginHorizontal: 20,
+    paddingVertical: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  dropdownOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  selectedDropdownOption: {
+    backgroundColor: '#f0f8ff',
+  },
+  dropdownOptionText: {
+    fontSize: 16,
     color: '#333',
+  },
+  selectedDropdownOptionText: {
+    color: '#007AFF',
+    ...typography.medium,
   },
   loadingContainer: {
     flex: 1,
@@ -711,8 +1346,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   summaryValue: {
+    ...typography.medium,
     fontSize: 18,
-    fontWeight: '600',
   },
   expenseValue: {
     color: '#FF3B30',
@@ -733,8 +1368,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   chartTitle: {
+    ...typography.medium,
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
   },
   seeAllText: {
@@ -743,7 +1378,7 @@ const styles = StyleSheet.create({
   },
   chartAmount: {
     fontSize: 22,
-    fontWeight: '600',
+    ...typography.medium,
     color: '#333',
     marginBottom: 20,
   },
@@ -774,9 +1409,8 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 14,
-    fontWeight: '500',
+    ...typography.medium,
     color: '#374151',
-    fontFamily: 'Roboto',
   },
   categoryPercentage: {
     fontSize: 12,
@@ -802,7 +1436,7 @@ const styles = StyleSheet.create({
   viewReportText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.medium,
   },
   legendItem: {
     flexDirection: 'row',
@@ -834,5 +1468,111 @@ const styles = StyleSheet.create({
   legendContainer: {
     marginLeft: 20,
     justifyContent: 'center',
+  },
+  customDateModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 400,
+    overflow: 'hidden',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  customDateModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  customDateModalTitle: {
+    ...typography.medium,
+    fontSize: 18,
+    color: '#333',
+  },
+  customDateModalContent: {
+    padding: 0,
+  },
+  currentRangeDisplay: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  currentRangeText: {
+    fontSize: 16,
+    color: '#666',
+    marginRight: 10,
+  },
+  dateInputFields: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  dateInputField: {
+    marginBottom: 15,
+  },
+  dateInputLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  dateInputButton: {
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e1e5e9',
+  },
+  dateInputButtonActive: {
+    borderColor: '#007AFF',
+    borderWidth: 2,
+  },
+  dateInputText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  customDateModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  cancelButton: {
+    backgroundColor: '#e0e0e0',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 10,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#333',
+    ...typography.medium,
+  },
+  confirmButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 10,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    ...typography.medium,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+    opacity: 0.7,
+  },
+  disabledButtonText: {
+    color: '#999',
   },
 }); 

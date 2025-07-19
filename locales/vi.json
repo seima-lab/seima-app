@@ -351,6 +351,14 @@
   },
   
   "reports": {
+    "today": "Hôm nay",
+    "thisWeek": "Tuần này",
+    "thisMonth": "Tháng này",
+    "thisYear": "Năm này",
+    "custom": "Tùy chọn",
+    "selectDateRange": "Chọn khoảng thời gian",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc",
     "title": "Báo cáo",
     "monthlyReport": "Báo cáo tháng",
     "loadingReport": "Đang tải báo cáo...",

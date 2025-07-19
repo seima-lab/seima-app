@@ -2,16 +2,16 @@ import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -380,11 +380,11 @@ const GroupManagementScreen = () => {
             <View style={styles.emptyStateContainer}>
               <View style={styles.emptyStateIllustration}>
                 <View style={styles.groupIconLarge}>
-                  <Icon name="group" size={48} color="#4A90E2" />
+                  <Icon name="group" size={40} color="#4A90E2" />
                 </View>
                 <View style={styles.connectLine} />
                 <View style={styles.addIconCircle}>
-                  <Icon name="add" size={24} color="#FFFFFF" />
+                  <Icon name="add" size={20} color="#FFFFFF" />
                 </View>
               </View>
               
@@ -394,44 +394,8 @@ const GroupManagementScreen = () => {
               <Text style={styles.emptyStateDescription}>
                 {t('group.emptyState.description')}
               </Text>
-            </View>
 
-            {/* Benefits Section */}
-            <View style={styles.benefitsContainer}>
-              <Text style={styles.benefitsTitle}>
-                {t('group.emptyState.benefitsTitle')}
-              </Text>
-              
-              <View style={styles.benefitItem}>
-                <View style={styles.benefitIcon}>
-                  <Icon name="people" size={20} color="#4A90E2" />
-                </View>
-                <Text style={styles.benefitText}>
-                  {t('group.emptyState.benefit1')}
-                </Text>
-              </View>
-
-              <View style={styles.benefitItem}>
-                <View style={styles.benefitIcon}>
-                  <Icon name="trending-up" size={20} color="#4A90E2" />
-                </View>
-                <Text style={styles.benefitText}>
-                  {t('group.emptyState.benefit2')}
-                </Text>
-              </View>
-
-              <View style={styles.benefitItem}>
-                <View style={styles.benefitIcon}>
-                  <Icon name="security" size={20} color="#4A90E2" />
-                </View>
-                <Text style={styles.benefitText}>
-                  {t('group.emptyState.benefit3')}
-                </Text>
-              </View>
-            </View>
-
-            {/* Primary Actions */}
-            <View style={styles.primaryActionsContainer}>
+              {/* Primary Action Button - moved to center */}
               <TouchableOpacity style={styles.primaryActionButton} onPress={handleCreateGroup}>
                 <View style={styles.actionButtonContent}>
                   <View style={styles.actionButtonIcon}>
@@ -448,15 +412,41 @@ const GroupManagementScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Help Section */}
-            <View style={styles.helpContainer}>
-              <Text style={styles.helpTitle}>
-                {t('group.emptyState.helpTitle')}
+            {/* Benefits Section - simplified */}
+            <View style={styles.benefitsContainer}>
+              <Text style={styles.benefitsTitle}>
+                {t('group.emptyState.benefitsTitle')}
               </Text>
-              <Text style={styles.helpText}>
-                {t('group.emptyState.helpText')}
-              </Text>
+              
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIcon}>
+                  <Icon name="people" size={18} color="#4A90E2" />
+                </View>
+                <Text style={styles.benefitText}>
+                  {t('group.emptyState.benefit1')}
+                </Text>
+              </View>
+
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIcon}>
+                  <Icon name="trending-up" size={18} color="#4A90E2" />
+                </View>
+                <Text style={styles.benefitText}>
+                  {t('group.emptyState.benefit2')}
+                </Text>
+              </View>
+
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIcon}>
+                  <Icon name="security" size={18} color="#4A90E2" />
+                </View>
+                <Text style={styles.benefitText}>
+                  {t('group.emptyState.benefit3')}
+                </Text>
+              </View>
             </View>
+
+
           </ScrollView>
         ) : (
           <FlatList
@@ -675,34 +665,35 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
   emptyStateIllustration: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   groupIconLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#E3F2FD',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
     overflow: 'hidden',
   },
   connectLine: {
-    width: 40,
+    width: 30,
     height: 2,
     backgroundColor: '#CCCCCC',
-    marginRight: 16,
+    marginRight: 12,
   },
   addIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#4A90E2',
     justifyContent: 'center',
     alignItems: 'center',
@@ -718,45 +709,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
+    marginBottom: 8,
     ...typography.regular,
   },
   benefitsContainer: {
-    padding: 16,
+    padding: 8,
+    marginTop: 20,
   },
   benefitsTitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#333333',
-    marginBottom: 16,
+    marginBottom: 8,
+    textAlign: 'center',
     ...typography.medium,
   },
   benefitItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
+    paddingHorizontal: 16,
   },
   benefitIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#E3F2FD',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   benefitText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666666',
     flex: 1,
     ...typography.regular,
   },
-  primaryActionsContainer: {
-    padding: 16,
-  },
   primaryActionButton: {
     backgroundColor: '#4A90E2',
     borderRadius: 12,
-    marginBottom: 12,
+    marginTop: 24,
+    marginBottom: 16,
+    width: '100%',
     shadowColor: '#4A90E2',
     shadowOffset: {
       width: 0,
@@ -795,26 +789,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     ...typography.regular,
   },
-  helpContainer: {
-    backgroundColor: '#F8F9FA',
-    margin: 16,
-    padding: 20,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#4A90E2',
-  },
-  helpTitle: {
-    fontSize: 16,
-    color: '#333333',
-    marginBottom: 8,
-    ...typography.medium,
-  },
-  helpText: {
-    fontSize: 14,
-    color: '#666666',
-    lineHeight: 20,
-    ...typography.regular,
-  },
+
 });
 
 export default GroupManagementScreen;
