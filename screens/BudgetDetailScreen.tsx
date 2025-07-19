@@ -2,16 +2,16 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { typography } from '../constants/typography';
@@ -135,15 +135,34 @@ const BudgetDetailScreen = () => {
 
   // Helper function to get period type label
   const getPeriodTypeLabel = (periodType: string) => {
-    switch (periodType) {
+    console.log('🔍 getPeriodTypeLabel - Input periodType:', periodType);
+    console.log('🔍 getPeriodTypeLabel - Type of periodType:', typeof periodType);
+    
+    if (!periodType) {
+      console.log('⚠️ periodType is null/undefined, returning default');
+      return t('budget.setBudgetLimit.monthly') || 'Monthly';
+    }
+    
+    // Convert to uppercase to handle case variations
+    const normalizedType = periodType.toString().toUpperCase();
+    console.log('🔍 Normalized periodType:', normalizedType);
+    
+    switch (normalizedType) {
       case 'WEEKLY':
-        return t('budget.setBudgetLimit.weekly');
+      case 'WEEK':
+        console.log('✅ Matched WEEKLY');
+        return t('budget.setBudgetLimit.weekly') || 'Weekly';
       case 'MONTHLY':
-        return t('budget.setBudgetLimit.monthly');
+      case 'MONTH':
+        console.log('✅ Matched MONTHLY');
+        return t('budget.setBudgetLimit.monthly') || 'Monthly';
       case 'YEARLY':
-        return t('budget.setBudgetLimit.yearly');
+      case 'YEAR':
+        console.log('✅ Matched YEARLY');
+        return t('budget.setBudgetLimit.yearly') || 'Yearly';
       default:
-        return periodType;
+        console.log('⚠️ No match found, returning original:', periodType);
+        return periodType || 'Unknown';
     }
   };
 
@@ -363,17 +382,7 @@ const BudgetDetailScreen = () => {
           </View>
         )}
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.primaryButton}>
-            <Icon name="chart-line" size={20} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>{t('budget.detail.viewReport')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton}>
-            <Icon name="bell" size={20} color="#1e90ff" />
-            <Text style={styles.secondaryButtonText}>{t('budget.detail.setNotification')}</Text>
-          </TouchableOpacity>
-        </View>
+
       </ScrollView>
     </TouchableWithoutFeedback>
 
@@ -586,7 +595,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#1F2937',
     flex: 1,
-    ...typography.bold,
+    ...typography.semibold,
   },
   periodBadge: {
     backgroundColor: '#EEF2FF',
@@ -603,7 +612,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: '#1e90ff',
     marginBottom: 20,
-    ...typography.bold,
+    ...typography.semibold,
   },
   progressContainer: {
     marginBottom: 20,
@@ -711,44 +720,7 @@ const styles = StyleSheet.create({
     ...typography.medium,
   },
   
-  // Action Buttons
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: '#1e90ff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    marginLeft: 8,
-    ...typography.semibold,
-  },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#1e90ff',
-  },
-  secondaryButtonText: {
-    color: '#1e90ff',
-    fontSize: 16,
-    marginLeft: 8,
-    ...typography.semibold,
-  },
+
 
   // Modal Styles
   modalOverlay: {
@@ -777,7 +749,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 8,
     textAlign: 'center',
-    ...typography.bold,
+    ...typography.semibold,
   },
   modalMessage: {
     fontSize: 14,
