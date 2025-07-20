@@ -1,28 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomToast from '../components/CustomToast';
+import { typography } from '../constants/typography';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import {
-    authService,
-    ResendForgotPasswordOtpRequest,
-    VerifyForgotPasswordOtpRequest
+  authService,
+  ResendForgotPasswordOtpRequest,
+  VerifyForgotPasswordOtpRequest
 } from '../services/authService';
 
 const { width } = Dimensions.get('window');
@@ -410,7 +411,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '700',
+    ...typography.semibold,
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 2,
@@ -418,6 +419,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 12,
+    ...typography.medium,
     color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     fontFamily: 'Roboto',
@@ -458,13 +460,14 @@ const styles = StyleSheet.create({
   },
   emailText: {
     fontSize: 14,
-    fontWeight: '600',
+    ...typography.medium,
     color: '#1e90ff',
     marginLeft: 8,
     fontFamily: 'Roboto',
   },
   infoText: {
     fontSize: 14,
+    ...typography.medium,
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
@@ -475,7 +478,7 @@ const styles = StyleSheet.create({
   },
   otpLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    ...typography.medium,
     color: '#374151',
     marginBottom: 12,
     textAlign: 'center',
@@ -494,7 +497,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     textAlign: 'center',
     fontSize: 18,
-    fontWeight: '600',
+    ...typography.medium,
     color: '#1F2937',
     backgroundColor: '#F9FAFB',
     fontFamily: 'Roboto',
@@ -521,6 +524,7 @@ const styles = StyleSheet.create({
   },
   resendText: {
     fontSize: 13,
+    ...typography.medium,
     color: '#6B7280',
     marginBottom: 8,
     fontFamily: 'Roboto',
@@ -541,7 +545,7 @@ const styles = StyleSheet.create({
   },
   resendButtonText: {
     fontSize: 13,
-    fontWeight: '600',
+    ...typography.medium,
     color: '#1e90ff',
     marginLeft: 6,
     fontFamily: 'Roboto',
@@ -572,7 +576,7 @@ const styles = StyleSheet.create({
   verifyButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    ...typography.semibold,
     letterSpacing: 0.5,
     fontFamily: 'Roboto',
   },
@@ -586,7 +590,7 @@ const styles = StyleSheet.create({
   backLinkText: {
     fontSize: 13,
     color: '#1e90ff',
-    fontWeight: '600',
+    ...typography.medium,
     fontFamily: 'Roboto',
   },
 }); 

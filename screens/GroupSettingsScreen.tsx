@@ -6,12 +6,15 @@ import {
   Alert,
   Image,
   Modal,
+  SafeAreaView,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
 import CustomSuccessModal from '../components/CustomSuccessModal';
@@ -34,6 +37,7 @@ const GroupSettingsScreen: React.FC<Props> = ({
 }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   
@@ -101,6 +105,10 @@ const GroupSettingsScreen: React.FC<Props> = ({
         ]
       );
     }
+  };
+
+  const handleManageMembers = () => {
+    (navigation as any).navigate('GroupMembers', { groupId, groupName });
   };
 
   const handleLeaveGroup = () => {
@@ -590,8 +598,33 @@ const GroupSettingsScreen: React.FC<Props> = ({
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      {/* Fixed Header with SafeArea padding */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Icon name="arrow-back" size={24} color="#333333" />
+        </TouchableOpacity>
+        
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>{t('group.settings.title')}</Text>
+          <Text style={styles.headerSubtitle}>{groupName}</Text>
+        </View>
+        
+        <View style={styles.headerRight} />
+      </View>
+
+      {/* Scrollable Content */}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Group Management */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('group.settings.groupManagement')}</Text>
@@ -601,6 +634,13 @@ const GroupSettingsScreen: React.FC<Props> = ({
               title={t('group.settings.editGroupInfo')}
               subtitle={t('group.settings.editGroupInfoDesc')}
               onPress={handleEditGroup}
+            />
+            <View style={styles.separator} />
+            <SettingItem
+              icon="people"
+              title="Management"
+              subtitle="Quản lý thành viên nhóm"
+              onPress={handleManageMembers}
             />
           </View>
         </View>
@@ -692,11 +732,64 @@ const GroupSettingsScreen: React.FC<Props> = ({
         onConfirm={handleSuccessModalConfirm}
         iconName="check-circle"
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
+    color: '#333333',
+    ...typography.semibold,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
+    ...typography.regular,
+  },
+  headerRight: {
+    width: 44,
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  scrollViewContent: {
+    paddingBottom: 24, // Add some padding at the bottom for the last section
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',

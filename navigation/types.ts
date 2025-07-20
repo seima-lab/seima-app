@@ -115,6 +115,7 @@ export type RootStackParamList = {
   InviteUsers: { groupId: string };
   ApproveMembers: { groupId: string };
   GroupMembers: { groupId: string; groupName: string };
+  GroupSettings: { groupId: string; groupName: string };
   GroupTransactionList: { 
     groupId: string; 
     groupName: string; 

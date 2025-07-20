@@ -4,8 +4,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
 import { RootStackParamList } from '../navigation/types';
-
 export type GroupMemberStatus =
   | 'PENDING_APPROVAL'
   | 'INVITED'
@@ -141,14 +141,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: 22,
+    ...typography.semibold,
     marginBottom: 8,
     textAlign: 'center',
-    fontFamily: 'Roboto',
+ 
   },
   description: {
-    fontSize: 16,
+    fontSize: 14,
+    ...typography.medium,
     color: '#444',
     marginBottom: 18,
     textAlign: 'center',
@@ -156,14 +157,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto',
   },
   groupName: {
-    fontSize: 16,
+    fontSize: 14,
+    ...typography.medium,
     color: '#1976D2',
     marginBottom: 6,
     textAlign: 'center',
     fontFamily: 'Roboto',
   },
   info: {
-    fontSize: 15,
+    fontSize: 14,
+    ...typography.medium,
     color: '#666',
     marginBottom: 4,
     textAlign: 'center',

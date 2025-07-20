@@ -1,12 +1,13 @@
+import { typography } from '@/constants/typography';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -114,14 +115,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...typography.semibold,
     color: '#333',
     textAlign: 'center',
     marginBottom: 12,
   },
   message: {
-    fontSize: 16,
+    ...typography.regular,
     color: '#666',
     textAlign: 'center',
     lineHeight: 24,
@@ -147,8 +147,7 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     color: '#4A90E2',
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   confirmButton: {
     flex: 1,
@@ -170,14 +169,12 @@ const styles = StyleSheet.create({
   },
   confirmText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   footerText: {
-    fontSize: 14,
+    ...typography.regular,
     color: '#999',
     textAlign: 'center',
-    fontStyle: 'italic',
   },
 });
 

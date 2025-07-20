@@ -350,6 +350,10 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
     });
   };
 
+  const handleSettingsPress = () => {
+    (navigation as any).navigate('GroupSettings', { groupId, groupName });
+  };
+
   // Helper: format time luôn là AM/PM
   const formatTimeAMPM = (date: Date) => {
     return date.toLocaleString('en-US', {
@@ -537,29 +541,32 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
         <View style={styles.membersCard}>
           <View style={styles.membersHeader}>
             <Text style={styles.cardTitle}>{t('group.overview.membersPreview')}</Text>
-            <View style={styles.memberAvatars}>
-              {membersLoading ? (
-                <ActivityIndicator size="small" color="#4A90E2" />
-              ) : membersError ? (
-                <Text style={styles.errorText}>{membersError}</Text>
-              ) : (
-                <>
-                  {members.length === 0 ? (
-                    <Text style={styles.noMembersText}>{t('group.overview.noMembers')}</Text>
-                  ) : (
-                    members.slice(0, 3).map((member, index) => {
-                      console.log('🟡 Rendering member avatar:', member.user_full_name, 'Index:', index, 'Avatar URL:', member.user_avatar_url);
-                      return renderMemberAvatar(member, index);
-                    })
-                  )}
-                  {members.length > 3 && (
-                    <View style={styles.moreMembers}>
-                      <Text style={styles.moreMembersText}>+{members.length - 3}</Text>
-                    </View>
-                  )}
-                </>
-              )}
-            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('GroupMembers', { groupId, groupName })}>
+              <Text style={styles.viewDetailText}>View Detail</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.memberAvatars}>
+            {membersLoading ? (
+              <ActivityIndicator size="small" color="#4A90E2" />
+            ) : membersError ? (
+              <Text style={styles.errorText}>{membersError}</Text>
+            ) : (
+              <>
+                {members.length === 0 ? (
+                  <Text style={styles.noMembersText}>{t('group.overview.noMembers')}</Text>
+                ) : (
+                  members.slice(0, 3).map((member, index) => {
+                    console.log('🟡 Rendering member avatar:', member.user_full_name, 'Index:', index, 'Avatar URL:', member.user_avatar_url);
+                    return renderMemberAvatar(member, index);
+                  })
+                )}
+                {members.length > 3 && (
+                  <View style={styles.moreMembers}>
+                    <Text style={styles.moreMembersText}>+{members.length - 3}</Text>
+                  </View>
+                )}
+              </>
+            )}
           </View>
           {!membersLoading && !membersError && (
             <Text style={styles.memberCount}>
@@ -765,6 +772,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   viewAllText: {
+    fontSize: 14,
+    color: '#4A90E2',
+    ...typography.medium,
+  },
+  viewDetailText: {
     fontSize: 14,
     color: '#4A90E2',
     ...typography.medium,

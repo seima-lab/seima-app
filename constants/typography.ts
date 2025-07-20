@@ -10,7 +10,7 @@ export const typography = {
     fontWeight: '500' as const,
   },
   semibold: {
-    fontFamily: 'RobotoBold',
+    fontFamily: 'RobotoSemiBold',
     fontWeight: '600' as const,
   },
 

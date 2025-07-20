@@ -284,12 +284,19 @@ const WalletScreen = ({ footerHeight = 0 }) => {
     navigation.navigate('AddWalletScreen');
   };
 
-  const renderMenu = (walletId: number) => {
+  const renderMenu = (walletId: number, index: number) => {
     const walletIdString = walletId.toString();
     if (menuVisible !== walletIdString) return null;
     
+    // Check if this is one of the last few items to determine menu position
+    const totalVisibleWallets = wallets.filter(wallet => !wallet.is_delete && wallet.is_active !== false).length;
+    const isNearBottom = index >= totalVisibleWallets - 2; // Last 2 items
+    
     return (
-      <View style={styles.menuContainer}>
+      <View style={[
+        styles.menuContainer,
+        isNearBottom && styles.menuContainerAbove
+      ]}>
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => handleEdit(walletId)}
@@ -435,7 +442,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
               <Text style={[styles.balanceLabel, typography.medium]}>
                 {t('wallet.currentBalance')}
               </Text>
-              <Text style={[styles.balanceAmount, typography.bold]}> 
+              <Text style={[styles.balanceAmount, typography.semibold]}> 
                 {totalBalance.toLocaleString('vi-VN')} {t('currency')} 
               </Text>
               <View style={styles.balanceBreakdown}>
@@ -443,7 +450,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                   <Text style={[styles.balanceSubLabel, typography.medium]}>
                     {t('wallet.totalAssets')}
                   </Text>
-                  <Text style={[styles.balanceSubAmount, typography.bold]}> 
+                  <Text style={[styles.balanceSubAmount, typography.semibold]}> 
                     {totalAssets.toLocaleString('vi-VN')} {t('currency')} 
                   </Text>
                 </View>
@@ -451,7 +458,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                   <Text style={[styles.balanceSubLabel, typography.medium]}>
                     {t('wallet.totalDebts')}
                   </Text>
-                  <Text style={[styles.balanceSubAmount, typography.bold]}> 
+                  <Text style={[styles.balanceSubAmount, typography.semibold]}> 
                     {totalDebts.toLocaleString('vi-VN')} {t('currency')} 
                   </Text>
                 </View>
@@ -506,7 +513,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                         >
                           <Icon name="more-vert" size={rf(24)} color="#666" />
                         </TouchableOpacity>
-                        {renderMenu(wallet.id)}
+                        {renderMenu(wallet.id, index)}
                       </View>
                     </View>
                   ))
@@ -587,8 +594,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   balanceAmount: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: 28,
+    ...typography.semibold,   
     color: '#fff',
     marginVertical: 4,
   },
@@ -725,6 +732,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
     zIndex: 1000,
+  },
+  menuContainerAbove: {
+    top: -80, // Position above the item instead of below
+    bottom: 'auto',
   },
   menuItem: {
     flexDirection: 'row',

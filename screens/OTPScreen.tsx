@@ -1,19 +1,21 @@
+import messaging from '@react-native-firebase/messaging';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomToast from '../components/CustomToast';
@@ -22,7 +24,6 @@ import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { authService, EmailLoginRequest } from '../services/authService';
-
 const { width } = Dimensions.get('window');
 
 interface OTPScreenProps {
@@ -336,7 +337,9 @@ export default function OTPScreen({ route }: OTPScreenProps) {
         // Prepare login request
         const loginRequest: EmailLoginRequest = {
           email: email.trim().toLowerCase(),
-          password: password.trim()
+          password: password.trim(),
+          device_id: await DeviceInfo.getUniqueId(),
+          fcm_token: await messaging().getToken()
         };
         
         console.log('🟡 Auto login request:', { email: loginRequest.email, password: '[HIDDEN]' });

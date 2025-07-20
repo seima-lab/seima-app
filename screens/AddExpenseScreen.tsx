@@ -5,17 +5,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -241,17 +241,45 @@ export default function AddExpenseScreen() {
       if (isEditMode && transactionData?.category) {
         // In edit mode, try to find and select the matching category
         const allCategories = [...expenseCats, ...incomeCats];
-        const matchingCategory = allCategories.find(cat => cat.category_name === transactionData.category);
+        
+        // First try to find by category_id if available (from group transaction list)
+        let matchingCategory = null;
+        if (transactionData.categoryId) {
+          matchingCategory = allCategories.find(cat => cat.category_id === transactionData.categoryId);
+          console.log('🔍 Looking for category by ID:', {
+            categoryId: transactionData.categoryId,
+            found: !!matchingCategory
+          });
+        }
+        
+        // If not found by ID, try by name
+        if (!matchingCategory) {
+          matchingCategory = allCategories.find(cat => cat.category_name === transactionData.category);
+          console.log('🔍 Looking for category by name:', {
+            categoryName: transactionData.category,
+            found: !!matchingCategory
+          });
+        }
+        
         if (matchingCategory) {
           const categoryKey = categoryServiceInstance.convertToLocalCategory(matchingCategory).key;
           console.log('🔍 Setting edit mode category:', {
             transactionCategory: transactionData.category,
+            transactionCategoryId: transactionData.categoryId,
             matchingCategoryId: matchingCategory.category_id,
-            categoryKey: categoryKey
+            categoryKey: categoryKey,
+            fromGroupTransactionList: fromGroupTransactionList
           });
           setSelectedCategory(categoryKey);
         } else {
-          console.log('⚠️ Could not find matching category for:', transactionData.category);
+          console.log('⚠️ Could not find matching category for:', {
+            category: transactionData.category,
+            categoryId: transactionData.categoryId,
+            availableCategories: allCategories.map(cat => ({
+              id: cat.category_id,
+              name: cat.category_name
+            }))
+          });
           // Fall back to default category selection
           const categories = activeTab === 'expense' ? expenseCats : incomeCats;
           if (categories.length > 0) {
@@ -879,13 +907,22 @@ export default function AddExpenseScreen() {
         selectedCategoryDetails: getCurrentCategories().find(cat => cat.key === selectedCategory)
       });
 
-      // Format date - use noon time to avoid timezone issues
+      // Format date with current Vietnam time in ISO format
       const formatDateForAPI = (date: Date): string => {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        // Use noon (12:00) to avoid timezone conversion issues
-        return `${year}-${month}-${day}T12:00:00.000Z`;
+        
+        // Get current time (already in Vietnam timezone)
+        const now = new Date();
+        
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const milliseconds = String(now.getMilliseconds()).padStart(2, '0');
+        
+        // Format: 2025-07-20T08:04:33.11
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
       };
 
       const transactionData: CreateTransactionRequest = {
@@ -934,17 +971,17 @@ export default function AddExpenseScreen() {
             onPress: () => {
               // Navigate back to appropriate screen
               if (fromGroupTransactionList && groupContextId && groupContextName) {
-                // Navigate back to GroupTransactionList screen
-                (navigation as any).navigate('GroupTransactionList', {
-                  groupId: groupContextId,
-                  groupName: groupContextName
+                // Reset navigation stack to prevent duplicate screens
+                (navigation as any).reset({
+                  index: 1,
+                  routes: [
+                    { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
+                    { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
+                  ],
                 });
               } else if (fromGroupOverview && groupContextId && groupContextName) {
-                // Navigate back to GroupDetail screen
-                (navigation as any).navigate('GroupDetail', {
-                  groupId: groupContextId,
-                  groupName: groupContextName
-                });
+                // For GroupOverview, just go back normally to avoid navigation stack issues
+                navigation.goBack();
               } else {
                 // Normal navigation back
                 navigation.goBack();
@@ -969,17 +1006,17 @@ export default function AddExpenseScreen() {
             onPress: () => {
               // Navigate back to appropriate screen
               if (fromGroupTransactionList && groupContextId && groupContextName) {
-                // Navigate back to GroupTransactionList screen
-                (navigation as any).navigate('GroupTransactionList', {
-                  groupId: groupContextId,
-                  groupName: groupContextName
+                // Reset navigation stack to prevent duplicate screens
+                (navigation as any).reset({
+                  index: 1,
+                  routes: [
+                    { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
+                    { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
+                  ],
                 });
               } else if (fromGroupOverview && groupContextId && groupContextName) {
-                // Navigate back to GroupDetail screen
-                (navigation as any).navigate('GroupDetail', {
-                  groupId: groupContextId,
-                  groupName: groupContextName
-                });
+                // For GroupOverview, just go back normally to avoid navigation stack issues
+                navigation.goBack();
               } else {
                 // Normal navigation back
                 navigation.goBack();
@@ -1001,17 +1038,17 @@ export default function AddExpenseScreen() {
             text: 'OK', 
             onPress: () => {
               if (fromGroupTransactionList && groupContextId && groupContextName) {
-                // Navigate back to GroupTransactionList screen
-                (navigation as any).navigate('GroupTransactionList', {
-                  groupId: groupContextId,
-                  groupName: groupContextName
+                // Reset navigation stack to prevent duplicate screens
+                (navigation as any).reset({
+                  index: 1,
+                  routes: [
+                    { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
+                    { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
+                  ],
                 });
               } else if (fromGroupOverview && groupContextId && groupContextName) {
-                // Navigate back to GroupDetail screen
-                (navigation as any).navigate('GroupDetail', {
-                  groupId: groupContextId,
-                  groupName: groupContextName
-                });
+                // For GroupOverview, just go back normally to avoid navigation stack issues
+                navigation.goBack();
               } else {
                 // Normal navigation back
                 navigation.goBack();
@@ -1336,7 +1373,12 @@ export default function AddExpenseScreen() {
             >
               {getSelectedWalletName()}
             </Text>
-                <Icon name="chevron-down" size={20} color="#666" />
+                <Icon 
+                  name="chevron-down" 
+                  size={20} 
+                  color="#666" 
+                  style={{ position: 'absolute', right: 12 }}
+                />
               </TouchableOpacity>
           </View>
 
@@ -1405,6 +1447,7 @@ export default function AddExpenseScreen() {
 
         {/* Categories */}
         <Text style={styles.sectionTitle}>{t('category.title')}</Text>
+        <View style={{ width: '100%', paddingHorizontal: 0 }}>
             <FlatList
           data={getCurrentCategories()}
               renderItem={renderCategoryItem}
@@ -1412,7 +1455,11 @@ export default function AddExpenseScreen() {
           numColumns={4}
               scrollEnabled={false}
               contentContainerStyle={styles.categoriesContainer}
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+              style={{ width: '100%' }}
             />
+        </View>
 
           {/* Save Button */}
           {/* LƯU Ý: XÓA nút Save khỏi ScrollView */}
@@ -1619,7 +1666,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
-    // paddingBottom: 64, // Đảm bảo không có paddingBottom lớn
+    paddingBottom: 80, // Thêm padding bottom để tránh bị che bởi nút Save
+    width: '100%', // Đảm bảo width đúng
   },
   header: {
     flexDirection: 'row',
@@ -1682,10 +1730,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    position: 'relative', // Thêm position relative
   },
   inputText: {
     fontSize: 16,
     color: '#333',
+    flex: 1, // Cho phép text chiếm hết không gian có sẵn
+    marginRight: 24, // Để lại khoảng trống cho icon dropdown
   },
   dateText: {
     fontSize: 16,
@@ -1706,6 +1757,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#eee',
     fontSize: 16,
+    minHeight: 44, // Đảm bảo chiều cao tối thiểu
   },
   currency: {
     marginLeft: 8, 
@@ -1738,18 +1790,22 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
     marginBottom: 12,
+    paddingHorizontal: 8, // Thêm padding horizontal cân bằng với categories
+    width: '100%', // Đảm bảo title chiếm toàn bộ chiều rộng
   },
   categoriesContainer: { 
     paddingBottom: 20,
-    paddingHorizontal: 4, // Thêm padding để cân bằng margin của các item
+    paddingHorizontal: 8, // Thêm padding horizontal cân bằng hai bên
+    width: '100%', // Đảm bảo container chiếm toàn bộ chiều rộng
+    // Đảm bảo categories có margin cân bằng hai bên
   },
   categoryItem: {
     width: '25%', // Đảm bảo mỗi item chiếm đúng 1/4 chiều rộng
     aspectRatio: 1, // Đảm bảo item có hình vuông
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
-    margin: 2,
+    padding: 4, // Giảm padding hơn nữa
+   // Tăng margin để tạo khoảng cách cân bằng
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#eee',
@@ -1760,19 +1816,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#e6f2ff',
   },
   categoryText: { 
-    fontSize: 11,
+    fontSize: 9, // Giảm font size hơn nữa
     color: '#333', 
-    marginTop: 4,
+    marginTop: 2, // Giảm margin top
     textAlign: 'center',
-    lineHeight: 14,
+    lineHeight: 11, // Giảm line height
     flexWrap: 'wrap',
+    paddingHorizontal: 2, // Thêm padding horizontal cho text
   },
   saveButton: {
     backgroundColor: '#007aff',
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 0, // Bỏ margin top vì đã có padding trong container
   },
   saveButtonDisabled: {
     backgroundColor: '#ccc',
@@ -2025,8 +2082,10 @@ const styles = StyleSheet.create({
   // Thêm style mới cho container cố định nút Save
   fixedSaveButtonContainer: {
     paddingHorizontal: 16,
-    // giảm padding dọc để nút sát mép dưới hơn
-   
- 
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    // Đảm bảo nút Save luôn ở dưới cùng và không bị che
   },
 });

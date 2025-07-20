@@ -10,7 +10,7 @@ import { RootStackParamList } from '../navigation/types';
 import { ReportByCategory } from '../services/transactionService';
 import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
-
+import { typography } from '../constants/typography';
 const { width } = Dimensions.get('window');
 
 // Type definition for the route params
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  headerTitle: { fontSize: 18, fontWeight: '600' },
+  headerTitle: { fontSize: 18, ...typography.semibold },
   scrollContent: { padding: 16 },
   chartContainer: { alignItems: 'center', marginVertical: 30 },
   summarySection: {
@@ -203,14 +203,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
   },
-  summaryLabel: { fontSize: 16, color: '#666' },
-  summaryAmount: { fontSize: 16, fontWeight: '600', color: '#333' },
+  summaryLabel: { fontSize: 16, ...typography.medium, color: '#666' },
+  summaryAmount: { fontSize: 16, ...typography.medium, color: '#333' },
   listSection: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
   },
-  listHeader: { fontSize: 18, fontWeight: '600', marginBottom: 10 },
+  listHeader: { fontSize: 18, ...typography.semibold, marginBottom: 10 },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -224,8 +224,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  itemName: { flex: 1, fontSize: 16, color: '#333' },
-  itemAmount: { fontSize: 16, fontWeight: '500', color: 'red' },
+  itemName: { flex: 1, fontSize: 16, ...typography.medium, color: '#333' },
+  itemAmount: { fontSize: 16, ...typography.medium, color: 'red' },
   legendContainer: {
     marginTop: 20,
     alignSelf: 'stretch',
@@ -243,12 +243,11 @@ const styles = StyleSheet.create({
   },
   legendText: { 
     flex: 1, 
-    fontSize: 14, 
+    fontSize: 14, ...typography.medium,
     color: '#333' 
   },
   legendPercentage: { 
-    fontSize: 14, 
-    fontWeight: '600', 
+    fontSize: 14, ...typography.medium,
     color: '#666' 
   },
 });

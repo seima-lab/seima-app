@@ -2,15 +2,15 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    RefreshControl,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Image,
+  RefreshControl,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -19,6 +19,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import type { RootStackParamList } from '../navigation/types';
 import { categoryService, CategoryService, CategoryType, LocalCategory } from '../services/categoryService';
 import { GroupMemberResponse, groupService } from '../services/groupService';
+import { secureApiService } from '../services/secureApiService';
 import { GroupTransactionResponse, transactionService, TransactionType } from '../services/transactionService';
 
 type GroupTransactionListScreenRouteProp = RouteProp<RootStackParamList, 'GroupTransactionList'>;
@@ -41,8 +42,20 @@ const formatMoney = (amount: number): string => {
   return amount.toLocaleString('vi-VN') + '₫';
 };
 
-const TAB_MY = 'my';
-const TAB_GROUP = 'group';
+// Format date helper function - display exact time from database
+const formatTransactionDate = (dateString: string, language: string): string => {
+  try {
+    console.log('🔍 Original date string from database:', dateString);
+    
+    // Simply return the original date string from database
+    // This ensures we show exactly what's in the database
+    return dateString;
+    
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return dateString;
+  }
+};
 
 const GroupTransactionListScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -58,7 +71,6 @@ const GroupTransactionListScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<string>(TAB_MY);
   
   // Members and categories state
   const [members, setMembers] = useState<GroupMemberResponse[]>([]);
@@ -67,7 +79,23 @@ const GroupTransactionListScreen: React.FC = () => {
   const [membersLoading, setMembersLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   
+  // Current user and filter state
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [showOnlyMyTransactions, setShowOnlyMyTransactions] = useState(false);
+  
   const LIMIT = 20;
+
+  // Helper function to get current user profile
+  const getCurrentUserProfile = useCallback(async () => {
+    try {
+      console.log('🔄 Getting current user profile...');
+      const userProfile = await secureApiService.getCurrentUserProfile();
+      console.log('✅ Current user profile loaded:', userProfile);
+      setCurrentUserId(userProfile.user_id);
+    } catch (error: any) {
+      console.error('❌ Failed to get current user profile:', error);
+    }
+  }, []);
 
   // Helper function to get user info from member data
   const getUserInfo = (userId: number) => {
@@ -247,7 +275,8 @@ const GroupTransactionListScreen: React.FC = () => {
     loadMembersData();
     loadCategoriesData();
     loadTransactions(0);
-  }, [loadMembersData, loadCategoriesData, loadTransactions]);
+    getCurrentUserProfile(); // Load current user profile on mount
+  }, [loadMembersData, loadCategoriesData, loadTransactions, getCurrentUserProfile]);
 
   const onRefresh = () => {
     loadTransactions(0, true);
@@ -259,19 +288,91 @@ const GroupTransactionListScreen: React.FC = () => {
     }
   };
 
+  // Handle filter toggle between all transactions and my transactions only
+  const handleFilterToggle = () => {
+    setShowOnlyMyTransactions(!showOnlyMyTransactions);
+  };
+
+  // Handle transaction item press
+  const handleTransactionPress = (transaction: GroupTransactionResponse) => {
+    // Only allow editing own transactions
+    if (transaction.user_id !== currentUserId) {
+      console.log('⚠️ Cannot edit transaction of other user:', {
+        transactionUserId: transaction.user_id,
+        currentUserId: currentUserId
+      });
+      return;
+    }
+
+    console.log('🔄 Navigating to edit transaction:', {
+      transactionId: transaction.transaction_id,
+      transactionType: transaction.transaction_type,
+      amount: transaction.amount,
+      categoryId: transaction.category_id
+    });
+
+    // Navigate to AddExpenseScreen in edit mode with group context
+    (navigation as any).navigate('AddExpenseScreen', {
+      editMode: true,
+      transactionData: {
+        id: transaction.transaction_id.toString(),
+        amount: transaction.amount,
+        note: transaction.description || '',
+        date: transaction.transaction_date,
+        category: getCategoryName(transaction.category_id),
+        categoryId: transaction.category_id, // Add categoryId for better matching
+        type: transaction.transaction_type.toLowerCase()
+      },
+      fromGroupOverview: true, // Enable group context
+      groupId: groupId,
+      groupName: groupName,
+      fromGroupTransactionList: true // Indicate coming from transaction list
+    });
+  };
+
+  // Filter transactions based on current filter state
+  const getFilteredTransactions = () => {
+    if (!showOnlyMyTransactions || !currentUserId) {
+      return transactions; // Show all transactions
+    }
+    
+    // Show only current user's transactions
+    const myTransactions = transactions.filter(t => t.user_id === currentUserId);
+    console.log('🔍 Filtered to my transactions:', {
+      totalTransactions: transactions.length,
+      myTransactions: myTransactions.length,
+      currentUserId: currentUserId
+    });
+    return myTransactions;
+  };
+
   // Enhanced Transaction Item Component with user avatar and better design
   const TransactionItem = ({ item }: { item: GroupTransactionResponse }) => {
     const isIncome = item.transaction_type === TransactionType.INCOME;
     const userInfo = getUserInfo(item.user_id);
+    const isMyTransaction = item.user_id === currentUserId;
     
     return (
-      <View style={styles.transactionItem}>
+      <TouchableOpacity 
+        style={[
+          styles.transactionItem,
+          isMyTransaction && styles.transactionItemEditable
+        ]}
+        onPress={() => handleTransactionPress(item)}
+        disabled={!isMyTransaction}
+      >
         {/* User Avatar */}
         <View style={styles.transactionUserAvatar}>
           <Image 
             source={getUserAvatarSource(item.user_id)} 
             style={styles.transactionAvatarImage} 
           />
+          {/* Edit indicator for own transactions */}
+          {isMyTransaction && (
+            <View style={styles.editIndicator}>
+              <Icon name="edit" size={12} color="#FFFFFF" />
+            </View>
+          )}
         </View>
         {/* Transaction Content */}
         <View style={styles.transactionContent}>
@@ -304,19 +405,15 @@ const GroupTransactionListScreen: React.FC = () => {
               </Text>
             </View>
             <Text style={styles.transactionDate}>
-              {new Date(item.transaction_date.replace(' ', 'T')).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-              })}
+              {formatTransactionDate(item.transaction_date, language)}
             </Text>
           </View>
         </View>
-      </View>
+        {/* Edit arrow for own transactions */}
+        {isMyTransaction && (
+          <Icon name="chevron-right" size={20} color="#CCCCCC" style={styles.editArrow} />
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -345,10 +442,8 @@ const GroupTransactionListScreen: React.FC = () => {
     </View>
   );
 
-  // Tạm thời chia transaction thành 2 loại theo userId (giả lập)
-  const myUserId = 0; // TODO: lấy userId thực tế từ context/auth
-  const myTransactions = transactions.filter(t => t.user_id === myUserId);
-  const groupTransactions = transactions;
+  // Use all transactions for the group
+  const groupTransactions = getFilteredTransactions();
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -364,24 +459,18 @@ const GroupTransactionListScreen: React.FC = () => {
           <Text style={styles.headerTitle}>{t('groupTransaction.title')}</Text>
           <Text style={styles.headerSubtitle}>{groupName}</Text>
         </View>
-        <View style={styles.headerRight} />
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={handleFilterToggle}>
+            <View style={[styles.filterButton, showOnlyMyTransactions ? { backgroundColor: '#E3F2FD' } : {}]}>
+              <Icon 
+                name={showOnlyMyTransactions ? 'filter-list' : 'filter-list-alt'} 
+                size={24} 
+                color="#4A90E2" 
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
-      {/* Tabs */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tabButton, selectedTab === TAB_MY && styles.tabButtonActive]}
-          onPress={() => setSelectedTab(TAB_MY)}
-        >
-          <Text style={[styles.tabText, selectedTab === TAB_MY && styles.tabTextActive]}>{t('groupTransaction.myTransactions')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, selectedTab === TAB_GROUP && styles.tabButtonActive]}
-          onPress={() => setSelectedTab(TAB_GROUP)}
-        >
-          <Text style={[styles.tabText, selectedTab === TAB_GROUP && styles.tabTextActive]}>{t('groupTransaction.groupTransactions')}</Text>
-        </TouchableOpacity>
-      </View>
-      {/* End Tabs */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4A90E2" />
@@ -400,25 +489,37 @@ const GroupTransactionListScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={selectedTab === TAB_MY ? myTransactions : groupTransactions}
-          renderItem={renderTransaction}
-          keyExtractor={(item) => item.transaction_id.toString()}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#4A90E2']}
-            />
-          }
-          onEndReached={onLoadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={renderFooter}
-          ListEmptyComponent={renderEmptyState}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={transactions.length === 0 ? styles.emptyListContainer : undefined}
-        />
+        <>
+          {/* Filter Indicator */}
+          {showOnlyMyTransactions && (
+            <View style={styles.filterIndicator}>
+              <Icon name="person" size={16} color="#4A90E2" />
+              <Text style={styles.filterIndicatorText}>
+                Chỉ hiển thị giao dịch của tôi ({getFilteredTransactions().length} giao dịch)
+              </Text>
+            </View>
+          )}
+          
+          <FlatList
+            data={groupTransactions}
+            renderItem={renderTransaction}
+            keyExtractor={(item) => item.transaction_id.toString()}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#4A90E2']}
+              />
+            }
+            onEndReached={onLoadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={renderFooter}
+            ListEmptyComponent={renderEmptyState}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={transactions.length === 0 ? styles.emptyListContainer : undefined}
+          />
+        </>
       )}
     </SafeAreaView>
   );
@@ -460,12 +561,22 @@ const styles = StyleSheet.create({
   headerRight: {
     width: 40,
   },
+  filterButton: {
+    padding: 8,
+    borderRadius: 20,
+  },
   transactionItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingVertical: 16,
     paddingHorizontal: 16,
     backgroundColor: '#FFFFFF',
+  },
+  transactionItemEditable: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    marginVertical: 4,
   },
   transactionUserAvatar: {
     width: 44,
@@ -474,11 +585,25 @@ const styles = StyleSheet.create({
     marginRight: 12,
     borderWidth: 2,
     borderColor: '#F0F0F0',
+    position: 'relative',
   },
   transactionAvatarImage: {
     width: '100%',
     height: '100%',
     borderRadius: 20,
+  },
+  editIndicator: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#4A90E2',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   transactionContent: {
     flex: 1,
@@ -617,30 +742,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     ...typography.regular,
   },
-  tabContainer: {
+  filterIndicator: {
     flexDirection: 'row',
-    backgroundColor: '#F5F5F5',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 12,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    backgroundColor: '#E3F2FD',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    marginBottom: 8,
+    marginHorizontal: 16,
   },
-  tabButtonActive: {
-    borderBottomColor: '#4A90E2',
-    backgroundColor: '#FFFFFF',
-  },
-  tabText: {
-    fontSize: 15,
-    color: '#666',
+  filterIndicatorText: {
+    fontSize: 14,
+    color: '#4A90E2',
+    marginLeft: 8,
     ...typography.medium,
   },
-  tabTextActive: {
-    color: '#4A90E2',
+  editArrow: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    transform: [{ translateY: -10 }],
   },
 });
 

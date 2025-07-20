@@ -14,7 +14,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { typography } from '../constants/typography';
 import { CategoryResponse, categoryService, CategoryType } from '../services/categoryService';
 import { deduplicateCategories, getIconColor, getIconForCategory } from '../utils/iconUtils';
-
+  
 const SelectCategoryScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();

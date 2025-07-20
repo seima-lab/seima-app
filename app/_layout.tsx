@@ -31,6 +31,7 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import GroupDetailTabScreen from '../screens/GroupDetailTabScreen';
 import GroupManagementScreen from '../screens/GroupManagementScreen';
 import GroupMembersScreenContainer from '../screens/GroupMembersScreen';
+import GroupSettingsScreen from '../screens/GroupSettingsScreen';
 import GroupTransactionListScreen from '../screens/GroupTransactionListScreen';
 import InviteUsersScreen from '../screens/InviteUsersScreen';
 import MainTabScreen from '../screens/MainTabScreen';
@@ -138,6 +139,15 @@ function AuthNavigator() {
       <Stack.Screen name="InviteUsers" component={InviteUsersScreen} />
       <Stack.Screen name="ApproveMembers" component={ApproveMembersScreen} />
       <Stack.Screen name="GroupMembers" component={GroupMembersScreenContainer} />
+      <Stack.Screen 
+        name="GroupSettings" 
+        children={({ route }) => (
+          <GroupSettingsScreen 
+            groupId={(route.params as any).groupId} 
+            groupName={(route.params as any).groupName} 
+          />
+        )}
+      />
       <Stack.Screen name="ReportDetailScreen" component={ReportDetailScreen} />
       <Stack.Screen name="SelectCategoryScreen" component={SelectCategoryScreen} />
       <Stack.Screen name="BudgetDetailScreen" component={BudgetDetailScreen} />
@@ -441,7 +451,7 @@ const MockNotificationHandler = () => {
 export default function RootLayout() {
   const [loaded] = useFonts({
     Roboto: require('../assets/fonts/Roboto-Regular.ttf'),
-    RobotoBold: require('../assets/fonts/Roboto-SemiBold.ttf'),
+    RobotoSemiBold: require('../assets/fonts/Roboto-SemiBold.ttf'),
     RobotoMedium: require('../assets/fonts/Roboto-Medium.ttf'),
 
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),

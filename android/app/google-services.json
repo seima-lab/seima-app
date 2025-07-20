@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "817321421895",
+    "project_id": "seima-datn",
+    "storage_bucket": "seima-datn.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:817321421895:android:a391f99002e0406a2b5562",
+        "android_client_info": {
+          "package_name": "com.seimaapp.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2IsX12iu1mDeZ-GrmAUHl372UP-_Xqzs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

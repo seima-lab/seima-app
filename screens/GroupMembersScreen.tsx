@@ -11,12 +11,14 @@ import {
     ListRenderItem,
     Modal,
     ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
@@ -272,6 +274,7 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [showAllMembers, setShowAllMembers] = useState(false);
   const [loading, setLoading] = useState(true);
   const [memberData, setMemberData] = useState<GroupMemberListResponse | null>(null);
@@ -369,6 +372,10 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
     console.log('🟡 Transformed members:', members);
     console.log('🟡 Members length:', members.length);
     setShowMemberModal(true);
+  };
+
+  const handleListTransactions = () => {
+    navigation.navigate('GroupTransactionList', { groupId, groupName });
   };
 
   const handleRemoveMember = async (member: DisplayMember) => {
@@ -591,6 +598,26 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      {/* Fixed Header with SafeArea padding */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Icon name="arrow-back" size={24} color="#333333" />
+        </TouchableOpacity>
+        
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>{t('group.memberManagement.title')}</Text>
+          <Text style={styles.headerSubtitle}>{groupName}</Text>
+        </View>
+        
+        <View style={styles.headerRight} />
+      </View>
+
       {/* Member Management Modal */}
       <Modal
         visible={showMemberModal}
@@ -737,7 +764,13 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
             <Icon name="chevron-right" size={24} color="#CCCCCC" />
           </TouchableOpacity>
           
-          {/* Removed Approve Fund Requests section */}
+          <View style={styles.separator} />
+          
+          <TouchableOpacity style={styles.managementItem} onPress={handleListTransactions}>
+            <Icon name="receipt-long" size={24} color="#4A90E2" />
+            <Text style={styles.managementText}>{t('group.memberManagement.listTransactions')}</Text>
+            <Icon name="chevron-right" size={24} color="#CCCCCC" />
+          </TouchableOpacity>
         </View>
 
         {/* Members List */}
@@ -820,6 +853,48 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 100, // Add padding bottom to account for the bottom navigation
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
+    color: '#333333',
+    ...typography.semibold,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
+    ...typography.regular,
+  },
+  headerRight: {
+    width: 44,
   },
   groupHeader: {
     alignItems: 'center',

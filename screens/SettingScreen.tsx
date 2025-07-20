@@ -182,9 +182,6 @@ const SettingScreen = () => {
       <View style={styles.header}>
         <Image source={require('../assets/images/group.png')} style={styles.logo} />
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => loadUserProfile(true)} style={styles.refreshBtn}>
-            <Icon name="refresh" size={24} color="#1e90ff" />
-          </TouchableOpacity>
           <Icon name="settings" size={36} color="#1e90ff" />
         </View>
       </View>

@@ -1,20 +1,21 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomToast from '../components/CustomToast';
 import LogoWithText from '../components/Login/LogoWithText';
+import { typography } from '../constants/typography';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
@@ -369,7 +370,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '600',
+    ...typography.semibold,
     color: '#1F2937',
     marginBottom: 8,
     textAlign: 'center',
@@ -389,7 +390,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    ...typography.medium,
     color: '#374151',
     marginBottom: 6,
     marginTop: 4,
@@ -428,7 +429,7 @@ const styles = StyleSheet.create({
   },
   requirementsTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    ...typography.medium,
     color: '#374151',
     marginBottom: 6,
     fontFamily: 'Roboto',
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
   },
   resetButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    ...typography.medium,
     fontSize: 16,
     fontFamily: 'Roboto',
   },
@@ -469,7 +470,7 @@ const styles = StyleSheet.create({
   loginLink: {
     fontSize: 14,
     color: '#1e90ff',
-    fontWeight: '600',
+    ...typography.semibold,
     fontFamily: 'Roboto',
   },
   validationContainer: {

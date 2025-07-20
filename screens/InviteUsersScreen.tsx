@@ -2,23 +2,23 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Modal,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
 import { RootStackParamList } from '../navigation/types';
 import { EmailInvitationResponse, groupService, PendingGroupMemberResponse } from '../services/groupService';
-
 type InviteUsersRouteProp = RouteProp<RootStackParamList, 'InviteUsers'>;
 
 const InviteUsersScreen = () => {
@@ -257,7 +257,7 @@ const InviteUsersScreen = () => {
 
         {/* Pending Members List */}
         <View style={{ marginTop: 16 }}>
-          <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>
+          <Text style={[typography.semibold, { fontSize: 16, marginBottom: 8 }]}>
             {t('group.invitation.pendingMembers')}
           </Text>
           {pendingLoading ? (

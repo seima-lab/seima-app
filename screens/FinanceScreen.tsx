@@ -17,6 +17,7 @@ import { Circle, Svg } from 'react-native-svg';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
@@ -249,7 +250,7 @@ const FinanceScreen = React.memo(() => {
   const [reportData, setReportData] = useState<TransactionReportResponse | null>(null);
   
   // UI state
-  const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  const [isBalanceVisible, setIsBalanceVisible] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
 
   // Health status state from API
@@ -741,6 +742,24 @@ const FinanceScreen = React.memo(() => {
     };
   }, [chartData, financeData.totalBalance, t]);
 
+  // Helper function to get health status color based on score ranges
+  const getHealthStatusColor = (score: number) => {
+    if (score >= 0 && score <= 20) return '#F44336'; // Red
+    if (score >= 21 && score <= 40) return '#FF9800'; // Orange
+    if (score >= 41 && score <= 75) return '#FFC107'; // Yellow
+    if (score >= 76 && score <= 100) return '#4CAF50'; // Green
+    return '#E0E0E0'; // Default gray
+  };
+
+  // Helper function to get health status message based on score ranges
+  const getHealthStatusMessage = (score: number) => {
+    if (score >= 0 && score <= 20) return 'Tình trạng tài chính kém';
+    if (score >= 21 && score <= 40) return 'Tình trạng tài chính cần cải thiện';
+    if (score >= 41 && score <= 75) return 'Tình trạng tài chính khá tốt';
+    if (score >= 76 && score <= 100) return 'Tình trạng tài chính xuất sắc';
+    return 'Không xác định';
+  };
+
   const getHealthStatus = (score: number) => {
     if (score >= 80) return { 
       label: t('finance.health.status.excellent'), 
@@ -864,14 +883,14 @@ const FinanceScreen = React.memo(() => {
                       styles.healthBarFill,
                       {
                         width: `${Math.max(0, Math.min(100, apiHealthStatus?.score || 75))}%`,
-                        backgroundColor: statusService.getHealthDescription(apiHealthStatus?.level || 'good').color
+                        backgroundColor: getHealthStatusColor(apiHealthStatus?.score || 75)
                       }
                     ]} />
                   </View>
                   <Text style={[styles.healthStatusText, { 
-                    color: statusService.getHealthDescription(apiHealthStatus?.level || 'good').color 
+                    color: getHealthStatusColor(apiHealthStatus?.score || 75) 
                   }]}>
-                    {statusService.getHealthDescription(apiHealthStatus?.level || 'good').message}
+                    {getHealthStatusMessage(apiHealthStatus?.score || 75)}
                   </Text>
                 </View>
 
@@ -1055,14 +1074,12 @@ const styles = StyleSheet.create({
   greeting: {
     color: 'white',
     fontSize: rf(16),
-    fontWeight: '400',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   userName: {
     color: 'white',
     fontSize: rf(18),
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   headerIcons: {  
     flexDirection: 'row',
@@ -1074,7 +1091,7 @@ const styles = StyleSheet.create({
   headerIconText: {
     color: 'white',
     fontSize: rf(20),
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   balanceSection: {
     alignItems: 'flex-start',
@@ -1083,7 +1100,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontSize: rf(16),
     marginBottom: rp(8),
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   balanceRow: {
     flexDirection: 'row',
@@ -1091,9 +1108,8 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     color: 'white',
-    fontWeight: 'bold',
     marginRight: rp(15),
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   eyeIcon: {
     fontSize: 20,
@@ -1116,9 +1132,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginTop: rp(1),
     fontSize: rf(18),
-    fontWeight: '600',
     color: '#333',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   barChartContainer: {
     flexDirection: 'row',
@@ -1162,14 +1177,13 @@ const styles = StyleSheet.create({
     fontSize: rf(12),
     color: 'white',
     textAlign: 'center',
-    fontWeight: 'bold',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   differenceLabel: {
     fontSize: rf(12),
     color: '#666',
     marginLeft: rp(10),
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   amountsList: {
     alignItems: 'flex-start',
@@ -1193,48 +1207,44 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'left',
     flex: 1, // Thêm flex để label chiếm không gian còn lại
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   
   percentAmount: {
     fontSize: rf(14),
     color: '#4CAF50',
-    fontWeight: '600',
     textAlign: 'right',
     minWidth: 50, // Đặt minWidth cố định cho phần trăm
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
 incomeAmount: {
   fontSize: rf(14),
   color: '#4CAF50',
-  fontWeight: '600',
   textAlign: 'left',
   minWidth: 0,
   maxWidth: '50%',
   flexShrink: 1,
-  fontFamily: 'Roboto',
+  ...typography.semibold,
  
 },
 expenseAmount: {
   fontSize: rf(14),
   color: '#E91E63',
-  fontWeight: '600',
   textAlign: 'left',
   minWidth: 0,
   maxWidth: '50%',
   flexShrink: 1,
-  fontFamily: 'Roboto',
+  ...typography.semibold,
   
 },
 differenceAmount: {
   fontSize: rf(14),
   color: '#FF9800',
-  fontWeight: '600',
   textAlign: 'left',
   minWidth: 0,
   maxWidth: '50%',
   flexShrink: 1,
-  fontFamily: 'Roboto',
+  ...typography.semibold,
  
 },
   pieChartSection: {
@@ -1261,18 +1271,16 @@ legendRow: {
 legendLabel: {
   color: '#666',
   fontSize: rf(15),
-  fontWeight: '400',
-  fontFamily: 'Roboto',
+  ...typography.regular,
 },
 legendValue: {
   fontSize: rf(15),
-  fontWeight: '600',
-  fontFamily: 'Roboto',
+  ...typography.semibold,
 },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: rp(20),
+    marginTop: rp(50),
   },
   iconButton: {
     width: rp(50),
@@ -1292,7 +1300,7 @@ legendValue: {
   iconText: {
     fontSize: 24,
     color: 'white',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   loadingContainer: {
     flex: 1,
@@ -1303,9 +1311,8 @@ legendValue: {
   loadingText: {
     color: 'white',
     fontSize: rf(18),
-    fontWeight: '600',
     marginTop: rp(20),
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   scrollContent: {
     paddingTop: rp(10),
@@ -1330,8 +1337,7 @@ legendValue: {
     color: '#666',
     marginTop: rp(4),
     textAlign: 'center',
-    fontWeight: '400',
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   stickySection: {
     backgroundColor: '#fff',
@@ -1350,7 +1356,7 @@ legendValue: {
     marginLeft: rp(10),
     color: '#666',
     fontSize: rf(14),
-    fontFamily: 'Roboto',
+    ...typography.regular,
   },
   newDropdownButton: {
     flexDirection: 'row',

@@ -20,12 +20,12 @@ import {
 import DeviceInfo from 'react-native-device-info';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { typography } from '../constants/typography';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { authService, RegisterRequest } from '../services/authService';
 import { UserCreationRequestDto, UserService } from '../services/userService';
-
 const { width, height } = Dimensions.get('window');
 
 interface GoogleUserData {
@@ -79,7 +79,6 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [autoFillTest, setAutoFillTest] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   
   // Loading modal state
@@ -415,43 +414,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
     navigation.navigate('Login');
   };
 
-  const handleAutoFillToggle = (value: boolean) => {
-    setAutoFillTest(value);
-    
-    if (value) {
-      // Auto-fill test data
-      setFullName('Nguyen Van Test');
-      setEmail('test@example.com');
-      setPhoneNumber('0123456789');
-      setPassword('Test123456');
-      setConfirmPassword('Test123456');
-      setDateOfBirth(new Date(1995, 5, 15));
-      setHasSelectedDate(true);
-      setGender('male');
-    } else {
-      // Clear fields, but restore Google data if available
-      const googleUserData = route?.params?.googleUserData;
-      if (googleUserData?.isGoogleLogin) {
-        setFullName(googleUserData.fullName);
-        setEmail(googleUserData.email);
-        setPhoneNumber('');
-        setPassword('');
-        setConfirmPassword('');
-        setDateOfBirth(new Date(2000, 0, 1));
-        setHasSelectedDate(false);
-        setGender('');
-      } else {
-        setFullName('');
-        setEmail('');
-        setPhoneNumber('');
-        setPassword('');
-        setConfirmPassword('');
-        setDateOfBirth(new Date(2000, 0, 1));
-        setHasSelectedDate(false);
-        setGender('');
-      }
-    }
-  };
+
 
   const handleInputFocus = (fieldName: string) => {
     setFocusedField(fieldName);
@@ -511,7 +474,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
               style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
             >
               <TouchableOpacity style={styles.backButton} onPress={handleBackToLogin}>
-                <Icon name="arrow-back-ios" size={20} color="#FFFFFF" />
+                <Icon name="arrow-back-ios" size={22} color="#FFFFFF" />
               </TouchableOpacity>
               <View style={styles.headerContent}>
                 <Text style={styles.title}>{t('register.createAccount')}</Text>
@@ -536,17 +499,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
-                {/* Auto Fill Toggle */}
-                                  <TouchableOpacity
-                    style={styles.autoFillContainer}
-                    onPress={() => handleAutoFillToggle(!autoFillTest)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.checkbox, autoFillTest && styles.checkboxChecked]}>
-                      {autoFillTest && <Icon name="check" size={12} color="#fff" />}
-                    </View>
-                    <Text style={styles.autoFillText}>{t('register.autoFillTest')}</Text>
-                  </TouchableOpacity>
+
 
                 {/* Google Data Pre-filled Indicator */}
                 {route?.params?.googleUserData?.isGoogleLogin && (
@@ -1000,9 +953,9 @@ const styles = StyleSheet.create({
     paddingTop: 5,
   },
   backButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1012,21 +965,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   placeholder: {
-    width: 32,
+    width: 36,
   },
   title: {
     fontSize: 18,
-    fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 2,
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   subtitle: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   cardContainer: {
     backgroundColor: '#FFFFFF',
@@ -1049,33 +1001,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 20,
   },
-  autoFillContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 2,
-  },
-  checkbox: {
-    width: 14,
-    height: 14,
-    borderWidth: 2,
-    borderColor: '#1e90ff',
-    borderRadius: 3,
-    marginRight: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
-  checkboxChecked: {
-    backgroundColor: '#1e90ff',
-    borderColor: '#1e90ff',
-  },
-  autoFillText: {
-    fontSize: 11,
-    color: '#1e90ff',
-    fontWeight: '600',
-    fontFamily: 'Roboto',
-  },
+
   form: {
     flex: 1,
   },

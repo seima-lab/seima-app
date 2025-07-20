@@ -1,3 +1,4 @@
+import { typography } from '@/constants/typography';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -18,7 +19,6 @@ import CustomConfirmModal from '../components/CustomConfirmModal';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { deleteAllNotifications, deleteNotification, getNotifications, markAllAsRead, markAsRead, Notification } from '../services/notificationService';
-
 const { width: screenWidth } = Dimensions.get('window');
 const SWIPE_THRESHOLD = -80; // Ngưỡng swipe để hiện delete button
 const DELETE_BUTTON_WIDTH = 80; // Chiều rộng của delete button
@@ -256,7 +256,8 @@ const NotificationsScreen = () => {
                         >
                             <View style={styles.notificationContent}>
                                 <View style={styles.textContainer}>
-                                    <Text style={[styles.notificationTitle, !notification.is_read && {fontWeight: 'bold'}]}>{notification.title}</Text>
+                                    <Text style={[styles.notificationTitle, !notification.is_read && {...typography.semibold}]}>{notification.title}</Text>
+                                 
                                     <Text style={styles.notificationDescription} numberOfLines={2} ellipsizeMode="tail">
                                         {notification.message}
                                     </Text>
@@ -429,12 +430,12 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: '600',
+        ...typography.semibold,
         color: '#007AFF',
     },
     notificationsTitle: {
         fontSize: 18,
-        fontWeight: '600',
+        ...typography.semibold,
         color: '#333',
         marginRight: 0,
     },
@@ -520,7 +521,7 @@ const styles = StyleSheet.create({
     },
     notificationTitle: {
         fontSize: 18,
-        fontWeight: '600',
+        ...typography.semibold,
         color: '#333',
         marginBottom: 4,
     },
@@ -533,7 +534,7 @@ const styles = StyleSheet.create({
     notificationTime: {
         fontSize: 12,
         color: '#007AFF',
-        fontWeight: '500',
+        ...typography.medium,
     },
     dropdownContainer: {
         position: 'relative',
@@ -584,7 +585,7 @@ const styles = StyleSheet.create({
     dropdownOptionText: {
         marginLeft: 12,
         fontSize: 14,
-        fontWeight: '500',
+        ...typography.medium,
         color: '#333',
     },
     disabledOption: {

@@ -22,6 +22,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomToast from '../components/CustomToast';
 import GoogleButton from '../components/Login/GoogleButton';
 import Logo from '../components/Login/Logo';
+import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
@@ -510,17 +511,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: rp(16),
   },
   logoContainer: {
-    height: isSmallScreen ? hp(8) : hp(10),
+    height: isSmallScreen ? hp(6) : hp(8),
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
-    marginTop: rp(20),
+    marginTop: rp(10),
   },
   loginCard: {
     backgroundColor: '#fff',
     width: '100%',
     maxWidth: wp(90),
-    padding: rp(24),
+    padding: rp(10),
     borderRadius: rb(20),
     shadowColor: '#000',
     shadowOffset: {
@@ -531,20 +532,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'space-around',
     marginHorizontal: rp(16),
-    marginTop: rp(-20),
-    marginBottom: rp(20),
+    marginTop: rp(-10),
+    marginBottom: rp(50),
   },
   inputContainer: {
+    marginTop: rp(10),
     marginBottom: rp(10),
   },
-  inputLabel: {
-    fontSize: rf(14),
-    fontWeight: '500',
+  inputLabel: {   
+    ...typography.medium,
     color: '#374151',
     marginBottom: rp(6),
-    fontFamily: 'Roboto',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -561,9 +561,8 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    fontSize: rf(16),
+    fontSize: rf(12),
     color: '#1F2937',
-    fontFamily: 'Roboto',
   },
   eyeButton: {
     padding: rp(4),
@@ -590,7 +589,6 @@ const styles = StyleSheet.create({
   rememberMeText: {
     fontSize: rf(14),
     color: '#6B7280',
-    fontFamily: 'Roboto',
   },
   loginButton: {
     backgroundColor: '#1e90ff',
@@ -605,8 +603,7 @@ const styles = StyleSheet.create({
   loginButtonText: {
     color: '#fff',
     fontSize: rf(16),
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   forgotPasswordButton: {
     alignItems: 'center',
@@ -615,8 +612,7 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     color: '#1e90ff',
     fontSize: rf(14),
-    fontWeight: '500',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -632,7 +628,6 @@ const styles = StyleSheet.create({
     marginHorizontal: rp(16),
     fontSize: rf(14),
     color: '#6B7280',
-    fontFamily: 'Roboto',
   },
   signupContainer: {
     flexDirection: 'row',
@@ -646,19 +641,18 @@ const styles = StyleSheet.create({
   signupText: {
     fontSize: rf(14),
     color: '#6B7280',
-    fontFamily: 'Roboto',
+    ...typography.medium,
   },
   signupLink: {
     fontSize: rf(14),
     color: '#1e90ff',
-    fontWeight: '600',
+    ...typography.semibold,
     marginLeft: rp(4),
-    fontFamily: 'Roboto',
   },
   footer: {
     width: '100%',
     paddingHorizontal: rp(20),
-    paddingTop: rp(10),
+    paddingTop: rp(5),
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
@@ -668,7 +662,6 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: rf(16),
-    fontFamily: 'Roboto',
   },
   modalOverlay: {
     flex: 1,
@@ -690,11 +683,10 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: rf(20),
-    fontWeight: '600',
+    ...typography.semibold,
     color: '#1F2937',
     marginBottom: rp(16),
     textAlign: 'center',
-    fontFamily: 'Roboto',
   },
   modalMessage: {
     fontSize: rf(14),
@@ -702,7 +694,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: rp(20),
     lineHeight: rf(20),
-    fontFamily: 'Roboto',
   },
   modalButtonContainer: {
     flexDirection: 'row',
@@ -726,14 +717,12 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#fff',
     fontSize: rf(14),
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
   activateButtonText: {
     color: '#fff',
     fontSize: rf(14),
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    ...typography.semibold,
   },
 });
 

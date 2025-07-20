@@ -225,6 +225,7 @@
       "title": "Manage Members",
       "inviteUsers": "Invite Users with email",
       "manageMembers": "Manage Members",
+      "listTransactions": "List Transactions",
       "approveFundRequests": "Approve Fund Join Requests",
       "inviteViaCode": "Invite via Code",
       "privateGroup": "This is a private fund, only those you approve can join",

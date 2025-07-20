@@ -91,7 +91,6 @@ android/app/src/debug/
 *.jsbundle
 
 # Firebase
-google-services.json
 GoogleService-Info.plist
 
 # Native
