@@ -204,27 +204,9 @@ export default function LoginScreen() {
       }
       
       if (result.success && result.backendData) {
-        console.log('🟢 Google Sign-In successful!');
-        console.log('🟢 User Info:', result.userInfo);
-        console.log('🟢 Backend Data:', result.backendData);
-        
-        // Extract user active status from backend response
         const isUserActive = result.backendData?.is_user_active;
-        
-        console.log('🔍 DEBUG LOGIN LOGIC:', {
-          is_user_active: isUserActive,
-          'Logic: Should go to Register if': '!isUserActive',
-          'Should go to Register': !isUserActive
-        });
-        
-        // Update auth context with user data - tokens are automatically stored in SecureStore
-        await login(result.backendData.user_infomation);
-        
-        // Check if user needs to complete profile
         if (!isUserActive) {
-          // First time login or inactive user - navigate to register screen for additional info
-          console.log('🟢 First time login or inactive user - navigating to Register screen');
-          
+          // Lần đầu đăng nhập Google, cần bổ sung thông tin
           const userInfo = result.backendData?.user_infomation as any;
           const googleUserData = {
             fullName: userInfo?.name || userInfo?.full_name || userInfo?.fullName || '',
@@ -232,12 +214,10 @@ export default function LoginScreen() {
             isGoogleLogin: true,
             userIsActive: isUserActive
           };
-          
-          console.log('🟢 Passing Google user data to Register:', googleUserData);
           navigation.replace('Register', { googleUserData });
         } else {
-          // Returning user (user_is_active = true) - go directly to main app
-          console.log('🟢 Returning user (user is active) - AuthNavigator will handle navigation');
+          // Đã từng đăng nhập, vào thẳng app
+          await login(result.backendData.user_infomation);
         }
       } else {
         console.log('🔴 Google Sign-In failed:', result.error);
