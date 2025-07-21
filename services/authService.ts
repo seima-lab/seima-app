@@ -105,8 +105,7 @@ export interface RegisterRequest {
   gender: boolean; // Backend expects boolean: true = male, false = female
   password: string;
   confirm_password: string; // Backend validation requires this field
-  device_id: string;
-  fcm_token: string;
+
 }
 
 export interface RegisterResponse {

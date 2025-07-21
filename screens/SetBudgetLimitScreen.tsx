@@ -790,9 +790,11 @@ const BudgetLimitScreen = () => {
                 onPress={() => setShowStartDateModal(true)}
               >
                 <Icon name="calendar-start" size={24} color="#555" />
-                <Text style={styles.label}>
-                  {`${t('budget.setBudgetLimit.startDate')}: ${formatDate(startDate)}`}
-                </Text>
+                <View style={styles.dateContainer}>
+                  <Text style={styles.label}>
+                    {`${t('budget.setBudgetLimit.startDate')}: ${formatDate(startDate)}`}
+                  </Text>
+                </View>
               </TouchableOpacity>
 
               {/* End Date */}
@@ -806,9 +808,6 @@ const BudgetLimitScreen = () => {
                     {endDate
                       ? `${t('budget.setBudgetLimit.endDate')}: ${formatDate(endDate)}`
                       : t('budget.setBudgetLimit.selectEndDate')}
-                  </Text>
-                  <Text style={styles.helperText}>
-                    {t('budget.setBudgetLimit.autoCalculated')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -981,10 +980,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   label: {
-    marginLeft: 12,
+   // width cố định để các label thẳng hàng
     fontSize: 16,
     color: '#333',
     ...typography.regular,
+    marginLeft: 12,
   },
   itemContent: {
     flex: 1,
@@ -1070,11 +1070,11 @@ const styles = StyleSheet.create({
     ...typography.semibold,
   },
   nameInput: {
-    marginLeft: 12,
+    flex: 1,
     fontSize: 16,
     color: '#333',
-    flex: 1,
     ...typography.regular,
+    marginLeft: 0,
   },
   // Modal styles
   modalOverlay: {
@@ -1190,7 +1190,7 @@ const styles = StyleSheet.create({
   categoryIconsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
+    justifyContent: 'flex-start', // căn trái
     alignItems: 'center',
     marginLeft: 12,
   },
@@ -1240,7 +1240,8 @@ const styles = StyleSheet.create({
   },
   dateContainer: {
     flex: 1,
-    marginLeft: 12,
+    // marginLeft: 12, // bỏ marginLeft để thẳng hàng với các trường khác
+    justifyContent: 'center',
   },
   helperText: {
     fontSize: 12,

@@ -1,5 +1,6 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
@@ -19,6 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { RootStackParamList } from '../navigation/types';
 
 import CustomToast from '../components/CustomToast';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,10 +33,9 @@ import { WalletResponse, walletService } from '../services/walletService';
 
 // Import centralized icon color utility
 import { getIconColor } from '../utils/iconUtils';
-
 export default function AddExpenseScreen() {
   const { t, i18n } = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute();
   const { user, isAuthenticated, isLoading: authLoading, refreshTransactions } = useAuth();
   
@@ -961,34 +962,11 @@ export default function AddExpenseScreen() {
         const transactionId = parseInt(routeParams.transactionData.id);
         console.log('🔄 Updating existing transaction with ID:', transactionId);
         await transactionService.updateTransaction(transactionId, transactionData);
-        
-        // Trigger global refresh
+        // Trigger global refresh và quay lại ngay
         refreshTransactions();
-        
-        Alert.alert(t('common.success'), t('common.transactionUpdated'), [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              // Navigate back to appropriate screen
-              if (fromGroupTransactionList && groupContextId && groupContextName) {
-                // Reset navigation stack to prevent duplicate screens
-                (navigation as any).reset({
-                  index: 1,
-                  routes: [
-                    { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
-                    { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
-                  ],
-                });
-              } else if (fromGroupOverview && groupContextId && groupContextName) {
-                // For GroupOverview, just go back normally to avoid navigation stack issues
-                navigation.goBack();
-              } else {
-                // Normal navigation back
-                navigation.goBack();
-              }
-            }
-          }
-        ]);
+        setIsSaving(false); // Đặt trước navigation.goBack()
+        navigation.goBack();
+        Alert.alert(t('common.success'), t('common.transactionUpdated'));
       } else {
         // Create new transaction
         if (activeTab === 'expense') {
@@ -996,34 +974,11 @@ export default function AddExpenseScreen() {
         } else {
           await transactionService.createIncome(transactionData);
         }
-        
-        // Trigger global refresh
+        // Trigger global refresh và quay lại ngay
         refreshTransactions();
-        
-        Alert.alert(t('common.success'), t('common.transactionSaved'), [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              // Navigate back to appropriate screen
-              if (fromGroupTransactionList && groupContextId && groupContextName) {
-                // Reset navigation stack to prevent duplicate screens
-                (navigation as any).reset({
-                  index: 1,
-                  routes: [
-                    { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
-                    { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
-                  ],
-                });
-              } else if (fromGroupOverview && groupContextId && groupContextName) {
-                // For GroupOverview, just go back normally to avoid navigation stack issues
-                navigation.goBack();
-              } else {
-                // Normal navigation back
-                navigation.goBack();
-              }
-            }
-          }
-        ]);
+        setIsSaving(false); // Đặt trước navigation.goBack()
+        navigation.goBack();
+        Alert.alert(t('common.success'), t('common.transactionSaved'));
       }
 
     } catch (error: any) {
@@ -1219,6 +1174,14 @@ export default function AddExpenseScreen() {
     return numericValue ? parseInt(numericValue, 10) : 0;
   };
 
+  // Thêm hàm copy transaction
+  const handleCopyTransaction = () => {
+    if (!isEditMode || !transactionData) return;
+    navigation.navigate('AddExpenseScreen', {
+      ...transactionData,
+      editMode: false, // chuyển sang chế độ add
+    });
+  };
 
 
   const renderCategoryItem = ({ item }: { item: LocalCategory }) => {
@@ -1333,6 +1296,15 @@ export default function AddExpenseScreen() {
             >
                 <Icon name="camera" size={24} color="#007aff" />
               </TouchableOpacity>
+            {/* Copy Icon - chỉ hiển thị khi edit */}
+            {isEditMode && (
+              <TouchableOpacity
+                style={styles.cameraButton}
+                onPress={handleCopyTransaction}
+              >
+                <Icon name="content-copy" size={24} color="#007aff" />
+              </TouchableOpacity>
+            )}
 
             {/* Debug Permission Button - Only show in development */}
        

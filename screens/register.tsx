@@ -1,5 +1,4 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import messaging from '@react-native-firebase/messaging';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -17,7 +16,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import DeviceInfo from 'react-native-device-info';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { typography } from '../constants/typography';
@@ -313,8 +311,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         };    
 
         // Prepare request data according to backend format (snake_case)
-        const device_id = await DeviceInfo.getUniqueId();
-        const fcm_token = await messaging().getToken();
+         
         const registerData: RegisterRequest = {
           full_name: fullName.trim(),
           email: email.trim().toLowerCase(),
@@ -323,8 +320,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
           gender: gender === 'male', // Convert to boolean: true = male, false = female
           password: password.trim(),
           confirm_password: confirmPassword.trim(), // Backend validation requires this field
-          device_id,
-          fcm_token,
+          
         };
 
         console.log('🟡 Registering with data:', registerData);
