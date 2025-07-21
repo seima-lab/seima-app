@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Dimensions,
+  FlatList,
   Image,
   ScrollView,
   StatusBar,
@@ -21,12 +22,13 @@ import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
+import { CategoryResponse, CategoryService, CategoryType } from '../services/categoryService';
 import { getUnreadCount } from '../services/notificationService';
 import { HealthStatusData, statusService } from '../services/statusService';
 import { TransactionReportResponse, transactionService } from '../services/transactionService';
 import { UserProfile, userService } from '../services/userService';
 import { WalletResponse, walletService } from '../services/walletService';
-import { getIconColor } from '../utils/iconUtils';
+import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -264,8 +266,11 @@ const FinanceScreen = React.memo(() => {
     { label: t('finance.periods.thisMonth') || 'Tháng này', value: 'month' },
     { label: t('finance.periods.thisYear') || 'Năm nay', value: 'year' },
   ];
-  const [selectedPeriod, setSelectedPeriod] = useState(PERIOD_OPTIONS[2]); // Default: Tháng này
+  const [selectedPeriodValue, setSelectedPeriodValue] = useState('month'); // Default: tháng này
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Hàm lấy object option theo value
+  const getPeriodOption = (value: string) => PERIOD_OPTIONS.find(opt => opt.value === value) || PERIOD_OPTIONS[2];
 
   // Hàm tính toán khoảng thời gian theo filter
   const getPeriodRange = (periodValue: string) => {
@@ -300,7 +305,7 @@ const FinanceScreen = React.memo(() => {
   };
 
   const handleSelectPeriod = (option: {label: string, value: string}) => {
-    setSelectedPeriod(option);
+    setSelectedPeriodValue(option.value);
     setIsDropdownOpen(false);
     const { startDate, endDate } = getPeriodRange(option.value);
     loadChartData(startDate, endDate);
@@ -342,10 +347,10 @@ const FinanceScreen = React.memo(() => {
 
   // Khi vào màn hình hoặc selectedPeriod đổi, tự động gọi loadChartData
   useEffect(() => {
-    const { startDate, endDate } = getPeriodRange(selectedPeriod.value);
+    const { startDate, endDate } = getPeriodRange(selectedPeriodValue);
     loadChartData(startDate, endDate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, selectedPeriod.value, transactionRefreshTrigger]);
+  }, [isAuthenticated, selectedPeriodValue, transactionRefreshTrigger, t]);
 
   const loadUserProfile = useCallback(async (forceRefresh: boolean = false) => {
     if (!isAuthenticated) {
@@ -437,7 +442,7 @@ const FinanceScreen = React.memo(() => {
       // Nếu không truyền vào thì mặc định là tháng này hoặc theo selectedPeriod
       let _startDate = startDate, _endDate = endDate;
       if (!_startDate || !_endDate) {
-        const range = getPeriodRange(selectedPeriod.value);
+        const range = getPeriodRange(selectedPeriodValue);
         _startDate = range.startDate;
         _endDate = range.endDate;
       }
@@ -473,7 +478,7 @@ const FinanceScreen = React.memo(() => {
       console.error('🔴 Failed to load chart data in FinanceScreen:', error);
       setChartData(prev => ({ ...prev, isLoading: false }));
     }
-  }, [isAuthenticated, selectedPeriod.value]);
+  }, [isAuthenticated, selectedPeriodValue]);
 
   // Load unread notification count
   const loadNotificationCount = useCallback(async () => {
@@ -790,12 +795,121 @@ const FinanceScreen = React.memo(() => {
   const financialHealth = useMemo(() => calculateFinancialHealthScore(), [calculateFinancialHealthScore]);
   const healthStatus = useMemo(() => getHealthStatus(financialHealth.score), [financialHealth.score]);
 
+  // Chart data: lấy từ API report như cũ
+  // ... giữ nguyên loadChartData và reportData ...
+
+  // Transaction history hôm nay: lấy từ getAllTransactions, lọc local
+  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
+  const [transactionHistoryLoading, setTransactionHistoryLoading] = useState(false);
+
+  // State for categories
+  const [categoriesMap, setCategoriesMap] = useState<{ [id: number]: CategoryResponse }>({});
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // Load categories when userProfile is available
+  useEffect(() => {
+    const loadCategories = async () => {
+      if (!userProfile?.user_id) {
+        setCategoriesMap({});
+        setCategoriesLoading(false);
+        return;
+      }
+      setCategoriesLoading(true);
+      try {
+        const categoryService = CategoryService.getInstance();
+        const [incomeCats, expenseCats] = await Promise.all([
+          categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
+          categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0),
+        ]);
+        const allCats = [...incomeCats, ...expenseCats];
+        const map: { [id: number]: CategoryResponse } = {};
+        allCats.forEach(cat => { map[cat.category_id] = cat; });
+        setCategoriesMap(map);
+      } catch (err) {
+        setCategoriesMap({});
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    loadCategories();
+  }, [userProfile?.user_id]);
+
+  // Helper: Lấy ngày hôm nay (YYYY-MM-DD) theo giờ local
+  const getTodayString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Load transaction history chỉ cho hôm nay (KHÔNG liên quan đến chart/report)
+  const loadTransactionHistory = useCallback(async () => {
+    setTransactionHistoryLoading(true);
+    try {
+      const apiResponse: any = await transactionService.getAllTransactions();
+      // Tối ưu: chỉ lấy từ data.content
+      const all: any[] = (apiResponse?.content && Array.isArray(apiResponse.content)) ? apiResponse.content : [];
+      const today = getTodayString();
+      console.log('🧾 All transactions:', all);
+      console.log('🧾 Today string:', today);
+      // So sánh trực tiếp phần ngày của transaction_date với hôm nay, log từng dòng
+      const filtered = all.filter((tr: any) => {
+        if (!tr.transaction_date) return false;
+        const datePart = tr.transaction_date.slice(0, 10); // 'YYYY-MM-DD'
+        const isToday = datePart === today;
+        console.log('🧾 Check transaction:', {
+          transaction_id: tr.transaction_id,
+          transaction_date: tr.transaction_date,
+          datePart,
+          isToday
+        });
+        return isToday;
+      });
+      // Sắp xếp theo transaction_date giảm dần (gần nhất lên trên, so sánh cả ngày và giờ)
+      filtered.sort((a: any, b: any) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
+      const result = filtered.slice(0, 10);
+      setTransactionHistory(result);
+      console.log('🧾 Transaction history for today:', result);
+    } catch (err) {
+      setTransactionHistory([]);
+      console.log('🧾 Transaction history error:', err);
+    } finally {
+      setTransactionHistoryLoading(false);
+    }
+  }, []);
+
+  // Gọi khi mount hoặc có giao dịch mới
+  useEffect(() => {
+    loadTransactionHistory();
+  }, [loadTransactionHistory, transactionRefreshTrigger]);
+
+  // Helper format ngày -> giờ:phút AM/PM
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  };
+
+  // Sửa lại getIconAndColor để lấy icon từ category_id
+  const getIconAndColor = (item: any) => {
+    const type = (item.transaction_type || '').toLowerCase() === 'income' ? 'income' : 'expense';
+    const categoryId = item.category_id;
+    const category = categoryId ? categoriesMap[categoryId] : undefined;
+    const iconName = category ? getIconForCategory(category.category_icon_url, type) : (item.category_icon_url || '');
+    const iconColor = getIconColor(iconName, type);
+    return {
+      iconName,
+      iconColor,
+      type,
+    };
+  };
+
   // Show loading state
-  if (loading || walletLoading) {
+  if (loading || walletLoading || categoriesLoading) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#4285F4" translucent={true} />
-        <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
+        <View style={[styles.loadingContainer, { paddingTop: insets.top }]}> 
           <ActivityIndicator size="large" color="#FFFFFF" />
           <Text style={styles.loadingText}>{t('common.loading')}...</Text>
         </View>
@@ -909,7 +1023,7 @@ const FinanceScreen = React.memo(() => {
                     onPress={() => setIsDropdownOpen((open) => !open)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.newDropdownButtonText}>{selectedPeriod.label}</Text>
+                    <Text style={styles.newDropdownButtonText}>{getPeriodOption(selectedPeriodValue).label}</Text>
                     <Icon name={isDropdownOpen ? 'expand-less' : 'expand-more'} size={20} color="#333" />
                   </TouchableOpacity>
                   {isDropdownOpen && (
@@ -919,13 +1033,13 @@ const FinanceScreen = React.memo(() => {
                           key={option.value}
                           style={[
                             styles.newDropdownOption,
-                            selectedPeriod.value === option.value && styles.newDropdownOptionSelected,
+                            selectedPeriodValue === option.value && styles.newDropdownOptionSelected,
                           ]}
                           onPress={() => handleSelectPeriod(option)}
                         >
                           <Text style={[
                             styles.newDropdownOptionText,
-                            selectedPeriod.value === option.value && styles.newDropdownOptionTextSelected,
+                            selectedPeriodValue === option.value && styles.newDropdownOptionTextSelected,
                           ]}>
                             {option.label}
                           </Text>
@@ -951,7 +1065,7 @@ const FinanceScreen = React.memo(() => {
                           height: chartData.income > 0 ? Math.max(rp(20), (chartData.income / Math.max(chartData.income, chartData.expenses)) * rp(100)) : rp(20)
                         }
                       ]}>
-                        <Text style={styles.barLabel}>Thu</Text>
+                        <Text style={styles.barLabel}>{t('finance.income')}</Text>
                       </View>
                       <View style={[
                         styles.expenseBar,
@@ -959,18 +1073,18 @@ const FinanceScreen = React.memo(() => {
                           height: chartData.expenses > 0 ? Math.max(rp(20), (chartData.expenses / Math.max(chartData.income, chartData.expenses)) * rp(100)) : rp(20)
                         }
                       ]}>
-                        <Text style={styles.barLabel}>Chi</Text>
+                        <Text style={styles.barLabel}>{t('finance.expense')}</Text>
                       </View>
                     </View>
                     <View style={styles.amountsList}>
                       <View style={styles.amountRow}>
-                        <Text style={styles.amountLabel}>Income</Text>
+                        <Text style={styles.amountLabel}>{t('finance.income1')}</Text>
                         <Text style={[styles.percentAmount, { color: '#4CAF50' }]}>
                           {getPercent(chartData.income, chartData.income + chartData.expenses)}
                         </Text>
                       </View>
                       <View style={styles.amountRow}>
-                        <Text style={styles.amountLabel}>Expense</Text>
+                        <Text style={styles.amountLabel}>{t('finance.expense1')}</Text>
                         <Text style={[styles.percentAmount, { color: '#E91E63' }]}>
                           {getPercent(chartData.expenses, chartData.income + chartData.expenses)}
                         </Text>
@@ -984,6 +1098,46 @@ const FinanceScreen = React.memo(() => {
             </View>
 
           {/* Removed old Financial Health Section */}
+
+          {/* Transaction History Card */}
+          <View style={styles.historyCard}>
+            <Text style={styles.historyTitle}>{t('finance.transactionHistoryToday')}</Text>
+            {transactionHistoryLoading ? (
+              <ActivityIndicator size="small" color="#1e90ff" style={{ marginVertical: 20 }} />
+            ) : transactionHistory.length === 0 ? (
+              <Text style={styles.historyEmpty}>{t('finance.noTransactionHistory') || 'Không có thu chi trong ngày hôm nay.'}</Text>
+            ) : (
+              <FlatList
+                data={transactionHistory}
+                keyExtractor={(item, idx) => item.transaction_id?.toString() || item.id?.toString() || idx.toString()}
+                renderItem={({ item }) => {
+                  const { iconName, iconColor, type } = getIconAndColor(item);
+                  // Lấy category name từ map nếu có
+                  const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
+                  const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || 'Không rõ';
+                  return (
+                    <View style={styles.historyItem}>
+                      <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
+                        <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
+                      </View>
+                      <View style={styles.historyInfo}>
+                        <Text style={styles.historyCategory} numberOfLines={1}>{categoryName}</Text>
+                        {item.description ? (
+                          <Text style={styles.historyDesc} numberOfLines={1}>{item.description}</Text>
+                        ) : null}
+                        <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
+                      </View>
+                      <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]}>
+                        {type === 'income' ? '+' : '-'}{(item.amount || 0).toLocaleString('vi-VN')} đ
+                      </Text>
+                    </View>
+                  );
+                }}
+                style={{ maxHeight: 320 }}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+          </View>
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
@@ -1562,6 +1716,70 @@ legendValue: {
     fontWeight: '600',
     color: '#333',
     fontFamily: 'Roboto',
+  },
+  historyCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 20,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  historyTitle: {
+    fontSize: rf(16),
+    ...typography.semibold,
+    color: '#333',
+    marginBottom: 10,
+  },
+  historyEmpty: {
+    color: '#999',
+    fontSize: rf(14),
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  historyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  historyInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  historyCategory: {
+    fontSize: rf(14),
+    color: '#333',
+    ...typography.semibold,
+  },
+  historyDesc: {
+    fontSize: rf(12),
+    color: '#888',
+    marginTop: 2,
+  },
+  historyDate: {
+    fontSize: rf(11),
+    color: '#aaa',
+    marginTop: 2,
+  },
+  historyAmount: {
+    fontSize: rf(15),
+    ...typography.semibold,
+    minWidth: 80,
+    textAlign: 'right',
   },
 });
 

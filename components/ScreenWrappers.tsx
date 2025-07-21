@@ -34,13 +34,13 @@ export const AddExpenseScreenWithNav = (props: any) => (
 );
 
 export const EditCategoryScreenWithNav = (props: any) => (
-  <WithBottomNavigation>
+  <WithBottomNavigation showBottomNav={false}>
     <EditCategoryScreen {...props} />
   </WithBottomNavigation>
 );
 
 export const AddEditCategoryScreenWithNav = (props: any) => (
-  <WithBottomNavigation>
+  <WithBottomNavigation showBottomNav={false}>
     <AddEditCategoryScreen {...props} />
   </WithBottomNavigation>
 );
@@ -124,13 +124,13 @@ export const CalendarScreenWithNav = (props: any) => (
 );
 
 export const SetBudgetLimitScreenWithNav = (props: any) => (
-  <WithBottomNavigation>
+  <WithBottomNavigation showBottomNav={false}>
     <SetBudgetLimitScreen {...props} />
   </WithBottomNavigation>
 );
 
 export const AddWalletScreenWithNav = (props: any) => (
-  <WithBottomNavigation>
+  <WithBottomNavigation showBottomNav={false}>
     <AddWalletScreen {...props} />
   </WithBottomNavigation>
 );

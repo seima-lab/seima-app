@@ -1,23 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Alert,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomErrorModal from '../components/CustomErrorModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
 import { useNavigationService } from '../navigation/NavigationService';
 import { CreateWalletRequest, walletService } from '../services/walletService';
@@ -32,6 +32,18 @@ interface Props {
   };
 }
 
+// Hàm format số tiền với dấu chấm ngăn cách hàng nghìn
+const formatBalanceInput = (text: string): string => {
+  const numericValue = text.replace(/[^\d]/g, '');
+  if (numericValue === '') return '';
+  // Không thể truy cập biến balance ở đây, nên chỉ trả về chuỗi hiện tại nếu vượt quá 15 số
+  if (numericValue.length > 15) {
+    return text;
+  }
+  const number = parseInt(numericValue, 10);
+  return number.toLocaleString('en-US').replace(/,/g, '.');
+};
+
 const AddWalletScreen: React.FC<Props> = ({ route }) => {
   const { t } = useTranslation();
   const navigation = useNavigationService();
@@ -40,7 +52,9 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   const walletId = route?.params?.walletId;
   const walletData = route?.params?.walletData;
 
-  const [balance, setBalance] = useState(walletData?.balance ? walletData.balance.toLocaleString('vi-VN') : '');
+  const [balance, setBalance] = useState(
+    walletData?.balance ? formatBalanceInput(walletData.balance.toString()) : ''
+  );
   const [walletName, setWalletName] = useState(walletData?.name || '');
   const [walletType, setWalletType] = useState(walletData?.type || t('wallet.walletTypes.cash'));
   const [bankName, setBankName] = useState(walletData?.bankName || '');
@@ -51,6 +65,8 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorTitle, setErrorTitle] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Add keyboard event listeners for debugging
   useEffect(() => {
@@ -110,30 +126,40 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
 
   const validateForm = (): boolean => {
     if (!walletName.trim()) {
-      Alert.alert(t('common.error'), 'Please enter wallet name');
+      setErrorTitle(t('common.error'));
+      setErrorMessage(t('wallet.error.enterWalletName'));
+      setShowErrorModal(true);
       return false;
     }
 
     const numericBalance = getNumericBalance(balance);
     if (!balance.trim() || numericBalance === 0) {
-      Alert.alert(t('common.error'), 'Please enter a valid balance');
+      setErrorTitle(t('common.error'));
+      setErrorMessage(t('wallet.error.enterBalancevalid'));
+      setShowErrorModal(true);
       return false;
     }
 
     if (numericBalance < 0) {
-      Alert.alert(t('common.error'), 'Balance cannot be negative');
+      setErrorTitle(t('common.error'));
+      setErrorMessage(t('wallet.error.enterBalanceNegative'));
+      setShowErrorModal(true);
       return false;
     }
 
     // Kiểm tra số chữ số không được vượt quá 15
     const digitsOnly = balance.replace(/[^\d]/g, '');
     if (digitsOnly.length > 15) {
-      Alert.alert(t('common.error'), 'Balance cannot exceed 15 digits');
+      setErrorTitle(t('common.error'));
+      setErrorMessage(t('wallet.error.enterBalanceMax'));
+      setShowErrorModal(true);
       return false;
     }
 
     if (walletType === t('wallet.walletTypes.bank') && !bankName.trim()) {
-      Alert.alert(t('common.error'), 'Please enter bank name');
+      setErrorTitle(t('common.error'));
+       setErrorMessage(t('wallet.error.enterBankName'));
+      setShowErrorModal(true);
       return false;
     }
 
@@ -164,28 +190,16 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
         // Update existing wallet
         result = await walletService.updateWallet(walletId, walletRequest);
         console.log('✅ Wallet updated successfully:', result);
-        
-        Alert.alert(
-          t('common.success'),
-          'Wallet updated successfully!',
-          [{ text: 'OK', onPress: () => {
-            walletService.markForRefresh();
-            navigation.goBack();
-          }}]
-        );
+        setSuccessMessage(t('wallet.update'));
+        setShowSuccessModal(true);
+        // Không gọi Alert.alert nữa
       } else {
         // Create new wallet
         result = await walletService.createWallet(walletRequest);
         console.log('✅ Wallet created successfully:', result);
-        
-        Alert.alert(
-          t('common.success'),
-          'Wallet created successfully!',
-          [{ text: 'OK', onPress: () => {
-            walletService.markForRefresh();
-            navigation.goBack();
-          }}]
-        );
+        setSuccessMessage(t('wallet.save'));
+        setShowSuccessModal(true);
+        // Không gọi Alert.alert nữa
       }
 
     } catch (error: any) {
@@ -246,27 +260,6 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
     return '';
   };
 
-  // Hàm format số tiền với dấu phẩy
-  const formatBalanceInput = (text: string): string => {
-    // Loại bỏ tất cả ký tự không phải số
-    const numericValue = text.replace(/[^\d]/g, '');
-    
-    if (numericValue === '') return '';
-    
-    // Giới hạn tối đa 15 chữ số - không cho nhập tiếp nếu vượt quá
-    if (numericValue.length > 15) {
-      // Trả về giá trị hiện tại thay vì chuỗi rỗng
-      return balance;
-    }
-    
-    // Chuyển thành số và format với dấu phẩy, chỉ hiển thị số nguyên
-    const number = parseInt(numericValue, 10);
-    return number.toLocaleString('vi-VN', { 
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0 
-    });
-  };
-
   // Hàm lấy giá trị số từ text đã format
   const getNumericBalance = (formattedText: string): number => {
     const numericValue = formattedText.replace(/[^\d]/g, '');
@@ -282,15 +275,17 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
       <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Icon name="arrow-back" size={24} color="#333" />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, typography.bold]}>
-            {editMode ? t('wallet.editWalletTitle') : t('wallet.addWalletTitle')}
-          </Text>
-          <TouchableOpacity onPress={handleSave} disabled={saving}>
-            <Icon name="check" size={24} color={saving ? "#ccc" : "#333"} />
-          </TouchableOpacity>
+          <View style={styles.headerSide}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Icon name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.headerTitleWrapperCentered}>
+            <Text style={[styles.headerTitle, typography.semibold]} numberOfLines={1}>
+              {editMode ? t('wallet.editWalletTitle') : t('wallet.addWalletTitle')}
+            </Text>
+          </View>
+          <View style={styles.headerSide} />
         </View>
 
         <ScrollView 
@@ -301,7 +296,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
           {/* Balance Field */}
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, typography.semibold]}>
-              {t('wallet.balanceRequired')} <Text style={styles.required}>*</Text>
+              {t('wallet.balance')} <Text style={styles.required}>*</Text>
             </Text>
             <View style={styles.inputContainer}>
               <TextInput
@@ -410,7 +405,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
             onPress={handleSave}
             disabled={saving}
           >
-            <Text style={[styles.saveButtonText, typography.bold]}>
+            <Text style={[styles.saveButtonText, typography.semibold]}>
               {saving ? 'Saving...' : (editMode ? t('wallet.update') : t('wallet.save'))}
             </Text>
           </TouchableOpacity>
@@ -422,6 +417,17 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
         message={errorMessage}
         onDismiss={() => setShowErrorModal(false)}
         type="error"
+      />
+      <CustomSuccessModal
+        visible={showSuccessModal}
+        title={t('common.success')}
+        message={successMessage}
+        buttonText={t('common.ok')}
+        onConfirm={() => {
+          setShowSuccessModal(false);
+          walletService.markForRefresh();
+          navigation.goBack();
+        }}
       />
     </KeyboardAvoidingView>
   );
@@ -437,13 +443,23 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e5e5',
+  },
+  headerSide: {
+    width: 40,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerTitleWrapperCentered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,

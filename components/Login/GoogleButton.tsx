@@ -1,3 +1,4 @@
+import { typography } from '@/constants/typography';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -86,7 +87,7 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     color: '#1F2937',
-    fontWeight: '500',
+    ...typography.semibold, 
     fontSize: 16,
   },
   googleButtonTextDisabled: {
