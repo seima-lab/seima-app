@@ -27,6 +27,11 @@
   "notePlaceholder": "Nhập ghi chú",
   "amount": "Số tiền",
   "category": {
+    "cannotEditSystem": "Không thể chỉnh sửa danh mục hệ thống",
+    "systemDefined": "Hệ thống",
+    "createSuccess": "Danh mục đã được tạo thành công",
+    "updateSuccess": "Danh mục đã được cập nhật thành công",
+    "deleteSuccess": "Danh mục đã được xóa thành công",
     "alreadyExists": "Tên danh mục đã tồn tại. Vui lòng chọn tên khác."
   },
   "categories": "Danh mục",
@@ -65,9 +70,15 @@
     "hello": "Xin chào!",
     "totalBalance": "Tổng số dư",
     "incomeAndExpenses": "Thu nhập và Chi tiêu",
-    "incomeShort": "Thu",
-    "expenseShort": "Chi",
+    "incomeShort": "Tiền Thu",
+    "expenseShort": "TIền Chi",
     "difference": "Chênh lệch",
+    "income": "Thu",
+    "expense": "Chi",
+    "income1": "Tiền Thu",
+    "expense1": "Tiền Chi",
+    "transactionHistoryToday": "Lịch sử thu chi hôm nay",
+    "noTransactionHistory": "Không có lịch sử thu chi hôm nay",
     "periods": {
       "thisDay": "Hôm nay",
       "thisWeek": "Tuần này",
@@ -104,15 +115,65 @@
       "fallbackData": "Đang sử dụng dữ liệu dự phòng"
     }
   },
-"category": {
-  "title": "Danh mục",
-  "alreadyExists": "Tên danh mục đã tồn tại. Vui lòng chọn tên khác.",
-  "saveFailed": "Lưu danh mục thất bại",
-  "notFound": "Danh mục không tồn tại",
-  "conflict": "Danh mục đã tồn tại",
-  "badRequest": "Yêu cầu không hợp lệ",
-  "validationError": "Dữ liệu danh mục không hợp lệ"
-},
+  "wallet": {
+    "deleteWalletMessageDefault": "là ví mặc định của bạn. Bạn có chắc chắn muốn xóa nó? Bạn sẽ cần đặt ví khác làm ví mặc định.",
+    "alertTitleDelete": "Xóa ví",
+    "alertTitleDeleteDefault": "Xóa ví mặc định",
+    "defaultWallet": "Ví mặc định",
+    "addWalletTitle": "Thêm ví",
+    "editWalletTitle": "Chỉnh sửa ví",
+    "balance": "Số dư",
+    "noWalletsFound": "Không tìm thấy ví",
+    "addFirstWallet": "Thêm ví đầu tiên để bắt đầu",
+    "maxWalletLimit": "Bạn chỉ được tạo 5 ví",
+    "title": "Ví của tôi",
+    "currentBalance": "Số dư hiện tại",
+    "totalAssets": "Tổng tài sản",
+    "totalDebts": "Tổng nợ",
+    "includeInTotal": "Bao gồm trong tổng",
+    "addWallet": "Thêm ví",
+    "editWallet": "Chỉnh sửa ví",
+    "deleteWallet": "Xóa ví",
+    "deleteWalletConfirm": "Bạn có chắc chắn muốn xóa ví này?",
+    "deleteWalletSuccess": "Ví đã được xóa thành công",
+    "deleteWalletFailed": "Không thể xóa ví. Vui lòng thử lại.",
+    "walletName": "Tên ví",
+    "walletNamePlaceholder": "Vui lòng nhập tên ví",
+    "walletType": "Loại ví",
+    "walletTypePlaceholder": "Chọn loại ví",
+    "walletBalance": "Số dư ví",
+    "walletBalancePlaceholder": "Vui lòng nhập số dư ví",
+    "walletDescription": "Mô tả",
+    "update": "Cập nhật ví",
+    "save": "Lưu ví",
+    "isDefault": "Đặt làm ví mặc định",
+    "defaultDescription": "Ví mặc định sẽ được chọn tự động khi thêm giao dịch mới",
+    "excludeFromTotal": "Bỏ qua trong tổng",
+    "excludeDescription": "Bỏ qua ví này, không bao gồm trong báo cáo và tổng số dư",
+    "placeholders": {
+      "enterBalance": "Nhập số dư",
+      "enterWalletName": "Nhập tên ví",
+      "enterBankName": "Nhập tên ngân hàng",
+      "enterEWalletName": "Nhập tên ví điện tử",
+      "enterDescription": "Nhập mô tả"
+    },
+    "walletTypes": {
+      "bank": "Ngân hàng",
+      "cash": "Tiền mặt",
+      "card": "Thẻ",
+      "other": "Khác"
+    },
+    "error": {
+      "enterBalance": "Vui lòng nhập số dư",
+      "enterWalletName": "Vui lòng nhập tên ví",
+      "enterBankName": "Vui lòng nhập tên ngân hàng",
+      "enterEWalletName": "Vui lòng nhập tên ví điện tử",
+      "enterDescription": "Vui lòng nhập mô tả",
+      "enterBalancevalid": "Vui lòng nhập số dư hợp lệ",
+      "enterBalanceNegative": "Số dư không được âm",
+      "enterBalanceMax": "Số dư không được vượt quá 15 chữ số"
+    }
+  },
   "group": {
 
     "title": "Nhóm",
@@ -506,49 +567,6 @@
     "budget": "Ngân sách"
   },
 
-  "wallet": {
-    "maxWalletLimit": "Bạn chỉ được tạo 5 ví",
-    "title": "Ví của tôi",
-    "currentBalance": "Tài chính hiện tại",
-    "totalAssets": "Tổng có",
-    "totalDebts": "Tổng nợ",
-    "includeInTotal": "Tính vào tổng",
-    "addWallet": "Thêm ví",
-    "transferMoney": "Chuyển khoản",
-    "defaultWallet": "Mặc định",
-    "alertTitle": "Chú ý",
-    "deleteMessage": "Nếu xoá {{walletName}} này, tất cả ghi chép liên quan cũng sẽ bị xoá. Bạn có chắc chắn muốn xoá?",
-    "cancel": "Huỷ",
-    "delete": "Xoá",
-    "balance": "Số dư",
-    "balanceRequired": "Số dư *",
-    "walletName": "Tên ví",
-    "walletType": "Loại ví",
-    "bankName": "Tên ngân hàng",
-    "eWalletName": "Tên ví điện tử",
-    "description": "Mô tả",
-    "isDefault": "Là ví mặc định",
-    "defaultDescription": "Ví mặc định sẽ được chọn mặc định khi thêm giao dịch mới",
-    "excludeFromTotal": "Không tính vào tổng",
-    "excludeDescription": "Bỏ qua ví này, không tính vào báo cáo và số dư khối \"Tổng\"",
-    "addWalletTitle": "Thêm ví",
-    "editWalletTitle": "Sửa ví",
-    "save": "Lưu",
-    "update": "Cập nhật",
-    "walletTypes": {
-      "cash": "Tiền mặt",
-      "ewallet": "Ví điện tử",
-      "bank": "Ngân hàng"
-    },
-    "placeholders": {
-      "enterBalance": "Nhập số dư",
-      "enterWalletName": "Nhập tên ví",
-      "enterBankName": "Nhập tên ngân hàng",
-      "enterEWalletName": "Nhập tên ví điện tử",
-      "enterDescription": "Nhập mô tả"
-    }
-  },
-  
   "profile": {
     "name": "Tên",
     "firstName": "Họ",

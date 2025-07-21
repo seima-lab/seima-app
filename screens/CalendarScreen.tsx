@@ -1,10 +1,11 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     Alert,
     Animated,
+    FlatList,
     PanResponder,
     RefreshControl,
     SafeAreaView,
@@ -202,7 +203,7 @@ const SwipeableTransactionItem = ({
             {/* Custom Confirm Modal */}
             <CustomConfirmModal
                 visible={showConfirmModal}
-                title={t('confirm')}
+                title={t('common.confirm')}
                 message={t('calendar.confirmDeleteTransaction')}
                 confirmText={t('delete')}
                 cancelText={t('cancel')}
@@ -239,8 +240,8 @@ const CalendarScreen = () => {
                 setRefreshing(true);
             } else {
                 setLoading(true);
-                // Clear old data immediately when loading new month to avoid showing stale data
-                setOverviewData(null);
+                // Đừng xóa dữ liệu cũ để giữ UI mượt
+                // setOverviewData(null);
             }
             setError(null);
             
@@ -311,16 +312,9 @@ const CalendarScreen = () => {
     // Refresh data when screen comes into focus (when returning from edit screen)
     useFocusEffect(
         useCallback(() => {
-            const now = Date.now();
-            const timeSinceLastRefresh = now - lastRefreshTime;
-            
-            // Only refresh if it's been more than 1 second since last refresh
-            // This prevents unnecessary API calls on first load
-            if (timeSinceLastRefresh > 1000) {
-                console.log('🔄 Screen focused - refreshing calendar data');
-                loadTransactionOverview(currentMonth, true);
-            }
-        }, [currentMonth, lastRefreshTime])
+            loadTransactionOverview(currentMonth, true);
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [currentMonth])
     );
 
     // Convert API data to local Transaction format using iconUtils
@@ -402,7 +396,7 @@ const CalendarScreen = () => {
         return transactions;
     };
 
-    const transactions = getAllTransactions();
+    const transactions = useMemo(() => getAllTransactions(), [overviewData]);
 
     // Calculate day data
     const getDayData = (): { [key: string]: DayData } => {
@@ -437,7 +431,7 @@ const CalendarScreen = () => {
         return dayData;
     };
 
-    const dayData = getDayData();
+    const dayData = useMemo(() => getDayData(), [transactions]);
 
     // Get monthly totals
     const getMonthlyTotals = () => {
@@ -491,7 +485,7 @@ const CalendarScreen = () => {
         return sortedGrouped;
     };
 
-    const groupedTransactions = getGroupedTransactions();
+    const groupedTransactions = useMemo(() => getGroupedTransactions(), [transactions]);
 
     // Handle delete transaction
     const handleDeleteTransaction = async (transactionId: string) => {
@@ -755,9 +749,20 @@ const CalendarScreen = () => {
                             <Text style={styles.loadingText}>{t('common.loading')}</Text>
                         </View>
                     ) : Object.keys(groupedTransactions).length > 0 ? (
-                        Object.entries(groupedTransactions).map(([date, dayTransactions]) => 
-                            renderDayGroup(date, dayTransactions)
-                        )
+                        <FlatList
+                            data={Object.entries(groupedTransactions)}
+                            keyExtractor={([date]) => date}
+                            renderItem={({ item: [date, dayTransactions] }) => renderDayGroup(date, dayTransactions)}
+                            ListEmptyComponent={
+                                <View style={styles.noTransactions}>
+                                    <Text style={styles.noTransactionsText}>
+                                        {t('calendar.noTransactionsThisMonth')}
+                                    </Text>
+                                </View>
+                            }
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ paddingBottom: 20 }}
+                        />
                     ) : (
                         <View style={styles.noTransactions}>
                             <Text style={styles.noTransactionsText}>
@@ -827,7 +832,7 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     selectedDayText: {
-        ...typography.bold,
+        ...typography.semibold,
         color: '#FFFFFF',
     },
     disabledDayText: {
@@ -875,17 +880,17 @@ const styles = StyleSheet.create({
     },
     incomeAmount: {
         fontSize: 16,
-        ...typography.bold,
+        ...typography.semibold,
         color: '#34C759',
     },
     expenseAmount: {
         fontSize: 16,
-        ...typography.bold,
+        ...typography.semibold,
         color: 'red',
     },
     totalAmount: {
         fontSize: 16,
-        ...typography.bold,
+        ...typography.semibold,
     },
     positiveTotal: {
         color: '#34C759',
@@ -973,7 +978,7 @@ const styles = StyleSheet.create({
     },
     dayHeaderTotal: {
         fontSize: 16,
-        ...typography.bold,
+        ...typography.semibold,
     },
     loadingContainer: {
         flex: 1,
@@ -1043,7 +1048,7 @@ const styles = StyleSheet.create({
     },
     deleteText: {
         fontSize: 12,
-        ...typography.bold,
+        ...typography.semibold,
         color: '#FFFFFF',
         marginTop: 4,
     },

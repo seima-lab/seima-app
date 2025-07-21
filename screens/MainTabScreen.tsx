@@ -1,8 +1,8 @@
 import { useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import BottomNavigation from '../components/BottomNavigation';
+import { StyleSheet } from 'react-native';
+import WithBottomNavigation from '../components/WithBottomNavigation';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { getDefaultTab, getScreenForTab, TabType } from '../utils/mainTabUtils';
@@ -48,12 +48,9 @@ const MainTabScreen = React.memo(() => {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.screenContainer}>
-        {renderScreen()}
-      </View>
-      <BottomNavigation activeTab={activeTab} setActiveTab={handleTabChange} />
-    </View>
+    <WithBottomNavigation initialTab={activeTab}>
+      {renderScreen()}
+    </WithBottomNavigation>
   );
 });
 

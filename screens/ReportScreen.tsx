@@ -713,10 +713,8 @@ export default function ReportScreen() {
   // Get current period type label with smart detection
   const getCurrentPeriodTypeLabel = () => {
     const today = new Date();
-    
     switch (selectedPeriodType) {
       case 'today': {
-        // Check if selected date is today
         let targetDate = today;
         if (selectedPeriod && selectedPeriod !== 'today') {
           const parsedDate = new Date(selectedPeriod);
@@ -724,49 +722,38 @@ export default function ReportScreen() {
             targetDate = parsedDate;
           }
         }
-        
         const isToday = targetDate.toDateString() === today.toDateString();
-        return isToday ? t('reports.today') : t('reports.date');
+        return isToday ? t('reports.today') : '';
       }
-      
       case 'thisWeek': {
         const referenceDate = weekReferenceDate || today;
-        
-        // Check if weekReferenceDate is in the same week as today
         const todayStartOfWeek = new Date(today);
         const todayDayOfWeek = today.getDay();
         const todayMondayOffset = todayDayOfWeek === 0 ? -6 : 1 - todayDayOfWeek;
         todayStartOfWeek.setDate(today.getDate() + todayMondayOffset);
-        
+
         const refStartOfWeek = new Date(referenceDate);
         const refDayOfWeek = referenceDate.getDay();
         const refMondayOffset = refDayOfWeek === 0 ? -6 : 1 - refDayOfWeek;
         refStartOfWeek.setDate(referenceDate.getDate() + refMondayOffset);
-        
-        // Compare the Monday dates
+
         const isSameWeek = todayStartOfWeek.toDateString() === refStartOfWeek.toDateString();
-        return isSameWeek ? t('reports.thisWeek') : t('reports.week');
+        return isSameWeek ? t('reports.thisWeek') : '';
       }
-      
       case 'thisMonth': {
-        // Check if selected month is current month
         const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
         const isCurrentMonth = selectedPeriod === currentMonth;
-        return isCurrentMonth ? t('reports.thisMonth') : t('reports.month');
+        return isCurrentMonth ? t('reports.thisMonth') : '';
       }
-      
       case 'thisYear': {
-        // Check if selected year is current year
         const currentYear = today.getFullYear().toString();
         const isCurrentYear = selectedPeriod === currentYear;
-        return isCurrentYear ? t('reports.thisYear') : t('reports.year');
+        return isCurrentYear ? t('reports.thisYear') : '';
       }
-      
       case 'custom':
         return t('reports.custom');
-        
       default:
-        return periodTypeOptions.find(option => option.value === selectedPeriodType)?.label || '';
+        return '';
     }
   };
 
@@ -896,68 +883,57 @@ export default function ReportScreen() {
         <TouchableOpacity onPress={() => navigatePeriod('prev')}>
           <Icon name="chevron-left" size={24} color="#666" />
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.periodDisplayContainer}
-          onPress={() => setShowPeriodDropdown(true)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.periodTypeIndicator}>
-            <Text style={styles.periodTypeLabel}>{getCurrentPeriodTypeLabel()}</Text>
-            <Icon name="chevron-down" size={16} color="#666" />
-          </View>
-          <View style={styles.periodTextContainer}>
-            <Text style={styles.monthText}>{getPeriodDisplayText()}</Text>
-            
-          </View>
-
-        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <TouchableOpacity 
+            style={styles.periodDisplayContainer}
+            onPress={() => setShowPeriodDropdown((prev) => !prev)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.periodTypeIndicator}>
+              <Text style={styles.periodTypeLabel}>{getCurrentPeriodTypeLabel()}</Text>
+              {getCurrentPeriodTypeLabel() !== '' && (
+                <Icon name="chevron-down" size={16} color="#666" />
+              )}
+            </View>
+            <View style={getCurrentPeriodTypeLabel() === '' ? styles.periodTextContainerCenter : styles.periodTextContainer}>
+              <Text style={getCurrentPeriodTypeLabel() === '' ? styles.monthTextCenter : styles.monthText}>{getPeriodDisplayText()}</Text>
+            </View>
+          </TouchableOpacity>
+          {/* Dropdown filter ngay dưới filter */}
+          {showPeriodDropdown && (
+            <View style={styles.dropdownContainer}>
+              {periodTypeOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.dropdownOption,
+                    selectedPeriodType === option.value && styles.selectedDropdownOption
+                  ]}
+                  onPress={() => {
+                    setSelectedPeriodType(option.value as PeriodType);
+                    setShowPeriodDropdown(false);
+                    if (option.value === 'custom') {
+                      setTempStartDate(customStartDate);
+                      setTempEndDate(customEndDate);
+                      setShowCustomDateModal(true);
+                    }
+                  }}
+                >
+                  <Text style={[
+                    styles.dropdownOptionText,
+                    selectedPeriodType === option.value && styles.selectedDropdownOptionText
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
         <TouchableOpacity onPress={() => navigatePeriod('next')}>
           <Icon name="chevron-right" size={24} color="#666" />
         </TouchableOpacity>
       </View>
-
-      {/* Period Type Dropdown Modal */}
-      <Modal
-        visible={showPeriodDropdown}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowPeriodDropdown(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowPeriodDropdown(false)}
-        >
-          <View style={styles.dropdownContainer}>
-            {periodTypeOptions.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.dropdownOption,
-                  selectedPeriodType === option.value && styles.selectedDropdownOption
-                ]}
-                onPress={() => {
-                  setSelectedPeriodType(option.value as PeriodType);
-                  setShowPeriodDropdown(false);
-                  // Open custom date modal if custom is selected
-                  if (option.value === 'custom') {
-                    setTempStartDate(customStartDate);
-                    setTempEndDate(customEndDate);
-                    setShowCustomDateModal(true);
-                  }
-                }}
-              >
-                <Text style={[
-                  styles.dropdownOptionText,
-                  selectedPeriodType === option.value && styles.selectedDropdownOptionText
-                ]}>
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
 
       {/* Custom Date Modal */}
       <Modal
@@ -1219,7 +1195,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     backgroundColor: '#f8f9fa',
-  },
+    position: 'relative', // thêm dòng này
+},
   periodDisplayContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1253,12 +1230,21 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  monthTextCenter: {
+    ...typography.medium,
+    fontSize: 15,
+    color: '#2d3748',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom:15
+  },
   monthText: {
     ...typography.medium,
     fontSize: 15,
     color: '#2d3748',
     textAlign: 'center',
     lineHeight: 20,
+  
   },
   periodTextContainer: {
     flexDirection: 'row',
@@ -1266,6 +1252,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 6,
     paddingHorizontal: 8,
+  },
+  periodTextContainerCenter: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 0,
+    paddingHorizontal: 0,
+    width: '100%',
   },
 
   modalOverlay: {
@@ -1277,14 +1270,23 @@ const styles = StyleSheet.create({
   dropdownContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    marginHorizontal: 20,
-    paddingVertical: 8,
+    marginTop: 4,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-  },
+    position: 'absolute',
+    top: '100%',
+    left: '50%',
+    transform: [{ translateX: -80 }], // căn giữa với width 160
+    zIndex: 10,
+    width: 160,
+    minWidth: 120,
+    maxWidth: 200,
+    alignSelf: 'center',
+    paddingVertical: 4,
+},
   dropdownOption: {
     paddingVertical: 12,
     paddingHorizontal: 20,

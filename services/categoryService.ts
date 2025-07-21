@@ -400,11 +400,11 @@ export class CategoryService {
   // Get all categories by type and user
   async getAllCategoriesByTypeAndUser(
     categoryType: CategoryType,
-    userId: number,
+  
     groupId: number
   ): Promise<CategoryResponse[]> {
     try {
-      console.log('🔄 Fetching categories:', { categoryType, userId, groupId });
+      console.log('🔄 Fetching categories:', { categoryType, groupId });
       
             // Map CategoryType to integer values for backend (INCOME=0, EXPENSE=1)
       const categoryTypeValue = categoryType === CategoryType.EXPENSE ? 1 : 0;
@@ -412,14 +412,14 @@ export class CategoryService {
       console.log('🔄 Fetching categories with params:', {
         categoryType: categoryTypeValue,
         categoryTypeString: categoryType,
-        userId,
+    
         groupId,
         expectedResponse: categoryType === CategoryType.INCOME ? 'Should get income categories' : 'Should get expense categories',
-        fullUrl: `/api/v1/categories?categoryType=${categoryTypeValue}&userId=${userId}&groupId=${groupId}`
+        fullUrl: `/api/v1/categories?categoryType=${categoryTypeValue}&groupId=${groupId}`
       });
       
       const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(
-        `${CATEGORY_ENDPOINTS.LIST}?categoryType=${categoryTypeValue}&userId=${userId}&groupId=${groupId}`
+        `${CATEGORY_ENDPOINTS.LIST}?categoryType=${categoryTypeValue}&groupId=${groupId}`
       );
       
       console.log('📊 Categories response for', categoryType, ':', response);
@@ -463,7 +463,7 @@ export class CategoryService {
       const baseId = categoryType === CategoryType.INCOME ? -1000 : -2000;
       return defaultCategories.map((defaultCat, index) => ({
         category_id: baseId - index, // Negative IDs: -1000, -1001, -2000, -2001
-          user_id: userId,
+          user_id: 0,
           group_id: groupId,
           category_name: defaultCat.label,
         category_type: categoryType,
@@ -483,7 +483,7 @@ export class CategoryService {
       console.log('🔄 Fetching ALL categories for user:', { userId, groupId });
       
       // Pass null for categoryType to fetch all types.
-      const endpoint = `${CATEGORY_ENDPOINTS.LIST}?categoryType=null&userId=${userId}&groupId=${groupId}`;
+      const endpoint = `${CATEGORY_ENDPOINTS.LIST}?categoryType=null&groupId=${groupId}`;
       console.log('🚀 Calling endpoint:', endpoint);
 
       const response = await apiService.get<ApiResponseData<CategoryResponse[]>>(endpoint);

@@ -43,7 +43,10 @@ export interface UserCreationRequestDto {
   birth_date: string; // ISO date string format (YYYY-MM-DD)
   phone_number: string;
   avatar_url?: string;
-  gender: boolean; // true = male, false = female
+  gender: boolean;
+  device_id: string;
+  fcm_token: string;
+  // true = male, false = female
 }
 
 // Cấu trúc request update user profile theo backend format mới

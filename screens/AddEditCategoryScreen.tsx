@@ -1,9 +1,9 @@
+import { typography } from '@/constants/typography';
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -19,12 +19,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomErrorModal from '../components/CustomErrorModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 import { categoryService, CategoryType } from '../services/categoryService';
 import { getIconColor, getIconsForCategoryType } from '../utils/iconUtils';
-
 export default function AddEditCategoryScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -91,6 +91,14 @@ export default function AddEditCategoryScreen() {
     title: '',
     message: '',
     type: 'error' as 'error' | 'warning' | 'info' | 'success'
+  });
+  
+  // State for CustomSuccessModal
+  const [successModal, setSuccessModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttonText: 'OK',
   });
   
   const title = mode === 'add' ? t('createNew') : t('editCategory');
@@ -272,19 +280,11 @@ export default function AddEditCategoryScreen() {
     
     if (!categoryName.trim()) {
       console.log('❌ Validation failed: Category name is empty');
-      Alert.alert(t('common.error'), t('pleaseEnterCategoryName'));
+      showError(t('pleaseEnterCategoryName'));
       return;
     }
 
-    if (!user) {
-      console.log('❌ Validation failed: User not authenticated');
-      Alert.alert(t('common.error'), 'User not authenticated');
-      return;
-    }
-
-    console.log('👤 User Info:');
-    console.log('  - user.id:', user.id, '(type:', typeof user.id, ')');
-    console.log('  - parsed user_id:', parseInt(user.id), '(type:', typeof parseInt(user.id), ')');
+  
 
     setIsSaving(true);
     
@@ -320,16 +320,12 @@ export default function AddEditCategoryScreen() {
           throw backendError;
         } else if (result && result.category_id) {
           // Success case
-          Alert.alert(
-            t('common.success'), 
-            t('category.createSuccess') || 'Category created successfully!',
-            [
-              { 
-                text: 'OK', 
-                onPress: () => navigation.goBack()
-              }
-            ]
-          );
+          setSuccessModal({
+            visible: true,
+            title: t('common.success'),
+            message: t('category.createSuccess') || 'Category created successfully!',
+            buttonText: 'OK',
+          });
         } else if ((result as any)?.message) {
           throw new Error((result as any).message);
         } else {
@@ -391,16 +387,12 @@ export default function AddEditCategoryScreen() {
           throw backendError;
         } else if (updateResult && updateResult.category_id) {
           // Success case
-          Alert.alert(
-            t('common.success'),
-            t('category.updateSuccess') || 'Category updated successfully!',
-            [
-              { 
-                text: 'OK', 
-                onPress: () => navigation.goBack()
-              }
-            ]
-          );
+          setSuccessModal({
+            visible: true,
+            title: t('common.success'),
+            message: t('category.updateSuccess') || 'Category updated successfully!',
+            buttonText: 'OK',
+          });
         } else if ((updateResult as any)?.message) {
           throw new Error((updateResult as any).message);
         } else {
@@ -686,6 +678,16 @@ export default function AddEditCategoryScreen() {
             type={errorModal.type}
             onDismiss={hideErrorModal}
           />
+          <CustomSuccessModal
+            visible={successModal.visible}
+            title={successModal.title}
+            message={successModal.message}
+            buttonText={successModal.buttonText}
+            onConfirm={() => {
+              setSuccessModal(prev => ({ ...prev, visible: false }));
+              navigation.goBack();
+            }}
+          />
         </SafeAreaView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -715,9 +717,8 @@ const styles = StyleSheet.create({
     marginLeft: -8,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
+    ...typography.semibold,
+    color: '#1e90ff',
   },
   placeholder: {
     width: 40,
@@ -730,13 +731,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
+    ...typography.semibold,
+    color: '#FFF',
     marginBottom: 12,
   },
   nameInput: {
     backgroundColor: '#fff',
+    ...typography.regular,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -778,8 +779,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   saveButtonDisabled: {
     backgroundColor: '#C7C7CC',

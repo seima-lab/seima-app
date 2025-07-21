@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
     Animated,
     Dimensions,
+    Image,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
@@ -82,7 +83,18 @@ const TypingIndicator = () => {
 };
 
 // Avatar component for AI and User
-const Avatar = ({ isUser }: { isUser: boolean }) => {
+const Avatar = ({ isUser, avatarUrl }: { isUser: boolean; avatarUrl?: string | null }) => {
+    if (isUser && avatarUrl) {
+        return (
+            <View style={[styles.avatar, styles.userAvatar]}>
+                <Image
+                    source={{ uri: avatarUrl }}
+                    style={{ width: 32, height: 32, borderRadius: 16 }}
+                    resizeMode="cover"
+                />
+            </View>
+        );
+    }
     return (
         <View style={[styles.avatar, isUser ? styles.userAvatar : styles.aiAvatar]}>
             {isUser ? (
@@ -186,6 +198,7 @@ const ChatAIScreen = () => {
     
     const [inputText, setInputText] = useState('');
     const [userId, setUserId] = useState<number | null>(null);
+    const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showWelcome, setShowWelcome] = useState(true);
     const [isInputFocused, setIsInputFocused] = useState(false);
@@ -207,6 +220,7 @@ const ChatAIScreen = () => {
                 const userService = UserService.getInstance();
                 const userProfile = await userService.getCurrentUserProfile();
                 setUserId(userProfile.user_id);
+                setUserAvatarUrl(userProfile.avatar_url || userProfile.user_avatar_url || null);
                 console.log('✅ User ID loaded successfully:', userProfile.user_id);
                 console.log('👤 Full user profile:', JSON.stringify(userProfile, null, 2));
             } catch (error) {
@@ -332,10 +346,21 @@ const ChatAIScreen = () => {
     };
 
     const renderMessage = (message: Message) => (
-        <View key={message.id} style={styles.messageRow}>
-            <Avatar isUser={message.isUser} />
-            <View style={styles.messageContent}>
-                <View 
+        <View
+            key={message.id}
+            style={[
+                styles.messageRow,
+                message.isUser && { flexDirection: 'row-reverse', justifyContent: 'flex-end' },
+            ]}
+        >
+            <Avatar isUser={message.isUser} avatarUrl={message.isUser ? userAvatarUrl : undefined} />
+            <View
+                style={[
+                    styles.messageContent,
+                    message.isUser && { alignItems: 'flex-end' },
+                ]}
+            >
+                <View
                     style={[
                         styles.messageContainer,
                         message.isUser ? styles.userMessage : styles.aiMessage
@@ -348,7 +373,6 @@ const ChatAIScreen = () => {
                         {message.text}
                     </Text>
                 </View>
-                
                 {/* Suggested Wallets - Only show if wallets exist */}
                 {message.suggestedWallets && message.suggestedWallets.length > 0 && (
                     <SuggestedWallets 
@@ -356,7 +380,6 @@ const ChatAIScreen = () => {
                         onWalletSelect={handleWalletSelect}
                     />
                 )}
-                
                 <Text style={[
                     styles.timestamp,
                     message.isUser ? styles.userTimestamp : styles.aiTimestamp

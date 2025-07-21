@@ -119,6 +119,7 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
     marginBottom: 12,
+    fontSize: 20,
   },
   message: {
     ...typography.regular,
@@ -126,6 +127,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 28,
+    fontSize: 16,
   },
   buttonContainer: {
     flexDirection: 'row',

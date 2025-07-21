@@ -21,10 +21,12 @@ import DeviceInfo from 'react-native-device-info';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { typography } from '../constants/typography';
+import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { authService, RegisterRequest } from '../services/authService';
+import { signInWithGoogle } from '../services/googleSignIn';
 import { UserCreationRequestDto, UserService } from '../services/userService';
 const { width, height } = Dimensions.get('window');
 
@@ -48,6 +50,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
   const { language } = useLanguage();
   const navigation = useNavigationService();
   const insets = useSafeAreaInsets();
+  const { login } = useAuth();
   
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -271,7 +274,10 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
           birth_date: hasSelectedDate ? formatDateForAPI(dateOfBirth) : '', // Send empty string if no date selected
           phone_number: phoneNumber.trim(),
           avatar_url: '', // Empty for now, can be updated later
-          gender: gender === 'male', // Convert to boolean: true = male, false = female
+          gender: gender === 'male',
+          device_id: await DeviceInfo.getUniqueId(),
+          fcm_token: await messaging().getToken(),
+          // Convert to boolean: true = male, false = female
         };
 
         console.log('🟡 Create data (snake_case):', createData);
@@ -285,12 +291,22 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         setIsLoadingSuccess(true);
         setLoadingMessage('Hồ sơ đã được tạo thành công');
         
-        // Auto navigate to main app after 2 seconds
-        setTimeout(() => {
+        // Đăng nhập lại Google để lấy token và user info, rồi gọi login context
+        setTimeout(async () => {
           setShowLoadingModal(false);
           setIsLoading(false);
-          navigation.replace('MainTab');
-        }, 2000);
+          try {
+            const result = await signInWithGoogle();
+            if (result.success && result.backendData && result.backendData.is_user_active) {
+              await login(result.backendData.user_infomation);
+              // AuthNavigator sẽ tự chuyển vào app
+            } else {
+              console.log('🔴 Google Sign-In after register failed:', result.error);
+            }
+          } catch (err) {
+            console.log('🔴 Google Sign-In after register exception:', err);
+          }
+        }, 1500);
         
       } else {
         // Handle normal registration flow
@@ -313,8 +329,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         };    
 
         // Prepare request data according to backend format (snake_case)
-        const device_id = await DeviceInfo.getUniqueId();
-        const fcm_token = await messaging().getToken();
+         
         const registerData: RegisterRequest = {
           full_name: fullName.trim(),
           email: email.trim().toLowerCase(),
@@ -323,8 +338,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
           gender: gender === 'male', // Convert to boolean: true = male, false = female
           password: password.trim(),
           confirm_password: confirmPassword.trim(), // Backend validation requires this field
-          device_id,
-          fcm_token,
+          
         };
 
         console.log('🟡 Registering with data:', registerData);

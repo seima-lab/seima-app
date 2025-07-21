@@ -8,45 +8,47 @@ import { useEffect } from 'react';
 import { ActivityIndicator, LogBox, PermissionsAndroid, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import {
+  AddEditCategoryScreenWithNav,
+  AddExpenseScreenWithNav,
+  AddWalletScreenWithNav,
+  ApproveMembersScreenWithNav,
+  BudgetDetailScreenWithNav,
+  BudgetScreenWithNav,
+  CalendarScreenWithNav,
+  ChangePasswordScreenWithNav,
+  ChatAIScreenWithNav,
+  CreateGroupScreenWithNav,
+  EditCategoryScreenWithNav,
+  EditGroupScreenWithNav,
+  FinanceScreenWithNav,
+  GroupDetailTabScreenWithNav,
+  GroupManagementScreenWithNav,
+  GroupMembersScreenWithNav,
+  GroupSettingsScreenWithNav,
+  GroupTransactionListScreenWithNav,
+  InviteUsersScreenWithNav,
+  NotificationDetailScreenWithNav,
+  NotificationsScreenWithNav,
+  ReportDetailScreenWithNav,
+  SelectCategoryScreenWithNav,
+  SetBudgetLimitScreenWithNav,
+  StatusInviteMemberWithNav,
+  UpdateProfileScreenWithNav
+} from '../components/ScreenWrappers';
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 import { NotificationProvider, useNotification } from '../contexts/NotificationContext';
 import '../i18n';
 import { navigationRef } from '../navigation/NavigationService';
-import AddEditCategoryScreen from '../screens/AddEditCategoryScreen';
-import AddExpenseScreen from '../screens/AddExpenseScreen';
-import AddWalletScreen from '../screens/AddWalletScreen';
-import ApproveMembersScreen from '../screens/ApproveMembersScreen';
-import BudgetDetailScreen from '../screens/BudgetDetailScreen';
-import BudgetScreen from '../screens/BudgetScreen';
-import CalendarScreen from '../screens/CalendarScreen';
-import ChangePasswordScreen from '../screens/ChangePasswordScreen';
-import ChatAIScreen from '../screens/ChatAIScreen';
-import CreateGroupScreen from '../screens/CreateGroupScreen';
-import EditCategoryScreen from '../screens/EditCategoryScreen';
-import EditGroupScreen from '../screens/EditGroupScreen';
-import FinanceScreen from '../screens/FinanceScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import GroupDetailTabScreen from '../screens/GroupDetailTabScreen';
-import GroupManagementScreen from '../screens/GroupManagementScreen';
-import GroupMembersScreenContainer from '../screens/GroupMembersScreen';
-import GroupSettingsScreen from '../screens/GroupSettingsScreen';
-import GroupTransactionListScreen from '../screens/GroupTransactionListScreen';
-import InviteUsersScreen from '../screens/InviteUsersScreen';
-import MainTabScreen from '../screens/MainTabScreen';
-import NotificationDetailScreen from '../screens/NotificationDetailScreen';
-import NotificationsScreen from '../screens/NotificationsScreen';
-import OTPScreen from '../screens/OTPScreen';
-import ReportDetailScreen from '../screens/ReportDetailScreen';
-import ResetPasswordScreen from '../screens/ResetPasswordScreen';
-import SelectCategoryScreen from '../screens/SelectCategoryScreen';
-import SetBudgetLimitScreen from '../screens/SetBudgetLimitScreen';
-import StatusInviteMember, { GroupMemberStatus } from '../screens/StatusInviteMember';
-import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import LoginScreen from '../screens/login';
+import MainTabScreen from '../screens/MainTabScreen';
+import OTPScreen from '../screens/OTPScreen';
 import RegisterScreen from '../screens/register';
-import UpdateProfileScreen from '../screens/update-profile';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import BranchService from '../services/branchService';
 import { getUnreadNotifications, type Notification } from '../services/notificationService';
 import { isMockNotificationShown, markMockNotificationAsShown } from '../utils/notificationUtils';
@@ -116,44 +118,161 @@ function AuthNavigator() {
     >
       {/* Main app screens - only available when authenticated */}
       <Stack.Screen name="MainTab" component={MainTabScreen} />
-      <Stack.Screen name="AddExpenseScreen" component={AddExpenseScreen} />
-      <Stack.Screen name="EditCategoryScreen" component={EditCategoryScreen} />
-      <Stack.Screen name="AddEditCategoryScreen" component={AddEditCategoryScreen} />
-      <Stack.Screen name="BudgetScreen" component={BudgetScreen} />
-      <Stack.Screen name="FinanceScreen" component={FinanceScreen} />
-      <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
-      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-      <Stack.Screen name="ChatAI" component={ChatAIScreen} />
-      <Stack.Screen name="GroupManagement" component={GroupManagementScreen} />
-      <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
-      <Stack.Screen name="GroupDetail" component={GroupDetailTabScreen} />
-      <Stack.Screen name="EditGroup" component={EditGroupScreen} />
-      <Stack.Screen name="GroupTransactionList" component={GroupTransactionListScreen} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} />
-      <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
-      <Stack.Screen name="Calendar" component={CalendarScreen} />
-      <Stack.Screen name="SetBudgetLimitScreen" component={SetBudgetLimitScreen} />
-      <Stack.Screen name="AddWalletScreen" component={AddWalletScreen} />
-      <Stack.Screen name="InviteUsers" component={InviteUsersScreen} />
-      <Stack.Screen name="ApproveMembers" component={ApproveMembersScreen} />
-      <Stack.Screen name="GroupMembers" component={GroupMembersScreenContainer} />
+      <Stack.Screen 
+        name="AddExpenseScreen" 
+        children={(props) => (
+          <AddExpenseScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="EditCategoryScreen" 
+        children={(props) => (
+          <EditCategoryScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="AddEditCategoryScreen" 
+        children={(props) => (
+          <AddEditCategoryScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="BudgetScreen" 
+        children={(props) => (
+          <BudgetScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="FinanceScreen" 
+        children={(props) => (
+          <FinanceScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="UpdateProfile" 
+        children={(props) => (
+          <UpdateProfileScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="ChangePassword" 
+        children={(props) => (
+          <ChangePasswordScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="ChatAI" 
+        children={(props) => (
+          <ChatAIScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="GroupManagement" 
+        children={(props) => (
+          <GroupManagementScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="CreateGroup" 
+        children={(props) => (
+          <CreateGroupScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="GroupDetail" 
+        children={(props) => (
+          <GroupDetailTabScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="EditGroup" 
+        children={(props) => (
+          <EditGroupScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="GroupTransactionList" 
+        children={(props) => (
+          <GroupTransactionListScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="Notifications" 
+        children={(props) => (
+          <NotificationsScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="NotificationDetail" 
+        children={(props) => (
+          <NotificationDetailScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="Calendar" 
+        children={(props) => (
+          <CalendarScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="SetBudgetLimitScreen" 
+        children={(props) => (
+          <SetBudgetLimitScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="AddWalletScreen" 
+        children={(props) => (
+          <AddWalletScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="InviteUsers" 
+        children={(props) => (
+          <InviteUsersScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="ApproveMembers" 
+        children={(props) => (
+          <ApproveMembersScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="GroupMembers" 
+        children={(props) => (
+          <GroupMembersScreenWithNav {...props} />
+        )}
+      />
       <Stack.Screen 
         name="GroupSettings" 
         children={({ route }) => (
-          <GroupSettingsScreen 
-            groupId={(route.params as any).groupId} 
-            groupName={(route.params as any).groupName} 
-          />
+          <GroupSettingsScreenWithNav route={route} />
         )}
       />
-      <Stack.Screen name="ReportDetailScreen" component={ReportDetailScreen} />
-      <Stack.Screen name="SelectCategoryScreen" component={SelectCategoryScreen} />
-      <Stack.Screen name="BudgetDetailScreen" component={BudgetDetailScreen} />
+      <Stack.Screen 
+        name="ReportDetailScreen" 
+        children={(props) => (
+          <ReportDetailScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="SelectCategoryScreen" 
+        children={(props) => (
+          <SelectCategoryScreenWithNav {...props} />
+        )}
+      />
+      <Stack.Screen 
+        name="BudgetDetailScreen" 
+        children={(props) => (
+          <BudgetDetailScreenWithNav {...props} />
+        )}
+      />
       <Stack.Screen 
         name="StatusInviteMember" 
         options={{ headerShown: false }}
         children={({ route }) => (
-          <StatusInviteMember {...route.params as { status: GroupMemberStatus }} />
+          <StatusInviteMemberWithNav route={route} />
         )}
       />
     </Stack.Navigator>

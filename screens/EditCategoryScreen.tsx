@@ -14,11 +14,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import CustomConfirmModal from '../components/CustomConfirmModal';
+import CustomErrorModal from '../components/CustomErrorModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 import { categoryService, CategoryType, LocalCategory } from '../services/categoryService';
-import { secureApiService } from '../services/secureApiService';
 import { getIconColor } from '../utils/iconUtils';
 
 export default function EditCategoryScreen() {
@@ -35,13 +37,31 @@ export default function EditCategoryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   
-  // Custom modal state
+  // State cho CustomConfirmModal và CustomSuccessModal
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<{id: string, name: string} | null>(null);
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [infoMessage, setInfoMessage] = useState('');
-  const [successModalVisible, setSuccessModalVisible] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+
+  // State cho CustomErrorModal
+  const [errorModal, setErrorModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'error' as 'error' | 'warning' | 'info' | 'success'
+  });
+  const showError = (message: string, title?: string, type: 'error' | 'warning' | 'info' | 'success' = 'error') => {
+    setErrorModal({
+      visible: true,
+      title: title || t('common.error'),
+      message,
+      type
+    });
+  };
+  const hideErrorModal = () => {
+    setErrorModal(prev => ({ ...prev, visible: false }));
+  };
 
   // Sync activeTab with route params when navigating back
   useEffect(() => {
@@ -58,17 +78,12 @@ export default function EditCategoryScreen() {
   }, [activeTab]);
 
   const loadCategories = async () => {
-    if (!user) {
-      setError('User not authenticated');
-      setLoading(false);
-      return;
-    }
-
+    
     setLoading(true);
     setError(null);
     
     try {
-      console.log('🔄 Loading categories for:', { activeTab, userId: user.id });
+      console.log('🔄 Loading categories for:', { activeTab });
       console.log('🎯 Route params type vs activeTab:', { routeType: route.params.type, activeTab });
       
       // Convert tab to CategoryType
@@ -76,16 +91,15 @@ export default function EditCategoryScreen() {
       console.log('🔍 CategoryType resolved:', { activeTab, categoryType });
       
       // Use same logic as AddExpenseScreen: get userId from /me API and set groupId = 0
-      const userProfile = await secureApiService.getCurrentUserProfile();
-      const userId = userProfile.user_id;
+     
       const groupId = 0; // Same as AddExpenseScreen to fetch all user-specific categories
       
-      console.log('✅ User profile loaded for categories:', { userId, groupId, categoryType });
+      console.log('✅ User profile loaded for categories:', {  groupId, categoryType });
       
       // Fetch categories from API
       const apiCategories = await categoryService.getAllCategoriesByTypeAndUser(
         categoryType,
-        userId,
+        
         groupId
       );
       
@@ -143,39 +157,20 @@ export default function EditCategoryScreen() {
   };
 
   const handleDeleteCategory = async (categoryId: string, categoryLabel: string) => {
-    if (!user) {
-      setInfoMessage('User not authenticated');
-      setInfoModalVisible(true);
-      return;
-    }
-
     setCategoryToDelete({ id: categoryId, name: categoryLabel });
     setDeleteModalVisible(true);
   };
 
   const confirmDeleteCategory = async () => {
     if (!categoryToDelete) return;
-
     try {
-      console.log('🗑️ Deleting category:', categoryToDelete.id);
-      
       setDeleteModalVisible(false);
       setCategoryToDelete(null);
       setLoading(true);
-      
-      // Call API to delete category
       await categoryService.deleteCategory(parseInt(categoryToDelete.id));
-      
-      console.log('✅ Category deleted successfully');
-      
-      // Refresh categories list
       await loadCategories();
-      
-      setSuccessMessage('Category deleted successfully');
       setSuccessModalVisible(true);
-      
     } catch (err: any) {
-      console.error('❌ Failed to delete category:', err);
       setInfoMessage(err.message || 'Failed to delete category');
       setInfoModalVisible(true);
     }
@@ -192,16 +187,14 @@ export default function EditCategoryScreen() {
     } else if (isEditMode) {
       // Only allow deletion of non-system categories
       if (item.is_system_defined) {
-        setInfoMessage('System categories cannot be deleted');
-        setInfoModalVisible(true);
+        showError(t('category.cannotEditSystem') || 'System categories cannot be edited');
         return;
       }
       handleDeleteCategory(item.key, item.label);
     } else {
       // Check if it's a system category
       if (item.is_system_defined) {
-        setInfoMessage('This is a default system category that cannot be edited');
-        setInfoModalVisible(true);
+        showError(t('category.cannotEditSystem') || 'This is a default system category that cannot be edited');
         return;
       }
       
@@ -263,7 +256,7 @@ export default function EditCategoryScreen() {
           <Icon name={item.icon} size={24} color={getIconColor(item.icon, activeTab)} />
           <Text style={styles.categoryLabel}>
             {item.label}
-            {item.is_system_defined && <Text style={styles.systemBadge}> (System)</Text>}
+            {item.is_system_defined && <Text style={styles.systemBadge}> ({t('category.systemDefined')})</Text>}
           </Text>
         </View>
         {!isEditMode && <Icon name="chevron-right" size={20} color="#c7c7cc" />}
@@ -272,6 +265,11 @@ export default function EditCategoryScreen() {
   };
 
   // Prepare data for FlatList
+  // Sort: system-defined categories first, then user-created
+  const sortedCategories = [
+    ...categories.filter(c => c.is_system_defined),
+    ...categories.filter(c => !c.is_system_defined)
+  ];
   const listData: LocalCategory[] = [
     { 
       key: 'add_category', 
@@ -281,7 +279,7 @@ export default function EditCategoryScreen() {
       category_id: -1,
       is_system_defined: false
     },
-    ...categories
+    ...sortedCategories
   ];
 
   // Custom Modal Components
@@ -364,7 +362,7 @@ export default function EditCategoryScreen() {
                 <Icon name="check-circle-outline" size={48} color="#34c759" />
               </View>
               <Text style={styles.modalTitle}>{t('common.success')}</Text>
-              <Text style={styles.modalMessage}>{successMessage}</Text>
+              <Text style={styles.modalMessage}>{t('category.deleteSuccess') || 'Category deleted successfully!'}</Text>
               <View style={styles.modalButtonContainer}>
                 <TouchableOpacity 
                   style={styles.modalOkButton} 
@@ -456,9 +454,34 @@ export default function EditCategoryScreen() {
         refreshing={loading}
         onRefresh={loadCategories}
       />
-      {renderDeleteModal()}
-      {renderInfoModal()}
-      {renderSuccessModal()}
+      {/* Xác nhận xoá bằng CustomConfirmModal */}
+      <CustomConfirmModal
+        visible={deleteModalVisible}
+        title={t('deleteCategory')}
+        message={t('deleteCategoryConfirm') + (categoryToDelete ? ` "${categoryToDelete.name}"?` : '')}
+        confirmText={t('delete')}
+        cancelText={t('cancel')}
+        onConfirm={confirmDeleteCategory}
+        onCancel={cancelDeleteCategory}
+        type="danger"
+        iconName="delete"
+      />
+      {/* Thành công xoá bằng CustomSuccessModal */}
+      <CustomSuccessModal
+        visible={successModalVisible}
+        title={t('common.success')}
+        message={t('categoryDeletedSuccess') || 'Category deleted successfully!'}
+        buttonText="OK"
+        onConfirm={() => setSuccessModalVisible(false)}
+      />
+      {/* Lỗi bằng CustomErrorModal */}
+      <CustomErrorModal
+        visible={errorModal.visible}
+        title={errorModal.title}
+        message={errorModal.message}
+        type={errorModal.type}
+        onDismiss={hideErrorModal}
+      />
     </SafeAreaView>
   );
 }

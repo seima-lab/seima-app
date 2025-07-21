@@ -191,13 +191,14 @@ export class TransactionService {
   /**
    * Get all transactions
    */
-  async getAllTransactions(page = 1, limit = 20): Promise<TransactionResponse[]> {
+  async getAllTransactions(): Promise<TransactionResponse[]> {
     try {
       const response = await apiService.get<TransactionResponse[]>(
-        `${TRANSACTION_ENDPOINTS.LIST}?page=${page}&limit=${limit}`
+        `${TRANSACTION_ENDPOINTS.LIST}/view-history-transactions`
       );
       
       if (response.data) {
+        console.log('🧾 Transactions111:', response.data); 
         return response.data;
       }
       

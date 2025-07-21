@@ -1,5 +1,6 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
@@ -19,7 +20,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { RootStackParamList } from '../navigation/types';
 
+import CustomErrorModal from '../components/CustomErrorModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import CustomToast from '../components/CustomToast';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
@@ -30,11 +34,11 @@ import { CreateTransactionRequest, transactionService, TransactionType } from '.
 import { WalletResponse, walletService } from '../services/walletService';
 
 // Import centralized icon color utility
+import { typography } from '@/constants/typography';
 import { getIconColor } from '../utils/iconUtils';
-
 export default function AddExpenseScreen() {
   const { t, i18n } = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute();
   const { user, isAuthenticated, isLoading: authLoading, refreshTransactions } = useAuth();
   
@@ -96,6 +100,16 @@ export default function AddExpenseScreen() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'error' | 'success' | 'warning' | 'info'>('error');
+
+  // State cho modal lỗi
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorModalTitle, setErrorModalTitle] = useState('');
+  const [errorModalMessage, setErrorModalMessage] = useState('');
+  // State cho modal thành công
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successModalTitle, setSuccessModalTitle] = useState('');
+  const [successModalMessage, setSuccessModalMessage] = useState('');
+  const [onSuccessModalConfirm, setOnSuccessModalConfirm] = useState<(() => void) | null>(null);
 
   // Debug selectedCategory changes
   useEffect(() => {
@@ -185,8 +199,8 @@ export default function AddExpenseScreen() {
       
       // Fetch categories separately for each tab with correct categoryType values
       const [expenseCats, incomeCats] = await Promise.all([
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId, groupId), // categoryType=1
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId, groupId),  // categoryType=0
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE,  groupId), // categoryType=1
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, groupId),  // categoryType=0
       ]);
 
       console.log('✅ Categories loaded:', {
@@ -362,8 +376,8 @@ export default function AddExpenseScreen() {
       
       // Fetch categories separately for each tab with correct categoryType values
       const [expenseCats, incomeCats] = await Promise.all([
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId, groupId),
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId, groupId),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, groupId),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME,  groupId),
       ]);
 
       console.log('✅ Categories refreshed:', {
@@ -437,7 +451,7 @@ export default function AddExpenseScreen() {
     // Reset category selection when switching tabs
     const categories = tab === 'expense' ? expenseCategories : incomeCategories;
     
-    console.log('🔍 Categories for new tab:', {
+    console.log('�� Categories for new tab:', {
       tab: tab,
       categoriesCount: categories.length,
       categories: categories.map(cat => ({
@@ -961,34 +975,16 @@ export default function AddExpenseScreen() {
         const transactionId = parseInt(routeParams.transactionData.id);
         console.log('🔄 Updating existing transaction with ID:', transactionId);
         await transactionService.updateTransaction(transactionId, transactionData);
-        
-        // Trigger global refresh
+        // Trigger global refresh và quay lại ngay
         refreshTransactions();
-        
-        Alert.alert(t('common.success'), t('common.transactionUpdated'), [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              // Navigate back to appropriate screen
-              if (fromGroupTransactionList && groupContextId && groupContextName) {
-                // Reset navigation stack to prevent duplicate screens
-                (navigation as any).reset({
-                  index: 1,
-                  routes: [
-                    { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
-                    { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
-                  ],
-                });
-              } else if (fromGroupOverview && groupContextId && groupContextName) {
-                // For GroupOverview, just go back normally to avoid navigation stack issues
-                navigation.goBack();
-              } else {
-                // Normal navigation back
-                navigation.goBack();
-              }
-            }
-          }
-        ]);
+        setIsSaving(false); // Đặt trước navigation.goBack()
+        setSuccessModalTitle(t('common.success'));
+        setSuccessModalMessage(t('common.transactionUpdated'));
+        setSuccessModalVisible(true);
+        setOnSuccessModalConfirm(() => () => {
+          setSuccessModalVisible(false);
+          navigation.goBack();
+        });
       } else {
         // Create new transaction
         if (activeTab === 'expense') {
@@ -996,34 +992,16 @@ export default function AddExpenseScreen() {
         } else {
           await transactionService.createIncome(transactionData);
         }
-        
-        // Trigger global refresh
+        // Trigger global refresh và quay lại ngay
         refreshTransactions();
-        
-        Alert.alert(t('common.success'), t('common.transactionSaved'), [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              // Navigate back to appropriate screen
-              if (fromGroupTransactionList && groupContextId && groupContextName) {
-                // Reset navigation stack to prevent duplicate screens
-                (navigation as any).reset({
-                  index: 1,
-                  routes: [
-                    { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
-                    { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
-                  ],
-                });
-              } else if (fromGroupOverview && groupContextId && groupContextName) {
-                // For GroupOverview, just go back normally to avoid navigation stack issues
-                navigation.goBack();
-              } else {
-                // Normal navigation back
-                navigation.goBack();
-              }
-            }
-          }
-        ]);
+        setIsSaving(false); // Đặt trước navigation.goBack()
+        setSuccessModalTitle(t('common.success'));
+        setSuccessModalMessage(t('common.transactionSaved'));
+        setSuccessModalVisible(true);
+        setOnSuccessModalConfirm(() => () => {
+          setSuccessModalVisible(false);
+          navigation.goBack();
+        });
       }
 
     } catch (error: any) {
@@ -1033,31 +1011,31 @@ export default function AddExpenseScreen() {
       if (error.message?.includes('Authentication failed') || 
           error.message?.includes('Please login again') ||
           error.message?.includes('User not authenticated')) {
-        Alert.alert(t('common.error'), t('common.pleaseLogin'), [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              if (fromGroupTransactionList && groupContextId && groupContextName) {
-                // Reset navigation stack to prevent duplicate screens
-                (navigation as any).reset({
-                  index: 1,
-                  routes: [
-                    { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
-                    { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
-                  ],
-                });
-              } else if (fromGroupOverview && groupContextId && groupContextName) {
-                // For GroupOverview, just go back normally to avoid navigation stack issues
-                navigation.goBack();
-              } else {
-                // Normal navigation back
-                navigation.goBack();
-              }
-            }
+        setErrorModalTitle(t('common.error'));
+        setErrorModalMessage(t('common.pleaseLogin'));
+        setErrorModalVisible(true);
+        setOnSuccessModalConfirm(() => () => {
+          setErrorModalVisible(false);
+          if (fromGroupTransactionList && groupContextId && groupContextName) {
+            (navigation as any).reset({
+              index: 1,
+              routes: [
+                { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
+                { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
+              ],
+            });
+          } else if (fromGroupOverview && groupContextId && groupContextName) {
+            // For GroupOverview, just go back normally to avoid navigation stack issues
+            navigation.goBack();
+          } else {
+            // Normal navigation back
+            navigation.goBack();
           }
-        ]);
+        });
       } else {
-        Alert.alert(t('common.error'), t('common.failedToSaveTransaction'));
+        setErrorModalTitle(t('common.error'));
+        setErrorModalMessage(t('common.failedToSaveTransaction'));
+        setErrorModalVisible(true);
       }
     } finally {
       setIsSaving(false);
@@ -1066,32 +1044,42 @@ export default function AddExpenseScreen() {
 
   const validateForm = () => {
     if (!amount.trim()) {
-      Alert.alert(t('common.error'), t('common.pleaseEnterAmount'));
+      setErrorModalTitle(t('common.error'));
+      setErrorModalMessage(t('common.pleaseEnterAmount'));
+      setErrorModalVisible(true);
       return false;
     }
     
     const amountValue = getNumericAmount(amount);
     if (amountValue <= 0) {
-      Alert.alert(t('common.error'), t('common.pleaseEnterValidAmount'));
+      setErrorModalTitle(t('common.error'));
+      setErrorModalMessage(t('common.pleaseEnterValidAmount'));
+      setErrorModalVisible(true);
       return false;
     }
     
     // Check if amount exceeds 15 digits
     const digitsOnly = amount.replace(/[^\d]/g, '');
     if (digitsOnly.length > 15) {
-      Alert.alert(t('common.error'), t('common.amountExceed15Digits'));
+      setErrorModalTitle(t('common.error'));
+      setErrorModalMessage(t('common.amountExceed15Digits'));
+      setErrorModalVisible(true);
       return false;
     }
     
     // Check if amount is too large for JavaScript number precision
     if (amountValue > Number.MAX_SAFE_INTEGER) {
-      Alert.alert(t('common.error'), t('common.amountTooLarge'));
+      setErrorModalTitle(t('common.error'));
+      setErrorModalMessage(t('common.amountTooLarge'));
+      setErrorModalVisible(true);
       return false;
     }
     
     // Validate note (optional but with constraints if provided)
     if (note.trim().length > 500) {
-      Alert.alert(t('common.error'), t('common.noteExceed500Chars'));
+      setErrorModalTitle(t('common.error'));
+      setErrorModalMessage(t('common.noteExceed500Chars'));
+      setErrorModalVisible(true);
       return false;
     }
     
@@ -1106,17 +1094,23 @@ export default function AddExpenseScreen() {
     ];
     
     if (suspiciousPatterns.some(pattern => pattern.test(note))) {
-      Alert.alert(t('common.error'), t('common.noteInvalidChars'));
+      setErrorModalTitle(t('common.error'));
+      setErrorModalMessage(t('common.noteInvalidChars'));
+      setErrorModalVisible(true);
       return false;
     }
     
     if (!selectedCategory) {
-      Alert.alert(t('common.error'), t('common.pleaseSelectCategory'));
+      setErrorModalTitle(t('common.error'));
+      setErrorModalMessage(t('common.pleaseSelectCategory'));
+      setErrorModalVisible(true);
       return false;
     }
     
     if (!selectedWallet) {
-      Alert.alert(t('common.error'), t('common.pleaseSelectWallet'));
+      setErrorModalTitle(t('common.error'));
+      setErrorModalMessage(t('common.pleaseSelectWallet'));
+      setErrorModalVisible(true);
       return false;
     }
     
@@ -1159,7 +1153,11 @@ export default function AddExpenseScreen() {
     // Only add "Edit" item if not called from GroupOverviewScreen
     if (fromGroupOverview) {
       // Return categories without edit option when from group overview
-      return categories;
+      // Sort: system-defined categories first, then user-created
+      return [
+        ...categories.filter(c => c.is_system_defined),
+        ...categories.filter(c => !c.is_system_defined)
+      ];
     }
     
     // Add "Edit" item at the end of the categories list for normal flow
@@ -1172,7 +1170,12 @@ export default function AddExpenseScreen() {
       is_system_defined: false
     };
     
-    return [...categories, editItem];
+    // Sort: system-defined categories first, then user-created, rồi mới tới Edit
+    return [
+      ...categories.filter(c => c.is_system_defined),
+      ...categories.filter(c => !c.is_system_defined),
+      editItem
+    ];
   };
 
   const getSelectedWalletName = () => {
@@ -1219,6 +1222,14 @@ export default function AddExpenseScreen() {
     return numericValue ? parseInt(numericValue, 10) : 0;
   };
 
+  // Thêm hàm copy transaction
+  const handleCopyTransaction = () => {
+    if (!isEditMode || !transactionData) return;
+    navigation.navigate('AddExpenseScreen', {
+      ...transactionData,
+      editMode: false, // chuyển sang chế độ add
+    });
+  };
 
 
   const renderCategoryItem = ({ item }: { item: LocalCategory }) => {
@@ -1333,6 +1344,15 @@ export default function AddExpenseScreen() {
             >
                 <Icon name="camera" size={24} color="#007aff" />
               </TouchableOpacity>
+            {/* Copy Icon - chỉ hiển thị khi edit */}
+            {isEditMode && (
+              <TouchableOpacity
+                style={styles.cameraButton}
+                onPress={handleCopyTransaction}
+              >
+                <Icon name="content-copy" size={24} color="#007aff" />
+              </TouchableOpacity>
+            )}
 
             {/* Debug Permission Button - Only show in development */}
        
@@ -1639,6 +1659,32 @@ export default function AddExpenseScreen() {
         onHide={() => setShowToast(false)}
         duration={4000}
       />
+      <CustomErrorModal
+        visible={errorModalVisible}
+        title={errorModalTitle}
+        message={errorModalMessage}
+        onDismiss={() => {
+          setErrorModalVisible(false);
+          if (onSuccessModalConfirm) {
+            onSuccessModalConfirm();
+            setOnSuccessModalConfirm(null);
+          }
+        }}
+      />
+      <CustomSuccessModal
+        visible={successModalVisible}
+        title={successModalTitle}
+        message={successModalMessage}
+        buttonText={t('common.ok')}
+        onConfirm={() => {
+          if (onSuccessModalConfirm) {
+            onSuccessModalConfirm();
+            setOnSuccessModalConfirm(null);
+          } else {
+            setSuccessModalVisible(false);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -1656,12 +1702,16 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     color: '#666',
+    ...typography.regular,
+    fontSize: 16,
   },
   subLoadingText: {
     marginTop: 5,
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+    ...typography.regular,
+   
   },
   content: {
     flex: 1,
@@ -1705,7 +1755,7 @@ const styles = StyleSheet.create({
   },
   editHeaderTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    ...typography.semibold,
     color: '#333',
   },
   row: { 
@@ -1717,7 +1767,7 @@ const styles = StyleSheet.create({
     width: 80,
     fontSize: 16, 
     color: '#333', 
-    fontWeight: '500', 
+    ...typography.regular, 
   },
   input: {
     flex: 1,
@@ -1741,7 +1791,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     color: '#007aff',
-    fontWeight: '500',
+    ...typography.regular,
   },
   amountContainer: {
     flex: 1,
@@ -1787,7 +1837,7 @@ const styles = StyleSheet.create({
 
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '500',
+    ...typography.regular,
     color: '#333',
     marginBottom: 12,
     paddingHorizontal: 8, // Thêm padding horizontal cân bằng với categories
@@ -1837,7 +1887,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#fff', 
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   modalOverlay: {
     flex: 1,
@@ -1859,7 +1909,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   modalButton: {
     fontSize: 16,
@@ -1889,7 +1939,7 @@ const styles = StyleSheet.create({
   },
   walletPickerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    ...typography.semibold,
     color: '#333',
     textAlign: 'center',
     paddingVertical: 16,
@@ -1915,7 +1965,7 @@ const styles = StyleSheet.create({
   },
   walletPickerItemTextSelected: {
     color: '#1e90ff',
-    fontWeight: '600',
+    ...typography.semibold,
   },
   walletPickerDefault: {
     fontSize: 12,
@@ -1924,7 +1974,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
-    fontWeight: '500',
+    ...typography.regular,
   },
   // Camera button styles
   cameraButton: {
@@ -1972,7 +2022,7 @@ const styles = StyleSheet.create({
   },
   imageOptionsTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    ...typography.semibold,
     color: '#333',
     textAlign: 'center',
     paddingVertical: 16,
@@ -2024,7 +2074,7 @@ const styles = StyleSheet.create({
   },
   createWalletTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    ...typography.semibold,
     color: '#333',
     textAlign: 'center',
     marginBottom: 12,
@@ -2056,12 +2106,12 @@ const styles = StyleSheet.create({
   createWalletButtonTextCancel: {
     color: '#666',
     fontSize: 16,
-    fontWeight: '500',
+    ...typography.regular,
   },
   createWalletButtonTextConfirm: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '500',
+    ...typography.regular,
   },
   // Group context styles
   groupContextContainer: {
@@ -2076,7 +2126,7 @@ const styles = StyleSheet.create({
   groupContextText: {
     fontSize: 14,
     color: '#4A90E2',
-    fontWeight: '500',
+    ...typography.regular,
     marginLeft: 6,
   },
   // Thêm style mới cho container cố định nút Save

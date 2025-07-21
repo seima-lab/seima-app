@@ -2,10 +2,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
-  Modal,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -19,6 +17,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomConfirmModal from '../components/CustomConfirmModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
 import { useNavigationService } from '../navigation/NavigationService';
 import { WalletResponse, walletService } from '../services/walletService';
@@ -77,6 +77,8 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   const navigation = useNavigationService();
   const isFirstRender = useRef(true);
   const shouldAutoRefresh = useRef(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Wallet data state
   const [wallets, setWallets] = useState<WalletResponse[]>([]);
@@ -250,11 +252,8 @@ const WalletScreen = ({ footerHeight = 0 }) => {
       await loadWallets(false);
       console.log('🔄 Wallets reloaded after deletion');
       
-      Alert.alert(
-        t('common.success'),
-        `Wallet "${deletedWalletName}" has been deleted successfully.`,
-        [{ text: 'OK' }]
-      );
+      setSuccessMessage(t('wallet.deleteWalletSuccess') || 'Wallet deleted successfully!');
+      setShowSuccessModal(true);
       
     } catch (error: any) {
       console.error('❌ Failed to delete wallet:', error);
@@ -337,65 +336,9 @@ const WalletScreen = ({ footerHeight = 0 }) => {
     return styles.balanceZero;
   }
 
-  const renderCustomAlert = () => (
-    <Modal
-      transparent={true}
-      visible={deleteAlertVisible}
-      animationType="fade"
-      onRequestClose={cancelDelete}
-    >
-      <View style={styles.alertOverlay}>
-        <View style={styles.alertContainer}>
-          <View style={styles.alertIconContainer}>
-            <Icon name="warning" size={rf(48)} color="#ff4757" />
-          </View>
-          <Text style={styles.alertTitle}>
-            {deleteWalletInfo?.isDefault ? 'Delete Default Wallet' : t('wallet.alertTitle')}
-          </Text>
-          <Text style={styles.alertMessage}>
-            {deleteWalletInfo?.isDefault 
-              ? `"${deleteWalletInfo.name}" is your default wallet. Are you sure you want to delete it? You'll need to set another wallet as default.`
-              : t('wallet.deleteMessage', { walletName: deleteWalletInfo?.name })
-            }
-          </Text>
-          <View style={styles.alertButtonContainer}>
-            <TouchableOpacity style={styles.alertCancelButton} onPress={cancelDelete}>
-              <Text style={styles.alertCancelText}>{t('cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.alertDeleteButton} onPress={confirmDelete}>
-              <Text style={styles.alertDeleteText}>{t('delete')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-
-  // Show loading state
-  if (loading && !refreshing) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#1e90ff" />
-        <Text style={styles.loadingText}>{t('common.loading')}...</Text>
-      </View>
-    );
-  }
-
   // Calculate balances
   const totalBalance = calculateTotalBalance();
   const totalAssets = calculateTotalAssets();
-  const totalDebts = 0;
-
-  console.log('🔍 Total wallets:', wallets.length);
-  console.log('📱 Included wallets:', wallets.filter(wallet => !wallet.is_delete && wallet.is_active !== false).length);
-  console.log('💼 Wallets details:', wallets.map(w => ({
-    id: w.id,
-    name: w.wallet_name,
-    is_active: w.is_active,
-    is_delete: w.is_delete,
-    exclude_from_total: w.exclude_from_total,
-    balance: w.current_balance
-  })));
 
   return (
     <View style={styles.container}>
@@ -454,14 +397,6 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                     {totalAssets.toLocaleString('vi-VN')} {t('currency')} 
                   </Text>
                 </View>
-                <View style={styles.balanceItem}>
-                  <Text style={[styles.balanceSubLabel, typography.medium]}>
-                    {t('wallet.totalDebts')}
-                  </Text>
-                  <Text style={[styles.balanceSubAmount, typography.semibold]}> 
-                    {totalDebts.toLocaleString('vi-VN')} {t('currency')} 
-                  </Text>
-                </View>
               </View>
             </View>
 
@@ -483,7 +418,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                     return a.exclude_from_total ? 1 : -1;
                   })
                   .map((wallet, index) => (
-                    <View key={`${wallet.id}-${index}`} style={[styles.accountItem, wallet.exclude_from_total && styles.disabledAccountItem]}>
+                    <View key={`${wallet.id}-${index}`} style={[styles.accountItem, wallet.exclude_from_total && styles.disabledAccountItem]} pointerEvents="box-none">
                       <View style={[getWalletIconStyle(wallet.wallet_type_name), wallet.exclude_from_total && styles.disabledAccountIcon]}>
                         {getWalletIcon(wallet.wallet_type_name)}
                       </View>
@@ -518,12 +453,12 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                     </View>
                   ))
               ) : (
-                <View style={styles.emptyContainer}>
-                  <Text style={[styles.emptyText, typography.regular]}> 
-                    No wallets found
+                <View style={styles.emptyWalletContainer}>
+                  <Text style={[styles.emptyWalletText, typography.semibold]}> 
+                    {t('wallet.noWalletsFound')}
                   </Text>
-                  <Text style={[styles.emptySubText, typography.regular]}> 
-                    Add your first wallet to get started
+                  <Text style={[styles.emptyWalletSubText, typography.regular]}> 
+                    {t('wallet.addFirstWallet')}
                   </Text>
                 </View>
               )}
@@ -552,9 +487,28 @@ const WalletScreen = ({ footerHeight = 0 }) => {
               </TouchableOpacity>
             </View>
           </SafeAreaView>
-          {renderCustomAlert()}
+         <CustomConfirmModal
+           visible={deleteAlertVisible}
+           title={deleteWalletInfo?.isDefault ? t('wallet.alertTitleDeleteDefault') : t('wallet .alertTitleDelete')}
+           message={deleteWalletInfo?.isDefault
+             ? `"${deleteWalletInfo.name}" ${t('wallet.deleteWalletMessageDefault')}`
+             : t('wallet.deleteMessage', { walletName: deleteWalletInfo?.name })}
+           confirmText={t('delete')}
+           cancelText={t('cancel')}
+           onConfirm={confirmDelete}
+           onCancel={cancelDelete}
+           type="danger"
+           iconName="delete"
+         />
         </ScrollView>
       </TouchableWithoutFeedback>
+      <CustomSuccessModal
+        visible={showSuccessModal}
+        title={t('common.success')}
+        message={successMessage}
+        buttonText={t('common.ok')}
+        onConfirm={() => setShowSuccessModal(false)}
+      />
     </View>
   );
 };
@@ -732,6 +686,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
     zIndex: 1000,
+    opacity: 1, // Luôn rõ nét
+    pointerEvents: 'auto',
   },
   menuContainerAbove: {
     top: -80, // Position above the item instead of below
@@ -848,6 +804,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  emptyWalletContainer: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 24,
+    marginHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  emptyWalletText: {
+    fontSize: 18,
+    color: '#64748b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyWalletSubText: {
+    fontSize: 15,
+    color: '#94a3b8',
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 16,
