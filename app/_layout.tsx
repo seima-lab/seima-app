@@ -9,32 +9,32 @@ import { ActivityIndicator, LogBox, PermissionsAndroid, Platform, View } from 'r
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import {
-  AddEditCategoryScreenWithNav,
-  AddExpenseScreenWithNav,
-  AddWalletScreenWithNav,
-  ApproveMembersScreenWithNav,
-  BudgetDetailScreenWithNav,
-  BudgetScreenWithNav,
-  CalendarScreenWithNav,
-  ChangePasswordScreenWithNav,
-  ChatAIScreenWithNav,
-  CreateGroupScreenWithNav,
-  EditCategoryScreenWithNav,
-  EditGroupScreenWithNav,
-  FinanceScreenWithNav,
-  GroupDetailTabScreenWithNav,
-  GroupManagementScreenWithNav,
-  GroupMembersScreenWithNav,
-  GroupSettingsScreenWithNav,
-  GroupTransactionListScreenWithNav,
-  InviteUsersScreenWithNav,
-  NotificationDetailScreenWithNav,
-  NotificationsScreenWithNav,
-  ReportDetailScreenWithNav,
-  SelectCategoryScreenWithNav,
-  SetBudgetLimitScreenWithNav,
-  StatusInviteMemberWithNav,
-  UpdateProfileScreenWithNav
+    AddEditCategoryScreenWithNav,
+    AddExpenseScreenWithNav,
+    AddWalletScreenWithNav,
+    ApproveMembersScreenWithNav,
+    BudgetDetailScreenWithNav,
+    BudgetScreenWithNav,
+    CalendarScreenWithNav,
+    ChangePasswordScreenWithNav,
+    ChatAIScreenWithNav,
+    CreateGroupScreenWithNav,
+    EditCategoryScreenWithNav,
+    EditGroupScreenWithNav,
+    FinanceScreenWithNav,
+    GroupDetailTabScreenWithNav,
+    GroupManagementScreenWithNav,
+    GroupMembersScreenWithNav,
+    GroupSettingsScreenWithNav,
+    GroupTransactionListScreenWithNav,
+    InviteUsersScreenWithNav,
+    NotificationDetailScreenWithNav,
+    NotificationsScreenWithNav,
+    ReportDetailScreenWithNav,
+    SelectCategoryScreenWithNav,
+    SetBudgetLimitScreenWithNav,
+    StatusInviteMemberWithNav,
+    UpdateProfileScreenWithNav
 } from '../components/ScreenWrappers';
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
@@ -48,6 +48,7 @@ import MainTabScreen from '../screens/MainTabScreen';
 import OTPScreen from '../screens/OTPScreen';
 import RegisterScreen from '../screens/register';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import SelectWalletScreen from '../screens/SelectWalletScreen';
 import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import BranchService from '../services/branchService';
 import { getUnreadNotifications, type Notification } from '../services/notificationService';
@@ -274,6 +275,10 @@ function AuthNavigator() {
         children={({ route }) => (
           <StatusInviteMemberWithNav route={route} />
         )}
+      />
+      <Stack.Screen 
+        name="SelectWalletScreen" 
+        component={SelectWalletScreen} 
       />
     </Stack.Navigator>
   );

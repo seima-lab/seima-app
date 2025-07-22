@@ -450,7 +450,7 @@ export class CategoryService {
       }
       
       // Return real API categories (with proper DB IDs)
-      return categories;
+      return categories.sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0));
       
     } catch (error) {
       console.error('❌ Error fetching categories:', error);
@@ -502,7 +502,7 @@ export class CategoryService {
       }
       
       console.log('📊 Extracted ALL categories count:', categories.length);
-      return categories;
+      return categories.sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0));
     } catch (error) {
       console.error('❌ Error fetching all categories:', error);
       // If this fails, we can't really fall back, so we throw

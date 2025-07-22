@@ -424,10 +424,6 @@ const ChatAIScreen = () => {
                             <Text style={styles.headerSubtitle}>Trợ lý tài chính thông minh</Text>
                         </View>
                     </View>
-                    
-                    <TouchableOpacity style={styles.headerAction}>
-                        <Icon name="more-vert" size={24} color="#FFFFFF" />
-                    </TouchableOpacity>
                 </LinearGradient>
 
                 <KeyboardAvoidingView 

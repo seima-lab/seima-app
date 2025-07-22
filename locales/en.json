@@ -879,6 +879,8 @@
       "close": "Close",
       "repeat": "Repeat",
       "selectRepeatTitle": "Select repeat cycle",
+      "none": "None",
+      "daily": "Daily",
       "weekly": "Weekly",
       "monthly": "Monthly",
       "yearly": "Yearly",
@@ -886,6 +888,7 @@
       "endDate": "End date",
       "selectStartDate": "Select start date",
       "selectEndDate": "Select end date",
+      "unknownEndDate": "Unknown",
       "confirm": "Confirm",
       "save": "Save",
       "update": "Update",
@@ -902,7 +905,8 @@
         "weeklyPeriodRequired": "Weekly period must be at least 7 days! End date has been automatically adjusted.",
         "monthlyPeriodRequired": "Monthly period must be at least 1 month! End date has been automatically adjusted.",
         "yearlyPeriodRequired": "Yearly period must be at least 1 year! End date has been automatically adjusted.",
-        "invalidPeriod": "End date does not match the selected period!"
+        "invalidPeriod": "End date does not match the selected period!",
+        "dailyPeriodRequired": "Daily period must be at least 1 day! End date has been automatically adjusted."
       },
       "success": {
         "create": "Budget created successfully!",
@@ -1073,4 +1077,5 @@
       }
     }
   }
+
 } 

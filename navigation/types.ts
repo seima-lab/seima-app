@@ -139,6 +139,11 @@ export type RootStackParamList = {
     joined_at?: string;
     invited_at?: string;
   };
+  SelectWalletScreen: {
+    wallets: import('../services/walletService').WalletResponse[];
+    selectedWallet?: import('../services/walletService').WalletResponse | null;
+    onSelectWallet: (wallet: import('../services/walletService').WalletResponse | null) => void;
+  };
 };
-
+  
 export type ScreenNames = keyof RootStackParamList; 

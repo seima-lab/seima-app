@@ -422,5 +422,11 @@ export class TransactionService {
   }
 }
 
+export async function viewHistoryTransactions(params: { page: number, size: number }) {
+  // Nếu apiService.get nhận { params }, giữ nguyên. Nếu không, tự build query string:
+  const query = `?page=${params.page}&size=${params.size}`;
+  return apiService.get('/api/v1/transactions/view-history-transactions' + query);
+}
+
 // Export singleton instance
 export const transactionService = new TransactionService(); 

@@ -564,9 +564,9 @@
     "calendar": "Lịch",
     "chatAI": "Chat AI",
     "groups": "Nhóm",
-    "budget": "Ngân sách"
+    "budget": "Hạn mức"
   },
-
+  
   "profile": {
     "name": "Tên",
     "firstName": "Họ",
@@ -939,6 +939,8 @@
       "close": "Đóng",
       "repeat": "Lặp lại",
       "selectRepeatTitle": "Chọn chu kỳ lặp",
+      "none": "Không lặp lại",
+      "daily": "Hàng ngày",
       "weekly": "Hàng tuần",
       "monthly": "Hàng tháng",
       "yearly": "Hàng năm",
@@ -962,7 +964,8 @@
         "weeklyPeriodRequired": "Chu kỳ hàng tuần phải ít nhất 7 ngày! Ngày kết thúc đã được tự động điều chỉnh.",
         "monthlyPeriodRequired": "Chu kỳ hàng tháng phải ít nhất 1 tháng! Ngày kết thúc đã được tự động điều chỉnh.",
         "yearlyPeriodRequired": "Chu kỳ hàng năm phải ít nhất 1 năm! Ngày kết thúc đã được tự động điều chỉnh.",
-        "invalidPeriod": "Ngày kết thúc không phù hợp với chu kỳ đã chọn!"
+        "invalidPeriod": "Ngày kết thúc không phù hợp với chu kỳ đã chọn!",
+        "dailyPeriodRequired": "Chu kỳ hàng ngày phải ít nhất 1 ngày! Ngày kết thúc đã được tự động điều chỉnh."
       },
       "success": {
         "create": "Tạo hạn mức thành công!",

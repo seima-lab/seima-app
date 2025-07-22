@@ -6,17 +6,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -149,6 +149,16 @@ export default function AddExpenseScreen() {
     }, [hasInitiallyLoaded])
   );
 
+  // Sau khi setExpenseCategories và setIncomeCategories, nếu chưa có selectedCategory thì chọn mặc định
+  useEffect(() => {
+    if (!selectedCategory) {
+      const categories = activeTab === 'expense' ? expenseCategories : incomeCategories;
+      if (categories.length > 0) {
+        setSelectedCategory(categories[0].key);
+      }
+    }
+  }, [expenseCategories, incomeCategories, activeTab]);
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -226,10 +236,18 @@ export default function AddExpenseScreen() {
         console.error('Please check if backend has income categories with categoryType=0.');
       }
 
-      // Convert to local format
+      // Convert to local format và sort theo id tăng dần
       const categoryServiceInstance = CategoryService.getInstance();
-      setExpenseCategories(expenseCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
-      setIncomeCategories(incomeCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
+      setExpenseCategories(
+        expenseCats
+          .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
+          .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0))
+      );
+      setIncomeCategories(
+        incomeCats
+          .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
+          .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0))
+      );
 
       console.log('🔄 Converted expense categories:', expenseCats.map(cat => {
         const converted = categoryServiceInstance.convertToLocalCategory(cat);
@@ -385,10 +403,18 @@ export default function AddExpenseScreen() {
         incomeCount: incomeCats.length,
       });
 
-      // Convert to local format
+      // Convert to local format và sort theo id tăng dần
       const categoryServiceInstance = CategoryService.getInstance();
-      setExpenseCategories(expenseCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
-      setIncomeCategories(incomeCats.map(cat => categoryServiceInstance.convertToLocalCategory(cat)));
+      setExpenseCategories(
+        expenseCats
+          .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
+          .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0))
+      );
+      setIncomeCategories(
+        incomeCats
+          .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
+          .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0))
+      );
 
       // Update selected category if current one is invalid
       const currentCategories = activeTab === 'expense' ? expenseCats : incomeCats;
@@ -1469,7 +1495,7 @@ export default function AddExpenseScreen() {
         <Text style={styles.sectionTitle}>{t('category.title')}</Text>
         <View style={{ width: '100%', paddingHorizontal: 0 }}>
             <FlatList
-          data={getCurrentCategories()}
+              data={getCurrentCategories()}
               renderItem={renderCategoryItem}
           keyExtractor={(item) => item.key}
           numColumns={4}

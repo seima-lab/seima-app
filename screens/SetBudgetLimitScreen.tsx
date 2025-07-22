@@ -28,6 +28,8 @@ import { deduplicateCategories, getIconColor, getIconForCategory } from '../util
 const { width } = Dimensions.get('window');
 
 const PERIOD_OPTIONS = [
+  { label: 'budget.setBudgetLimit.none', value: 'NONE' },
+  { label: 'budget.setBudgetLimit.daily', value: 'DAILY' },
   { label: 'budget.setBudgetLimit.weekly', value: 'WEEKLY' },
   { label: 'budget.setBudgetLimit.monthly', value: 'MONTHLY' },
   { label: 'budget.setBudgetLimit.yearly', value: 'YEARLY' },
@@ -48,10 +50,10 @@ const BudgetLimitScreen = () => {
   const [amountFontSize, setAmountFontSize] = useState(28);
   const [limitName, setLimitName] = useState('');
   const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState<Date | null>(new Date(Date.now() + 24*60*60*1000));
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [showStartDateModal, setShowStartDateModal] = useState(false);
   const [showEndDateModal, setShowEndDateModal] = useState(false);
-  const [periodType, setPeriodType] = useState('MONTHLY');
+  const [periodType, setPeriodType] = useState('NONE');
   const [showRepeatModal, setShowRepeatModal] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<CategoryResponse[]>([]);
   const [allAvailableCategories, setAllAvailableCategories] = useState<CategoryResponse[]>([]);
@@ -86,7 +88,7 @@ const BudgetLimitScreen = () => {
   useEffect(() => {
     const loadAllCategories = async () => {
       try {
-        const categories = await categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0, 1);
+        const categories = await categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0);
         setAllAvailableCategories(categories);
       } catch (error) {
         console.error('Error loading all available categories:', error);
@@ -96,7 +98,7 @@ const BudgetLimitScreen = () => {
   }, []);
   
   const [wallets, setWallets] = useState<WalletResponse[]>([]);
-  const [selectedWallet, setSelectedWallet] = useState<WalletResponse | null>(null);
+  const [selectedWalletIds, setSelectedWalletIds] = useState<number[]>([]);
   const [showWalletPicker, setShowWalletPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -112,26 +114,9 @@ const BudgetLimitScreen = () => {
 
   // Helper function to calculate end date based on period type
   const calculateEndDateFromPeriod = (periodType: string, startDate: Date) => {
-    let calculatedEndDate = new Date(startDate);
-    
-    switch (periodType) {
-      case 'WEEKLY':
-        // Add 1 week (7 days) from start date
-        calculatedEndDate.setDate(startDate.getDate() + 7);
-        break;
-      case 'MONTHLY':
-        // Add 1 month from start date
-        calculatedEndDate.setMonth(startDate.getMonth() + 1);
-        break;
-      case 'YEARLY':
-        // Add 1 year from start date
-        calculatedEndDate.setFullYear(startDate.getFullYear() + 1);
-        break;
-      default:
-        return;
-    }
-    
-    setEndDate(calculatedEndDate);
+    // Không tự động tính ngày kết thúc nữa
+    // Người dùng sẽ chọn thủ công
+    setEndDate(null);
   };
 
   // Load initial categories for new budget
@@ -139,23 +124,23 @@ const BudgetLimitScreen = () => {
     if (!isEditMode) {
       const loadInitialCategories = async () => {
         try {
-          const allExpenseCategories = await categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0, 1);
+          const allExpenseCategories = await categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0);
           setSelectedCategories(allExpenseCategories);
         } catch (error) {
           console.error('Failed to load initial categories:', error);
         }
       };
       loadInitialCategories();
-      
-      // Set default end date for new budget based on default period type (MONTHLY)
-      calculateEndDateFromPeriod(periodType, startDate);
+      // Không tự động set endDate nữa
+      setEndDate(null);
     }
   }, [isEditMode]);
 
   // Recalculate end date when startDate or periodType changes for new budgets
   useEffect(() => {
     if (!isEditMode && startDate) {
-      calculateEndDateFromPeriod(periodType, startDate);
+      // Không tự động set endDate nữa
+      setEndDate(null);
     }
   }, [startDate, periodType, isEditMode]);
 
@@ -242,7 +227,8 @@ const BudgetLimitScreen = () => {
   useEffect(() => {
     walletService.getAllWallets().then((data) => {
       setWallets(data);
-      if (data.length > 0) setSelectedWallet(data.find(w => w.is_default) || data[0]);
+      // Nếu chưa chọn ví nào thì mặc định chọn tất cả
+      setSelectedWalletIds((prev) => (prev.length === 0 ? data.map(w => w.id) : prev));
     });
   }, []);
 
@@ -265,7 +251,7 @@ const BudgetLimitScreen = () => {
       if (budgetDetail) {
         setLimitName(budgetDetail.budget_name || '');
         setAmount(formatCurrency(budgetDetail.overall_amount_limit?.toString() || ''));
-        setPeriodType(budgetDetail.period_type || 'MONTHLY');
+        setPeriodType(budgetDetail.period_type || 'NONE');
         
         // Set dates
         if (budgetDetail.start_date) {
@@ -357,13 +343,16 @@ const BudgetLimitScreen = () => {
   const handleRepeatSelect = (frequency: string) => {
     setPeriodType(frequency);
     setShowRepeatModal(false);
-    
-    // Auto-calculate end date based on period type and start date
-    calculateEndDateFromPeriod(frequency, startDate);
+    // Không tự động tính endDate nữa
+    setEndDate(null);
   };
 
   const getPeriodLabel = (value: string) => {
     switch (value) {
+      case 'NONE':
+        return t('budget.setBudgetLimit.none');
+      case 'DAILY':
+        return t('budget.setBudgetLimit.daily');
       case 'WEEKLY':
         return t('budget.setBudgetLimit.weekly');
       case 'MONTHLY':
@@ -371,7 +360,7 @@ const BudgetLimitScreen = () => {
       case 'YEARLY':
         return t('budget.setBudgetLimit.yearly');
       default:
-        return t('budget.setBudgetLimit.monthly');
+        return t('budget.setBudgetLimit.none');
     }
   };
 
@@ -394,18 +383,19 @@ const BudgetLimitScreen = () => {
 
   const handleEndDateSelect = (day: { dateString: string }) => {
     const selectedDate = new Date(day.dateString);
-    
-    // Validate if the selected end date matches the period requirement
-    if (!validateEndDateForPeriod(selectedDate, startDate, periodType)) {
-      // Show warning and auto-correct the end date
-      const correctEndDate = new Date(startDate);
-      calculateEndDateFromPeriod(periodType, startDate);
-      
-      // Show validation warning
-      showValidationError(getInvalidPeriodMessage(periodType));
-      return;
+    // Nếu không lặp lại: chỉ cần endDate > startDate
+    if (periodType === 'NONE') {
+      if (selectedDate <= startDate) {
+        showValidationError(t('budget.setBudgetLimit.validation.endDateBeforeStart'));
+        return;
+      }
+    } else {
+      // Có lặp lại: endDate phải cách startDate ít nhất 1 chu kỳ
+      if (!validateEndDateForPeriod(selectedDate, startDate, periodType)) {
+        showValidationError(getInvalidPeriodMessage(periodType));
+        return;
+      }
     }
-    
     setEndDate(selectedDate);
     setShowEndDateModal(false);
   };
@@ -414,21 +404,23 @@ const BudgetLimitScreen = () => {
   const validateEndDateForPeriod = (endDate: Date, startDate: Date, periodType: string): boolean => {
     const timeDiff = endDate.getTime() - startDate.getTime();
     const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-    
     switch (periodType) {
+      case 'DAILY':
+        // Phải lớn hơn startDate ít nhất 1 ngày
+        return daysDiff > 1;
       case 'WEEKLY':
-        // Must be at least 7 days (can be more)
-        return daysDiff >= 7;
+        // Phải lớn hơn startDate ít nhất 7 ngày
+        return daysDiff > 7;
       case 'MONTHLY':
-        // Must be at least 1 month (can be more)
+        // Phải lớn hơn startDate ít nhất 1 tháng
         const minimumMonthlyEnd = new Date(startDate);
         minimumMonthlyEnd.setMonth(startDate.getMonth() + 1);
-        return endDate >= minimumMonthlyEnd;
+        return endDate > minimumMonthlyEnd;
       case 'YEARLY':
-        // Must be at least 1 year (can be more)
+        // Phải lớn hơn startDate ít nhất 1 năm
         const minimumYearlyEnd = new Date(startDate);
         minimumYearlyEnd.setFullYear(startDate.getFullYear() + 1);
-        return endDate >= minimumYearlyEnd;
+        return endDate > minimumYearlyEnd;
       default:
         return true;
     }
@@ -437,6 +429,8 @@ const BudgetLimitScreen = () => {
   // Helper function to get validation message for period type
   const getInvalidPeriodMessage = (periodType: string): string => {
     switch (periodType) {
+      case 'DAILY':
+        return t('budget.setBudgetLimit.validation.dailyPeriodRequired');
       case 'WEEKLY':
         return t('budget.setBudgetLimit.validation.weeklyPeriodRequired');
       case 'MONTHLY':
@@ -528,7 +522,7 @@ const BudgetLimitScreen = () => {
       showValidationError(t('budget.setBudgetLimit.validation.categoryRequired'));
       return;
     }
-    if (!selectedWallet) {
+    if (selectedWalletIds.length === 0) {
       showValidationError(t('budget.setBudgetLimit.validation.walletRequired'));
       return;
     }
@@ -549,10 +543,7 @@ const BudgetLimitScreen = () => {
         id: cat.category_id,
         name: cat.category_name
       })));
-      console.log('  - selectedWallet:', selectedWallet ? {
-        id: selectedWallet.id,
-        name: selectedWallet.wallet_name
-      } : 'null');
+      console.log('  - selectedWalletIds:', selectedWalletIds);
       
       const request = {
         user_id: 0, // hoặc lấy user_id thực tế nếu cần
@@ -563,7 +554,7 @@ const BudgetLimitScreen = () => {
         overall_amount_limit: Number(amount.replace(/[^0-9]/g, '')),
         budget_remaining_amount: Number(amount.replace(/[^0-9]/g, '')),
         category_list: selectedCategories.map(category => ({ category_id: category.category_id })), // Array of objects with category_id
-        // wallet_id: selectedWallet.id, // nếu backend hỗ trợ
+        wallet_ids: selectedWalletIds, // Array of wallet IDs
       };
 
       console.log('📤 Final request object:', JSON.stringify(request, null, 2));
@@ -678,7 +669,15 @@ const BudgetLimitScreen = () => {
               {/* Account */}
               <TouchableOpacity
                 style={styles.item}
-                onPress={() => setShowWalletPicker(true)}
+                onPress={() => {
+                  navigation.navigate('SelectWalletScreen', {
+                    wallets,
+                    selectedWallet: selectedWalletIds,
+                    onSelectWallet: (walletIds: number[]) => {
+                      setSelectedWalletIds(walletIds);
+                    },
+                  });
+                }}
               >
                 <Icon name="wallet-outline" size={24} color="#555" />
                 <View style={styles.itemContent}>
@@ -687,56 +686,17 @@ const BudgetLimitScreen = () => {
                     numberOfLines={1}
                     ellipsizeMode="tail"
                   >
-                    {selectedWallet ? selectedWallet.wallet_name : t('budget.setBudgetLimit.allAccounts')}
+                    {/* Hiển thị tên các ví đã chọn */}
+                    {selectedWalletIds.length === 0
+                      ? t('budget.setBudgetLimit.allAccounts')
+                      : (selectedWalletIds.length === wallets.length
+                          ? t('budget.setBudgetLimit.allAccounts')
+                          : wallets.filter(w => selectedWalletIds.includes(w.id)).map(w => w.wallet_name).join(', ')
+                        )}
                   </Text>
                 </View>
                 <Icon name="chevron-right" size={20} color="#999" />
               </TouchableOpacity>
-
-              {/* Wallet Picker Modal */}
-              {showWalletPicker && (
-                <Modal visible={showWalletPicker} transparent animationType="fade">
-                  <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setShowWalletPicker(false)}
-                  >
-                    <View style={styles.modalContainer}>
-                      <Text style={styles.modalTitle}>{t('budget.setBudgetLimit.selectAccountTitle')}</Text>
-                      {wallets.map((wallet) => (
-                        <TouchableOpacity
-                          key={wallet.id}
-                          style={[
-                            styles.modalItem,
-                            selectedWallet?.id === wallet.id && styles.modalItemSelected
-                          ]}
-                          onPress={() => {
-                            setSelectedWallet(wallet);
-                            setShowWalletPicker(false);
-                          }}
-                        >
-                          <Text
-                            style={styles.modalItemText}
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                          >
-                            {wallet.wallet_name}
-                          </Text>
-                          {wallet.is_default && (
-                            <Text style={{ color: '#1e90ff', marginLeft: 8 }}>({t('budget.setBudgetLimit.defaultAccount')})</Text>
-                          )}
-                        </TouchableOpacity>
-                      ))}
-                      <TouchableOpacity
-                        style={styles.modalCloseButton}
-                        onPress={() => setShowWalletPicker(false)}
-                      >
-                        <Text style={styles.modalCloseButtonText}>{t('budget.setBudgetLimit.close')}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
-                </Modal>
-              )}
 
               {/* Repeat */}
               <TouchableOpacity
@@ -807,7 +767,7 @@ const BudgetLimitScreen = () => {
                   <Text style={styles.label}>
                     {endDate
                       ? `${t('budget.setBudgetLimit.endDate')}: ${formatDate(endDate)}`
-                      : t('budget.setBudgetLimit.selectEndDate')}
+                      : t('budget.setBudgetLimit.unknownEndDate')}
                   </Text>
                 </View>
               </TouchableOpacity>

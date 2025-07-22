@@ -25,7 +25,7 @@ import { useNavigationService } from '../navigation/NavigationService';
 import { CategoryResponse, CategoryService, CategoryType } from '../services/categoryService';
 import { getUnreadCount } from '../services/notificationService';
 import { HealthStatusData, statusService } from '../services/statusService';
-import { TransactionReportResponse, transactionService } from '../services/transactionService';
+import { TransactionReportResponse, transactionService, viewHistoryTransactions } from '../services/transactionService';
 import { UserProfile, userService } from '../services/userService';
 import { WalletResponse, walletService } from '../services/walletService';
 import { getIconColor, getIconForCategory } from '../utils/iconUtils';
@@ -847,33 +847,23 @@ const FinanceScreen = React.memo(() => {
   const loadTransactionHistory = useCallback(async () => {
     setTransactionHistoryLoading(true);
     try {
-      const apiResponse: any = await transactionService.getAllTransactions();
-      // Tối ưu: chỉ lấy từ data.content
-      const all: any[] = (apiResponse?.content && Array.isArray(apiResponse.content)) ? apiResponse.content : [];
+      // Gọi API mới lấy 30 giao dịch gần nhất
+      const apiResponse: any = await viewHistoryTransactions({ page: 0, size: 50 });
+      console.log('🧾 Transaction history:', apiResponse.data.content);
+      const all: any[] = (apiResponse?.data?.content && Array.isArray(apiResponse.data.content)) ? apiResponse.data.content : [];
+
       const today = getTodayString();
-      console.log('🧾 All transactions:', all);
-      console.log('🧾 Today string:', today);
-      // So sánh trực tiếp phần ngày của transaction_date với hôm nay, log từng dòng
+      // Lọc các giao dịch trong ngày hôm nay
       const filtered = all.filter((tr: any) => {
         if (!tr.transaction_date) return false;
         const datePart = tr.transaction_date.slice(0, 10); // 'YYYY-MM-DD'
-        const isToday = datePart === today;
-        console.log('🧾 Check transaction:', {
-          transaction_id: tr.transaction_id,
-          transaction_date: tr.transaction_date,
-          datePart,
-          isToday
-        });
-        return isToday;
+        return datePart === today;
       });
-      // Sắp xếp theo transaction_date giảm dần (gần nhất lên trên, so sánh cả ngày và giờ)
+      // Sắp xếp theo transaction_date giảm dần
       filtered.sort((a: any, b: any) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
-      const result = filtered.slice(0, 10);
-      setTransactionHistory(result);
-      console.log('🧾 Transaction history for today:', result);
+      setTransactionHistory(filtered);
     } catch (err) {
       setTransactionHistory([]);
-      console.log('🧾 Transaction history error:', err);
     } finally {
       setTransactionHistoryLoading(false);
     }
@@ -1080,7 +1070,7 @@ const FinanceScreen = React.memo(() => {
                       <View style={styles.amountRow}>
                         <Text style={styles.amountLabel}>{t('finance.income1')}</Text>
                         <Text style={[styles.percentAmount, { color: '#4CAF50' }]}>
-                          {getPercent(chartData.income, chartData.income + chartData.expenses)}
+                          {getPercent(chartData.income, chartData.income + chartData.expenses)}%
                         </Text>
                       </View>
                       <View style={styles.amountRow}>
@@ -1100,44 +1090,42 @@ const FinanceScreen = React.memo(() => {
           {/* Removed old Financial Health Section */}
 
           {/* Transaction History Card */}
-          <View style={styles.historyCard}>
-            <Text style={styles.historyTitle}>{t('finance.transactionHistoryToday')}</Text>
-            {transactionHistoryLoading ? (
-              <ActivityIndicator size="small" color="#1e90ff" style={{ marginVertical: 20 }} />
-            ) : transactionHistory.length === 0 ? (
-              <Text style={styles.historyEmpty}>{t('finance.noTransactionHistory') || 'Không có thu chi trong ngày hôm nay.'}</Text>
-            ) : (
-              <FlatList
-                data={transactionHistory}
-                keyExtractor={(item, idx) => item.transaction_id?.toString() || item.id?.toString() || idx.toString()}
-                renderItem={({ item }) => {
-                  const { iconName, iconColor, type } = getIconAndColor(item);
-                  // Lấy category name từ map nếu có
-                  const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
-                  const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || 'Không rõ';
-                  return (
-                    <View style={styles.historyItem}>
-                      <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
-                        <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
-                      </View>
-                      <View style={styles.historyInfo}>
-                        <Text style={styles.historyCategory} numberOfLines={1}>{categoryName}</Text>
-                        {item.description ? (
-                          <Text style={styles.historyDesc} numberOfLines={1}>{item.description}</Text>
-                        ) : null}
-                        <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
-                      </View>
-                      <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]}>
-                        {type === 'income' ? '+' : '-'}{(item.amount || 0).toLocaleString('vi-VN')} đ
-                      </Text>
-                    </View>
-                  );
-                }}
-                style={{ maxHeight: 320 }}
-                showsVerticalScrollIndicator={false}
-              />
-            )}
-          </View>
+         <Text style={styles.historyTitle}>{t('finance.transactionHistoryToday')}</Text>
+         {transactionHistoryLoading ? (
+           <ActivityIndicator size="small" color="#1e90ff" style={{ marginVertical: 20 }} />
+         ) : transactionHistory.length === 0 ? (
+           <Text style={styles.historyEmpty}>{t('finance.noTransactionHistory') || 'Không có thu chi trong ngày hôm nay.'}</Text>
+         ) : (
+           <FlatList
+             data={transactionHistory}
+             keyExtractor={(item, idx) => item.transaction_id?.toString() || item.id?.toString() || idx.toString()}
+             renderItem={({ item }) => {
+               const { iconName, iconColor, type } = getIconAndColor(item);
+               // Lấy category name từ map nếu có
+               const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
+               const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || 'Không rõ';
+               return (
+                 <View style={styles.historyItem}>
+                   <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
+                     <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
+                   </View>
+                   <View style={styles.historyInfo}>
+                     <Text style={styles.historyCategory} numberOfLines={1}>{categoryName}</Text>
+                     {item.description ? (
+                       <Text style={styles.historyDesc} numberOfLines={1}>{item.description}</Text>
+                     ) : null}
+                     <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
+                   </View>
+                   <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]}>
+                     {type === 'income' ? '+' : '-'}{(item.amount || 0).toLocaleString('vi-VN')} đ
+                   </Text>
+                 </View>
+               );
+             }}
+             style={{ maxHeight: 320 }}
+             showsVerticalScrollIndicator={false}
+           />
+         )}
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
@@ -1721,15 +1709,12 @@ legendValue: {
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
-    marginTop: 20,
+    marginTop: 40,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    // Đã xoá shadow và elevation để card không nổi nữa
   },
   historyTitle: {
+    marginTop: 20,
     fontSize: rf(16),
     ...typography.semibold,
     color: '#333',

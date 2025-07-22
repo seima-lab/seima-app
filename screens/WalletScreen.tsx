@@ -2,17 +2,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Alert,
-  Dimensions,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    Alert,
+    Dimensions,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -20,6 +20,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
 import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigationService } from '../navigation/NavigationService';
 import { WalletResponse, walletService } from '../services/walletService';
 
@@ -86,6 +87,8 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { transactionRefreshTrigger } = useAuth();
+
   // Load wallets from API
   const loadWallets = useCallback(async (showRefreshing = false) => {
     try {
@@ -125,6 +128,11 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   useEffect(() => {
     loadWallets();
   }, [loadWallets]);
+
+  // Khi transactionRefreshTrigger thay đổi, reload wallets
+  useEffect(() => {
+    loadWallets();
+  }, [transactionRefreshTrigger]);
 
   // Check for refresh flag when screen comes into focus
   useFocusEffect(
