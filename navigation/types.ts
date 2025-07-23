@@ -144,6 +144,10 @@ export type RootStackParamList = {
     selectedWallet?: import('../services/walletService').WalletResponse | null;
     onSelectWallet: (wallet: import('../services/walletService').WalletResponse | null) => void;
   };
+  CategoryReportDetailScreen: {
+    category_id: number | string;
+    category_name: string;
+  };
 };
   
 export type ScreenNames = keyof RootStackParamList; 

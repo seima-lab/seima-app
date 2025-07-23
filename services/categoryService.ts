@@ -1,5 +1,5 @@
 import { apiService } from './apiService';
-import { CATEGORY_ENDPOINTS } from './config';
+import { CATEGORY_ENDPOINTS, TRANSACTION_ENDPOINTS } from './config';
 
 import { getIconForCategory } from '../utils/iconUtils';
 
@@ -347,6 +347,34 @@ interface ApiResponseData<T = any> {
   statusCode?: number;
   message?: string;
   data?: T;
+}
+
+// Transaction Category Report Response (snake_case)
+export interface TransactionCategoryReportResponseRaw {
+  total_expense: number;
+  average_expense: number;
+  total_income: number;
+  average_income: number;
+  data: {
+    [key: string]: {
+      expense: number;
+      income: number;
+    };
+  };
+}
+
+// Transaction Category Report Response (camelCase)
+export interface TransactionCategoryReportResponse {
+  totalExpense: number;
+  averageExpense: number;
+  totalIncome: number;
+  averageIncome: number;
+  data: {
+    [key: string]: {
+      expense: number;
+      income: number;
+    };
+  };
 }
 
 export class CategoryService {
@@ -795,6 +823,26 @@ export class CategoryService {
         { key: 'selling', label: 'Selling', icon: 'cart', color: '#6ac4dc' },
       ];
     }
+  }
+
+  // Fetch category report and map snake_case to camelCase
+  async getCategoryReport(
+    id: string,
+    type: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<TransactionCategoryReportResponse> {
+    const url = TRANSACTION_ENDPOINTS.VIEW_REPORT_BY_CATEGORY(id, type, startDate, endDate);
+    const response = await apiService.get<{ data?: TransactionCategoryReportResponseRaw }>(url);
+    const raw = response.data as TransactionCategoryReportResponseRaw | undefined;
+    if (!raw) throw new Error('No data in response');
+    return {
+      totalExpense: raw.total_expense,
+      averageExpense: raw.average_expense,
+      totalIncome: raw.total_income,
+      averageIncome: raw.average_income,
+      data: raw.data,
+    };
   }
 }
 

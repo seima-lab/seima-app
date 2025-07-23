@@ -5,6 +5,7 @@ import ApproveMembersScreen from '../screens/ApproveMembersScreen';
 import BudgetDetailScreen from '../screens/BudgetDetailScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import CalendarScreen from '../screens/CalendarScreen';
+import CategoryReportDetailScreen from '../screens/CategoryReportDetailScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ChatAIScreen from '../screens/ChatAIScreen';
 import CreateGroupScreen from '../screens/CreateGroupScreen';
@@ -183,5 +184,11 @@ export const BudgetDetailScreenWithNav = (props: any) => (
 export const StatusInviteMemberWithNav = ({ route }: any) => (
   <WithBottomNavigation>
     <StatusInviteMember {...route.params as { status: GroupMemberStatus }} />
+  </WithBottomNavigation>
+); 
+
+export const CategoryReportDetailScreenWithNav = (props: any) => (
+  <WithBottomNavigation showBottomNav={false}>
+    <CategoryReportDetailScreen {...props} />
   </WithBottomNavigation>
 ); 

@@ -429,6 +429,11 @@ const FinanceScreen = React.memo(() => {
     }
   }, [isAuthenticated]);
 
+  // Helper: Lấy ngày local dạng YYYY-MM-DD
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const toLocalDateString = (date: Date) =>
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
   // Load chart data from report API
   const loadChartData = useCallback(async (startDate?: Date, endDate?: Date) => {
     if (!isAuthenticated) {
@@ -437,7 +442,7 @@ const FinanceScreen = React.memo(() => {
 
     try {
       setChartData(prev => ({ ...prev, isLoading: true }));
-      console.log('�� Loading chart data in FinanceScreen...');
+      console.log('📊 Loading chart data in FinanceScreen...');
       
       // Nếu không truyền vào thì mặc định là tháng này hoặc theo selectedPeriod
       let _startDate = startDate, _endDate = endDate;
@@ -446,8 +451,9 @@ const FinanceScreen = React.memo(() => {
         _startDate = range.startDate;
         _endDate = range.endDate;
       }
-      const startDateStr = _startDate.toISOString().split('T')[0];
-      const endDateStr = _endDate.toISOString().split('T')[0];
+      // Sử dụng ngày local thay vì toISOString
+      const startDateStr = toLocalDateString(_startDate);
+      const endDateStr = toLocalDateString(_endDate);
       
       console.log('📅 Loading report for period:', { selectedPeriod: 'This Month', startDateStr, endDateStr });
       

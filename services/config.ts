@@ -74,6 +74,12 @@ export const USER_ENDPOINTS = {
 
 // Transaction endpoints
 export const TRANSACTION_ENDPOINTS = {
+  VIEW_REPORT_BY_CATEGORY: (id: string, type: string, startDate?: string, endDate?: string) => {
+    let url = `${ApiConfig.API_PREFIX}/transactions/view-report/category/${id}?type=${type}`;
+    if (startDate) url += `&startDate=${startDate}`;
+    if (endDate) url += `&endDate=${endDate}`;
+    return url;
+  },
   LIST: `${ApiConfig.API_PREFIX}/transactions`,
   CREATE: `${ApiConfig.API_PREFIX}/transactions`,
   SCAN_INVOICE: `${ApiConfig.API_PREFIX}/transactions/scan-invoice`,

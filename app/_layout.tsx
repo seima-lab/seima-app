@@ -3,6 +3,7 @@ import messaging from '@react-native-firebase/messaging';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
+import * as SecureStore from 'expo-secure-store';
 
 import { useEffect } from 'react';
 import { ActivityIndicator, LogBox, PermissionsAndroid, Platform, View } from 'react-native';
@@ -16,6 +17,7 @@ import {
     BudgetDetailScreenWithNav,
     BudgetScreenWithNav,
     CalendarScreenWithNav,
+    CategoryReportDetailScreenWithNav,
     ChangePasswordScreenWithNav,
     ChatAIScreenWithNav,
     CreateGroupScreenWithNav,
@@ -279,6 +281,12 @@ function AuthNavigator() {
       <Stack.Screen 
         name="SelectWalletScreen" 
         component={SelectWalletScreen} 
+      />
+      <Stack.Screen 
+        name="CategoryReportDetailScreen" 
+        children={(props) => (
+          <CategoryReportDetailScreenWithNav {...props} />
+        )}
       />
     </Stack.Navigator>
   );
@@ -645,6 +653,13 @@ export default function RootLayout() {
     };
   }, []); // Dependencies rỗng để chỉ chạy một lần khi component mount
  
+  useEffect(() => {
+    (async () => {
+      const token = await SecureStore.getItemAsync('access_token');
+      console.log('🔑 ACCESS TOKEN:', token);
+    })();
+  }, []);
+
   if (!loaded) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

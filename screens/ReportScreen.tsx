@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     Dimensions,
-    Modal,
     ScrollView,
     StyleSheet,
     Text,
@@ -27,6 +26,7 @@ import {
     transactionService,
 } from '../services/transactionService';
 // Import getIconColor to match colors with AddExpenseScreen
+import PeriodFilterBar, { PeriodType } from '../components/PeriodFilterBar';
 import { RootStackParamList } from '../navigation/types';
 import { getIconColor } from '../utils/iconUtils';
 
@@ -262,7 +262,8 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
 };
 
 // Add period type enum
-type PeriodType = 'today' | 'thisWeek' | 'thisMonth' | 'thisYear' | 'custom';
+// Remove local PeriodType definition and use imported one
+// Remove unused state and variables
 
 export default function ReportScreen() {
   const { t, i18n } = useTranslation();
@@ -279,23 +280,10 @@ export default function ReportScreen() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
-  
-  // Period dropdown state
-  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
-  
-  // Custom date picker state
   const [customStartDate, setCustomStartDate] = useState(new Date());
   const [customEndDate, setCustomEndDate] = useState(new Date());
-  
-  // Custom date modal state
-  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
-  const [tempStartDate, setTempStartDate] = useState(new Date());
-  const [tempEndDate, setTempEndDate] = useState(new Date());
-  const [focusedInput, setFocusedInput] = useState<'start' | 'end' | null>(null);
-  
-  // Week reference date for navigation
   const [weekReferenceDate, setWeekReferenceDate] = useState(new Date());
-
+  
   // Toast state
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -765,16 +753,16 @@ export default function ReportScreen() {
 
   // Handle date selection
   const handleDateSelect = (type: 'start' | 'end') => {
-    const currentDate = type === 'start' ? tempStartDate : tempEndDate;
+    const currentDate = type === 'start' ? customStartDate : customEndDate;
     
     DateTimePickerAndroid.open({
       value: currentDate,
       onChange: (event: any, selectedDate?: Date) => {
         if (selectedDate) {
           if (type === 'start') {
-            setTempStartDate(selectedDate);
+            setCustomStartDate(selectedDate);
           } else {
-            setTempEndDate(selectedDate);
+            setCustomEndDate(selectedDate);
           }
         }
       },
@@ -884,167 +872,19 @@ export default function ReportScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Period Navigation */}
-      <View style={styles.monthSelector}>
-        <TouchableOpacity onPress={() => navigatePeriod('prev')}>
-          <Icon name="chevron-left" size={24} color="#666" />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <TouchableOpacity 
-            style={styles.periodDisplayContainer}
-            onPress={() => setShowPeriodDropdown((prev) => !prev)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.periodTypeIndicator}>
-              <Text style={styles.periodTypeLabel}>{getCurrentPeriodTypeLabel()}</Text>
-              {getCurrentPeriodTypeLabel() !== '' && (
-                <Icon name="chevron-down" size={16} color="#666" />
-              )}
-            </View>
-            <View style={getCurrentPeriodTypeLabel() === '' ? styles.periodTextContainerCenter : styles.periodTextContainer}>
-              <Text style={getCurrentPeriodTypeLabel() === '' ? styles.monthTextCenter : styles.monthText}>{getPeriodDisplayText()}</Text>
-            </View>
-          </TouchableOpacity>
-          {/* Dropdown filter ngay dưới filter */}
-          {showPeriodDropdown && (
-            <View style={styles.dropdownContainer}>
-              {periodTypeOptions.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.dropdownOption,
-                    selectedPeriodType === option.value && styles.selectedDropdownOption
-                  ]}
-                  onPress={() => {
-                    setSelectedPeriodType(option.value as PeriodType);
-                    setShowPeriodDropdown(false);
-                    if (option.value === 'custom') {
-                      setTempStartDate(customStartDate);
-                      setTempEndDate(customEndDate);
-                      setShowCustomDateModal(true);
-                    }
-                  }}
-                >
-                  <Text style={[
-                    styles.dropdownOptionText,
-                    selectedPeriodType === option.value && styles.selectedDropdownOptionText
-                  ]}>
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-        <TouchableOpacity onPress={() => navigatePeriod('next')}>
-          <Icon name="chevron-right" size={24} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Custom Date Modal */}
-      <Modal
-        visible={showCustomDateModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowCustomDateModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.customDateModalContainer}>
-            <View style={styles.customDateModalHeader}>
-              <Text style={styles.customDateModalTitle}>{t('reports.selectDateRange')}</Text>
-              <TouchableOpacity onPress={() => setShowCustomDateModal(false)}>
-                <Icon name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.customDateModalContent}>
-              {/* Current Range Display */}
-              <View style={styles.currentRangeDisplay}>
-                <Text style={styles.currentRangeText}>
-                  {tempStartDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { 
-                    day: 'numeric', 
-                    month: 'short' 
-                  })} - {tempEndDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { 
-                    day: 'numeric', 
-                    month: 'short' 
-                  })}
-                </Text>
-                <Icon name="calendar" size={20} color="#007AFF" />
-              </View>
-
-              {/* Date Input Fields */}
-              <View style={styles.dateInputFields}>
-                <View style={styles.dateInputField}>
-                  <Text style={styles.dateInputLabel}>{t('reports.startDate')}</Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.dateInputButton,
-                      focusedInput === 'start' && styles.dateInputButtonActive
-                    ]}
-                    onPress={() => handleDateSelect('start')}
-                  >
-                    <Text style={styles.dateInputText}>
-                      {tempStartDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.dateInputField}>
-                  <Text style={styles.dateInputLabel}>{t('reports.endDate')}</Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.dateInputButton,
-                      focusedInput === 'end' && styles.dateInputButtonActive
-                    ]}
-                    onPress={() => handleDateSelect('end')}
-                  >
-                    <Text style={styles.dateInputText}>
-                      {tempEndDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.customDateModalActions}>
-                <TouchableOpacity 
-                  style={styles.cancelButton}
-                  onPress={() => setShowCustomDateModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.confirmButton,
-                    tempStartDate > tempEndDate && styles.disabledButton
-                  ]}
-                  disabled={tempStartDate > tempEndDate}
-                  onPress={() => {
-                    if (tempStartDate <= tempEndDate) {
-                      setCustomStartDate(tempStartDate);
-                      setCustomEndDate(tempEndDate);
-                      setShowCustomDateModal(false);
-                    }
-                  }}
-                >
-                  <Text style={[
-                    styles.confirmButtonText,
-                    tempStartDate > tempEndDate && styles.disabledButtonText
-                  ]}>
-                    {t('common.ok')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-
-
-
-
-
+      {/* Period Filter Bar (reusable) */}
+      <PeriodFilterBar
+        periodType={selectedPeriodType}
+        periodValue={selectedPeriod}
+        weekReferenceDate={weekReferenceDate}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
+        onChangePeriodType={setSelectedPeriodType}
+        onChangePeriodValue={setSelectedPeriod}
+        onChangeWeekReferenceDate={setWeekReferenceDate}
+        onChangeCustomStartDate={setCustomStartDate}
+        onChangeCustomEndDate={setCustomEndDate}
+      />
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
