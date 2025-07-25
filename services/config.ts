@@ -141,5 +141,10 @@ export const STATUS_ENDPOINTS = {
   GET_HEALTH_STATUS: `${ApiConfig.API_PREFIX}/transactions/financial-health`,
 } as const;
 
+// Transcription endpoints
+export const TRANSCRIPTION_ENDPOINTS = {
+  UPLOAD: `${ApiConfig.API_PREFIX}/transcription/upload`,
+} as const;
+
 // Initialize configuration logging
 ApiConfig.logConfig(); 

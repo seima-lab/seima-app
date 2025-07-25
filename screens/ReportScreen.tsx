@@ -28,7 +28,7 @@ import {
 // Import getIconColor to match colors with AddExpenseScreen
 import PeriodFilterBar, { PeriodType } from '../components/PeriodFilterBar';
 import { RootStackParamList } from '../navigation/types';
-import { getIconColor } from '../utils/iconUtils';
+import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 const { width } = Dimensions.get('window');
 const CHART_SIZE = width * 0.4;
@@ -40,114 +40,6 @@ interface PieChartProps {
   strokeWidth?: number;
   categoryType: 'expense' | 'income';
 }
-
-/**
- * Get category color based on category name and type
- * Maps category name to icon and gets color using iconUtils (same as AddExpenseScreen)
- */
-const getCategoryColor = (categoryName: string, categoryType: 'expense' | 'income'): string => {
-  // Map category name to icon (similar to iconMapping in categoryService)
-  const categoryIconMap: { [key: string]: string } = {
-    // Food & Dining
-    'food': 'silverware-fork-knife',
-    'restaurant': 'silverware-fork-knife', 
-    'coffee': 'coffee',
-    'fast-food': 'hamburger',
-    'dining': 'silverware-fork-knife',
-    'ăn uống': 'silverware-fork-knife',
-    'thức ăn': 'silverware-fork-knife',
-    'nhà hàng': 'silverware-fork-knife',
-    
-    // Daily & Shopping
-    'daily': 'bottle-soda',
-    'shopping': 'shopping', 
-    'grocery': 'cart',
-    'market': 'store',
-    'mua sắm': 'shopping',
-    'chợ': 'store',
-    'siêu thị': 'cart',
-    
-    // Transportation
-    'transport': 'train',
-    'transportation': 'train', 
-    'car': 'car',
-    'bus': 'bus',
-    'taxi': 'taxi',
-    'fuel': 'gas-station',
-    'di chuyển': 'train',
-    'xe buýt': 'bus',
-    'xăng': 'gas-station',
-    
-    // Utilities
-    'electric': 'flash',
-    'electricity': 'flash',
-    'water': 'water',
-    'internet': 'wifi',
-    'gas': 'fire',
-    'utility': 'home-lightning-bolt',
-    'điện': 'flash',
-    'nước': 'water',
-    
-    // Housing
-    'rent': 'home-city',
-    'house': 'home',
-    'apartment': 'apartment',
-    'home': 'home',
-    'housing': 'home-city',
-    'thuê nhà': 'home-city',
-    'nhà ở': 'home',
-    
-    // Health & Medical
-    'health': 'pill',
-    'medical': 'hospital-box',
-    'hospital': 'hospital-box',
-    'fitness': 'dumbbell',
-    'doctor': 'doctor',
-    'sức khỏe': 'pill',
-    'y tế': 'hospital-box',
-    
-    // Entertainment
-    'entertainment': 'gamepad-variant',
-    'movie': 'movie',
-    'music': 'music',
-    'party': 'party-popper',
-    'gaming': 'gamepad-variant',
-    'giải trí': 'gamepad-variant',
-    
-    // Income categories
-    'salary': 'cash',
-    'wage': 'cash',
-    'income': 'cash-plus',
-    'bonus': 'gift',
-    'investment': 'chart-line',
-    'freelance': 'laptop',
-    'business': 'store',
-    'lương': 'cash',
-    'thưởng': 'gift',
-    'đầu tư': 'chart-line',
-    'kinh doanh': 'store',
-  };
-  
-  // Convert category name to lowercase for matching
-  const normalizedName = categoryName.toLowerCase().trim();
-  
-  // Find matching icon
-  let icon = 'cash-minus'; // default
-  for (const [key, value] of Object.entries(categoryIconMap)) {
-    if (normalizedName.includes(key)) {
-      icon = value;
-      break;
-    }
-  }
-  
-  // If no match found, use default based on category type
-  if (icon === 'cash-minus') {
-    icon = categoryType === 'expense' ? 'cash-minus' : 'cash-plus';
-  }
-  
-  // Use getIconColor to get the color (same as AddExpenseScreen)
-  return getIconColor(icon, categoryType);
-};
 
 const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, categoryType }) => {
   const { t } = useTranslation();
@@ -165,8 +57,8 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
   const chartData = data.map((item, index) => {
     const categoryName = (item as any).category_name || (item as any).categoryName || `Category ${index + 1}`;
     const percentage = item.percentage || 0;
-    const color = getCategoryColor(categoryName, categoryType);
-    
+    const icon = getIconForCategory((item as any).category_icon_url, categoryType);
+    const color = getIconColor(icon, categoryType);
     return {
       categoryName,
       percentage,
@@ -898,7 +790,12 @@ export default function ReportScreen() {
             <View style={styles.summaryRow}>
               <View style={styles.incomeCard}>
                 <Text style={styles.incomeLabel}>{t('reports.expense')}</Text>
-                <Text style={[styles.summaryValue, styles.expenseValue]}>
+                <Text
+                  style={[styles.summaryValue, styles.expenseValue]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                >
                   {(() => {
                     // Log summary data before rendering
                     const summary = (reportData as any)?.summary;
@@ -919,7 +816,12 @@ export default function ReportScreen() {
               </View>
               <View style={styles.expenseCard}>
                 <Text style={styles.expenseLabel}>{t('reports.income')}</Text>
-                <Text style={[styles.summaryValue, styles.incomeValue]}>
+                <Text
+                  style={[styles.summaryValue, styles.incomeValue]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                >
                   {(() => {
                     // Log summary data before rendering
                     const summary = (reportData as any)?.summary;
@@ -992,7 +894,10 @@ export default function ReportScreen() {
           </View>
 
           {/* View Report by Category */}
-          <TouchableOpacity style={styles.viewReportButton}>
+          <TouchableOpacity
+            style={styles.viewReportButton}
+            onPress={() => navigation.navigate('ViewCategoryReportScreen', { type: 'expense' })}
+          >
             <Text style={styles.viewReportText}>{t('reports.viewReportByCategory')}</Text>
           </TouchableOpacity>
         </ScrollView>

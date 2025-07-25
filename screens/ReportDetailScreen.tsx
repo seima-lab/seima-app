@@ -9,7 +9,6 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { categoryService } from '../services/categoryService';
 import { ReportByCategory, transactionService } from '../services/transactionService';
 import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
@@ -561,11 +560,13 @@ const ReportDetailScreen = () => {
     if (!reportData) return [];
     // Lấy đúng loại (expense/income) theo categoryType
     const arr: ReportByCategory[] = (reportData.transactionsByCategory?.[categoryType] || reportData.transactions_by_category?.[categoryType]) || [];
-    return arr.map((item: ReportByCategory) => {
-      const iconName = getIconForCategory(item.category_icon_url, categoryType);
-      const iconColor = getIconColor(iconName, categoryType);
-      return { ...item, color: iconColor };
-    });
+    return arr
+      .map((item: ReportByCategory) => {
+        const iconName = getIconForCategory(item.category_icon_url, categoryType);
+        const iconColor = getIconColor(iconName, categoryType);
+        return { ...item, color: iconColor };
+      })
+      .filter((item) => item.percentage > 0); // Loại bỏ category có percentage = 0
   }, [reportData, categoryType]);
 
   // Helper: Lấy ngày hiện tại theo giờ local (YYYY-MM-DD)
@@ -752,19 +753,26 @@ const ReportDetailScreen = () => {
                 style={styles.listItem}
                 onPress={async () => {
                   try {
-                    const report = await categoryService.getCategoryReport(
-                      String(item.category_id),
-                      'MONTHLY',
-                      dateRange.startDate,
-                      dateRange.endDate
-                    );
-                    console.log('Category Report Data:', report);
+                    let startOfMonth: Date, endOfMonth: Date;
+                    if (selectedPeriodType === 'thisMonth' && selectedPeriod && selectedPeriod.includes('-')) {
+                      const [year, month] = selectedPeriod.split('-').map(Number);
+                      startOfMonth = new Date(year, month - 1, 1);
+                      endOfMonth = new Date(year, month, 0);
+                    } else {
+                      // fallback: current month
+                      const now = new Date();
+                      const year = now.getFullYear();
+                      const month = now.getMonth();
+                      startOfMonth = new Date(year, month, 1);
+                      endOfMonth = new Date(year, month + 1, 0);
+                    }
+                    // Không truyền start_date/end_date để type mặc định là MONTHLY
                     navigation.navigate('CategoryReportDetailScreen', {
                       category_name: item.category_name,
                       category_id: item.category_id
                     });
                   } catch (err) {
-                    console.error('Error fetching category report:', err);
+                    console.error('Error navigating to category report:', err);
                   }
                 }}
               >
@@ -773,6 +781,7 @@ const ReportDetailScreen = () => {
                 </View>
                 <Text style={styles.itemName}>{item.category_name}</Text>
                 <Text style={styles.itemAmount}>{item.amount.toLocaleString('vi-VN')} đ</Text>
+                <Icon name="chevron-right" size={22} color="#bbb" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             ))}
           </View>

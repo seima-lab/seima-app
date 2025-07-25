@@ -25,6 +25,7 @@ import SelectCategoryScreen from '../screens/SelectCategoryScreen';
 import SetBudgetLimitScreen from '../screens/SetBudgetLimitScreen';
 import StatusInviteMember, { GroupMemberStatus } from '../screens/StatusInviteMember';
 import UpdateProfileScreen from '../screens/update-profile';
+import ViewCategoryReportScreen from '../screens/ViewCategoryReportScreen';
 import WithBottomNavigation from './WithBottomNavigation';
 
 // Wrapper components for each screen
@@ -190,5 +191,11 @@ export const StatusInviteMemberWithNav = ({ route }: any) => (
 export const CategoryReportDetailScreenWithNav = (props: any) => (
   <WithBottomNavigation showBottomNav={false}>
     <CategoryReportDetailScreen {...props} />
+  </WithBottomNavigation>
+); 
+
+export const ViewCategoryReportScreenWithNav = (props: any) => (
+  <WithBottomNavigation>
+    <ViewCategoryReportScreen {...props} />
   </WithBottomNavigation>
 ); 

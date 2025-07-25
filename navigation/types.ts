@@ -147,7 +147,10 @@ export type RootStackParamList = {
   CategoryReportDetailScreen: {
     category_id: number | string;
     category_name: string;
+    start_date?: string;
+    end_date?: string;
   };
+  ViewCategoryReportScreen: { type: 'expense' | 'income' };
 };
   
 export type ScreenNames = keyof RootStackParamList; 

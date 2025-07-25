@@ -326,10 +326,11 @@
     },
     "owner": "Owner",
     "invitation": {
+      "alreadyInvited": "This user has already been invited to the group",
       "title": "Invite Members",
       "enterEmail": "Please enter an email address.",
       "invalidEmail": "Invalid email address.",
-      "alreadyInvited": "This email has already been invited.",
+    
       "sending": "Sending invitation...",
       "sentToExistingUser": "Invitation sent to existing user: {{email}}.",
       "sentToNewUser": "Invitation sent to new user: {{email}}.",

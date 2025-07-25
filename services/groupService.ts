@@ -486,31 +486,40 @@ class GroupService {
   }
 
   // Send email invitation to join group
-  async sendEmailInvitation(request: EmailInvitationRequest): Promise<EmailInvitationResponse> {
+  async sendEmailInvitation(request: EmailInvitationRequest): Promise<any> {
     try {
       console.log('🟡 Sending email invitation request:', request);
-      
       // Use makeAuthenticatedRequest with 30 seconds timeout for email sending
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
-      
       try {
         const response = await secureApiService.makeAuthenticatedRequest<EmailInvitationResponse>(
           '/api/v1/groups/invitations/email',
           'POST',
           request
         );
-        
         clearTimeout(timeoutId);
         console.log('🟢 Email invitation response:', response);
         return response;
-      } catch (error) {
+      } catch (error: any) {
         clearTimeout(timeoutId);
-        throw error;
+        // Nếu backend trả về object có status_code và message thì trả về luôn cho component xử lý
+        if (error?.response?.data && 'status_code' in error.response.data && 'message' in error.response.data) {
+          return error.response.data;
+        }
+        // Nếu là lỗi mạng, timeout, hoặc lỗi không xác định, trả về object lỗi chung
+        return {
+          status_code: 500,
+          message: error?.message || 'Unknown error'
+        };
       }
     } catch (error: any) {
       console.error('🔴 Email invitation error:', error);
-      throw error;
+      // Nếu là lỗi ngoài try/catch trên, cũng trả về object lỗi chung
+      return {
+        status_code: 500,
+        message: error?.message || 'Unknown error'
+      };
     }
   }
 

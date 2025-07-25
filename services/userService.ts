@@ -166,8 +166,8 @@ export class UserService {
       const fcmToken = await messaging().getToken();
       const deviceId = await DeviceInfo.getUniqueId();
       
-      console.log('📱 FCM Token:', fcmToken);
-      console.log('📱 Device ID:', deviceId);
+      console.log('📱 FCM Token profile:', fcmToken);
+      console.log('📱 Device ID profile:', deviceId);
       
       // Tạo request body với fcmToken và deviceId
       const requestBody = {

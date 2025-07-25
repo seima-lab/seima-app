@@ -4,4 +4,5 @@
   <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
   <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
    <string name="branch_key">key_live_dCuhCHjtxBUMu8aktkwt0bnpvwfIBoHl</string> <!-- hoặc key_test_xxxxxx -->
+   <string name="default_notification_channel_id">default</string>
 </resources>

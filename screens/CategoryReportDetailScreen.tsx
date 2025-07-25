@@ -1,10 +1,12 @@
-import { useRoute } from '@react-navigation/native';
-import { addDays as addDaysFns, addMonths, endOfMonth, endOfWeek, format, getDay, isAfter, isBefore, startOfMonth, startOfWeek } from 'date-fns';
+import { typography } from '@/constants/typography';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { addDays as addDaysFns, addMonths, endOfMonth, endOfWeek, format, getDay, startOfMonth, startOfWeek } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BarChart as KitBarChart } from 'react-native-chart-kit';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomDropdown from '../components/CustomDropdown';
-
+import { categoryService } from '../services/categoryService';
 // Xoá declare module ở đây, sẽ tạo file types/react-native-svg-charts.d.ts ở gốc dự án
 
 const periodTypeOptions = [
@@ -61,7 +63,13 @@ function generateSampleDataForMonth(date: Date) {
 
 export default function CategoryReportDetailScreen() {
   const route = useRoute();
-  const { category_name, category_id } = route.params as { category_name?: string; category_id?: number };
+  const navigation = useNavigation();
+  const { category_name, category_id, start_date, end_date } = route.params as {
+    category_name?: string;
+    category_id?: number;
+    start_date?: string;
+    end_date?: string;
+  };
 
   const [selectedPeriodType, setSelectedPeriodType] = useState('thisMonth');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -71,6 +79,10 @@ export default function CategoryReportDetailScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [visibleStartDate, setVisibleStartDate] = useState(startOfMonth(new Date()));
   const [apiData, setApiData] = useState<Record<string, { income?: number; expense?: number }>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [totalExpense, setTotalExpense] = useState<number>(0);
+  const [totalIncome, setTotalIncome] = useState<number>(0);
 
   // Reset currentDate and visibleStartDate when period type changes (except custom)
   useEffect(() => {
@@ -82,6 +94,67 @@ export default function CategoryReportDetailScreen() {
       setCurrentDate(new Date());
     }
   }, [selectedPeriodType]);
+
+  // Fetch API data when period type, currentDate, or custom dates change
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchData() {
+      if (!category_id) return;
+      setLoading(true);
+      setError(null);
+      try {
+        let type = '';
+        let start: Date, end: Date;
+        if (start_date && end_date) {
+          // Nếu có start_date/end_date truyền vào thì ưu tiên dùng
+          type = 'CUSTOM';
+          start = new Date(start_date);
+          end = new Date(end_date);
+        } else if (selectedPeriodType === 'thisMonth') {
+          type = 'MONTHLY';
+          start = startOfMonth(currentDate);
+          end = endOfMonth(currentDate);
+        } else if (selectedPeriodType === 'thisWeek') {
+          type = 'WEEKLY';
+          start = startOfWeek(currentDate, { weekStartsOn: 1 });
+          end = endOfWeek(currentDate, { weekStartsOn: 1 });
+        } else if (selectedPeriodType === 'thisYear') {
+          type = 'YEARLY';
+          start = new Date(currentDate.getFullYear(), 0, 1);
+          end = new Date(currentDate.getFullYear(), 11, 31);
+        } else if (selectedPeriodType === 'today') {
+          type = 'DAILY';
+          start = currentDate;
+          end = currentDate;
+        } else if (selectedPeriodType === 'custom') {
+          type = 'CUSTOM';
+          start = startDate;
+          end = endDate;
+        } else {
+          return;
+        }
+        // Format dates as yyyy-MM-dd
+        const formatDate = (d: Date) => format(d, 'yyyy-MM-dd');
+        const report = await categoryService.getCategoryReport(
+          String(category_id),
+          type,
+          formatDate(start),
+          formatDate(end)
+        );
+        if (isMounted && report) {
+          setApiData(report.data || {});
+          setTotalExpense(report.totalExpense || 0);
+          setTotalIncome(report.totalIncome || 0);
+        }
+      } catch (err: any) {
+        if (isMounted) setError(err.message || 'Lỗi tải dữ liệu');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    fetchData();
+    return () => { isMounted = false; };
+  }, [category_id, selectedPeriodType, currentDate, startDate, endDate, start_date, end_date]);
 
   const handlePrev = () => {
     if (selectedPeriodType === 'custom') return;
@@ -176,62 +249,26 @@ export default function CategoryReportDetailScreen() {
     return weeks;
   }
 
-  const sampleData = generateSampleDataForMonth(visibleStartDate);
-  const weeks: { start: Date; end: Date }[] = splitMonthToWeeks(visibleStartDate);
-
-  // Tạo nhãn tuần cho trục X (chỉ giữ ngày, không có tháng)
-  const barLabels = weeks.map((w: { start: Date; end: Date }) => `${format(w.start, 'dd')}-${format(w.end, 'dd')}`);
-
-  // Tạo dữ liệu: tổng tiền mỗi tuần
-  const barData = weeks.map((week: { start: Date; end: Date }) => {
-    return sampleData
-      .filter((d: { date: Date; value: number }) => !isBefore(d.date, week.start) && !isAfter(d.date, week.end))
-      .reduce((sum: number, d: { value: number }) => sum + d.value, 0);
-  });
-
   // Helper: lấy các ngày trong tuần hiện tại
-  function getDaysOfWeek(date: Date) {
+  function getDaysOfWeek(date: Date): string[] {
     const start = startOfWeek(date, { weekStartsOn: 1 });
     const end = endOfWeek(date, { weekStartsOn: 1 });
-    const days = [];
+    const days: string[] = [];
     for (let d = start; d <= end; d = addDaysFns(d, 1)) {
       days.push(format(d, 'dd'));
     }
     return days;
   }
-  // Helper: lấy các tuần trong tháng hiện tại
-  function getWeeksOfMonth(date: Date) {
-    const start = startOfMonth(date);
-    const end = endOfMonth(date);
-    const weeks = [];
-    let weekStart = new Date(start);
-    let d = new Date(start);
-    while (d <= end && getDay(d) !== 0) {
-      d = addDaysFns(d, 1);
-    }
-    if (d > end) d = end;
-    weeks.push({ start: new Date(weekStart), end: new Date(d) });
-    weekStart = addDaysFns(d, 1);
-    d = new Date(weekStart);
-    while (d <= end) {
-      let weekEnd = addDaysFns(d, 6 - getDay(d));
-      if (weekEnd > end) weekEnd = end;
-      weeks.push({ start: new Date(d), end: new Date(weekEnd) });
-      d = addDaysFns(weekEnd, 1);
-    }
-    return weeks;
-  }
   // Helper: lấy các tháng trong năm
-  function getMonthsOfYear() {
+  function getMonthsOfYear(): string[] {
     return Array.from({ length: 12 }, (_, i) => `T${i + 1}`);
   }
-
   // Chuẩn hóa chia tuần trong tháng (thứ 2 -> chủ nhật)
-  function getWeeksOfMonthISO(date: Date) {
+  function getWeeksOfMonthISO(date: Date): { start: Date; end: Date }[] {
     const start = startOfMonth(date);
     const end = endOfMonth(date);
     let current = startOfWeek(start, { weekStartsOn: 1 }); // Bắt đầu từ thứ 2 tuần đầu tiên
-    const weeks = [];
+    const weeks: { start: Date; end: Date }[] = [];
     while (current <= end) {
       const weekStart = current < start ? start : current;
       const weekEnd = endOfWeek(current, { weekStartsOn: 1 }) > end ? end : endOfWeek(current, { weekStartsOn: 1 });
@@ -241,24 +278,49 @@ export default function CategoryReportDetailScreen() {
     return weeks;
   }
 
-  // Tạo dữ liệu chart động theo filter
+  // Helper: lấy số tiền theo rule: income nếu khác 0, nếu không thì expense, nếu cả hai đều 0 thì trả về 0
+  function getAmount(obj?: { income?: number; expense?: number }) {
+    if (!obj) return 0;
+    if (obj.income && obj.income !== 0) return obj.income;
+    if (obj.expense && obj.expense !== 0) return obj.expense;
+    return 0;
+  }
+
+  // Replace sampleData and barData logic with API data mapping
   let chartLabels: string[] = [];
   let chartData: number[] = [];
   if (selectedPeriodType === 'thisMonth') {
     const weeks = getWeeksOfMonthISO(currentDate);
-    // Label hiển thị: 'dd-dd', key map: yyyy-MM-dd_to_yyyy-MM-dd
     chartLabels = weeks.map(w => `${format(w.start, 'dd')}-${format(w.end, 'dd')}`);
     const apiKeys = weeks.map(w => `${format(w.start, 'yyyy-MM-dd')}_to_${format(w.end, 'yyyy-MM-dd')}`);
-    chartData = apiKeys.map(key => apiData[key]?.income || 0);
+    chartData = apiKeys.map(key => getAmount(apiData[key]));
   } else if (selectedPeriodType === 'today') {
+    const key = format(currentDate, 'yyyy-MM-dd'); // Sửa lại key cho đúng với API
     chartLabels = [format(currentDate, 'dd')];
-    chartData = [0];
+    chartData = [getAmount(apiData[key])];
   } else if (selectedPeriodType === 'thisWeek') {
-    chartLabels = getDaysOfWeek(currentDate);
-    chartData = Array(chartLabels.length).fill(0);
+    const days = getDaysOfWeek(currentDate);
+    const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+    chartLabels = days;
+    chartData = days.map((_, idx) => {
+      const d = addDaysFns(start, idx);
+      const key = format(d, 'yyyy-MM-dd'); // Sửa lại key cho đúng với API
+      return getAmount(apiData[key]);
+    });
   } else if (selectedPeriodType === 'thisYear') {
     chartLabels = getMonthsOfYear();
-    chartData = Array(chartLabels.length).fill(0);
+    chartData = chartLabels.map((_, idx) => {
+      const month = idx + 1;
+      const start = new Date(currentDate.getFullYear(), idx, 1);
+      const end = new Date(currentDate.getFullYear(), idx + 1, 0);
+      const key = `${format(start, 'yyyy-MM-dd')}_to_${format(end, 'yyyy-MM-dd')}`;
+      return getAmount(apiData[key]);
+    });
+  } else if (selectedPeriodType === 'custom') {
+    // For custom, show one bar for the selected range
+    const key = `${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
+    chartLabels = [`${format(startDate, 'dd/MM')} - ${format(endDate, 'dd/MM')}`];
+    chartData = [getAmount(apiData[key])];
   } else {
     chartLabels = [];
     chartData = [];
@@ -280,9 +342,22 @@ export default function CategoryReportDetailScreen() {
 
   const { width } = Dimensions.get('window');
 
+  // Helper: get total amount based on rule
+  function getTotalAmount() {
+    if (totalExpense === 0 && totalIncome !== 0) return totalIncome;
+    if (totalIncome === 0 && totalExpense !== 0) return totalExpense;
+    return totalExpense + totalIncome;
+  }
+
   return (
     <View style={styles.container}>
+      {/* Back Arrow */}
+      <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: 'absolute', left: 16, top: 40, zIndex: 10, padding: 8 }}>
+        <Icon name="arrow-left" size={28} color="#222" />
+      </TouchableOpacity>
       <Text style={styles.header}>{category_name}</Text>
+      {/* Đường line ngăn cách header và body */}
+      <View style={styles.headerDivider} />
       
       <View style={styles.dropdownWrapper}>
         <CustomDropdown
@@ -333,7 +408,7 @@ export default function CategoryReportDetailScreen() {
         <View style={styles.summaryHeader}>
           <Text style={styles.summaryTitle}>Tổng cộng</Text>
           <Text style={styles.summaryAmount}>
-            {chartData.reduce((sum, v) => sum + v, 0).toLocaleString('vi-VN')} ₫
+            {getTotalAmount().toLocaleString('vi-VN')} ₫
           </Text>
         </View>
       </View>
@@ -372,8 +447,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   header: {
-    fontSize: 20,
-    fontWeight: 'bold',
+   
+   fontSize:30,
+    ...typography.semibold,
     textAlign: 'center',
     marginBottom: 20,
     color: '#1a1a1a',
@@ -440,13 +516,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   summaryTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    ...typography.semibold,
     color: '#1a1a1a',
   },
   summaryAmount: {
     fontSize: 22,
-    fontWeight: 'bold',
+    ...typography.semibold,
     color: '#E53935',
   },
   transactionContainer: {
@@ -474,7 +550,7 @@ const styles = StyleSheet.create({
   transactionLabel: {
     fontSize: 16,
     color: '#1a1a1a',
-    fontWeight: '500',
+    ...typography.medium,
     flex: 1,
   },
   transactionAmountContainer: {
@@ -484,12 +560,17 @@ const styles = StyleSheet.create({
   transactionAmount: {
     fontSize: 16,
     color: '#E53935',
-    fontWeight: '600',
+    ...typography.semibold,
     marginRight: 8,
   },
   chevron: {
     fontSize: 16,
     color: '#bbb',
-    fontWeight: '300',
+    ...typography.regular,
+  },
+  headerDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    marginBottom: 12,
   },
 });
