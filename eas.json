@@ -37,9 +37,6 @@
       }
     }
   },
-  "hooks": {
-        "pre-install": "npm run eas-build-pre-install"
-      },
   "submit": {
     "production": {}
   }
