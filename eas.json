@@ -25,9 +25,7 @@
       }
     },
     "production": {
-      "hooks": {
-        "pre-install": "npm run eas-build-pre-install"
-      },
+      
       "distribution": "internal",
       "android": {
         "buildType": "apk"
@@ -39,6 +37,9 @@
       }
     }
   },
+  "hooks": {
+        "pre-install": "npm run eas-build-pre-install"
+      },
   "submit": {
     "production": {}
   }
