@@ -10,34 +10,34 @@ import { ActivityIndicator, LogBox, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import {
-    AddEditCategoryScreenWithNav,
-    AddExpenseScreenWithNav,
-    AddWalletScreenWithNav,
-    ApproveMembersScreenWithNav,
-    BudgetDetailScreenWithNav,
-    BudgetScreenWithNav,
-    CalendarScreenWithNav,
-    CategoryReportDetailScreenWithNav,
-    ChangePasswordScreenWithNav,
-    ChatAIScreenWithNav,
-    CreateGroupScreenWithNav,
-    EditCategoryScreenWithNav,
-    EditGroupScreenWithNav,
-    FinanceScreenWithNav,
-    GroupDetailTabScreenWithNav,
-    GroupManagementScreenWithNav,
-    GroupMembersScreenWithNav,
-    GroupSettingsScreenWithNav,
-    GroupTransactionListScreenWithNav,
-    InviteUsersScreenWithNav,
-    NotificationDetailScreenWithNav,
-    NotificationsScreenWithNav,
-    ReportDetailScreenWithNav,
-    SelectCategoryScreenWithNav,
-    SetBudgetLimitScreenWithNav,
-    StatusInviteMemberWithNav,
-    UpdateProfileScreenWithNav,
-    ViewCategoryReportScreenWithNav
+  AddEditCategoryScreenWithNav,
+  AddExpenseScreenWithNav,
+  AddWalletScreenWithNav,
+  ApproveMembersScreenWithNav,
+  BudgetDetailScreenWithNav,
+  BudgetScreenWithNav,
+  CalendarScreenWithNav,
+  CategoryReportDetailScreenWithNav,
+  ChangePasswordScreenWithNav,
+  ChatAIScreenWithNav,
+  CreateGroupScreenWithNav,
+  EditCategoryScreenWithNav,
+  EditGroupScreenWithNav,
+  FinanceScreenWithNav,
+  GroupDetailTabScreenWithNav,
+  GroupManagementScreenWithNav,
+  GroupMembersScreenWithNav,
+  GroupSettingsScreenWithNav,
+  GroupTransactionListScreenWithNav,
+  InviteUsersScreenWithNav,
+  NotificationDetailScreenWithNav,
+  NotificationsScreenWithNav,
+  ReportDetailScreenWithNav,
+  SelectCategoryScreenWithNav,
+  SetBudgetLimitScreenWithNav,
+  StatusInviteMemberWithNav,
+  UpdateProfileScreenWithNav,
+  ViewCategoryReportScreenWithNav
 } from '../components/ScreenWrappers';
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
@@ -170,6 +170,16 @@ const requestPermission = async () => {
   }
 };
   useEffect(() => {
+    async function setupNotification() {
+      // Tạo notification channel cho Android
+      await notifee.createChannel({
+        id: 'default',
+        name: 'Default Channel',
+      });
+      // Xin quyền notification
+      await notifee.requestPermission();
+    }
+    setupNotification();
     BranchService.init();
     requestPermission();
     messaging().getToken().then(token => {
@@ -212,6 +222,7 @@ const requestPermission = async () => {
   });
   messaging().setBackgroundMessageHandler(async remoteMessage => {
     console.log('📩 [onBackgroundMessage]', JSON.stringify(remoteMessage));
+    
   });
   //   requestPermission();
   //   messaging()
@@ -228,7 +239,7 @@ const requestPermission = async () => {
   //     // Send this token to backend to register for push notifications
   //   });
 
-  // // Handle foreground message
+  // Handle foreground message
   // const unsubscribeMsg = messaging().onMessage(async remoteMessage => {
   //   console.log('📩 [onMessage - Foreground]', JSON.stringify(remoteMessage));
   //   await notifee.displayNotification({
