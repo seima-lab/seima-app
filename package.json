@@ -14,6 +14,7 @@
     "test:coverage": "jest --coverage",
     "test:auth": "jest __tests__/utils/authUtils.test.ts",
     "test:register": "jest __tests__/utils/registerUtils.test.ts",
+    "postinstall": "patch-package",
     "eas-build-pre-install": "npm config set legacy-peer-deps true"
   },
   "dependencies": {
