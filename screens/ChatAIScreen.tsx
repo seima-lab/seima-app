@@ -11,6 +11,7 @@ import {
     Keyboard,
     KeyboardAvoidingView,
     Modal,
+    PermissionsAndroid,
     Platform,
     ScrollView,
     StatusBar,
@@ -19,7 +20,7 @@ import {
     TextInput,
     TouchableOpacity,
     TouchableWithoutFeedback,
-    View
+    View,
 } from 'react-native';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -207,15 +208,61 @@ const VoiceRecorderModal = ({
     onStopRecord: () => Promise<void>;
 }) => {
     const [isRecording, setIsRecording] = useState(false);
+    const [hasAudioPermission, setHasAudioPermission] = useState<boolean | null>(null);
+    // const [justGrantedPermission, setJustGrantedPermission] = useState(false);
 
     // Reset state khi đóng modal
     useEffect(() => {
         if (!visible) {
             setIsRecording(false);
+            // setJustGrantedPermission(false);
+        }
+    }, [visible]);
+
+    // Kiểm tra quyền ghi âm khi mở modal (Android)
+    useEffect(() => {
+        if (visible && Platform.OS === 'android') {
+            (async () => {
+                try {
+                    const granted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+                    setHasAudioPermission(granted);
+                } catch (e) {
+                    setHasAudioPermission(false);
+                }
+            })();
+        } else if (visible && Platform.OS !== 'android') {
+            setHasAudioPermission(true); // iOS: luôn true
         }
     }, [visible]);
 
     const handleRecordPress = async () => {
+        if (Platform.OS === 'android' && !hasAudioPermission) {
+            try {
+                const granted = await PermissionsAndroid.request(
+                    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+                    {
+                        title: 'Cấp quyền ghi âm',
+                        message: 'Ứng dụng cần quyền ghi âm để sử dụng tính năng này.',
+                        buttonNeutral: 'Hỏi lại sau',
+                        buttonNegative: 'Từ chối',
+                        buttonPositive: 'Đồng ý',
+                    }
+                );
+                if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+                    setHasAudioPermission(true);
+                    Alert.alert('Đã cấp quyền ghi âm', 'Vui lòng ấn lại nút ghi âm để bắt đầu ghi.');
+                    return;
+                } else {
+                    setHasAudioPermission(false);
+                    Alert.alert('Không có quyền ghi âm', 'Bạn cần cấp quyền ghi âm để sử dụng tính năng này.');
+                    return;
+                }
+            } catch (err) {
+                setHasAudioPermission(false);
+                Alert.alert('Lỗi xin quyền', 'Không thể xin quyền ghi âm.');
+                return;
+            }
+        }
         if (!isRecording) {
             try {
                 await onStartRecord();

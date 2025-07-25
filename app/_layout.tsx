@@ -10,32 +10,34 @@ import { ActivityIndicator, LogBox, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import {
-  AddEditCategoryScreenWithNav,
-  AddExpenseScreenWithNav,
-  AddWalletScreenWithNav,
-  ApproveMembersScreenWithNav,
-  BudgetDetailScreenWithNav,
-  BudgetScreenWithNav,
-  CalendarScreenWithNav,
-  ChangePasswordScreenWithNav,
-  ChatAIScreenWithNav,
-  CreateGroupScreenWithNav,
-  EditCategoryScreenWithNav,
-  EditGroupScreenWithNav,
-  FinanceScreenWithNav,
-  GroupDetailTabScreenWithNav,
-  GroupManagementScreenWithNav,
-  GroupMembersScreenWithNav,
-  GroupSettingsScreenWithNav,
-  GroupTransactionListScreenWithNav,
-  InviteUsersScreenWithNav,
-  NotificationDetailScreenWithNav,
-  NotificationsScreenWithNav,
-  ReportDetailScreenWithNav,
-  SelectCategoryScreenWithNav,
-  SetBudgetLimitScreenWithNav,
-  StatusInviteMemberWithNav,
-  UpdateProfileScreenWithNav
+    AddEditCategoryScreenWithNav,
+    AddExpenseScreenWithNav,
+    AddWalletScreenWithNav,
+    ApproveMembersScreenWithNav,
+    BudgetDetailScreenWithNav,
+    BudgetScreenWithNav,
+    CalendarScreenWithNav,
+    CategoryReportDetailScreenWithNav,
+    ChangePasswordScreenWithNav,
+    ChatAIScreenWithNav,
+    CreateGroupScreenWithNav,
+    EditCategoryScreenWithNav,
+    EditGroupScreenWithNav,
+    FinanceScreenWithNav,
+    GroupDetailTabScreenWithNav,
+    GroupManagementScreenWithNav,
+    GroupMembersScreenWithNav,
+    GroupSettingsScreenWithNav,
+    GroupTransactionListScreenWithNav,
+    InviteUsersScreenWithNav,
+    NotificationDetailScreenWithNav,
+    NotificationsScreenWithNav,
+    ReportDetailScreenWithNav,
+    SelectCategoryScreenWithNav,
+    SetBudgetLimitScreenWithNav,
+    StatusInviteMemberWithNav,
+    UpdateProfileScreenWithNav,
+    ViewCategoryReportScreenWithNav
 } from '../components/ScreenWrappers';
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
@@ -126,6 +128,8 @@ function AuthNavigator() {
       <Stack.Screen name="BudgetDetailScreen" children={(props) => <BudgetDetailScreenWithNav {...props} />} />
       <Stack.Screen name="StatusInviteMember" options={{ headerShown: false }} children={({ route }) => <StatusInviteMemberWithNav route={route} />} />
       <Stack.Screen name="SelectWalletScreen" component={SelectWalletScreen} />
+      <Stack.Screen name="CategoryReportDetailScreen" children={(props) => <CategoryReportDetailScreenWithNav {...props} />} />
+      <Stack.Screen name="ViewCategoryReportScreen" children={(props) => <ViewCategoryReportScreenWithNav {...props} />} />
     </Stack.Navigator>
   );
 }
