@@ -25,7 +25,7 @@
       }
     },
     "production": {
-      "EAS_BUILD_GRADLE": "./eas-build.gradle",
+     
       "distribution": "internal",
       "android": {
         "buildType": "apk"
@@ -33,7 +33,8 @@
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://seima-server-byb7bmgea3fea4ej.southeastasia-01.azurewebsites.net",
         "EXPO_PUBLIC_API_TIMEOUT": "10000",
-        "API_URL": "https://seima-server-byb7bmgea3fea4ej.southeastasia-01.azurewebsites.net"
+        "API_URL": "https://seima-server-byb7bmgea3fea4ej.southeastasia-01.azurewebsites.net",
+        "EAS_BUILD_GRADLE": "./eas-build.gradle" 
       }
     }
   },
