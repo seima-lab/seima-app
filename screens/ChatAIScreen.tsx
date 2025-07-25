@@ -1,12 +1,16 @@
+import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+    ActivityIndicator,
+    Alert,
     Animated,
     Dimensions,
     Image,
     Keyboard,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     StatusBar,
@@ -17,12 +21,14 @@ import {
     TouchableWithoutFeedback,
     View
 } from 'react-native';
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { aiService, SuggestedWallet } from '../services/aiService';
+import { TranscriptionService } from '../services/transcriptionService';
 import { UserService } from '../services/userService';
 
 const { width } = Dimensions.get('window');
@@ -180,6 +186,106 @@ const formatTime = (date: Date) => {
     });
 };
 
+// Voice Recorder Modal (bạn tích hợp logic ghi âm vào đây)
+const VoiceRecorderModal = ({
+    visible,
+    onClose,
+    onResult,
+    isLoading,
+    recognizedText,
+    setRecognizedText,
+    onStartRecord,
+    onStopRecord,
+}: {
+    visible: boolean;
+    onClose: () => void;
+    onResult: (text: string) => void;
+    isLoading: boolean;
+    recognizedText: string;
+    setRecognizedText: (text: string) => void;
+    onStartRecord: () => Promise<void>;
+    onStopRecord: () => Promise<void>;
+}) => {
+    const [isRecording, setIsRecording] = useState(false);
+
+    // Reset state khi đóng modal
+    useEffect(() => {
+        if (!visible) {
+            setIsRecording(false);
+        }
+    }, [visible]);
+
+    const handleRecordPress = async () => {
+        if (!isRecording) {
+            try {
+                await onStartRecord();
+                setIsRecording(true);
+            } catch (err) {
+                setIsRecording(false);
+            }
+        } else {
+            try {
+                await onStopRecord();
+                setIsRecording(false);
+            } catch (err) {
+                setIsRecording(false);
+            }
+        }
+    };
+
+    return (
+        <Modal visible={visible} animationType="slide" transparent={false}>
+            <View style={{ flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                {/* Nút X đóng modal */}
+                <TouchableOpacity
+                    style={{ position: 'absolute', top: 32, right: 24, zIndex: 10, backgroundColor: '#eee', borderRadius: 16, padding: 6 }}
+                    onPress={onClose}
+                >
+                    <Icon name="close" size={24} color="#333" />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 16, marginTop: 24 }}>Ghi âm giọng nói</Text>
+                {/* Recorder UI: bấm 1 lần bắt đầu, bấm lần nữa dừng */}
+                <TouchableOpacity
+                    style={{ backgroundColor: isRecording ? '#ff4d4f' : '#1e90ff', padding: 24, borderRadius: 50, marginBottom: 24 }}
+                    onPress={handleRecordPress}
+                    disabled={isLoading}
+                >
+                    <Icon name={isRecording ? 'stop' : 'mic'} size={40} color="#fff" />
+                </TouchableOpacity>
+                <Text style={{ color: '#888', marginBottom: 16 }}>
+                    {isRecording ? 'Đang ghi âm... Bấm để dừng' : 'Bấm để bắt đầu ghi âm'}
+                </Text>
+                {isLoading && <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 16 }} />}
+                {recognizedText ? (
+                    <>
+                        <Text style={{ fontSize: 16, marginBottom: 8 }}>Kết quả nhận diện:</Text>
+                        <TextInput
+                            style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, minWidth: 250, minHeight: 40, marginBottom: 16 }}
+                            value={recognizedText}
+                            onChangeText={setRecognizedText}
+                            multiline
+                        />
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#1e90ff', padding: 12, borderRadius: 8 }}
+                                onPress={() => onResult(recognizedText)}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Chấp nhận</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#ccc', padding: 12, borderRadius: 8 }}
+                                onPress={onClose}
+                            >
+                                <Text style={{ color: '#333' }}>Hủy</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </>
+                ) : null}
+            </View>
+        </Modal>
+    );
+};
+
 const ChatAIScreen = () => {
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
@@ -203,6 +309,10 @@ const ChatAIScreen = () => {
     const [showWelcome, setShowWelcome] = useState(true);
     const [isInputFocused, setIsInputFocused] = useState(false);
     const [showExtraButtons, setShowExtraButtons] = useState(true);
+    const [showVoiceModal, setShowVoiceModal] = useState(false);
+    const [isVoiceLoading, setIsVoiceLoading] = useState(false);
+    const [recognizedText, setRecognizedText] = useState('');
+    const audioFilePath = useRef<string | null>(null); // Đường dẫn file audio
     
     const suggestions = [
         { text: 'Tôi tiêu 50k cho ăn uống 🍜', icon: 'restaurant' },
@@ -210,6 +320,8 @@ const ChatAIScreen = () => {
         { text: 'Xem báo cáo chi tiêu 📊', icon: 'analytics' },
         { text: 'Tư vấn tiết kiệm 💡', icon: 'lightbulb' },
     ];
+
+    const audioRecorderPlayer = new AudioRecorderPlayer();
 
     // Lấy user_id khi component mount
     useEffect(() => {
@@ -343,6 +455,66 @@ const ChatAIScreen = () => {
     const handleWalletSelect = (wallet: SuggestedWallet) => {
         const walletMessage = wallet.name;
         handleSendMessage(walletMessage);
+    };
+
+    // Hàm bắt đầu ghi âm (bạn tích hợp recorder của bạn ở đây)
+    const handleStartRecord = async () => {
+        try {
+            const result = await audioRecorderPlayer.startRecorder();
+            audioFilePath.current = result;
+            console.log('Start record, file path:', result);
+        } catch (err) {
+            console.log('Error startRecorder:', err);
+            Alert.alert('Không thể bắt đầu ghi âm!');
+        }
+    };
+    // Hàm dừng ghi âm và gửi lên API
+    const handleStopRecord = async () => {
+        setIsVoiceLoading(true);
+        try {
+            let result = await audioRecorderPlayer.stopRecorder();
+            // Chuẩn hóa lại đường dẫn (loại bớt dấu / dư thừa)
+            if (result && result.startsWith('file:////')) {
+                result = result.replace('file:////', 'file:///');
+            }
+            audioFilePath.current = result;
+            console.log('Chuẩn hóa file path:', result);
+
+            // Chờ file được ghi ra ổ đĩa
+            await new Promise(res => setTimeout(res, 200));
+
+            // Kiểm tra file tồn tại
+            if (!audioFilePath.current) {
+                Alert.alert('Không lấy được file audio!');
+                return;
+            }
+            const info = await FileSystem.getInfoAsync(audioFilePath.current);
+            console.log('File info:', info);
+            if (!info.exists) {
+                Alert.alert('File audio không tồn tại!');
+                return;
+            }
+
+            // Upload như cũ, đồng bộ extension và type
+            const formData = new FormData();
+            formData.append('file', {
+                uri: audioFilePath.current,
+                name: 'sound.mp4', // hoặc sound.m4a nếu đúng định dạng
+                type: 'audio/mp4', // hoặc audio/m4a nếu đúng định dạng
+            } as any);
+            const text = await TranscriptionService.uploadAudio(formData);
+            setRecognizedText(text);
+        } catch (err: any) {
+            Alert.alert('Lỗi nhận diện giọng nói', err && err.message ? err.message : '');
+        } finally {
+            setIsVoiceLoading(false);
+        }
+    };
+    // Khi xác nhận text, điền vào input chat
+    const handleVoiceResult = (text: string) => {
+        setInputText(text);
+        setShowVoiceModal(false);
+        setRecognizedText('');
     };
 
     const renderMessage = (message: Message) => (
@@ -487,12 +659,15 @@ const ChatAIScreen = () => {
                             <View style={styles.inputRow}>
                                 {showExtraButtons ? (
                                     <View style={styles.inputButtons}>
-                                        <TouchableOpacity style={styles.inputButton}>
-                                            <Icon name="photo-camera" size={20} color="#1e90ff" />
+                                        <TouchableOpacity 
+                                            style={styles.inputButton}
+                                            onPress={() => setShowVoiceModal(true)}
+                                        >
+                                            <Icon name="mic" size={20} color="#1e90ff" />
                                         </TouchableOpacity>
                                         
                                         <TouchableOpacity style={styles.inputButton}>
-                                            <Icon name="mic" size={20} color="#1e90ff" />
+                                            <Icon name="photo-camera" size={20} color="#1e90ff" />
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
@@ -563,6 +738,20 @@ const ChatAIScreen = () => {
                             </View>
                         </LinearGradient>
                     </View>
+                    {/* Voice Recorder Modal */}
+                    <VoiceRecorderModal
+                        visible={showVoiceModal}
+                        onClose={() => {
+                            setShowVoiceModal(false);
+                            setRecognizedText('');
+                        }}
+                        onResult={handleVoiceResult}
+                        isLoading={isVoiceLoading}
+                        recognizedText={recognizedText}
+                        setRecognizedText={setRecognizedText}
+                        onStartRecord={handleStartRecord}
+                        onStopRecord={handleStopRecord}
+                    />
                 </KeyboardAvoidingView>
             </LinearGradient>
         </TouchableWithoutFeedback>

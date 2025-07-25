@@ -381,15 +381,16 @@
       "leaveGroup": "Rời khỏi nhóm"
     },
     "invitation": {
+      "alreadyInvited": "Người dùng này đã được mời vào nhóm",
       "title": "Mời thành viên",
       "enterEmail": "Vui lòng nhập địa chỉ email.",
       "invalidEmail": "Địa chỉ email không hợp lệ.",
-      "alreadyInvited": "Email này đã được mời.",
+   
       "sending": "Đang gửi lời mời...",
       "sentToExistingUser": "Đã gửi lời mời đến người dùng đã có tài khoản: {{email}}.",
       "sentToNewUser": "Đã gửi lời mời đến người dùng mới: {{email}}.",
       "resentSuccess": "Gửi lại lời mời thành công!",
-      "sendFailed": "Gửi lời mời thất bại.",
+      "sendFailed": "Gửi lời mời thất bại. Vui lòng thử lại.",
       "userNotFound": "Không tìm thấy người dùng.",
       "pending": "Đang chờ...",
       "removeInvite": "Xóa lời mời",
@@ -566,7 +567,7 @@
     "groups": "Nhóm",
     "budget": "Hạn mức"
   },
-  
+
   "profile": {
     "name": "Tên",
     "firstName": "Họ",
@@ -948,6 +949,7 @@
       "endDate": "Ngày kết thúc",
       "selectStartDate": "Chọn ngày bắt đầu",
       "selectEndDate": "Chọn ngày kết thúc",
+      "unknownEndDate": "Không xác định",
       "confirm": "Xác nhận",
       "save": "Lưu lại",
       "update": "Cập nhật",
@@ -1031,5 +1033,10 @@
     "emptyDescription": "Nhóm {{groupName}} chưa có giao dịch nào được thực hiện",
     "income": "Thu nhập",
     "expense": "Chi tiêu"
+  },
+  "group": {
+    "invitation": {
+      "alreadyInvited": "Người dùng này đã được mời vào nhóm"
+    }
   }
 } 

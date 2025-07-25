@@ -7,10 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Circle, G, Svg, Text as SvgText } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { ReportByCategory, transactionService } from '../services/transactionService';
 import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
+import PeriodFilterBar, { PeriodType } from '../components/PeriodFilterBar';
 import { typography } from '../constants/typography';
 const { width } = Dimensions.get('window');
 
@@ -115,24 +117,18 @@ const DetailedPieChart: React.FC<DetailedPieChartProps> = ({ data, categoryType 
 
 
 const ReportDetailScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<ReportDetailScreenRouteProp>();
   const { t, i18n } = useTranslation();
 
   // FILTER STATE & LOGIC (copy từ ReportScreen)
-  type PeriodType = 'today' | 'thisWeek' | 'thisMonth' | 'thisYear' | 'custom';
   const [selectedPeriodType, setSelectedPeriodType] = React.useState<PeriodType>('thisMonth');
   const [selectedPeriod, setSelectedPeriod] = React.useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [showPeriodDropdown, setShowPeriodDropdown] = React.useState(false);
   const [customStartDate, setCustomStartDate] = React.useState(new Date());
   const [customEndDate, setCustomEndDate] = React.useState(new Date());
-  const [showCustomDateModal, setShowCustomDateModal] = React.useState(false);
-  const [tempStartDate, setTempStartDate] = React.useState(new Date());
-  const [tempEndDate, setTempEndDate] = React.useState(new Date());
-  const [focusedInput, setFocusedInput] = React.useState<'start' | 'end' | null>(null);
   const [weekReferenceDate, setWeekReferenceDate] = React.useState(new Date());
 
   // Dummy fetchData: bạn thay bằng API thực tế nếu cần
@@ -229,7 +225,7 @@ const ReportDetailScreen = () => {
       const dateStr = now.toISOString().split('T')[0];
       return { startDate: dateStr, endDate: dateStr };
     }
-  }, [selectedPeriodType, selectedPeriod, customStartDate, customEndDate, weekReferenceDate]);
+  }, [selectedPeriodType, selectedPeriod, weekReferenceDate]);
 
   // Fetch API khi filter đổi
   const fetchData = React.useCallback(async () => {
@@ -342,7 +338,7 @@ const ReportDetailScreen = () => {
       const dateStr = now.toISOString().split('T')[0];
       return { startDate: dateStr, endDate: dateStr };
     }
-  }, [selectedPeriodType, selectedPeriod, customStartDate, customEndDate, weekReferenceDate]);
+  }, [selectedPeriodType, selectedPeriod, weekReferenceDate]);
 
   // UI filter giống ReportScreen
   const periodTypeOptions = [
@@ -540,15 +536,15 @@ const ReportDetailScreen = () => {
   };
 
   const handleDateSelect = (type: 'start' | 'end') => {
-    const currentDate = type === 'start' ? tempStartDate : tempEndDate;
+    const currentDate = type === 'start' ? customStartDate : customEndDate;
     DateTimePickerAndroid.open({
       value: currentDate,
       onChange: (event: any, selectedDate?: Date) => {
         if (selectedDate) {
           if (type === 'start') {
-            setTempStartDate(selectedDate);
+            setCustomStartDate(selectedDate);
           } else {
-            setTempEndDate(selectedDate);
+            setCustomEndDate(selectedDate);
           }
         }
       },
@@ -564,11 +560,13 @@ const ReportDetailScreen = () => {
     if (!reportData) return [];
     // Lấy đúng loại (expense/income) theo categoryType
     const arr: ReportByCategory[] = (reportData.transactionsByCategory?.[categoryType] || reportData.transactions_by_category?.[categoryType]) || [];
-    return arr.map((item: ReportByCategory) => {
-      const iconName = getIconForCategory(item.category_icon_url, categoryType);
-      const iconColor = getIconColor(iconName, categoryType);
-      return { ...item, color: iconColor };
-    });
+    return arr
+      .map((item: ReportByCategory) => {
+        const iconName = getIconForCategory(item.category_icon_url, categoryType);
+        const iconColor = getIconColor(iconName, categoryType);
+        return { ...item, color: iconColor };
+      })
+      .filter((item) => item.percentage > 0); // Loại bỏ category có percentage = 0
   }, [reportData, categoryType]);
 
   // Helper: Lấy ngày hiện tại theo giờ local (YYYY-MM-DD)
@@ -628,82 +626,37 @@ const ReportDetailScreen = () => {
         <View style={{ width: 24 }} />
       </View>
       {/* FILTER UI giống ReportScreen */}
-      <View style={styles.monthSelector}>
-        <TouchableOpacity onPress={() => navigatePeriod('prev')}>
-          <Icon name="chevron-left" size={24} color="#666" />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <TouchableOpacity 
-            style={styles.periodDisplayContainer}
-            onPress={() => setShowPeriodDropdown((prev) => !prev)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.periodTypeIndicator}>
-              <Text style={styles.periodTypeLabel}>{getCurrentPeriodTypeLabel()}</Text>
-              {getCurrentPeriodTypeLabel() !== '' && (
-                <Icon name="chevron-down" size={16} color="#666" />
-              )}
-            </View>
-            <View style={getCurrentPeriodTypeLabel() === '' ? styles.periodTextContainerCenter : styles.periodTextContainer}>
-              <Text style={getCurrentPeriodTypeLabel() === '' ? styles.monthTextCenter : styles.monthText}>{getPeriodDisplayText()}</Text>
-            </View>
-          </TouchableOpacity>
-          {showPeriodDropdown && (
-            <View style={styles.dropdownContainer}>
-              {periodTypeOptions.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.dropdownOption,
-                    selectedPeriodType === option.value && styles.selectedDropdownOption
-                  ]}
-                  onPress={() => {
-                    setSelectedPeriodType(option.value as PeriodType);
-                    if (option.value === 'today') {
-                      setSelectedPeriod(getLocalDateString());
-                    }
-                    setShowPeriodDropdown(false);
-                    if (option.value === 'custom') {
-                      setTempStartDate(customStartDate);
-                      setTempEndDate(customEndDate);
-                      setShowCustomDateModal(true);
-                    }
-                  }}
-                >
-                  <Text style={[
-                    styles.dropdownOptionText,
-                    selectedPeriodType === option.value && styles.selectedDropdownOptionText
-                  ]}>
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-        <TouchableOpacity onPress={() => navigatePeriod('next')}>
-          <Icon name="chevron-right" size={24} color="#666" />
-        </TouchableOpacity>
-      </View>
+      <PeriodFilterBar
+        periodType={selectedPeriodType}
+        periodValue={selectedPeriod}
+        weekReferenceDate={weekReferenceDate}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
+        onChangePeriodType={setSelectedPeriodType}
+        onChangePeriodValue={setSelectedPeriod}
+        onChangeWeekReferenceDate={setWeekReferenceDate}
+        onChangeCustomStartDate={setCustomStartDate}
+        onChangeCustomEndDate={setCustomEndDate}
+      />
       {/* Modal chọn ngày tuỳ chỉnh */}
       <Modal
-        visible={showCustomDateModal}
+        visible={false} // Removed showCustomDateModal
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setShowCustomDateModal(false)}
+        onRequestClose={() => {}} // Removed setShowCustomDateModal
       >
         <View style={styles.modalOverlay}>
           <View style={styles.customDateModalContainer}>
             <View style={styles.customDateModalHeader}>
               <Text style={styles.customDateModalTitle}>{t('reports.selectDateRange')}</Text>
-              <TouchableOpacity onPress={() => setShowCustomDateModal(false)}>
+              <TouchableOpacity onPress={() => {}}> {/* Removed setShowCustomDateModal */}
                 <Icon name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
             <View style={styles.customDateModalContent}>
               <View style={styles.currentRangeDisplay}>
                 <Text style={styles.currentRangeText}>
-                  {tempStartDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { day: 'numeric', month: 'short' })} - {tempEndDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { day: 'numeric', month: 'short' })}
+                  {customStartDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { day: 'numeric', month: 'short' })} - {customEndDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { day: 'numeric', month: 'short' })}
                 </Text>
                 <Icon name="calendar" size={20} color="#007AFF" />
               </View>
@@ -713,12 +666,12 @@ const ReportDetailScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.dateInputButton,
-                      focusedInput === 'start' && styles.dateInputButtonActive
+                      // Removed focusedInput === 'start' && styles.dateInputButtonActive
                     ]}
                     onPress={() => handleDateSelect('start')}
                   >
                     <Text style={styles.dateInputText}>
-                      {tempStartDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')}
+                      {customStartDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -727,12 +680,12 @@ const ReportDetailScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.dateInputButton,
-                      focusedInput === 'end' && styles.dateInputButtonActive
+                      // Removed focusedInput === 'end' && styles.dateInputButtonActive
                     ]}
                     onPress={() => handleDateSelect('end')}
                   >
                     <Text style={styles.dateInputText}>
-                      {tempEndDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')}
+                      {customEndDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -740,27 +693,27 @@ const ReportDetailScreen = () => {
               <View style={styles.customDateModalActions}>
                 <TouchableOpacity 
                   style={styles.cancelButton}
-                  onPress={() => setShowCustomDateModal(false)}
+                  onPress={() => {}} // Removed setShowCustomDateModal
                 >
                   <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
                     styles.confirmButton,
-                    tempStartDate > tempEndDate && styles.disabledButton
+                    customStartDate > customEndDate && styles.disabledButton
                   ]}
-                  disabled={tempStartDate > tempEndDate}
+                  disabled={customStartDate > customEndDate}
                   onPress={() => {
-                    if (tempStartDate <= tempEndDate) {
-                      setCustomStartDate(tempStartDate);
-                      setCustomEndDate(tempEndDate);
-                      setShowCustomDateModal(false);
+                    if (customStartDate <= customEndDate) {
+                      // Removed setCustomStartDate(tempStartDate);
+                      // Removed setCustomEndDate(tempEndDate);
+                      // Removed setShowCustomDateModal(false);
                     }
                   }}
                 >
                   <Text style={[
                     styles.confirmButtonText,
-                    tempStartDate > tempEndDate && styles.disabledButtonText
+                    customStartDate > customEndDate && styles.disabledButtonText
                   ]}>
                     {t('common.ok')}
                   </Text>
@@ -795,13 +748,41 @@ const ReportDetailScreen = () => {
           <View style={styles.listSection}>
             <Text style={styles.listHeader}>{t('reports.categories')}</Text>
             {chartData.map((item: ReportByCategory & { color: string }, index: number) => (
-              <View key={index} style={styles.listItem}>
+              <TouchableOpacity
+                key={index}
+                style={styles.listItem}
+                onPress={async () => {
+                  try {
+                    let startOfMonth: Date, endOfMonth: Date;
+                    if (selectedPeriodType === 'thisMonth' && selectedPeriod && selectedPeriod.includes('-')) {
+                      const [year, month] = selectedPeriod.split('-').map(Number);
+                      startOfMonth = new Date(year, month - 1, 1);
+                      endOfMonth = new Date(year, month, 0);
+                    } else {
+                      // fallback: current month
+                      const now = new Date();
+                      const year = now.getFullYear();
+                      const month = now.getMonth();
+                      startOfMonth = new Date(year, month, 1);
+                      endOfMonth = new Date(year, month + 1, 0);
+                    }
+                    // Không truyền start_date/end_date để type mặc định là MONTHLY
+                    navigation.navigate('CategoryReportDetailScreen', {
+                      category_name: item.category_name,
+                      category_id: item.category_id
+                    });
+                  } catch (err) {
+                    console.error('Error navigating to category report:', err);
+                  }
+                }}
+              >
                 <View style={[styles.itemIconContainer, { backgroundColor: `${item.color}20` }]}> 
                   <Icon name={getIconForCategory(item.category_icon_url, categoryType)} size={20} color={item.color} />
                 </View>
                 <Text style={styles.itemName}>{item.category_name}</Text>
                 <Text style={styles.itemAmount}>{item.amount.toLocaleString('vi-VN')} đ</Text>
-              </View>
+                <Icon name="chevron-right" size={22} color="#bbb" style={{ marginLeft: 8 }} />
+              </TouchableOpacity>
             ))}
           </View>
         </ScrollView>

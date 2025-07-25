@@ -5,6 +5,7 @@ import ApproveMembersScreen from '../screens/ApproveMembersScreen';
 import BudgetDetailScreen from '../screens/BudgetDetailScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import CalendarScreen from '../screens/CalendarScreen';
+import CategoryReportDetailScreen from '../screens/CategoryReportDetailScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ChatAIScreen from '../screens/ChatAIScreen';
 import CreateGroupScreen from '../screens/CreateGroupScreen';
@@ -24,6 +25,7 @@ import SelectCategoryScreen from '../screens/SelectCategoryScreen';
 import SetBudgetLimitScreen from '../screens/SetBudgetLimitScreen';
 import StatusInviteMember, { GroupMemberStatus } from '../screens/StatusInviteMember';
 import UpdateProfileScreen from '../screens/update-profile';
+import ViewCategoryReportScreen from '../screens/ViewCategoryReportScreen';
 import WithBottomNavigation from './WithBottomNavigation';
 
 // Wrapper components for each screen
@@ -183,5 +185,17 @@ export const BudgetDetailScreenWithNav = (props: any) => (
 export const StatusInviteMemberWithNav = ({ route }: any) => (
   <WithBottomNavigation>
     <StatusInviteMember {...route.params as { status: GroupMemberStatus }} />
+  </WithBottomNavigation>
+); 
+
+export const CategoryReportDetailScreenWithNav = (props: any) => (
+  <WithBottomNavigation showBottomNav={false}>
+    <CategoryReportDetailScreen {...props} />
+  </WithBottomNavigation>
+); 
+
+export const ViewCategoryReportScreenWithNav = (props: any) => (
+  <WithBottomNavigation>
+    <ViewCategoryReportScreen {...props} />
   </WithBottomNavigation>
 ); 

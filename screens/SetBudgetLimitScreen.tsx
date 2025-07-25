@@ -2,18 +2,18 @@ import { useRoute } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Calendar from 'react-native-calendars/src/calendar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -554,7 +554,7 @@ const BudgetLimitScreen = () => {
         overall_amount_limit: Number(amount.replace(/[^0-9]/g, '')),
         budget_remaining_amount: Number(amount.replace(/[^0-9]/g, '')),
         category_list: selectedCategories.map(category => ({ category_id: category.category_id })), // Array of objects with category_id
-        wallet_ids: selectedWalletIds, // Array of wallet IDs
+        wallet_list: selectedWalletIds.map(id => ({ wallet_id: id })), // Array of objects with wallet_id
       };
 
       console.log('📤 Final request object:', JSON.stringify(request, null, 2));

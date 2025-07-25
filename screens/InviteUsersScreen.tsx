@@ -16,9 +16,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomErrorModal from '../components/CustomErrorModal';
 import { typography } from '../constants/typography';
 import { RootStackParamList } from '../navigation/types';
-import { EmailInvitationResponse, groupService, PendingGroupMemberResponse } from '../services/groupService';
+import { groupService, PendingGroupMemberResponse } from '../services/groupService';
 type InviteUsersRouteProp = RouteProp<RootStackParamList, 'InviteUsers'>;
 
 const InviteUsersScreen = () => {
@@ -31,6 +32,27 @@ const InviteUsersScreen = () => {
   const [pendingMembers, setPendingMembers] = useState<PendingGroupMemberResponse[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [loadingUserId, setLoadingUserId] = useState<number | null>(null);
+
+  // State for CustomErrorModal
+  const [errorModal, setErrorModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'error' as 'error' | 'warning' | 'info' | 'success',
+  });
+
+  const showError = (message: string, title?: string, type: 'error' | 'warning' | 'info' | 'success' = 'error') => {
+    setErrorModal({
+      visible: true,
+      title: title || t('common.error'),
+      message,
+      type,
+    });
+  };
+
+  const hideErrorModal = () => {
+    setErrorModal((prev) => ({ ...prev, visible: false }));
+  };
 
   const { groupId } = route.params;
 
@@ -59,32 +81,62 @@ const InviteUsersScreen = () => {
     try {
       console.log('🟡 Sending invitation for group:', groupId, 'to email:', trimmedEmail);
       
-      const response: EmailInvitationResponse = await groupService.sendEmailInvitation({
+      const response = await groupService.sendEmailInvitation({
         group_id: parseInt(groupId),
         email: trimmedEmail
       });
-      
-      console.log('🟢 Invitation response:', response);
-
-      if (response.email_sent) {
-        if (response.user_exists) {
-          Alert.alert(
-            t('common.success'), 
-            t('group.invitation.sentToExistingUser', { email: trimmedEmail })
-          );
-        } else {
-          Alert.alert(
-            t('common.success'), 
-            t('group.invitation.sentToNewUser', { email: trimmedEmail })
-          );
-        }
-      } else {
-        Alert.alert(t('common.error'), response.message);
+      console.log('API response:', response);
+      if (!response) {
+        showError(t('group.invitation.alreadyInvited') || 'Gửi lời mời thất bại. Vui lòng thử lại.');
+        return;
       }
+      // Nếu response chỉ có status_code và message (không có email_sent)
+      if (
+        typeof response === 'object' && response !== null &&
+        'status_code' in response && 'message' in response && !('email_sent' in response)
+      ) {
+        const res: any = response;
+        if (res.status_code === 409 || (res.message && res.message.toLowerCase().includes('already been invited'))) {
+          showError(t('group.invitation.alreadyInvited'));
+        } else {
+          showError(res.message || t('group.invitation.sendFailed'));
+        }
+        return;
+      }
+      // Nếu response có email_sent thì xử lý như cũ
+      if ('email_sent' in response) {
+        const res: any = response;
+        if (res.email_sent) {
+          if (res.user_exists) {
+            Alert.alert(
+              t('common.success'),
+              t('group.invitation.sentToExistingUser', { email: trimmedEmail })
+            );
+          } else {
+            Alert.alert(
+              t('common.success'),
+              t('group.invitation.sentToNewUser', { email: trimmedEmail })
+            );
+          }
+        } else {
+          showError(res.message || t('group.invitation.sendFailed'));
+        }
+        return;
+      }
+      // Nếu không khớp trường hợp nào, show lỗi chung
+      showError(t('group.invitation.sendFailed') || 'Gửi lời mời thất bại. Vui lòng thử lại.');
+      return;
 
     } catch (error: any) {
       console.error('🔴 Failed to send invitation:', error);
-      Alert.alert(t('common.error'), error.message || t('group.invitation.sendFailed'));
+      // Xử lý lỗi 409
+      let statusCode = error?.response?.status;
+      let backendMessage = error?.response?.data?.message || error?.message;
+      if (statusCode === 409 || (backendMessage && (backendMessage.toLowerCase().includes('409') || backendMessage.toLowerCase().includes('conflict')))) {
+        showError(backendMessage || t('group.invitation.conflict'));
+      } else {
+        Alert.alert(t('common.error'), error.message || t('group.invitation.sendFailed'));
+      }
     } finally {
       setIsLoading(false);
       setIsFullScreenLoading(false);
@@ -299,6 +351,14 @@ const InviteUsersScreen = () => {
           </View>
         </View>
       </Modal>
+      {/* CustomErrorModal for 409 error */}
+      <CustomErrorModal
+        visible={errorModal.visible}
+        title={errorModal.title}
+        message={errorModal.message}
+        onDismiss={hideErrorModal}
+        type={errorModal.type}
+      />
     </SafeAreaView>
   );
 };

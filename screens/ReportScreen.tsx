@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     Dimensions,
-    Modal,
     ScrollView,
     StyleSheet,
     Text,
@@ -27,8 +26,9 @@ import {
     transactionService,
 } from '../services/transactionService';
 // Import getIconColor to match colors with AddExpenseScreen
+import PeriodFilterBar, { PeriodType } from '../components/PeriodFilterBar';
 import { RootStackParamList } from '../navigation/types';
-import { getIconColor } from '../utils/iconUtils';
+import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 const { width } = Dimensions.get('window');
 const CHART_SIZE = width * 0.4;
@@ -40,114 +40,6 @@ interface PieChartProps {
   strokeWidth?: number;
   categoryType: 'expense' | 'income';
 }
-
-/**
- * Get category color based on category name and type
- * Maps category name to icon and gets color using iconUtils (same as AddExpenseScreen)
- */
-const getCategoryColor = (categoryName: string, categoryType: 'expense' | 'income'): string => {
-  // Map category name to icon (similar to iconMapping in categoryService)
-  const categoryIconMap: { [key: string]: string } = {
-    // Food & Dining
-    'food': 'silverware-fork-knife',
-    'restaurant': 'silverware-fork-knife', 
-    'coffee': 'coffee',
-    'fast-food': 'hamburger',
-    'dining': 'silverware-fork-knife',
-    'ăn uống': 'silverware-fork-knife',
-    'thức ăn': 'silverware-fork-knife',
-    'nhà hàng': 'silverware-fork-knife',
-    
-    // Daily & Shopping
-    'daily': 'bottle-soda',
-    'shopping': 'shopping', 
-    'grocery': 'cart',
-    'market': 'store',
-    'mua sắm': 'shopping',
-    'chợ': 'store',
-    'siêu thị': 'cart',
-    
-    // Transportation
-    'transport': 'train',
-    'transportation': 'train', 
-    'car': 'car',
-    'bus': 'bus',
-    'taxi': 'taxi',
-    'fuel': 'gas-station',
-    'di chuyển': 'train',
-    'xe buýt': 'bus',
-    'xăng': 'gas-station',
-    
-    // Utilities
-    'electric': 'flash',
-    'electricity': 'flash',
-    'water': 'water',
-    'internet': 'wifi',
-    'gas': 'fire',
-    'utility': 'home-lightning-bolt',
-    'điện': 'flash',
-    'nước': 'water',
-    
-    // Housing
-    'rent': 'home-city',
-    'house': 'home',
-    'apartment': 'apartment',
-    'home': 'home',
-    'housing': 'home-city',
-    'thuê nhà': 'home-city',
-    'nhà ở': 'home',
-    
-    // Health & Medical
-    'health': 'pill',
-    'medical': 'hospital-box',
-    'hospital': 'hospital-box',
-    'fitness': 'dumbbell',
-    'doctor': 'doctor',
-    'sức khỏe': 'pill',
-    'y tế': 'hospital-box',
-    
-    // Entertainment
-    'entertainment': 'gamepad-variant',
-    'movie': 'movie',
-    'music': 'music',
-    'party': 'party-popper',
-    'gaming': 'gamepad-variant',
-    'giải trí': 'gamepad-variant',
-    
-    // Income categories
-    'salary': 'cash',
-    'wage': 'cash',
-    'income': 'cash-plus',
-    'bonus': 'gift',
-    'investment': 'chart-line',
-    'freelance': 'laptop',
-    'business': 'store',
-    'lương': 'cash',
-    'thưởng': 'gift',
-    'đầu tư': 'chart-line',
-    'kinh doanh': 'store',
-  };
-  
-  // Convert category name to lowercase for matching
-  const normalizedName = categoryName.toLowerCase().trim();
-  
-  // Find matching icon
-  let icon = 'cash-minus'; // default
-  for (const [key, value] of Object.entries(categoryIconMap)) {
-    if (normalizedName.includes(key)) {
-      icon = value;
-      break;
-    }
-  }
-  
-  // If no match found, use default based on category type
-  if (icon === 'cash-minus') {
-    icon = categoryType === 'expense' ? 'cash-minus' : 'cash-plus';
-  }
-  
-  // Use getIconColor to get the color (same as AddExpenseScreen)
-  return getIconColor(icon, categoryType);
-};
 
 const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, categoryType }) => {
   const { t } = useTranslation();
@@ -165,8 +57,8 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
   const chartData = data.map((item, index) => {
     const categoryName = (item as any).category_name || (item as any).categoryName || `Category ${index + 1}`;
     const percentage = item.percentage || 0;
-    const color = getCategoryColor(categoryName, categoryType);
-    
+    const icon = getIconForCategory((item as any).category_icon_url, categoryType);
+    const color = getIconColor(icon, categoryType);
     return {
       categoryName,
       percentage,
@@ -262,7 +154,8 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
 };
 
 // Add period type enum
-type PeriodType = 'today' | 'thisWeek' | 'thisMonth' | 'thisYear' | 'custom';
+// Remove local PeriodType definition and use imported one
+// Remove unused state and variables
 
 export default function ReportScreen() {
   const { t, i18n } = useTranslation();
@@ -279,23 +172,10 @@ export default function ReportScreen() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
-  
-  // Period dropdown state
-  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
-  
-  // Custom date picker state
   const [customStartDate, setCustomStartDate] = useState(new Date());
   const [customEndDate, setCustomEndDate] = useState(new Date());
-  
-  // Custom date modal state
-  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
-  const [tempStartDate, setTempStartDate] = useState(new Date());
-  const [tempEndDate, setTempEndDate] = useState(new Date());
-  const [focusedInput, setFocusedInput] = useState<'start' | 'end' | null>(null);
-  
-  // Week reference date for navigation
   const [weekReferenceDate, setWeekReferenceDate] = useState(new Date());
-
+  
   // Toast state
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -765,16 +645,16 @@ export default function ReportScreen() {
 
   // Handle date selection
   const handleDateSelect = (type: 'start' | 'end') => {
-    const currentDate = type === 'start' ? tempStartDate : tempEndDate;
+    const currentDate = type === 'start' ? customStartDate : customEndDate;
     
     DateTimePickerAndroid.open({
       value: currentDate,
       onChange: (event: any, selectedDate?: Date) => {
         if (selectedDate) {
           if (type === 'start') {
-            setTempStartDate(selectedDate);
+            setCustomStartDate(selectedDate);
           } else {
-            setTempEndDate(selectedDate);
+            setCustomEndDate(selectedDate);
           }
         }
       },
@@ -884,167 +764,19 @@ export default function ReportScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Period Navigation */}
-      <View style={styles.monthSelector}>
-        <TouchableOpacity onPress={() => navigatePeriod('prev')}>
-          <Icon name="chevron-left" size={24} color="#666" />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <TouchableOpacity 
-            style={styles.periodDisplayContainer}
-            onPress={() => setShowPeriodDropdown((prev) => !prev)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.periodTypeIndicator}>
-              <Text style={styles.periodTypeLabel}>{getCurrentPeriodTypeLabel()}</Text>
-              {getCurrentPeriodTypeLabel() !== '' && (
-                <Icon name="chevron-down" size={16} color="#666" />
-              )}
-            </View>
-            <View style={getCurrentPeriodTypeLabel() === '' ? styles.periodTextContainerCenter : styles.periodTextContainer}>
-              <Text style={getCurrentPeriodTypeLabel() === '' ? styles.monthTextCenter : styles.monthText}>{getPeriodDisplayText()}</Text>
-            </View>
-          </TouchableOpacity>
-          {/* Dropdown filter ngay dưới filter */}
-          {showPeriodDropdown && (
-            <View style={styles.dropdownContainer}>
-              {periodTypeOptions.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.dropdownOption,
-                    selectedPeriodType === option.value && styles.selectedDropdownOption
-                  ]}
-                  onPress={() => {
-                    setSelectedPeriodType(option.value as PeriodType);
-                    setShowPeriodDropdown(false);
-                    if (option.value === 'custom') {
-                      setTempStartDate(customStartDate);
-                      setTempEndDate(customEndDate);
-                      setShowCustomDateModal(true);
-                    }
-                  }}
-                >
-                  <Text style={[
-                    styles.dropdownOptionText,
-                    selectedPeriodType === option.value && styles.selectedDropdownOptionText
-                  ]}>
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-        <TouchableOpacity onPress={() => navigatePeriod('next')}>
-          <Icon name="chevron-right" size={24} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Custom Date Modal */}
-      <Modal
-        visible={showCustomDateModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowCustomDateModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.customDateModalContainer}>
-            <View style={styles.customDateModalHeader}>
-              <Text style={styles.customDateModalTitle}>{t('reports.selectDateRange')}</Text>
-              <TouchableOpacity onPress={() => setShowCustomDateModal(false)}>
-                <Icon name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.customDateModalContent}>
-              {/* Current Range Display */}
-              <View style={styles.currentRangeDisplay}>
-                <Text style={styles.currentRangeText}>
-                  {tempStartDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { 
-                    day: 'numeric', 
-                    month: 'short' 
-                  })} - {tempEndDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { 
-                    day: 'numeric', 
-                    month: 'short' 
-                  })}
-                </Text>
-                <Icon name="calendar" size={20} color="#007AFF" />
-              </View>
-
-              {/* Date Input Fields */}
-              <View style={styles.dateInputFields}>
-                <View style={styles.dateInputField}>
-                  <Text style={styles.dateInputLabel}>{t('reports.startDate')}</Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.dateInputButton,
-                      focusedInput === 'start' && styles.dateInputButtonActive
-                    ]}
-                    onPress={() => handleDateSelect('start')}
-                  >
-                    <Text style={styles.dateInputText}>
-                      {tempStartDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.dateInputField}>
-                  <Text style={styles.dateInputLabel}>{t('reports.endDate')}</Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.dateInputButton,
-                      focusedInput === 'end' && styles.dateInputButtonActive
-                    ]}
-                    onPress={() => handleDateSelect('end')}
-                  >
-                    <Text style={styles.dateInputText}>
-                      {tempEndDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.customDateModalActions}>
-                <TouchableOpacity 
-                  style={styles.cancelButton}
-                  onPress={() => setShowCustomDateModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.confirmButton,
-                    tempStartDate > tempEndDate && styles.disabledButton
-                  ]}
-                  disabled={tempStartDate > tempEndDate}
-                  onPress={() => {
-                    if (tempStartDate <= tempEndDate) {
-                      setCustomStartDate(tempStartDate);
-                      setCustomEndDate(tempEndDate);
-                      setShowCustomDateModal(false);
-                    }
-                  }}
-                >
-                  <Text style={[
-                    styles.confirmButtonText,
-                    tempStartDate > tempEndDate && styles.disabledButtonText
-                  ]}>
-                    {t('common.ok')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-
-
-
-
-
+      {/* Period Filter Bar (reusable) */}
+      <PeriodFilterBar
+        periodType={selectedPeriodType}
+        periodValue={selectedPeriod}
+        weekReferenceDate={weekReferenceDate}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
+        onChangePeriodType={setSelectedPeriodType}
+        onChangePeriodValue={setSelectedPeriod}
+        onChangeWeekReferenceDate={setWeekReferenceDate}
+        onChangeCustomStartDate={setCustomStartDate}
+        onChangeCustomEndDate={setCustomEndDate}
+      />
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -1058,7 +790,12 @@ export default function ReportScreen() {
             <View style={styles.summaryRow}>
               <View style={styles.incomeCard}>
                 <Text style={styles.incomeLabel}>{t('reports.expense')}</Text>
-                <Text style={[styles.summaryValue, styles.expenseValue]}>
+                <Text
+                  style={[styles.summaryValue, styles.expenseValue]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                >
                   {(() => {
                     // Log summary data before rendering
                     const summary = (reportData as any)?.summary;
@@ -1079,7 +816,12 @@ export default function ReportScreen() {
               </View>
               <View style={styles.expenseCard}>
                 <Text style={styles.expenseLabel}>{t('reports.income')}</Text>
-                <Text style={[styles.summaryValue, styles.incomeValue]}>
+                <Text
+                  style={[styles.summaryValue, styles.incomeValue]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                >
                   {(() => {
                     // Log summary data before rendering
                     const summary = (reportData as any)?.summary;
@@ -1152,7 +894,10 @@ export default function ReportScreen() {
           </View>
 
           {/* View Report by Category */}
-          <TouchableOpacity style={styles.viewReportButton}>
+          <TouchableOpacity
+            style={styles.viewReportButton}
+            onPress={() => navigation.navigate('ViewCategoryReportScreen', { type: 'expense' })}
+          >
             <Text style={styles.viewReportText}>{t('reports.viewReportByCategory')}</Text>
           </TouchableOpacity>
         </ScrollView>
