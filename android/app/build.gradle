@@ -104,26 +104,29 @@ kotlinOptions {
         versionName "1.0.0"
     }
     signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
+          release {
+    storeFile file(rootProject.file("app/@cnguyenmanh26__seima-app.jks"))
+ // hoặc đường dẫn tới keystore bạn vừa tải về
+      storePassword '37f960bd6422e87be02d72d9d2923358'
+      keyAlias 'd7ead541638bad512e462619e5854ff8'
+      keyPassword 'fac7cdb8590188d19e68d2b422db2549'
+    }
+    debug {
+      storeFile file(rootProject.file("app/@cnguyenmanh26__seima-app.jks"))
+ // dùng chung keystore
+      storePassword '37f960bd6422e87be02d72d9d2923358'
+      keyAlias 'd7ead541638bad512e462619e5854ff8'
+      keyPassword 'fac7cdb8590188d19e68d2b422db2549'
+    }
+
     }
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
-        }
-        release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
-            shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
-            minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-            crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
-        }
+        signingConfig signingConfigs.debug
+    }
+    release {
+        signingConfig signingConfigs.release
+    }
     }
     packagingOptions {
         jniLibs {
