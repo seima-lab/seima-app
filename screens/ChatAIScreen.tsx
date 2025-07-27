@@ -1102,7 +1102,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
     },
-        inputRow: {
+    // ✅ SỬA: Thêm dấu phẩy và căn chỉnh thụt lề đúng
+    inputRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
@@ -1170,5 +1171,5 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
 });
-
+console.log("styles", styles);
 export default ChatAIScreen; 
