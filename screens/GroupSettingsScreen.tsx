@@ -2,17 +2,17 @@ import { NavigationProp, useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -25,16 +25,24 @@ import { EligibleMemberResponse, OwnerExitOptionsResponse } from '../services/gr
 interface Props {
   groupId: string;
   groupName: string;
-  groupAvatar?: string;
+  group_avatar_url?: string;
+  group_created_date?: string;
   groupDescription?: string;
 }
 
 const GroupSettingsScreen: React.FC<Props> = ({ 
   groupId, 
   groupName, 
-  groupAvatar, 
+  group_avatar_url, 
+  group_created_date, 
   groupDescription 
 }) => {
+  console.log('🟡 [GroupSettingsScreen] Received props:', {
+    groupId,
+    groupName,
+    group_avatar_url,
+    group_created_date
+  });
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -87,7 +95,7 @@ const GroupSettingsScreen: React.FC<Props> = ({
                 groupData: {
                   group_id: Number(groupId),
                   group_name: groupName,
-                  group_avatar_url: groupAvatar,
+                  group_avatar_url: group_avatar_url,
                   group_created_date: '',
                   group_is_active: true,
                   group_leader: {
@@ -597,6 +605,8 @@ const GroupSettingsScreen: React.FC<Props> = ({
     );
   };
 
+  console.log('🟡 [GroupSettingsScreen] About to render with avatar URL:', group_avatar_url, 'and created date:', group_created_date);
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -625,10 +635,35 @@ const GroupSettingsScreen: React.FC<Props> = ({
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Group Management */}
+        {/* Combined Settings Card */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('group.settings.groupManagement')}</Text>
           <View style={styles.settingsCard}>
+            {/* Group Info Section */}
+            <View style={styles.infoSection}>
+              <View style={styles.groupAvatarContainer}>
+                {group_avatar_url ? (
+                  <Image source={{ uri: group_avatar_url }} style={styles.groupAvatar} />
+                ) : (
+                  <View style={styles.groupAvatarPlaceholder}>
+                    <Icon name="group" size={32} color="#FFFFFF" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>{t('group.settings.groupName')}:</Text>
+                <Text style={styles.infoValue}>{groupName}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>{t('group.settings.createdDate')}:</Text>
+                <Text style={styles.infoValue}>
+                  {group_created_date ? new Date(group_created_date).toLocaleDateString('vi-VN') : 'N/A'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.separator} />
+
+            {/* Group Management Section */}
             <SettingItem
               icon="edit"
               title={t('group.settings.editGroupInfo')}
@@ -642,13 +677,10 @@ const GroupSettingsScreen: React.FC<Props> = ({
               subtitle="Quản lý thành viên nhóm"
               onPress={handleManageMembers}
             />
-          </View>
-        </View>
 
-        {/* Danger Zone */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('group.settings.dangerZone')}</Text>
-          <View style={styles.settingsCard}>
+            <View style={styles.separator} />
+
+            {/* Danger Zone Section */}
             <SettingItem
               icon="exit-to-app"
               title={t('group.settings.leaveGroup')}
@@ -664,29 +696,6 @@ const GroupSettingsScreen: React.FC<Props> = ({
               onPress={handleDeleteGroup}
               danger={true}
             />
-          </View>
-        </View>
-
-        {/* Group Info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('group.settings.information')}</Text>
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{t('group.settings.groupId')}:</Text>
-              <Text style={styles.infoValue}>{groupId}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{t('group.settings.groupName')}:</Text>
-              <Text style={styles.infoValue}>{groupName}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{t('group.settings.createdDate')}:</Text>
-              <Text style={styles.infoValue}>15/11/2024</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{t('group.settings.version')}:</Text>
-              <Text style={styles.infoValue}>1.0.0</Text>
-            </View>
           </View>
         </View>
       </ScrollView>
@@ -844,6 +853,26 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#F0F0F0',
     marginLeft: 56,
+  },
+  infoSection: {
+    padding: 16,
+  },
+  groupAvatarContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  groupAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  groupAvatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#4A90E2',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   infoCard: {
     backgroundColor: '#FFFFFF',

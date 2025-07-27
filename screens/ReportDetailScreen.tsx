@@ -31,10 +31,11 @@ const polarToCartesian = (centerX: number, centerY: number, radius: number, angl
 interface DetailedPieChartProps {
   data: (ReportByCategory & { color: string })[];
   categoryType: 'expense' | 'income';
+  t: (key: string) => string;
 }
 
 // Clean pie chart component
-const DetailedPieChart: React.FC<DetailedPieChartProps> = ({ data, categoryType }) => {
+const DetailedPieChart: React.FC<DetailedPieChartProps> = ({ data, categoryType, t }) => {
   const size = width * 0.8;
   const radius = size * 0.35;
   const strokeWidth = size * 0.15;
@@ -46,7 +47,7 @@ const DetailedPieChart: React.FC<DetailedPieChartProps> = ({ data, categoryType 
     return (
       <View style={[styles.chartContainer, { justifyContent: 'center', alignItems: 'center', minHeight: size }]}> 
         <Text style={{ color: '#999', fontSize: 16, fontWeight: '500', textAlign: 'center', marginTop: 24 }}>
-          Không có chi tiêu
+          {t('reports.noExpenseData')}
         </Text>
       </View>
     );
@@ -239,7 +240,7 @@ const ReportDetailScreen = () => {
       );
       setReportData(res);
     } catch (err: any) {
-      setError(err?.message || 'Lỗi khi tải dữ liệu báo cáo');
+      setError(err?.message || t('reports.failedToLoadReport'));
     } finally {
       setLoading(false);
     }
@@ -695,7 +696,7 @@ const ReportDetailScreen = () => {
                   style={styles.cancelButton}
                   onPress={() => {}} // Removed setShowCustomDateModal
                 >
-                  <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
+                  <Text style={styles.cancelButtonText}>{t('reports.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -715,7 +716,7 @@ const ReportDetailScreen = () => {
                     styles.confirmButtonText,
                     customStartDate > customEndDate && styles.disabledButtonText
                   ]}>
-                    {t('common.ok')}
+                    {t('reports.ok')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -726,7 +727,7 @@ const ReportDetailScreen = () => {
       {/* Loading/Error */}
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text>{t('reports.loadingReport') || 'Đang tải báo cáo...'}</Text>
+          <Text>{t('reports.loadingReport')}</Text>
         </View>
       ) : error ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -734,15 +735,15 @@ const ReportDetailScreen = () => {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <DetailedPieChart data={chartData} categoryType={categoryType} />
+          <DetailedPieChart data={chartData} categoryType={categoryType} t={t} />
           <View style={styles.summarySection}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{t('reports.total')}</Text>
-              <Text style={styles.summaryAmount}>{totalAmount.toLocaleString('vi-VN')} đ</Text>
+              <Text style={styles.summaryAmount}>{totalAmount.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} {t('currency')}</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{t('reports.dailyAverage')}</Text>
-              <Text style={styles.summaryAmount}>{Math.round(totalAmount / new Date(dateRange.endDate).getDate()).toLocaleString('vi-VN')} đ</Text>
+              <Text style={styles.summaryAmount}>{Math.round(totalAmount / new Date(dateRange.endDate).getDate()).toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} {t('currency')}</Text>
             </View>
           </View>
           <View style={styles.listSection}>
@@ -780,7 +781,7 @@ const ReportDetailScreen = () => {
                   <Icon name={getIconForCategory(item.category_icon_url, categoryType)} size={20} color={item.color} />
                 </View>
                 <Text style={styles.itemName}>{item.category_name}</Text>
-                <Text style={styles.itemAmount}>{item.amount.toLocaleString('vi-VN')} đ</Text>
+                <Text style={styles.itemAmount}>{item.amount.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} {t('currency')}</Text>
                 <Icon name="chevron-right" size={22} color="#bbb" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             ))}

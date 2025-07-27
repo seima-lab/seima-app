@@ -9,9 +9,11 @@ export interface TranscriptionResponse {
 
 export class TranscriptionService {
   static async uploadAudio(formData: FormData): Promise<string> {
-    const res = await apiService.postFormData<TranscriptionResponse>(
+    const res = await apiService.postFormDataWithLongTimeout<TranscriptionResponse>(
       TRANSCRIPTION_ENDPOINTS.UPLOAD,
-      formData
+      formData,
+      undefined, // headers
+      90000 // 90 seconds timeout for transcription
     );
     if (res && typeof res.data === 'string') {
       return res.data;

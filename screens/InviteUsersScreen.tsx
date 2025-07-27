@@ -2,21 +2,22 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Modal,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomErrorModal from '../components/CustomErrorModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
 import { RootStackParamList } from '../navigation/types';
 import { groupService, PendingGroupMemberResponse } from '../services/groupService';
@@ -25,13 +26,14 @@ type InviteUsersRouteProp = RouteProp<RootStackParamList, 'InviteUsers'>;
 const InviteUsersScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<InviteUsersRouteProp>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFullScreenLoading, setIsFullScreenLoading] = useState(false);
   const [pendingMembers, setPendingMembers] = useState<PendingGroupMemberResponse[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [loadingUserId, setLoadingUserId] = useState<number | null>(null);
+  const [shouldNavigateBack, setShouldNavigateBack] = useState(false);
 
   // State for CustomErrorModal
   const [errorModal, setErrorModal] = useState({
@@ -39,6 +41,14 @@ const InviteUsersScreen = () => {
     title: '',
     message: '',
     type: 'error' as 'error' | 'warning' | 'info' | 'success',
+  });
+
+  // State for CustomSuccessModal
+  const [successModal, setSuccessModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttonText: '',
   });
 
   const showError = (message: string, title?: string, type: 'error' | 'warning' | 'info' | 'success' = 'error') => {
@@ -52,6 +62,47 @@ const InviteUsersScreen = () => {
 
   const hideErrorModal = () => {
     setErrorModal((prev) => ({ ...prev, visible: false }));
+  };
+
+  const showSuccess = (message: string, title?: string, buttonText?: string) => {
+    setSuccessModal({
+      visible: true,
+      title: title || t('common.success'),
+      message,
+      buttonText: buttonText || t('common.ok'),
+    });
+  };
+
+  const hideSuccessModal = () => {
+    setSuccessModal((prev) => ({ ...prev, visible: false }));
+  };
+
+  // Format date helper function
+  const formatRequestedDate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return dateString; // Return original if invalid
+      }
+      
+      const currentLocale = i18n.language || 'en';
+      
+      // Convert to Vietnam timezone (UTC+7)
+      const vietnamTime = new Date(date.getTime() + (7 * 60 * 60 * 1000));
+      
+      // Format: dd/mm/yyyy HH:mm
+      return vietnamTime.toLocaleDateString(currentLocale, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString;
+    }
   };
 
   const { groupId } = route.params;
@@ -108,14 +159,14 @@ const InviteUsersScreen = () => {
         const res: any = response;
         if (res.email_sent) {
           if (res.user_exists) {
-            Alert.alert(
-              t('common.success'),
-              t('group.invitation.sentToExistingUser', { email: trimmedEmail })
+            showSuccess(
+              t('group.invitation.sentToExistingUser', { email: trimmedEmail }),
+              t('common.success')
             );
           } else {
-            Alert.alert(
-              t('common.success'),
-              t('group.invitation.sentToNewUser', { email: trimmedEmail })
+            showSuccess(
+              t('group.invitation.sentToNewUser', { email: trimmedEmail }),
+              t('common.success')
             );
           }
         } else {
@@ -168,18 +219,10 @@ const InviteUsersScreen = () => {
     try {
       setLoadingUserId(userId);
       await groupService.acceptGroupMemberRequest(Number(groupId), userId);
-      Alert.alert(
-        t('common.success'), 
-        t('group.invitation.memberAccepted')
-      );
-      // Reload pending list
-      const res = await groupService.getPendingGroupMembers(Number(groupId));
-      setPendingMembers(res.pending_members);
+      showSuccess(t('group.invitation.memberAccepted'));
+      setShouldNavigateBack(true);
     } catch (e: any) {
-      Alert.alert(
-        t('common.error'), 
-        e.message || t('group.invitation.acceptFailed')
-      );
+      showError(e.message || t('group.invitation.acceptFailed'));
     } finally {
       setLoadingUserId(null);
     }
@@ -189,18 +232,10 @@ const InviteUsersScreen = () => {
     try {
       setLoadingUserId(userId);
       await groupService.rejectGroupMemberRequest(Number(groupId), userId);
-      Alert.alert(
-        t('common.success'), 
-        t('group.invitation.memberRejected')
-      );
-      // Reload pending list
-      const res = await groupService.getPendingGroupMembers(Number(groupId));
-      setPendingMembers(res.pending_members);
+      showSuccess(t('group.invitation.memberRejected'));
+      setShouldNavigateBack(true);
     } catch (e: any) {
-      Alert.alert(
-        t('common.error'), 
-        e.message || t('group.invitation.rejectFailed')
-      );
+      showError(e.message || t('group.invitation.rejectFailed'));
     } finally {
       setLoadingUserId(null);
     }
@@ -226,7 +261,7 @@ const InviteUsersScreen = () => {
         <Text style={styles.pendingName}>{item.user_full_name}</Text>
         <Text style={styles.pendingEmail}>{item.user_email}</Text>
         <Text style={styles.pendingTime}>
-          {t('group.invitation.requestedAt')}: {item.requested_at}
+          {t('group.invitation.requestedAt')}: {formatRequestedDate(item.requested_at)}
         </Text>
       </View>
       <TouchableOpacity
@@ -253,6 +288,23 @@ const InviteUsersScreen = () => {
       </TouchableOpacity>
     </View>
   );
+
+  // Handle navigation after successful accept/reject
+  useEffect(() => {
+    if (shouldNavigateBack) {
+      // Add a small delay to ensure modal closes properly
+      setTimeout(() => {
+        // Navigate back to GroupOverviewScreen by going back twice
+        // since the navigation stack is: GroupOverview -> GroupMembers -> InviteUsers
+        console.log('🔄 Navigating back to GroupOverviewScreen after accept/reject');
+        navigation.goBack(); // Go back to GroupMembers
+        setTimeout(() => {
+          navigation.goBack(); // Go back to GroupOverview
+        }, 50);
+      }, 100);
+      setShouldNavigateBack(false); // Reset the flag
+    }
+  }, [shouldNavigateBack, navigation]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -358,6 +410,19 @@ const InviteUsersScreen = () => {
         message={errorModal.message}
         onDismiss={hideErrorModal}
         type={errorModal.type}
+      />
+
+      {/* CustomSuccessModal for accept/reject */}
+      <CustomSuccessModal
+        visible={successModal.visible}
+        title={successModal.title}
+        message={successModal.message}
+        buttonText={successModal.buttonText}
+        onConfirm={() => {
+          hideSuccessModal();
+          console.log('✅ Success modal confirmed');
+        }}
+        iconName="check-circle"
       />
     </SafeAreaView>
   );

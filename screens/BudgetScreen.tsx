@@ -3,15 +3,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -171,6 +171,7 @@ const BudgetScreen = () => {
   const [selectedBudgetItem, setSelectedBudgetItem] = useState<BudgetCategory | null>(null);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Fetch budgets from API
   useFocusEffect(
@@ -192,7 +193,7 @@ const BudgetScreen = () => {
       };
 
       fetchBudgets();
-    }, [])
+    }, [refreshTrigger]) // Add refreshTrigger as dependency
   );
 
   const CircularProgress = ({ spent, budget, color, icon, backgroundColor }: CircularProgressProps) => {

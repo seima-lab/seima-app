@@ -253,6 +253,61 @@ export class ApiService {
     }
   }
 
+  // Special method for transcription with longer timeout
+  async postFormDataWithLongTimeout<T>(
+    endpoint: string,
+    formData: FormData,
+    headers?: Record<string, string>,
+    timeout: number = 60000 // 60 seconds default for transcription
+  ): Promise<ApiResponse<T>> {
+    try {
+      const url = this.buildUrl(endpoint);
+
+      // Default headers for FormData
+      const defaultHeaders: Record<string, string> = {};
+
+      // Safely merge headers
+      if (headers) {
+        Object.assign(defaultHeaders, headers);
+      }
+
+      // Get token from secure store
+      const token = await SecureStore.getItemAsync('access_token');
+      if (token) {
+        defaultHeaders['Authorization'] = `Bearer ${token}`;
+      }
+
+      const config: RequestInit = {
+        method: 'POST',
+        body: formData,
+        headers: defaultHeaders,
+      };
+
+      // Setup timeout with longer duration for transcription
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      config.signal = controller.signal;
+
+      console.log(`🌐 Transcription Request: POST ${url} (timeout: ${timeout}ms)`);
+
+      const response = await fetch(url, config);
+      clearTimeout(timeoutId);
+
+      const result: ApiResponse<T> = await response.json();
+
+      if (response.ok) {
+        console.log(`✅ Transcription Success: ${url}`, result);
+        return result;
+      } else {
+        console.error(`❌ Transcription Error: ${url}`, result);
+        throw new Error(result.message || 'Transcription request failed');
+      }
+    } catch (error: any) {
+      console.error(`🔴 Transcription Request Error:`, error);
+      throw error;
+    }
+  }
+
   // Auth token helpers
   async setAuthToken(token: string) {
     await SecureStore.setItemAsync('access_token', token);

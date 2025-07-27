@@ -386,12 +386,14 @@ export default function ReportScreen() {
 
   // Format currency
   const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
+    const locale = i18n.language === 'vi' ? 'vi-VN' : 'en-US';
+    const currencySymbol = t('currency');
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'VND',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount).replace('₫', 'đ');
+    }).format(amount).replace('₫', '').trim() + ' ' + currencySymbol;
   };
 
   // Get period display text
@@ -810,7 +812,7 @@ export default function ReportScreen() {
                       formatted: reportData ? formatCurrency(-Math.abs(totalExpense)) : '-0đ'
                     });
                     
-                    return reportData ? formatCurrency(-Math.abs(totalExpense)) : '-0đ';
+                    return reportData ? formatCurrency(-Math.abs(totalExpense)) : `-0${t('currency')}`;
                   })()}
                 </Text>
               </View>
@@ -836,7 +838,7 @@ export default function ReportScreen() {
                       formatted: reportData ? `+${formatCurrency(totalIncome)}` : '+0đ'
                     });
                     
-                    return reportData ? `+${formatCurrency(totalIncome)}` : '+0đ';
+                    return reportData ? `+${formatCurrency(totalIncome)}` : `+0${t('currency')}`;
                   })()}
                 </Text>
               </View>
@@ -862,7 +864,7 @@ export default function ReportScreen() {
               {(() => {
                 const summary = (reportData as any)?.summary;
                 const totalExpense = summary?.total_expense || summary?.totalExpense || 0;
-                return reportData ? formatCurrency(totalExpense) : '0 đ';
+                return reportData ? formatCurrency(totalExpense) : `0 ${t('currency')}`;
               })()}
             </Text>
             <SimplePieChart data={getExpenseData()} size={150} categoryType="expense" />
@@ -887,7 +889,7 @@ export default function ReportScreen() {
               {(() => {
                 const summary = (reportData as any)?.summary;
                 const totalIncome = summary?.total_income || summary?.totalIncome || 0;
-                return reportData ? formatCurrency(totalIncome) : '0 đ';
+                return reportData ? formatCurrency(totalIncome) : `0 ${t('currency')}`;
               })()}
             </Text>
             <SimplePieChart data={getIncomeData()} size={150} categoryType="income" />

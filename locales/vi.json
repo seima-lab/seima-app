@@ -406,6 +406,9 @@
       "pendingMembers": "Danh sách chờ duyệt",
       "noPendingMembers": "Không có ai đang chờ duyệt",
       "requestedAt": "Gửi lúc",
+      "justNow": "Vừa xong",
+      "hoursAgo": "{{hours}} giờ trước",
+      "daysAgo": "{{days}} ngày trước",
       "memberAccepted": "Đã chấp nhận thành viên!",
       "memberRejected": "Đã từ chối thành viên!",
       "acceptFailed": "Không thể chấp nhận thành viên",
@@ -439,10 +442,17 @@
     "noDataForPeriod": "Không có dữ liệu cho khoảng thời gian này",
     "total": "Tổng cộng",
     "dailyAverage": "Trung bình hàng ngày",
-    "categories": "Hạng mục"
+    "categories": "Hạng mục",
+    "noExpenseData": "Không có chi tiêu",
+    "failedToLoadReport": "Lỗi khi tải dữ liệu báo cáo",
+    "fromDate": "Từ ngày",
+    "toDate": "Đến ngày",
+    "cancel": "Hủy",
+    "ok": "OK"
   },
 
   "common": {
+    "remove": "Đuổi",
     "loading": "Đang tải",
     "error": "Lỗi",
     "success": "Thành công",
@@ -840,6 +850,31 @@
     "confirmDeleteTransaction": "Bạn có chắc chắn muốn xóa giao dịch này?",
     "transactionDeleted": "Đã xóa giao dịch thành công"
   },
+
+  "months": {
+    "january": "Th1",
+    "february": "Th2",
+    "march": "Th3",
+    "april": "Th4",
+    "may": "Th5",
+    "june": "Th6",
+    "july": "Th7",
+    "august": "Th8",
+    "september": "Th9",
+    "october": "Th10",
+    "november": "Th11",
+    "december": "Th12"
+  },
+
+  "weekdays": {
+    "sunday": "Chủ nhật",
+    "monday": "Thứ 2", 
+    "tuesday": "Thứ 3",
+    "wednesday": "Thứ 4",
+    "thursday": "Thứ 5",
+    "friday": "Thứ 6",
+    "saturday": "Thứ 7"
+  },
   
   "budget": {
     "title": "Hạn mức chi",
@@ -904,6 +939,27 @@
       "delete": "Xóa",
       "success": "Đã xóa thành công ngân sách",
       "deleted": "khỏi danh sách của bạn"
+    },
+    "detail": {
+      "title": "Chi tiết ngân sách",
+      "loading": "Đang tải chi tiết ngân sách...",
+      "loadError": "Không thể tải chi tiết ngân sách",
+      "back": "Quay lại",
+      "progressUsed": "đã sử dụng",
+      "amountUsed": "Số tiền đã chi",
+      "amountRemaining": "Số tiền còn lại",
+      "timeRange": "Khoảng thời gian",
+      "fromDate": "Từ ngày",
+      "toDate": "Đến ngày",
+      "appliedCategories": "Danh mục áp dụng",
+      "confirmDelete": "Xóa ngân sách",
+      "deleteMessage": "Bạn có chắc chắn muốn xóa ngân sách này? Hành động này không thể hoàn tác.",
+      "cancel": "Hủy",
+      "delete": "Xóa",
+      "deleteError": "Không thể xóa ngân sách",
+      "deleting": "Đang xóa ngân sách...",
+      "deleteSuccess": "Đã xóa ngân sách",
+      "deleteSuccessMessage": "Ngân sách đã được xóa thành công."
     },
     "categories": {
       "transport": "Di chuyển",
@@ -1023,6 +1079,8 @@
     "logout": "Đăng xuất"
   },
   "groupTransaction": {
+    "confirmDelete": "Bạn có chắc chắn muốn xoá giao dịch này không?",
+    "deleteSuccess": "Đã xoá giao dịch thành công",
     "title": "Giao dịch nhóm",
     "myTransactions": "Giao dịch của tôi",
     "groupTransactions": "Giao dịch nhóm",
@@ -1038,5 +1096,35 @@
     "invitation": {
       "alreadyInvited": "Người dùng này đã được mời vào nhóm"
     }
+  },
+  "voiceRecording": {
+    "title": "Ghi âm giọng nói",
+    "startRecording": "Bấm để bắt đầu ghi âm",
+    "recording": "Đang ghi âm... Bấm để dừng",
+    "processing": "Đang xử lý giọng nói...",
+    "processingNote": "Quá trình này có thể mất vài giây",
+    "recognitionResult": "Kết quả nhận diện:",
+    "accept": "Chấp nhận",
+    "cancel": "Hủy",
+    "permissionTitle": "Cấp quyền ghi âm",
+    "permissionMessage": "Ứng dụng cần quyền ghi âm để sử dụng tính năng này.",
+    "permissionAskLater": "Hỏi lại sau",
+    "permissionDeny": "Từ chối",
+    "permissionAllow": "Đồng ý",
+    "permissionGranted": "Đã cấp quyền ghi âm",
+    "permissionGrantedMessage": "Vui lòng ấn lại nút ghi âm để bắt đầu ghi.",
+    "permissionDenied": "Không có quyền ghi âm",
+    "permissionDeniedMessage": "Bạn cần cấp quyền ghi âm để sử dụng tính năng này.",
+    "permissionError": "Lỗi xin quyền",
+    "permissionErrorMessage": "Không thể xin quyền ghi âm.",
+    "recordError": "Không thể bắt đầu ghi âm!",
+    "fileError": "Lỗi ghi âm",
+    "fileNotFound": "Không lấy được file audio!",
+    "fileNotExist": "File audio không tồn tại!",
+    "recognitionError": "Lỗi nhận diện giọng nói",
+    "recognitionErrorMessage": "Có lỗi xảy ra khi nhận diện giọng nói",
+    "timeoutError": "Quá trình nhận diện mất quá nhiều thời gian. Vui lòng thử lại với đoạn ghi âm ngắn hơn.",
+    "networkError": "Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet và thử lại.",
+    "recognitionSuccess": "Nhận diện thành công"
   }
 } 
