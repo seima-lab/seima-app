@@ -554,7 +554,8 @@ const BudgetLimitScreen = () => {
         overall_amount_limit: Number(amount.replace(/[^0-9]/g, '')),
         budget_remaining_amount: Number(amount.replace(/[^0-9]/g, '')),
         category_list: selectedCategories.map(category => ({ category_id: category.category_id })), // Array of objects with category_id
-        wallet_list: selectedWalletIds.map(id => ({ wallet_id: id })), // Array of objects with wallet_id
+        wallet_list: selectedWalletIds.map(id => ({ id: id })), // Array of objects with id instead of wallet_id
+        currency_code: 'VND', // Hardcoded currency code
       };
 
       console.log('📤 Final request object:', JSON.stringify(request, null, 2));

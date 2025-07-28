@@ -101,7 +101,11 @@ const CustomConfirmModal: React.FC<CustomConfirmModalProps> = ({
 
                         <TouchableOpacity
                             style={[styles.button, styles.confirmButton, { backgroundColor: typeColor }]}
-                            onPress={onConfirm}
+                            onPress={() => {
+                                console.log('🎯 [CustomConfirmModal] Confirm button pressed');
+                                console.log('🎯 [CustomConfirmModal] onConfirm function:', onConfirm);
+                                onConfirm();
+                            }}
                             activeOpacity={0.8}
                         >
                             <Text style={styles.confirmButtonText}>{confirmText}</Text>

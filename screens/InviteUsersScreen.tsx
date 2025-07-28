@@ -2,17 +2,17 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Modal,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -20,7 +20,7 @@ import CustomErrorModal from '../components/CustomErrorModal';
 import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
 import { RootStackParamList } from '../navigation/types';
-import { groupService, PendingGroupMemberResponse } from '../services/groupService';
+import { groupService, InvitedMemberResponse, PendingGroupMemberResponse } from '../services/groupService';
 type InviteUsersRouteProp = RouteProp<RootStackParamList, 'InviteUsers'>;
 
 const InviteUsersScreen = () => {
@@ -32,6 +32,8 @@ const InviteUsersScreen = () => {
   const [isFullScreenLoading, setIsFullScreenLoading] = useState(false);
   const [pendingMembers, setPendingMembers] = useState<PendingGroupMemberResponse[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
+  const [invitedMembers, setInvitedMembers] = useState<InvitedMemberResponse[]>([]);
+  const [invitedLoading, setInvitedLoading] = useState(false);
   const [loadingUserId, setLoadingUserId] = useState<number | null>(null);
   const [shouldNavigateBack, setShouldNavigateBack] = useState(false);
 
@@ -169,6 +171,8 @@ const InviteUsersScreen = () => {
               t('common.success')
             );
           }
+          // Reload invited members list after successful invitation
+          fetchInvitedMembers();
         } else {
           showError(res.message || t('group.invitation.sendFailed'));
         }
@@ -212,6 +216,23 @@ const InviteUsersScreen = () => {
       setPendingLoading(false);
     };
     fetchPending();
+  }, [groupId]);
+
+  // Fetch invited members function
+  const fetchInvitedMembers = async () => {
+    setInvitedLoading(true);
+    try {
+      const res = await groupService.getInvitedMembers(Number(groupId));
+      setInvitedMembers(res);
+    } catch (e) {
+      console.error('Error fetching invited members:', e);
+    }
+    setInvitedLoading(false);
+  };
+
+  // Fetch invited members on mount
+  useEffect(() => {
+    fetchInvitedMembers();
   }, [groupId]);
 
   // Accept/Reject handlers
@@ -289,6 +310,35 @@ const InviteUsersScreen = () => {
     </View>
   );
 
+  // Render invited member
+  const renderInvitedMember = ({ item }: { item: any }) => (
+    <View style={styles.invitedCard}>
+      {item.user_avatar_url ? (
+        <View style={styles.avatarWrapper}>
+          <View style={styles.avatarBorder}>
+            <Image source={{ uri: item.user_avatar_url }} style={styles.avatarImg} />
+          </View>
+        </View>
+      ) : (
+        <View style={styles.avatarWrapper}>
+          <View style={styles.avatarBorder}>
+            <Icon name="person" size={40} color="#90caf9" />
+          </View>
+        </View>
+      )}
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Text style={styles.invitedName}>{item.user_full_name}</Text>
+        <Text style={styles.invitedEmail}>{item.user_email}</Text>
+        <Text style={styles.invitedTime}>
+          {t('group.invitation.invitedAt')}: {formatRequestedDate(item.invited_at)}
+        </Text>
+        <Text style={styles.invitedRole}>
+          {t('group.invitation.assignedRole')}: {item.assigned_role}
+        </Text>
+      </View>
+    </View>
+  );
+
   // Handle navigation after successful accept/reject
   useEffect(() => {
     if (shouldNavigateBack) {
@@ -357,6 +407,27 @@ const InviteUsersScreen = () => {
           <Text style={styles.instructionsText}>
             {t('group.invitation.instructions')}
           </Text>
+        </View>
+
+        {/* Invited Members List */}
+        <View style={{ marginTop: 16 }}>
+          <Text style={[typography.semibold, { fontSize: 16, marginBottom: 8 }]}>
+            {t('group.invitation.invitedMembers')}
+          </Text>
+          {invitedLoading ? (
+            <ActivityIndicator size="small" color="#4A90E2" />
+          ) : (
+            <FlatList
+              data={invitedMembers}
+              keyExtractor={item => String(item.user_id)}
+              renderItem={renderInvitedMember}
+              ListEmptyComponent={
+                <Text style={{ color: '#999' }}>
+                  {t('group.invitation.noInvitedMembers')}
+                </Text>
+              }
+            />
+          )}
         </View>
 
         {/* Pending Members List */}
@@ -640,6 +711,48 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 1,
+  },
+  // Invited Members Styles
+  invitedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  invitedName: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#222',
+    marginBottom: 2,
+  },
+  invitedEmail: {
+    color: '#666',
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  invitedTime: {
+    color: '#b0b0b0',
+    fontSize: 11,
+    marginBottom: 2,
+  },
+  invitedRole: {
+    color: '#4CAF50',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  invitedStatus: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
 });
 

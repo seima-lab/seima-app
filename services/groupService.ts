@@ -99,11 +99,29 @@ export interface PendingGroupMemberResponse {
   requested_at: string; // ISO string
 }
 
+export interface InvitedMemberResponse {
+  user_id: number;
+  user_email: string;
+  user_full_name: string;
+  user_avatar_url: string;
+  invited_at: string; // ISO string
+  assigned_role: string;
+}
+
 export interface PendingGroupMemberListResponse {
   group_id: number;
   group_name: string;
   total_pending_count: number;
   pending_members: PendingGroupMemberResponse[];
+}
+
+export interface PendingGroupResponse {
+  group_id: number;
+  group_name: string;
+  group_avatar_url: string;
+  group_is_active: boolean;
+  requested_at: string; // ISO string
+  active_member_count: number;
 }
 
 export interface AcceptOrRejectGroupMemberRequest {
@@ -136,7 +154,9 @@ export interface EligibleMemberResponse {
 export interface TransferOwnershipRequest {
   new_owner_user_id: number;
 }
-
+export interface CancelPendingGroupRequest {
+  group_id: number;
+}
 class GroupService {
   // Get all groups that current user has joined
   async getUserJoinedGroups(): Promise<UserJoinedGroupResponse[]> {
@@ -535,6 +555,34 @@ class GroupService {
     }
   }
 
+  async getInvitedMembers(groupId: number): Promise<InvitedMemberResponse[]> {
+    try {
+      const response = await secureApiService.makeAuthenticatedRequest<InvitedMemberResponse[]>(
+        `/api/v1/groups/${groupId}/invited-members`,
+        'GET'
+      );
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to load invited members');
+    }
+  }
+
+  async getPendingGroups(): Promise<PendingGroupResponse[]> {
+    try {
+      console.log('🟡 Loading pending groups...');
+      const { GROUP_MEMBER_ENDPOINTS } = await import('./config');
+      const response = await secureApiService.makeAuthenticatedRequest<PendingGroupResponse[]>(
+        GROUP_MEMBER_ENDPOINTS.PENDING_GROUPS,
+        'GET'
+      );
+      console.log('🟢 Pending groups loaded:', response);
+      return response;
+    } catch (error: any) {
+      console.error('🔴 Failed to load pending groups:', error);
+      throw new Error(error.message || 'Failed to load pending groups');
+    }
+  }
+
   async acceptGroupMemberRequest(groupId: number, userId: number): Promise<void> {
     await secureApiService.makeAuthenticatedRequest<Object>(
       `/api/v1/group-acceptance/group/${groupId}/accept-request`,
@@ -640,6 +688,30 @@ class GroupService {
     } catch (error: any) {
       console.error('🔴 Failed to delete group:', error);
       throw new Error(error.message || 'Failed to delete group');
+    }
+  }
+  async cancelPendingGroup(groupId: number): Promise<void> {
+    try {
+      console.log('🟡 [GroupService] Cancelling pending group:', groupId);
+      const { GROUP_MEMBER_ENDPOINTS } = await import('./config');
+      
+      console.log('🟡 [GroupService] Endpoint:', GROUP_MEMBER_ENDPOINTS.CANCEL_PENDING_GROUP);
+      console.log('🟡 [GroupService] Request body:', { group_id: groupId });
+      
+      await secureApiService.makeAuthenticatedRequest<void>(
+        GROUP_MEMBER_ENDPOINTS.CANCEL_PENDING_GROUP,
+        'POST',
+        { group_id: groupId }
+      );
+      console.log('🟢 [GroupService] Pending group cancelled successfully');
+    } catch (error: any) {
+      console.error('🔴 [GroupService] Failed to cancel pending group:', error);
+      console.error('🔴 [GroupService] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      throw new Error(error.message || 'Failed to cancel pending group');
     }
   }
 }

@@ -40,6 +40,7 @@ export interface CreateWalletRequest {
   exclude_from_total?: boolean; // optional, default false
   bank_name?: string; // optional
   icon_url?: string; // optional
+  currency_code?: string; // optional
 }
 
 // Response interface matching the backend WalletResponse

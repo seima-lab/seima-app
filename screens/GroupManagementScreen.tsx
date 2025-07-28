@@ -2,16 +2,16 @@ import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -356,7 +356,9 @@ const GroupManagementScreen = () => {
           <Icon name="arrow-back" size={24} color="#333333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('group.title')}</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity style={styles.pendingButton} onPress={() => navigation.navigate('PendingGroups')}>
+          <Icon name="pending" size={24} color="#4A90E2" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
@@ -492,6 +494,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E0E0E0',
   },
   backButton: {
+    padding: 8,
+  },
+  pendingButton: {
     padding: 8,
   },
   headerTitle: {

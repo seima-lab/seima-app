@@ -844,6 +844,24 @@ export class CategoryService {
       data: raw.data,
     };
   }
+
+  // Fetch category detail report
+  async getCategoryDetailReport(
+    id: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<any> {
+    try {
+      console.log('🔄 Fetching category detail report:', { id, startDate, endDate });
+      const url = TRANSACTION_ENDPOINTS.VIEW_REPORT_CATEGORY_DETAIL(id, startDate, endDate);
+      const response = await apiService.get<any>(url);
+      console.log('📊 Category detail report response:', response);
+      return response.data || response;
+    } catch (error) {
+      console.error('❌ Error fetching category detail report:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
