@@ -1,19 +1,23 @@
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  RefreshControl,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Animated,
+    FlatList,
+    Image,
+    RefreshControl,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomConfirmModal from '../components/CustomConfirmModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RootStackParamList } from '../navigation/types';
@@ -42,14 +46,45 @@ const formatMoney = (amount: number): string => {
   return amount.toLocaleString('vi-VN') + '₫';
 };
 
-// Format date helper function - display exact time from database
+// Format date helper function - display formatted date and time
 const formatTransactionDate = (dateString: string, language: string): string => {
   try {
     console.log('🔍 Original date string from database:', dateString);
     
-    // Simply return the original date string from database
-    // This ensures we show exactly what's in the database
-    return dateString;
+    // Parse the date string
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('⚠️ Invalid date string:', dateString);
+      return dateString;
+    }
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const transactionDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+    // Format time (HH:mm)
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const timeString = `${hours}:${minutes}`;
+    
+    // Format date based on when the transaction occurred
+    if (transactionDate.getTime() === today.getTime()) {
+      // Today - show only time
+      return `Hôm nay ${timeString}`;
+    } else if (transactionDate.getTime() === yesterday.getTime()) {
+      // Yesterday - show "Hôm qua" + time
+      return `Hôm qua ${timeString}`;
+    } else {
+      // Other days - show full date + time
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year} ${timeString}`;
+    }
     
   } catch (error) {
     console.error('Error formatting date:', error);
@@ -83,7 +118,77 @@ const GroupTransactionListScreen: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [showOnlyMyTransactions, setShowOnlyMyTransactions] = useState(false);
   
+  // Delete confirmation state
+  const [isDeleteConfirmModalVisible, setIsDeleteConfirmModalVisible] = useState(false);
+  const [selectedTransactionIdToDelete, setSelectedTransactionIdToDelete] = useState<string | null>(null);
+  const [isDeleteSuccessModalVisible, setIsDeleteSuccessModalVisible] = useState(false);
+  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
+
   const LIMIT = 20;
+  const SWIPE_THRESHOLD = -80;
+  const DELETE_BUTTON_WIDTH = 80;
+  const animatedValues = useRef<{ [key: string]: Animated.Value }>({});
+
+  // Helper function to get animated value for a transaction
+  const getAnimatedValue = (transactionId: string) => {
+    if (!animatedValues.current[transactionId]) {
+      animatedValues.current[transactionId] = new Animated.Value(0);
+    }
+    return animatedValues.current[transactionId];
+  };
+
+  // Helper function to reset swipe position
+  const resetSwipe = (transactionId: string) => {
+    const animatedValue = getAnimatedValue(transactionId);
+    Animated.spring(animatedValue, {
+      toValue: 0,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  // Delete transaction handlers
+  const handleDeleteTransaction = (transactionId: string) => {
+    resetSwipe(transactionId);
+    setSelectedTransactionIdToDelete(transactionId);
+    setIsDeleteConfirmModalVisible(true);
+  };
+
+  const confirmDeleteTransaction = async () => {
+    if (!selectedTransactionIdToDelete) return;
+    
+    try {
+      setDeletingTransactionId(selectedTransactionIdToDelete);
+      setIsDeleteConfirmModalVisible(false);
+      
+      console.log('🗑️ Deleting transaction:', selectedTransactionIdToDelete);
+      await transactionService.deleteTransaction(parseInt(selectedTransactionIdToDelete));
+      
+      // Remove transaction from local state
+      setTransactions(prev => prev.filter(t => t.transaction_id.toString() !== selectedTransactionIdToDelete));
+      
+      // Clean up animated value
+      delete animatedValues.current[selectedTransactionIdToDelete];
+      
+      console.log('✅ Transaction deleted successfully');
+      setIsDeleteSuccessModalVisible(true);
+      
+    } catch (error: any) {
+      console.error('❌ Error deleting transaction:', error);
+      // You might want to show an error modal here
+    } finally {
+      setDeletingTransactionId(null);
+      setSelectedTransactionIdToDelete(null);
+    }
+  };
+
+  const cancelDeleteTransaction = () => {
+    setIsDeleteConfirmModalVisible(false);
+    setSelectedTransactionIdToDelete(null);
+  };
+
+  const handleDeleteSuccess = () => {
+    setIsDeleteSuccessModalVisible(false);
+  };
 
   // Helper function to get current user profile
   const getCurrentUserProfile = useCallback(async () => {
@@ -188,8 +293,8 @@ const GroupTransactionListScreen: React.FC = () => {
       
       // Fetch categories for both expense and income
       const [expenseCats, incomeCats] = await Promise.all([
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId, groupIdNum),
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId, groupIdNum),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, groupIdNum),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, groupIdNum),
       ]);
 
       console.log('🟢 Categories loaded:', {
@@ -346,79 +451,193 @@ const GroupTransactionListScreen: React.FC = () => {
     return myTransactions;
   };
 
-  // Enhanced Transaction Item Component with user avatar and better design
-  const TransactionItem = ({ item }: { item: GroupTransactionResponse }) => {
+  // Swipeable Transaction Item Component with delete functionality
+  const SwipeableTransactionItem = ({ item }: { item: GroupTransactionResponse }) => {
     const isIncome = item.transaction_type === TransactionType.INCOME;
     const userInfo = getUserInfo(item.user_id);
     const isMyTransaction = item.user_id === currentUserId;
-    
-    return (
-      <TouchableOpacity 
-        style={[
-          styles.transactionItem,
-          isMyTransaction && styles.transactionItemEditable
-        ]}
-        onPress={() => handleTransactionPress(item)}
-        disabled={!isMyTransaction}
-      >
-        {/* User Avatar */}
-        <View style={styles.transactionUserAvatar}>
-          <Image 
-            source={getUserAvatarSource(item.user_id)} 
-            style={styles.transactionAvatarImage} 
-          />
-          {/* Edit indicator for own transactions */}
-          {isMyTransaction && (
-            <View style={styles.editIndicator}>
-              <Icon name="edit" size={12} color="#FFFFFF" />
-            </View>
-          )}
-        </View>
-        {/* Transaction Content */}
-        <View style={styles.transactionContent}>
-          <View style={styles.transactionHeader}>
-            <Text style={styles.transactionUserName}>{userInfo.name}</Text>
-            <Text style={[
-              styles.transactionAmount, 
-              { color: isIncome ? '#4CAF50' : '#F44336' }
-            ]}>
-              {isIncome ? '+' : '-'}{formatMoney(item.amount)}
-            </Text>
+    const transactionId = item.transaction_id.toString();
+    const animatedValue = getAnimatedValue(transactionId);
+    const isDeleting = deletingTransactionId === transactionId;
+
+    // Only allow swipe for own transactions
+    if (!isMyTransaction) {
+      return (
+        <View style={styles.transactionItem}>
+          {/* User Avatar */}
+          <View style={styles.transactionUserAvatar}>
+            <Image 
+              source={getUserAvatarSource(item.user_id)} 
+              style={styles.transactionAvatarImage} 
+            />
           </View>
-          <Text style={styles.transactionDescription}>
-            {getCategoryName(item.category_id)}
-          </Text>
-          <View style={styles.transactionMeta}>
-            <View style={styles.transactionTypeContainer}>
-              <View style={[
-                styles.transactionTypeIndicator, 
-                { backgroundColor: isIncome ? '#E8F5E8' : '#FFF2F2' }
+          {/* Transaction Content */}
+          <View style={styles.transactionContent}>
+            <View style={styles.transactionHeader}>
+              <Text style={styles.transactionUserName}>{userInfo.name}</Text>
+              <Text style={[
+                styles.transactionAmount, 
+                { color: isIncome ? '#4CAF50' : '#F44336' }
               ]}>
-                <Icon 
-                  name={isIncome ? 'trending-up' : 'trending-down'} 
-                  size={12} 
-                  color={isIncome ? '#4CAF50' : '#F44336'} 
-                />
-              </View>
-              <Text style={styles.transactionType}>
-                {isIncome ? t('groupTransaction.income') : t('groupTransaction.expense')}
+                {isIncome ? '+' : '-'}{formatMoney(item.amount)}
               </Text>
             </View>
-            <Text style={styles.transactionDate}>
-              {formatTransactionDate(item.transaction_date, language)}
+            <Text style={styles.transactionDescription}>
+              {getCategoryName(item.category_id)}
             </Text>
+            <View style={styles.transactionMeta}>
+              <View style={styles.transactionTypeContainer}>
+                <View style={[
+                  styles.transactionTypeIndicator, 
+                  { backgroundColor: isIncome ? '#E8F5E8' : '#FFF2F2' }
+                ]}>
+                  <Icon 
+                    name={isIncome ? 'trending-up' : 'trending-down'} 
+                    size={12} 
+                    color={isIncome ? '#4CAF50' : '#F44336'} 
+                  />
+                </View>
+                <Text style={styles.transactionType}>
+                  {isIncome ? t('groupTransaction.income') : t('groupTransaction.expense')}
+                </Text>
+              </View>
+              <Text style={styles.transactionDate}>
+                {formatTransactionDate(item.transaction_date, language)}
+              </Text>
+            </View>
           </View>
         </View>
-        {/* Edit arrow for own transactions */}
-        {isMyTransaction && (
-          <Icon name="chevron-right" size={20} color="#CCCCCC" style={styles.editArrow} />
-        )}
-      </TouchableOpacity>
+      );
+    }
+
+    const onGestureEvent = Animated.event(
+      [{ nativeEvent: { translationX: animatedValue } }],
+      { useNativeDriver: false }
+    );
+
+    const onHandlerStateChange = (event: any) => {
+      if (event.nativeEvent.state === State.END) {
+        const { translationX, velocityX } = event.nativeEvent;
+        
+        if (translationX < SWIPE_THRESHOLD || velocityX < -500) {
+          // Swipe far enough or fast enough - show delete button
+          Animated.spring(animatedValue, {
+            toValue: -DELETE_BUTTON_WIDTH,
+            useNativeDriver: false,
+            tension: 100,
+            friction: 8,
+          }).start();
+        } else {
+          // Snap back to original position (hide delete button)
+          Animated.spring(animatedValue, {
+            toValue: 0,
+            useNativeDriver: false,
+            tension: 100,
+            friction: 8,
+          }).start();
+        }
+      }
+    };
+
+    const handleDelete = () => {
+      handleDeleteTransaction(transactionId);
+    };
+
+    return (
+      <View style={styles.swipeableContainer}>
+        {/* Delete Button Background */}
+        <View style={styles.deleteButtonContainer}>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Icon name="delete" size={24} color="#FFFFFF" />
+                <Text style={styles.deleteButtonText}>{t('delete')}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Swipeable Transaction Card */}
+        <PanGestureHandler
+          onGestureEvent={onGestureEvent}
+          onHandlerStateChange={onHandlerStateChange}
+          activeOffsetX={[-10, 10]}
+        >
+          <Animated.View
+            style={[
+              styles.animatedTransactionCard,
+              {
+                transform: [{ translateX: animatedValue }],
+              },
+            ]}
+          >
+            <TouchableOpacity 
+              style={[
+                styles.transactionItem,
+                styles.transactionItemEditable
+              ]}
+              onPress={() => handleTransactionPress(item)}
+              activeOpacity={0.7}
+            >
+              {/* User Avatar */}
+              <View style={styles.transactionUserAvatar}>
+                <Image 
+                  source={getUserAvatarSource(item.user_id)} 
+                  style={styles.transactionAvatarImage} 
+                />
+              </View>
+              {/* Transaction Content */}
+              <View style={styles.transactionContent}>
+                <View style={styles.transactionHeader}>
+                  <Text style={styles.transactionUserName}>{userInfo.name}</Text>
+                  <Text style={[
+                    styles.transactionAmount, 
+                    { color: isIncome ? '#4CAF50' : '#F44336' }
+                  ]}>
+                    {isIncome ? '+' : '-'}{formatMoney(item.amount)}
+                  </Text>
+                </View>
+                <Text style={styles.transactionDescription}>
+                  {getCategoryName(item.category_id)}
+                </Text>
+                <View style={styles.transactionMeta}>
+                  <View style={styles.transactionTypeContainer}>
+                    <View style={[
+                      styles.transactionTypeIndicator, 
+                      { backgroundColor: isIncome ? '#E8F5E8' : '#FFF2F2' }
+                    ]}>
+                      <Icon 
+                        name={isIncome ? 'trending-up' : 'trending-down'} 
+                        size={12} 
+                        color={isIncome ? '#4CAF50' : '#F44336'} 
+                      />
+                    </View>
+                    <Text style={styles.transactionType}>
+                      {isIncome ? t('groupTransaction.income') : t('groupTransaction.expense')}
+                    </Text>
+                  </View>
+                  <Text style={styles.transactionDate}>
+                    {formatTransactionDate(item.transaction_date, language)}
+                  </Text>
+                </View>
+              </View>
+              {/* Edit arrow for own transactions */}
+              <Icon name="chevron-right" size={20} color="#CCCCCC" style={styles.editArrow} />
+            </TouchableOpacity>
+          </Animated.View>
+        </PanGestureHandler>
+      </View>
     );
   };
 
   const renderTransaction = ({ item }: { item: GroupTransactionResponse }) => {
-    return <TransactionItem item={item} />;
+    return <SwipeableTransactionItem item={item} />;
   };
 
   const renderFooter = () => {
@@ -521,6 +740,29 @@ const GroupTransactionListScreen: React.FC = () => {
           />
         </>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <CustomConfirmModal
+        visible={isDeleteConfirmModalVisible}
+        title={t('common.confirm')}
+        message={t('groupTransaction.confirmDelete') || 'Bạn có chắc chắn muốn xóa giao dịch này không? Hành động này không thể hoàn tác.'}
+        confirmText={t('delete')}
+        cancelText={t('cancel')}
+        onConfirm={confirmDeleteTransaction}
+        onCancel={cancelDeleteTransaction}
+        type="danger"
+        iconName="delete"
+      />
+
+      {/* Delete Success Modal */}
+      <CustomSuccessModal
+        visible={isDeleteSuccessModalVisible}
+        title={t('common.success')}
+        message={t('groupTransaction.deleteSuccess') || 'Giao dịch đã được xóa thành công!'}
+        buttonText={t('common.ok')}
+        onConfirm={handleDeleteSuccess}
+        iconName="check-circle"
+      />
     </SafeAreaView>
   );
 };
@@ -760,10 +1002,43 @@ const styles = StyleSheet.create({
     ...typography.medium,
   },
   editArrow: {
+    alignSelf: 'center',
+    marginLeft: 8,
+  },
+  // Swipeable styles
+  swipeableContainer: {
+    position: 'relative',
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#FF3B30',
+  },
+  deleteButtonContainer: {
     position: 'absolute',
-    right: 16,
-    top: '50%',
-    transform: [{ translateY: -10 }],
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  deleteButton: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+  },
+  deleteButtonText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    marginTop: 4,
+    ...typography.medium,
+  },
+  animatedTransactionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
   },
 });
 

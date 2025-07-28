@@ -1,6 +1,6 @@
 import { typography } from '@/constants/typography';
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,13 +25,23 @@ const GroupDetailTabScreen = () => {
 
   const fetchGroupDetail = async () => {
     try {
+      console.log('🟡 [GroupDetailTabScreen] Fetching group detail for groupId:', groupId);
       const response = await groupService.getGroupDetail(Number(groupId));
+      console.log('🟢 [GroupDetailTabScreen] Group detail loaded:', response);
+      console.log('📊 [GroupDetailTabScreen] Avatar URL:', response?.group_avatar_url);
+      console.log('📊 [GroupDetailTabScreen] Created date:', response?.group_created_date);
       setGroupDetail(response);
       return response;
     } catch (e) {
+      console.error('🔴 [GroupDetailTabScreen] Failed to load group detail:', e);
       return null;
     }
   };
+
+  // Load group detail when component mounts
+  useEffect(() => {
+    fetchGroupDetail();
+  }, [groupId]);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -55,7 +65,12 @@ const GroupDetailTabScreen = () => {
           <Icon name="arrow-back" size={24} color="#333333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
-        <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('GroupSettings', { groupId, groupName })}>
+        <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('GroupSettings', { 
+          groupId, 
+          groupName,
+          group_avatar_url: groupDetail?.group_avatar_url,
+          group_created_date: groupDetail?.group_created_date
+        })}>
           <Icon name="settings" size={24} color="#333333" />
         </TouchableOpacity>
       </View>

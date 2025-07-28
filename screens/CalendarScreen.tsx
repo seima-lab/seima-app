@@ -6,6 +6,7 @@ import {
     Alert,
     Animated,
     FlatList,
+    Modal,
     PanResponder,
     RefreshControl,
     SafeAreaView,
@@ -224,7 +225,7 @@ const CalendarScreen = () => {
     
     // Initialize with current month
     const today = new Date();
-    const currentMonthString = today.toISOString().substring(0, 7);
+    const currentMonthString = today.toISOString()?.substring(0, 7) || `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     
     const [currentMonth, setCurrentMonth] = useState(currentMonthString);
     const [overviewData, setOverviewData] = useState<TransactionOverviewResponse | null>(null);
@@ -232,6 +233,8 @@ const CalendarScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
+    const [showMonthPicker, setShowMonthPicker] = useState(false);
+    const [pickerDate, setPickerDate] = useState(new Date(currentMonth + '-01'));
 
     // Load transaction overview data
     const loadTransactionOverview = async (month: string, isRefresh = false) => {
@@ -458,6 +461,262 @@ const CalendarScreen = () => {
 
     const monthlyTotals = getMonthlyTotals();
 
+    // Custom Month Picker Component
+    const MonthPickerModal = () => {
+        const [selectedYear, setSelectedYear] = useState(new Date(currentMonth + '-01').getFullYear());
+        const [selectedMonth, setSelectedMonth] = useState(new Date(currentMonth + '-01').getMonth());
+        const [showYearPicker, setShowYearPicker] = useState(false);
+        
+        const months = [
+            { value: 0, label: t('months.january') },
+            { value: 1, label: t('months.february') },
+            { value: 2, label: t('months.march') },
+            { value: 3, label: t('months.april') },
+            { value: 4, label: t('months.may') },
+            { value: 5, label: t('months.june') },
+            { value: 6, label: t('months.july') },
+            { value: 7, label: t('months.august') },
+            { value: 8, label: t('months.september') },
+            { value: 9, label: t('months.october') },
+            { value: 10, label: t('months.november') },
+            { value: 11, label: t('months.december') }
+        ];
+
+        const currentMonthIndex = new Date(currentMonth + '-01').getMonth();
+        const currentYearValue = new Date(currentMonth + '-01').getFullYear();
+
+        const handleMonthSelect = (monthIndex: number) => {
+            setSelectedMonth(monthIndex);
+        };
+
+        const handleYearChange = (increment: number) => {
+            setSelectedYear(prev => prev + increment);
+        };
+
+        const handleYearSelect = (year: number) => {
+            setSelectedYear(year);
+            setShowYearPicker(false);
+            // Optional: Add haptic feedback here if needed
+        };
+
+        const handleToggleYearPicker = () => {
+            setShowYearPicker(!showYearPicker);
+        };
+
+        const handleConfirm = () => {
+            const newMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+            setCurrentMonth(newMonth);
+            setShowMonthPicker(false);
+        };
+
+        const handleCancel = () => {
+            setSelectedYear(currentYearValue);
+            setSelectedMonth(currentMonthIndex);
+            setShowMonthPicker(false);
+        };
+
+        // Generate years for picker (from 2010 to 2030)
+        const years = Array.from({ length: 21 }, (_, i) => 2010 + i);
+
+        return (
+            <Modal visible={showMonthPicker} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        {/* Year Selection Header */}
+                        <View style={styles.yearSelectionContainer}>
+                            <TouchableOpacity 
+                                style={styles.yearArrowButton}
+                                onPress={() => handleYearChange(-1)}
+                            >
+                                <Icon name="chevron-left" size={20} color="#007AFF" />
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity 
+                                style={styles.yearDisplayContainer}
+                                onPress={handleToggleYearPicker}
+                            >
+                                <Text style={styles.yearDisplayText}>{selectedYear}</Text>
+                                <Icon 
+                                    name={showYearPicker ? "chevron-up" : "chevron-down"} 
+                                    size={16} 
+                                    color="#007AFF" 
+                                />
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity 
+                                style={styles.yearArrowButton}
+                                onPress={() => handleYearChange(1)}
+                            >
+                                <Icon name="chevron-right" size={20} color="#007AFF" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Year Picker Dropdown */}
+                        {showYearPicker && (
+                            <Animated.View 
+                                style={[
+                                    styles.yearPickerContainer,
+                                    { opacity: 1 }
+                                ]}
+                            >
+                                <ScrollView 
+                                    style={styles.yearPickerScroll}
+                                    showsVerticalScrollIndicator={false}
+                                    nestedScrollEnabled={true}
+                                    contentContainerStyle={{ paddingVertical: 4 }}
+                                >
+                                    {years.map((year) => (
+                                        <TouchableOpacity
+                                            key={year}
+                                            style={[
+                                                styles.yearPickerItem,
+                                                selectedYear === year && styles.selectedYearPickerItem
+                                            ]}
+                                            onPress={() => handleYearSelect(year)}
+                                        >
+                                            <Text style={[
+                                                styles.yearPickerItemText,
+                                                selectedYear === year && styles.selectedYearPickerItemText
+                                            ]}>
+                                                {year}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </Animated.View>
+                        )}
+
+                        {/* Month Grid */}
+                        <View style={styles.monthGrid}>
+                            {months.map((month, index) => (
+                                <TouchableOpacity
+                                    key={month.value}
+                                    style={[
+                                        styles.monthGridItem,
+                                        selectedMonth === month.value && styles.selectedMonthGridItem
+                                    ]}
+                                    onPress={() => handleMonthSelect(month.value)}
+                                >
+                                    <Text style={[
+                                        styles.monthGridItemText,
+                                        selectedMonth === month.value && styles.selectedMonthGridItemText
+                                    ]}>
+                                        {month.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* Action Buttons */}
+                        <View style={styles.modalActionButtons}>
+                            <TouchableOpacity 
+                                style={styles.cancelButton}
+                                onPress={handleCancel}
+                            >
+                                <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={styles.okButton}
+                                onPress={handleConfirm}
+                            >
+                                <Text style={styles.okButtonText}>{t('ok')}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        );
+    };
+
+    // Handle month picker
+    const handleOpenMonthPicker = () => {
+        setPickerDate(new Date(currentMonth + '-01'));
+        setShowMonthPicker(true);
+    };
+
+    const handleMonthPickerChange = (event: any, selectedDate?: Date) => {
+        setShowMonthPicker(false);
+        if (selectedDate) {
+            const newMonth = selectedDate.toISOString()?.substring(0, 7) || `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
+            setCurrentMonth(newMonth);
+        }
+    };
+
+    const formatMonthDisplay = (monthString: string) => {
+        if (!monthString || monthString.trim() === '') {
+            const today = new Date();
+            const month = today.getMonth();
+            const year = today.getFullYear();
+            return `${t(`months.${getMonthKey(month)}`)} ${year}`;
+        }
+        
+        try {
+            const date = new Date(monthString + '-01');
+            if (isNaN(date.getTime())) {
+                const today = new Date();
+                const month = today.getMonth();
+                const year = today.getFullYear();
+                return `${t(`months.${getMonthKey(month)}`)} ${year}`;
+            }
+            const month = date.getMonth();
+            const year = date.getFullYear();
+            return `${t(`months.${getMonthKey(month)}`)} ${year}`;
+        } catch (error) {
+            console.error('Error formatting month display:', error);
+            const today = new Date();
+            const month = today.getMonth();
+            const year = today.getFullYear();
+            return `${t(`months.${getMonthKey(month)}`)} ${year}`;
+        }
+    };
+
+    // Helper function to get month key for translation
+    const getMonthKey = (monthIndex: number): string => {
+        const monthKeys = [
+            'january', 'february', 'march', 'april', 'may', 'june',
+            'july', 'august', 'september', 'october', 'november', 'december'
+        ];
+        return monthKeys[monthIndex] || 'january';
+    };
+
+    // Helper function to format day header with proper localization
+    const formatDayHeader = (dateString: string): string => {
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return dateString;
+            }
+            
+            const day = date.getDate();
+            const month = date.getMonth();
+            const weekday = date.getDay();
+            
+            const weekdayNames = [
+                'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
+            ];
+            
+            return `${t(`weekdays.${weekdayNames[weekday]}`)}, ${day.toString().padStart(2, '0')}/${(month + 1).toString().padStart(2, '0')}`;
+        } catch (error) {
+            console.error('Error formatting day header:', error);
+            return dateString;
+        }
+    };
+
+    // Custom header renderer for Calendar
+    const renderCalendarHeader = (date: any) => {
+        return (
+            <TouchableOpacity 
+                style={styles.calendarHeader}
+                onPress={handleOpenMonthPicker}
+            >
+                <Text style={styles.calendarHeaderText}>
+                    {formatMonthDisplay(date.dateString?.substring(0, 7) || '')}
+                </Text>
+                <Icon name="chevron-down" size={16} color="#007AFF" style={styles.calendarHeaderIcon} />
+            </TouchableOpacity>
+        );
+    };
+
     // Group transactions by date for the entire month
     const getGroupedTransactions = (): { [date: string]: Transaction[] } => {
         if (!transactions || !Array.isArray(transactions)) {
@@ -610,11 +869,7 @@ const CalendarScreen = () => {
             <View key={date} style={styles.dayGroup}>
                 <View style={styles.dayHeader}>
                     <Text style={styles.dayHeaderDate}>
-                        {new Date(date).toLocaleDateString(undefined, { 
-                            weekday: 'long',
-                            day: '2-digit',
-                            month: '2-digit'
-                        })}
+                        {formatDayHeader(date)}
                     </Text>
                     <Text style={[
                         styles.dayHeaderTotal,
@@ -678,13 +933,14 @@ const CalendarScreen = () => {
                             <Calendar
                                 current={currentMonth + '-01'}
                                 onMonthChange={(month: DateData) => {
-                                    const newMonth = month.dateString.substring(0, 7);
+                                    const newMonth = month.dateString?.substring(0, 7) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
                                     setCurrentMonth(newMonth);
                                     // loadTransactionOverview will be called by useEffect when currentMonth changes
                                 }}
                                 markingType={'custom'}
                                 markedDates={getMarkedDates()}
                                 dayComponent={renderDayComponent}
+                                renderHeader={renderCalendarHeader}
                                 theme={{
                                     backgroundColor: '#ffffff',
                                     calendarBackground: '#ffffff',
@@ -735,10 +991,7 @@ const CalendarScreen = () => {
                         {loading ? (
                             `${t('common.loading')} - ${currentMonth}...`
                         ) : (
-                            `${t('calendar.transactionsFor')} ${new Date(currentMonth + '-01').toLocaleDateString(undefined, { 
-                                year: 'numeric',
-                                month: 'long'
-                            })}`
+                            `${t('calendar.transactionsFor')} ${formatMonthDisplay(currentMonth)}`
                         )}
                     </Text>
 
@@ -772,6 +1025,11 @@ const CalendarScreen = () => {
                     )}
                 </ScrollView>
             </View>
+
+            {/* Month Picker Modal */}
+            {showMonthPicker && (
+                <MonthPickerModal />
+            )}
         </SafeAreaView>
     );
 };
@@ -1056,6 +1314,177 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         zIndex: 2,
         width: '100%',
+    },
+    calendarHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        marginBottom: 8,
+    },
+    calendarHeaderText: {
+        fontSize: 18,
+        ...typography.semibold,
+        color: '#333',
+    },
+    calendarHeaderIcon: {
+        marginLeft: 8,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        width: '85%',
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 10,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    yearSelectionContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+        paddingHorizontal: 8,
+    },
+    yearArrowButton: {
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: '#F8F9FA',
+    },
+    yearDisplayContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8F9FA',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 8,
+        minWidth: 100,
+        justifyContent: 'center',
+    },
+    yearDisplayText: {
+        fontSize: 18,
+        ...typography.semibold,
+        color: '#333',
+        marginRight: 8,
+    },
+    yearPickerContainer: {
+        maxHeight: 120,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#E5E5E5',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+        elevation: 3,
+    },
+    yearPickerScroll: {
+        maxHeight: 120,
+    },
+    yearPickerItem: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E5E5',
+    },
+    selectedYearPickerItem: {
+        backgroundColor: '#007AFF',
+    },
+    yearPickerItemText: {
+        fontSize: 16,
+        ...typography.medium,
+        color: '#333',
+        textAlign: 'center',
+    },
+    selectedYearPickerItemText: {
+        color: '#FFFFFF',
+        ...typography.semibold,
+    },
+    monthGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginBottom: 1,
+    },
+    monthGridItem: {
+        width: '30%',
+        aspectRatio: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    selectedMonthGridItem: {
+        backgroundColor: '#007AFF',
+        borderColor: '#007AFF',
+    },
+    monthGridItemText: {
+        fontSize: 14,
+        ...typography.medium,
+        color: '#333',
+        textAlign: 'center',
+    },
+    selectedMonthGridItemText: {
+        color: '#FFFFFF',
+        ...typography.semibold,
+    },
+    modalActionButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 10,
+        marginTop: 0,
+    },
+    cancelButton: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#007AFF',
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+    },
+    cancelButtonText: {
+        fontSize: 16,
+        ...typography.medium,
+        color: '#007AFF',
+    },
+    okButton: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        backgroundColor: '#007AFF',
+        alignItems: 'center',
+    },
+    okButtonText: {
+        fontSize: 16,
+        ...typography.medium,
+        color: '#FFFFFF',
     },
 });
 

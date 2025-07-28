@@ -160,6 +160,8 @@ export const GroupSettingsScreenWithNav = ({ route }: any) => (
     <GroupSettingsScreen 
       groupId={(route.params as any).groupId} 
       groupName={(route.params as any).groupName} 
+      group_avatar_url={(route.params as any).group_avatar_url}
+      group_created_date={(route.params as any).group_created_date}
     />
   </WithBottomNavigation>
 );

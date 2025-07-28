@@ -182,8 +182,8 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
       
       // Fetch categories for both expense and income
       const [expenseCats, incomeCats] = await Promise.all([
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId, groupIdNum),
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId, groupIdNum),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, userId),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, userId),
       ]);
 
       console.log('🟢 Categories loaded:', {
@@ -351,7 +351,12 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
   };
 
   const handleSettingsPress = () => {
-    (navigation as any).navigate('GroupSettings', { groupId, groupName });
+    (navigation as any).navigate('GroupSettings', { 
+      groupId, 
+      groupName,
+      group_avatar_url: groupDetail?.group_avatar_url,
+      group_created_date: groupDetail?.group_created_date
+    });
   };
 
   // Helper: format time luôn là AM/PM

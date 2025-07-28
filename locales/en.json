@@ -250,8 +250,8 @@
       "memberRole": "Group Role",
       "makeAdmin": "Make Admin",
       "makeMember": "Make Member",
-      "promoteToAdmin": "Promote to Admin",
-      "demoteToMember": "Demote to Member",
+      "promoteToAdmin": "Admin",
+      "demoteToMember": "Member",
       "remove": "Remove",
       "confirmRoleChange": "Confirm Role Change",
       "changeRoleFrom": "Are you sure you want to change {{name}}'s role from {{oldRole}} to {{newRole}}?",
@@ -351,6 +351,9 @@
       "pendingMembers": "Pending Members",
       "noPendingMembers": "No pending members",
       "requestedAt": "Requested at",
+      "justNow": "Just now",
+      "hoursAgo": "{{hours}} hours ago",
+      "daysAgo": "{{days}} days ago",
       "memberAccepted": "Member accepted successfully!",
       "memberRejected": "Member rejected successfully!",
       "acceptFailed": "Failed to accept member",
@@ -388,10 +391,17 @@
     "noDataForPeriod": "No data for this period",
     "total": "Total",
     "dailyAverage": "Daily Average",
-    "categories": "Categories"
+    "categories": "Categories",
+    "noExpenseData": "No expense data",
+    "failedToLoadReport": "Failed to load report data",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "cancel": "Cancel",
+    "ok": "OK"
   },
 
   "common": {
+    "remove": "Remove",
     "confirm": "Confirm",
     "back": "Back",
     "next": "Next",
@@ -780,6 +790,31 @@
     "confirmDeleteTransaction": "Are you sure you want to delete this transaction?",
     "transactionDeleted": "Transaction deleted successfully"
   },
+
+  "months": {
+    "january": "Jan",
+    "february": "Feb",
+    "march": "Mar",
+    "april": "Apr",
+    "may": "May",
+    "june": "Jun",
+    "july": "Jul",
+    "august": "Aug",
+    "september": "Sep",
+    "october": "Oct",
+    "november": "Nov",
+    "december": "Dec"
+  },
+
+  "weekdays": {
+    "sunday": "Sunday",
+    "monday": "Monday", 
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday"
+  },
   
   "budget": {
     "title": "Budget Limit",
@@ -844,6 +879,27 @@
       "delete": "Delete",
       "success": "Successfully deleted budget for",
       "deleted": "from your list"
+    },
+    "detail": {
+      "title": "Budget Detail",
+      "loading": "Loading budget details...",
+      "loadError": "Failed to load budget details",
+      "back": "Go Back",
+      "progressUsed": "used",
+      "amountUsed": "Amount Used",
+      "amountRemaining": "Amount Remaining",
+      "timeRange": "Time Range",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "appliedCategories": "Applied Categories",
+      "confirmDelete": "Delete Budget",
+      "deleteMessage": "Are you sure you want to delete this budget? This action cannot be undone.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleteError": "Failed to delete budget",
+      "deleting": "Deleting budget...",
+      "deleteSuccess": "Budget Deleted",
+      "deleteSuccessMessage": "Budget has been successfully deleted."
     },
     "categories": {
       "transport": "Transport",
@@ -1023,6 +1079,9 @@
     "logout": "Logout"
   },
   "groupTransaction": {
+    "confirmDelete": "Are you sure you want to delete this transaction?",
+    "deleteSuccess": "Transaction deleted successfully",
+
     "title": "Group Transactions",
     "myTransactions": "My Transactions",
     "groupTransactions": "Group Transactions",
@@ -1077,6 +1136,37 @@
         "updateFailed": "Failed to update group. Please try again."
       }
     }
+  },
+
+  "voiceRecording": {
+    "title": "Voice Recording",
+    "startRecording": "Tap to start recording",
+    "recording": "Recording... Tap to stop",
+    "processing": "Processing voice...",
+    "processingNote": "This process may take a few seconds",
+    "recognitionResult": "Recognition result:",
+    "accept": "Accept",
+    "cancel": "Cancel",
+    "permissionTitle": "Grant Recording Permission",
+    "permissionMessage": "The app needs recording permission to use this feature.",
+    "permissionAskLater": "Ask me later",
+    "permissionDeny": "Deny",
+    "permissionAllow": "Allow",
+    "permissionGranted": "Recording permission granted",
+    "permissionGrantedMessage": "Please tap the recording button again to start recording.",
+    "permissionDenied": "No recording permission",
+    "permissionDeniedMessage": "You need to grant recording permission to use this feature.",
+    "permissionError": "Permission request error",
+    "permissionErrorMessage": "Unable to request recording permission.",
+    "recordError": "Cannot start recording!",
+    "fileError": "Recording error",
+    "fileNotFound": "Cannot get audio file!",
+    "fileNotExist": "Audio file does not exist!",
+    "recognitionError": "Voice recognition error",
+    "recognitionErrorMessage": "An error occurred during voice recognition",
+    "timeoutError": "Recognition process took too long. Please try again with a shorter recording.",
+    "networkError": "Network connection error. Please check your internet connection and try again.",
+    "recognitionSuccess": "Recognition successful"
   }
 
 } 

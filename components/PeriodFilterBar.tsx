@@ -1,6 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { addMonths, addWeeks, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subMonths, subWeeks } from 'date-fns';
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -19,14 +20,6 @@ interface PeriodFilterBarProps {
   onChangeCustomEndDate: (date: Date) => void;
 }
 
-const periodTypeOptions = [
-  { value: 'today', label: 'Hôm nay' },
-  { value: 'thisWeek', label: 'Tuần này' },
-  { value: 'thisMonth', label: 'Tháng này' },
-  { value: 'thisYear', label: 'Năm nay' },
-  { value: 'custom', label: 'Tùy chọn' },
-];
-
 const PeriodFilterBar: React.FC<PeriodFilterBarProps> = ({
   periodType,
   periodValue,
@@ -39,6 +32,16 @@ const PeriodFilterBar: React.FC<PeriodFilterBarProps> = ({
   onChangeCustomStartDate,
   onChangeCustomEndDate,
 }) => {
+  const { t, i18n } = useTranslation();
+  
+  const periodTypeOptions = [
+    { value: 'today', label: t('reports.today') },
+    { value: 'thisWeek', label: t('reports.thisWeek') },
+    { value: 'thisMonth', label: t('reports.thisMonth') },
+    { value: 'thisYear', label: t('reports.thisYear') },
+    { value: 'custom', label: t('reports.custom') },
+  ];
+
   const [showDropdown, setShowDropdown] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [tempStartDate, setTempStartDate] = useState(customStartDate);
@@ -48,6 +51,8 @@ const PeriodFilterBar: React.FC<PeriodFilterBarProps> = ({
   // Format label for current period
   const periodLabel = useMemo(() => {
     const now = new Date();
+    const locale = i18n.language === 'vi' ? 'vi-VN' : 'en-US';
+    
     switch (periodType) {
       case 'thisMonth': {
         let year = now.getFullYear();
@@ -68,7 +73,7 @@ const PeriodFilterBar: React.FC<PeriodFilterBarProps> = ({
           visibleStartDate.getFullYear() === now.getFullYear() &&
           visibleStartDate.getMonth() === now.getMonth();
         if (isCurrentMonth) {
-          return 'Tháng này';
+          return t('reports.thisMonth');
         } else {
           const start = format(visibleStartDate, 'dd/MM/yyyy');
           const end = format(endOfMonth(visibleStartDate), 'dd/MM/yyyy');
@@ -103,7 +108,7 @@ const PeriodFilterBar: React.FC<PeriodFilterBarProps> = ({
       default:
         return '';
     }
-  }, [periodType, periodValue, weekReferenceDate, customStartDate, customEndDate]);
+  }, [periodType, periodValue, weekReferenceDate, customStartDate, customEndDate, t, i18n.language]);
 
   // Navigation logic
   const handlePrev = () => {
@@ -288,29 +293,29 @@ const PeriodFilterBar: React.FC<PeriodFilterBarProps> = ({
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Chọn khoảng ngày</Text>
+            <Text style={styles.modalTitle}>{t('reports.selectDateRange')}</Text>
             <View style={styles.dateRow}>
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setFocusedInput('start')}
               >
                 <Text style={styles.dateText}>{format(tempStartDate, 'dd/MM/yyyy')}</Text>
-                <Text style={styles.dateLabel}>Từ ngày</Text>
+                <Text style={styles.dateLabel}>{t('reports.fromDate')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setFocusedInput('end')}
               >
                 <Text style={styles.dateText}>{format(tempEndDate, 'dd/MM/yyyy')}</Text>
-                <Text style={styles.dateLabel}>Đến ngày</Text>
+                <Text style={styles.dateLabel}>{t('reports.toDate')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setShowDateModal(false)}>
-                <Text style={styles.cancelText}>Huỷ</Text>
+                <Text style={styles.cancelText}>{t('reports.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.confirmButton} onPress={handleDateModalConfirm}>
-                <Text style={styles.confirmText}>OK</Text>
+                <Text style={styles.confirmText}>{t('reports.ok')}</Text>
               </TouchableOpacity>
             </View>
             {focusedInput && (

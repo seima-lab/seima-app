@@ -2,20 +2,20 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Dimensions,
-    FlatList,
-    Image,
-    ListRenderItem,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  ListRenderItem,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -144,7 +144,7 @@ const SwipeableRow: React.FC<SwipeableRowProps> = ({ member, onRemove, isGroupLe
       >
         <TouchableOpacity style={styles.swipeRemoveButton} onPress={handleRemove}>
           <Icon name="delete" size={20} color="#FFFFFF" />
-          <Text style={styles.swipeRemoveButtonText}>{t('common.remove')}</Text>
+          <Text style={styles.swipeRemoveButtonText}>{t('memberManagement.remove')}</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -374,9 +374,7 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
     setShowMemberModal(true);
   };
 
-  const handleListTransactions = () => {
-    navigation.navigate('GroupTransactionList', { groupId, groupName });
-  };
+
 
   const handleRemoveMember = async (member: DisplayMember) => {
     Alert.alert(
@@ -555,7 +553,6 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
           <Text style={styles.memberName}>{item.name}</Text>
           <RoleBadge role={item.role} size="small" />
         </View>
-        <Text style={styles.memberContribution}>{formatCurrency(item.contribution)}</Text>
         {isRemoving && (
           <ActivityIndicator size="small" color="#FF6B6B" style={{ marginLeft: 8 }} />
         )}
@@ -764,13 +761,7 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
             <Icon name="chevron-right" size={24} color="#CCCCCC" />
           </TouchableOpacity>
           
-          <View style={styles.separator} />
-          
-          <TouchableOpacity style={styles.managementItem} onPress={handleListTransactions}>
-            <Icon name="receipt-long" size={24} color="#4A90E2" />
-            <Text style={styles.managementText}>{t('group.memberManagement.listTransactions')}</Text>
-            <Icon name="chevron-right" size={24} color="#CCCCCC" />
-          </TouchableOpacity>
+
         </View>
 
         {/* Members List */}
@@ -904,8 +895,9 @@ const styles = StyleSheet.create({
   },
   groupImage: {
     width: 120,
-    height: 80,
-    resizeMode: 'contain',
+    height: 120,
+    borderRadius: 60,
+    resizeMode: 'cover',
   },
   managementCard: {
     backgroundColor: '#FFFFFF',

@@ -207,6 +207,7 @@ const VoiceRecorderModal = ({
     onStartRecord: () => Promise<void>;
     onStopRecord: () => Promise<void>;
 }) => {
+    const { t } = useTranslation();
     const [isRecording, setIsRecording] = useState(false);
     const [hasAudioPermission, setHasAudioPermission] = useState<boolean | null>(null);
     // const [justGrantedPermission, setJustGrantedPermission] = useState(false);
@@ -241,25 +242,25 @@ const VoiceRecorderModal = ({
                 const granted = await PermissionsAndroid.request(
                     PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
                     {
-                        title: 'Cấp quyền ghi âm',
-                        message: 'Ứng dụng cần quyền ghi âm để sử dụng tính năng này.',
-                        buttonNeutral: 'Hỏi lại sau',
-                        buttonNegative: 'Từ chối',
-                        buttonPositive: 'Đồng ý',
+                        title: t('voiceRecording.permissionTitle'),
+                        message: t('voiceRecording.permissionMessage'),
+                        buttonNeutral: t('voiceRecording.permissionAskLater'),
+                        buttonNegative: t('voiceRecording.permissionDeny'),
+                        buttonPositive: t('voiceRecording.permissionAllow'),
                     }
                 );
                 if (granted === PermissionsAndroid.RESULTS.GRANTED) {
                     setHasAudioPermission(true);
-                    Alert.alert('Đã cấp quyền ghi âm', 'Vui lòng ấn lại nút ghi âm để bắt đầu ghi.');
+                    Alert.alert(t('voiceRecording.permissionGranted'), t('voiceRecording.permissionGrantedMessage'));
                     return;
                 } else {
                     setHasAudioPermission(false);
-                    Alert.alert('Không có quyền ghi âm', 'Bạn cần cấp quyền ghi âm để sử dụng tính năng này.');
+                    Alert.alert(t('voiceRecording.permissionDenied'), t('voiceRecording.permissionDeniedMessage'));
                     return;
                 }
             } catch (err) {
                 setHasAudioPermission(false);
-                Alert.alert('Lỗi xin quyền', 'Không thể xin quyền ghi âm.');
+                Alert.alert(t('voiceRecording.permissionError'), t('voiceRecording.permissionErrorMessage'));
                 return;
             }
         }
@@ -290,7 +291,7 @@ const VoiceRecorderModal = ({
                 >
                     <Icon name="close" size={24} color="#333" />
                 </TouchableOpacity>
-                <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 16, marginTop: 24 }}>Ghi âm giọng nói</Text>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 16, marginTop: 24 }}>{t('voiceRecording.title')}</Text>
                 {/* Recorder UI: bấm 1 lần bắt đầu, bấm lần nữa dừng */}
                 <TouchableOpacity
                     style={{ backgroundColor: isRecording ? '#ff4d4f' : '#1e90ff', padding: 24, borderRadius: 50, marginBottom: 24 }}
@@ -300,12 +301,22 @@ const VoiceRecorderModal = ({
                     <Icon name={isRecording ? 'stop' : 'mic'} size={40} color="#fff" />
                 </TouchableOpacity>
                 <Text style={{ color: '#888', marginBottom: 16 }}>
-                    {isRecording ? 'Đang ghi âm... Bấm để dừng' : 'Bấm để bắt đầu ghi âm'}
+                    {isRecording ? t('voiceRecording.recording') : t('voiceRecording.startRecording')}
                 </Text>
-                {isLoading && <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 16 }} />}
+                {isLoading && (
+                    <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                        <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 8 }} />
+                        <Text style={{ color: '#666', fontSize: 14, textAlign: 'center' }}>
+                            {t('voiceRecording.processing')}{'\n'}
+                            <Text style={{ fontSize: 12, color: '#999' }}>
+                                {t('voiceRecording.processingNote')}
+                            </Text>
+                        </Text>
+                    </View>
+                )}
                 {recognizedText ? (
                     <>
-                        <Text style={{ fontSize: 16, marginBottom: 8 }}>Kết quả nhận diện:</Text>
+                        <Text style={{ fontSize: 16, marginBottom: 8 }}>{t('voiceRecording.recognitionResult')}</Text>
                         <TextInput
                             style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, minWidth: 250, minHeight: 40, marginBottom: 16 }}
                             value={recognizedText}
@@ -317,13 +328,13 @@ const VoiceRecorderModal = ({
                                 style={{ backgroundColor: '#1e90ff', padding: 12, borderRadius: 8 }}
                                 onPress={() => onResult(recognizedText)}
                             >
-                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Chấp nhận</Text>
+                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('voiceRecording.accept')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={{ backgroundColor: '#ccc', padding: 12, borderRadius: 8 }}
                                 onPress={onClose}
                             >
-                                <Text style={{ color: '#333' }}>Hủy</Text>
+                                <Text style={{ color: '#333' }}>{t('voiceRecording.cancel')}</Text>
                             </TouchableOpacity>
                         </View>
                     </>
@@ -512,7 +523,7 @@ const ChatAIScreen = () => {
             console.log('Start record, file path:', result);
         } catch (err) {
             console.log('Error startRecorder:', err);
-            Alert.alert('Không thể bắt đầu ghi âm!');
+            Alert.alert(t('voiceRecording.recordError'));
         }
     };
     // Hàm dừng ghi âm và gửi lên API
@@ -532,13 +543,13 @@ const ChatAIScreen = () => {
 
             // Kiểm tra file tồn tại
             if (!audioFilePath.current) {
-                Alert.alert('Không lấy được file audio!');
+                Alert.alert(t('voiceRecording.fileError'), t('voiceRecording.fileNotFound'));
                 return;
             }
             const info = await FileSystem.getInfoAsync(audioFilePath.current);
             console.log('File info:', info);
             if (!info.exists) {
-                Alert.alert('File audio không tồn tại!');
+                Alert.alert(t('voiceRecording.fileError'), t('voiceRecording.fileNotExist'));
                 return;
             }
 
@@ -549,10 +560,26 @@ const ChatAIScreen = () => {
                 name: 'sound.mp4', // hoặc sound.m4a nếu đúng định dạng
                 type: 'audio/mp4', // hoặc audio/m4a nếu đúng định dạng
             } as any);
+            
+            console.log('🎤 Bắt đầu gửi audio lên server...');
             const text = await TranscriptionService.uploadAudio(formData);
+            console.log('✅ Nhận diện thành công:', text);
             setRecognizedText(text);
         } catch (err: any) {
-            Alert.alert('Lỗi nhận diện giọng nói', err && err.message ? err.message : '');
+            console.error('❌ Lỗi nhận diện giọng nói:', err);
+            
+            // Xử lý các loại lỗi khác nhau
+            let errorMessage = t('voiceRecording.recognitionErrorMessage');
+            
+            if (err.name === 'AbortError' || err.message?.includes('timeout')) {
+                errorMessage = t('voiceRecording.timeoutError');
+            } else if (err.message?.includes('network')) {
+                errorMessage = t('voiceRecording.networkError');
+            } else if (err.message) {
+                errorMessage = err.message;
+            }
+            
+            Alert.alert(t('voiceRecording.recognitionError'), errorMessage);
         } finally {
             setIsVoiceLoading(false);
         }

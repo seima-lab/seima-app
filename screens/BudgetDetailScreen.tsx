@@ -2,16 +2,16 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { typography } from '../constants/typography';
@@ -33,6 +33,7 @@ const BudgetDetailScreen = () => {
   // Custom modal states for delete
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [showDeleteErrorModal, setShowDeleteErrorModal] = useState(false);
+  const [showDeleteSuccessModal, setShowDeleteSuccessModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
 
@@ -190,15 +191,9 @@ const BudgetDetailScreen = () => {
       await budgetService.deleteBudget(budgetId);
       console.log('✅ Budget deleted successfully');
       
-      // Show brief success feedback then navigate
+      // Show success modal
       setIsDeleting(false);
-      
-      // Optional: Show a brief success message
-      // You can add a toast here if you have a toast system
-      console.log('✅ Budget deleted successfully, navigating back...');
-      
-      // Navigate back immediately
-      navigation.goBack();
+      setShowDeleteSuccessModal(true);
     } catch (err) {
       console.error('❌ Error deleting budget:', err);
       setModalMessage(t('budget.detail.deleteError'));
@@ -213,6 +208,12 @@ const BudgetDetailScreen = () => {
 
   const handleDeleteError = () => {
     setShowDeleteErrorModal(false);
+  };
+
+  const handleDeleteSuccess = () => {
+    setShowDeleteSuccessModal(false);
+    // Navigate back to BudgetScreen which will reload data
+    navigation.goBack();
   };
 
   const handleEdit = () => {
@@ -454,6 +455,30 @@ const BudgetDetailScreen = () => {
           <View style={styles.loadingModalContainer}>
             <ActivityIndicator size="large" color="#1e90ff" />
             <Text style={styles.loadingModalText}>{t('budget.detail.deleting')}</Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Success Modal */}
+      <Modal
+        visible={showDeleteSuccessModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleDeleteSuccess}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.customModalContainer}>
+            <View style={styles.modalIconContainer}>
+              <Icon name="check-circle" size={48} color="#10B981" />
+            </View>
+            <Text style={styles.modalTitle}>{t('budget.detail.deleteSuccess')}</Text>
+            <Text style={styles.modalMessage}>{t('budget.detail.deleteSuccessMessage')}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleDeleteSuccess}
+            >
+              <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
