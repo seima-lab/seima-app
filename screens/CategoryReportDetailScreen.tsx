@@ -1,20 +1,23 @@
 import { typography } from '@/constants/typography';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { addDays as addDaysFns, addMonths, endOfMonth, endOfWeek, format, getDay, startOfMonth, startOfWeek } from 'date-fns';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BarChart as KitBarChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomDropdown from '../components/CustomDropdown';
+import { RootStackParamList } from '../navigation/types';
 import { categoryService } from '../services/categoryService';
 // Xoá declare module ở đây, sẽ tạo file types/react-native-svg-charts.d.ts ở gốc dự án
 
 const periodTypeOptions = [
-  { value: 'today', label: 'Hôm nay' },
-  { value: 'thisWeek', label: 'Tuần này' },
-  { value: 'thisMonth', label: 'Tháng này' },
-  { value: 'thisYear', label: 'Năm nay' },
-  { value: 'custom', label: 'Tùy chọn' },
+  { value: 'today', label: 'reports.today' },
+  { value: 'thisWeek', label: 'reports.thisWeek' },
+  { value: 'thisMonth', label: 'reports.thisMonth' },
+  { value: 'thisYear', label: 'reports.thisYear' },
+  { value: 'custom', label: 'reports.custom' },
 ];
 
 function addDaysLocal(date: Date, amount: number) {
@@ -63,7 +66,7 @@ function generateSampleDataForMonth(date: Date) {
 
 export default function CategoryReportDetailScreen() {
   const route = useRoute();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { category_name, category_id, start_date, end_date } = route.params as {
     category_name?: string;
     category_id?: number;
@@ -83,6 +86,8 @@ export default function CategoryReportDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [totalExpense, setTotalExpense] = useState<number>(0);
   const [totalIncome, setTotalIncome] = useState<number>(0);
+
+  const { t } = useTranslation();
 
   // Reset currentDate and visibleStartDate when period type changes (except custom)
   useEffect(() => {
@@ -312,9 +317,41 @@ export default function CategoryReportDetailScreen() {
     chartData = chartLabels.map((_, idx) => {
       const month = idx + 1;
       const start = new Date(currentDate.getFullYear(), idx, 1);
-      const end = new Date(currentDate.getFullYear(), idx + 1, 0);
-      const key = `${format(start, 'yyyy-MM-dd')}_to_${format(end, 'yyyy-MM-dd')}`;
-      return getAmount(apiData[key]);
+      
+      // Sử dụng ngày hiện tại cho tháng hiện tại thay vì cuối tháng
+      let end: Date;
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      
+      if (idx === currentMonth && currentDate.getFullYear() === currentYear) {
+        // Tháng hiện tại, sử dụng ngày hiện tại
+        end = currentDate;
+      } else {
+        // Các tháng khác, sử dụng cuối tháng
+        end = new Date(currentDate.getFullYear(), idx + 1, 0);
+      }
+      
+      // Tìm dữ liệu có sẵn trong API response
+      const targetKey = `${format(start, 'yyyy-MM-dd')}_to_${format(end, 'yyyy-MM-dd')}`;
+      
+      // Nếu không tìm thấy dữ liệu cho key chính xác, tìm key gần nhất có sẵn
+      if (apiData[targetKey]) {
+        return getAmount(apiData[targetKey]);
+      } else {
+        // Tìm key có sẵn trong API data cho tháng này
+        const availableKeys = Object.keys(apiData).filter(key => {
+          return key.startsWith(`${format(start, 'yyyy-MM-dd')}_to_`);
+        });
+        
+        if (availableKeys.length > 0) {
+          // Lấy key có sẵn đầu tiên (thường là key có dữ liệu gần nhất)
+          const availableKey = availableKeys[0];
+          console.log(`🔍 Using available data for month ${month}: ${availableKey}`);
+          return getAmount(apiData[availableKey]);
+        }
+        
+        return 0;
+      }
     });
   } else if (selectedPeriodType === 'custom') {
     // For custom, show one bar for the selected range
@@ -332,7 +369,7 @@ export default function CategoryReportDetailScreen() {
   const chartKitConfig = {
     backgroundGradientFrom: '#fff',
     backgroundGradientTo: '#fff',
-    color: () => 'red', // màu đỏ đặc, không gradient
+    color: () => '#1e90ff', // màu xanh dương
     barPercentage: 0.5,
     decimalPlaces: 0,
     propsForLabels: { fontSize: 10 },
@@ -381,7 +418,7 @@ export default function CategoryReportDetailScreen() {
                 style={styles.dropdownItem}
                 onPress={() => handleDropdownSelect(option)}
               >
-                <Text style={styles.dropdownText}>{option.label}</Text>
+                <Text style={styles.dropdownText}>{t(option.label)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -416,23 +453,64 @@ export default function CategoryReportDetailScreen() {
       {/* Transaction List with scroll if long */}
       <View style={styles.transactionContainer}>
         <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-          {chartLabels.map((label, idx) => (
-            <TouchableOpacity
-              key={label}
-              style={[
-                styles.transactionItem,
-                idx === chartLabels.length - 1 && styles.transactionItemLast
-              ]}
-            >
-              <Text style={styles.transactionLabel}>{label}</Text>
-              <View style={styles.transactionAmountContainer}>
-                <Text style={styles.transactionAmount}>
-                  {chartData[idx].toLocaleString('vi-VN')} ₫
-                </Text>
-                <Text style={styles.chevron}>›</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+          {chartLabels.map((label, idx) => {
+            // Tính toán start_date và end_date cho từng item
+            let itemStartDate = '';
+            let itemEndDate = '';
+            
+            if (selectedPeriodType === 'thisMonth') {
+              const weeks = getWeeksOfMonthISO(currentDate);
+              if (weeks[idx]) {
+                itemStartDate = format(weeks[idx].start, 'yyyy-MM-dd');
+                itemEndDate = format(weeks[idx].end, 'yyyy-MM-dd');
+              }
+            } else if (selectedPeriodType === 'today') {
+              itemStartDate = format(currentDate, 'yyyy-MM-dd');
+              itemEndDate = format(currentDate, 'yyyy-MM-dd');
+            } else if (selectedPeriodType === 'thisWeek') {
+              const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+              const d = addDaysFns(start, idx);
+              itemStartDate = format(d, 'yyyy-MM-dd');
+              itemEndDate = format(d, 'yyyy-MM-dd');
+            } else if (selectedPeriodType === 'thisYear') {
+              const month = idx + 1;
+              const start = new Date(currentDate.getFullYear(), idx, 1);
+              const end = new Date(currentDate.getFullYear(), idx + 1, 0);
+              itemStartDate = format(start, 'yyyy-MM-dd');
+              itemEndDate = format(end, 'yyyy-MM-dd');
+            } else if (selectedPeriodType === 'custom') {
+              itemStartDate = format(startDate, 'yyyy-MM-dd');
+              itemEndDate = format(endDate, 'yyyy-MM-dd');
+            }
+
+            return (
+              <TouchableOpacity
+                key={label}
+                style={[
+                  styles.transactionItem,
+                  idx === chartLabels.length - 1 && styles.transactionItemLast
+                ]}
+                onPress={() => {
+                  if (category_id && itemStartDate && itemEndDate) {
+                    navigation.navigate('CategoryDetailReportScreen', {
+                      category_id: Number(category_id),
+                      category_name: category_name || '',
+                      start_date: itemStartDate,
+                      end_date: itemEndDate
+                    });
+                  }
+                }}
+              >
+                <Text style={styles.transactionLabel}>{label}</Text>
+                <View style={styles.transactionAmountContainer}>
+                  <Text style={styles.transactionAmount}>
+                    {chartData[idx].toLocaleString('vi-VN')} ₫
+                  </Text>
+                  <Text style={styles.chevron}>›</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
     </View>
@@ -462,25 +540,29 @@ const styles = StyleSheet.create({
   dropdownMenu: {
     position: 'absolute',
     top: 44,
-    left: 0,
-    right: 0,
+    left: '50%',
+    transform: [{ translateX: -80 }],
     backgroundColor: '#fff',
     borderRadius: 12,
-    paddingVertical: 8,
-    elevation: 8,
+    marginTop: 4,
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    zIndex: 100,
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 10,
+    width: 160,
+    minWidth: 120,
+    maxWidth: 200,
+    paddingVertical: 4,
   },
   dropdownItem: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   dropdownText: {
     fontSize: 16,
-    color: '#1a1a1a',
+    color: '#333',
   },
   chartContainer: {
     backgroundColor: '#fff',

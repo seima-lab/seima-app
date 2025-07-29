@@ -14,6 +14,8 @@ import {
     View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import CustomConfirmModal from '../components/CustomConfirmModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
 import { budgetService } from '../services/budgetService';
 import { deduplicateCategories, getIconColor, getIconForCategory } from '../utils/iconUtils';
@@ -390,60 +392,27 @@ const BudgetDetailScreen = () => {
       {/* Custom Modals */}
       
       {/* Delete Confirmation Modal */}
-      <Modal
+      <CustomConfirmModal
         visible={showDeleteConfirmModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleDeleteCancel}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.customModalContainer}>
-            <View style={styles.modalIconContainer}>
-              <Icon name="alert-circle" size={48} color="#F59E0B" />
-            </View>
-            <Text style={styles.modalTitle}>{t('budget.detail.confirmDelete')}</Text>
-            <Text style={styles.modalMessage}>{t('budget.detail.deleteMessage')}</Text>
-            <View style={styles.modalButtonsContainer}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonSecondary]}
-                onPress={handleDeleteCancel}
-              >
-                <Text style={styles.modalButtonSecondaryText}>{t('budget.detail.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonDanger]}
-                onPress={handleDeleteConfirm}
-              >
-                <Text style={styles.modalButtonText}>{t('budget.detail.delete')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        title={t('budget.detail.confirmDelete')}
+        message={t('budget.detail.deleteMessage')}
+        confirmText={t('budget.detail.delete')}
+        cancelText={t('budget.detail.cancel')}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        type="danger"
+        iconName="delete"
+      />
 
       {/* Delete Error Modal */}
-      <Modal
+      <CustomSuccessModal
         visible={showDeleteErrorModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleDeleteError}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.customModalContainer}>
-            <View style={styles.modalIconContainer}>
-              <Icon name="alert-circle" size={48} color="#EF4444" />
-            </View>
-            <Text style={styles.modalTitle}>{t('common.error')}</Text>
-            <Text style={styles.modalMessage}>{modalMessage}</Text>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleDeleteError}
-            >
-              <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        title={t('common.error')}
+        message={modalMessage}
+        buttonText={t('common.ok')}
+        onConfirm={handleDeleteError}
+        iconName="alert-circle"
+      />
 
       {/* Loading Modal for Delete */}
       <Modal
@@ -460,28 +429,14 @@ const BudgetDetailScreen = () => {
       </Modal>
 
       {/* Delete Success Modal */}
-      <Modal
+      <CustomSuccessModal
         visible={showDeleteSuccessModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleDeleteSuccess}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.customModalContainer}>
-            <View style={styles.modalIconContainer}>
-              <Icon name="check-circle" size={48} color="#10B981" />
-            </View>
-            <Text style={styles.modalTitle}>{t('budget.detail.deleteSuccess')}</Text>
-            <Text style={styles.modalMessage}>{t('budget.detail.deleteSuccessMessage')}</Text>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleDeleteSuccess}
-            >
-              <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        title={t('budget.detail.deleteSuccess')}
+        message={t('budget.detail.deleteSuccessMessage')}
+        buttonText={t('common.ok')}
+        onConfirm={handleDeleteSuccess}
+        iconName="check-circle"
+      />
     </View>
   );
 };
@@ -753,63 +708,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  customModalContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    width: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  modalIconContainer: {
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    color: '#1F2937',
-    marginBottom: 8,
-    textAlign: 'center',
-    ...typography.semibold,
-  },
-  modalMessage: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-    ...typography.regular,
-  },
-  modalButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-  },
-  modalButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  modalButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    ...typography.semibold,
-  },
-  modalButtonSecondary: {
-    backgroundColor: '#E5E7EB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  modalButtonSecondaryText: {
-    color: '#374151',
-    fontSize: 16,
-    ...typography.semibold,
-  },
-  modalButtonDanger: {
-    backgroundColor: '#EF4444',
   },
   loadingModalContainer: {
     backgroundColor: 'rgba(0,0,0,0.5)',

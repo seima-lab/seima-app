@@ -2,17 +2,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Alert,
-    Dimensions,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  Alert,
+  Dimensions,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -497,7 +497,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
           </SafeAreaView>
          <CustomConfirmModal
            visible={deleteAlertVisible}
-           title={deleteWalletInfo?.isDefault ? t('wallet.alertTitleDeleteDefault') : t('wallet .alertTitleDelete')}
+           title={deleteWalletInfo?.isDefault ? t('wallet.alertTitleDeleteDefault') : t('wallet.alertTitleDelete')}
            message={deleteWalletInfo?.isDefault
              ? `"${deleteWalletInfo.name}" ${t('wallet.deleteWalletMessageDefault')}`
              : t('wallet.deleteMessage', { walletName: deleteWalletInfo?.name })}

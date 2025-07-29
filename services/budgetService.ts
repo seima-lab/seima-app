@@ -23,7 +23,9 @@ export interface CreateBudgetRequest {
   period_type: string;
   overall_amount_limit: number;
   budget_remaining_amount: number;
-  category_list: { category_id: number }[]; // Array of objects with category_id
+  category_list: { category_id: number }[];
+  wallet_list: { id: number }[]; // Array of objects with id instead of wallet_id
+  currency_code: string; // Add currency_code field
 }
 
 // Category interface

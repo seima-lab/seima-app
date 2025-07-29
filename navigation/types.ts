@@ -125,6 +125,7 @@ export type RootStackParamList = {
     groupId: string; 
     groupName: string; 
   };
+  PendingGroups: undefined;
   ReportDetailScreen: {
     title: string;
     categoryType: 'expense' | 'income';
@@ -154,6 +155,12 @@ export type RootStackParamList = {
     category_name: string;
     start_date?: string;
     end_date?: string;
+  };
+  CategoryDetailReportScreen: {
+    category_id: number;
+    category_name: string;
+    start_date: string;
+    end_date: string;
   };
   ViewCategoryReportScreen: { type: 'expense' | 'income' };
 };

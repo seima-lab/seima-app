@@ -74,10 +74,17 @@ export const USER_ENDPOINTS = {
 
 // Transaction endpoints
 export const TRANSACTION_ENDPOINTS = {
+  
   VIEW_REPORT_BY_CATEGORY: (id: string, type: string, startDate?: string, endDate?: string) => {
     let url = `${ApiConfig.API_PREFIX}/transactions/view-report/category/${id}?type=${type}`;
     if (startDate) url += `&startDate=${startDate}`;
     if (endDate) url += `&endDate=${endDate}`;
+    return url;
+  },
+  VIEW_REPORT_CATEGORY_DETAIL: (id: string, startDate?: string, endDate?: string) => {
+    let url = `${ApiConfig.API_PREFIX}/transactions/view-report/category-detail/${id}`;
+    if (startDate) url += `?startDate=${startDate}`;
+    if (endDate) url += `${startDate ? '&' : '?'}endDate=${endDate}`;
     return url;
   },
   LIST: `${ApiConfig.API_PREFIX}/transactions`,
@@ -106,6 +113,9 @@ export const CATEGORY_ENDPOINTS = {
   GET_BY_USER: (userId: string, groupId: string) => `${ApiConfig.API_PREFIX}/categories/user/${userId}/group/${groupId}`,
 } as const;
 export const GROUP_MEMBER_ENDPOINTS = {
+  GET_MEMBERS_PENDING:(groupId: string) => `${ApiConfig.API_PREFIX}/groups/${groupId}/invited-members`,
+  CANCEL_PENDING_GROUP: `${ApiConfig.API_PREFIX}/groups/cancel-join`,
+  PENDING_GROUPS: `${ApiConfig.API_PREFIX}/groups/pending`,
   EXIT_GROUP: (groupId: string) => `${ApiConfig.API_PREFIX}/group-members/group/${groupId}/exit`,
   GET_OPTIONS: (groupId: string) => `${ApiConfig.API_PREFIX}/group-members/group/${groupId}/owner-exit-options`,
   GET_MEMBERS: (groupId: string) => `${ApiConfig.API_PREFIX}/group-members/group/${groupId}/eligible-for-ownership`,

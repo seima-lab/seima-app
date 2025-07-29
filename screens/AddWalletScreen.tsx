@@ -180,7 +180,8 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
          is_default: isDefault,
          exclude_from_total: excludeFromTotal,
          bank_name: bankName.trim() || undefined,
-         icon_url: undefined // Set to undefined instead of null
+         icon_url: undefined, // Set to undefined instead of null
+         currency_code: "VND"
        };
 
       console.log('💾 Saving wallet:', walletRequest);

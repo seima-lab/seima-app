@@ -256,9 +256,22 @@ const BudgetScreen = () => {
     }
   };
 
+  // Helper function to check if budget is expired
+  const isBudgetExpired = (endDate: string): boolean => {
+    const currentDate = new Date();
+    const endDateObj = new Date(endDate);
+    
+    // Convert to Vietnam timezone (UTC+7)
+    const vietnamTimeOffset = 7 * 60; // 7 hours in minutes
+    const currentVietnamTime = new Date(currentDate.getTime() + (vietnamTimeOffset * 60 * 1000));
+    
+    return currentVietnamTime > endDateObj;
+  };
+
   const BudgetItem = ({ budget }: { budget: Budget }) => {
     const spent = (budget.overall_amount_limit ?? 0) - (budget.budget_remaining_amount ?? 0);
     const percentage = (budget.overall_amount_limit ?? 0) > 0 ? (spent / budget.overall_amount_limit) * 100 : 0;
+    const isExpired = isBudgetExpired(budget.end_date);
     
     return (
       <View style={styles.budgetItemCard}>
@@ -269,9 +282,15 @@ const BudgetScreen = () => {
             </View>
             <View style={styles.budgetItemDetails}>
               <Text style={styles.budgetItemName}>{budget.budget_name}</Text>
-              <Text style={styles.budgetItemPeriod}>
-                {new Date(budget.start_date).toLocaleDateString('vi-VN')} - {new Date(budget.end_date).toLocaleDateString('vi-VN')}
-              </Text>
+              {isExpired ? (
+                <View style={styles.expiredDateContainer}>
+                  <Text style={styles.expiredDateText}>{t('budget.expired')}</Text>
+                </View>
+              ) : (
+                <Text style={styles.budgetItemPeriod}>
+                  {new Date(budget.start_date).toLocaleDateString('vi-VN')} - {new Date(budget.end_date).toLocaleDateString('vi-VN')}
+                </Text>
+              )}
             </View>
           </View>
           <View style={styles.budgetItemRightSection}>
@@ -560,6 +579,30 @@ const styles = StyleSheet.create({
   periodTypeText: {
     fontSize: 12,
     color: '#4CAF50',
+    ...typography.medium,
+  },
+  expiredBadge: {
+    backgroundColor: '#F44336',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  expiredText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    ...typography.medium,
+  },
+  expiredDateContainer: {
+    backgroundColor: '#F44336',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  expiredDateText: {
+    fontSize: 12,
+    color: '#FFFFFF',
     ...typography.medium,
   },
   progressBarContainer: {
