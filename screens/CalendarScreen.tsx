@@ -256,6 +256,31 @@ const CalendarScreen = () => {
             console.log('📊 Summary:', data?.summary);
             console.log('📅 by_date array length:', data?.by_date?.length || 0);
             
+            // Debug: Check if any transaction has group_id
+            if (data?.by_date && Array.isArray(data.by_date)) {
+                let hasGroupTransactions = false;
+                data.by_date.forEach((dailyData, dayIndex) => {
+                    if (dailyData.transactions && Array.isArray(dailyData.transactions)) {
+                        dailyData.transactions.forEach((transaction, transIndex) => {
+                            if (transaction.group_id) {
+                                hasGroupTransactions = true;
+                                console.log(`🔍 Found group transaction in API response:`, {
+                                    day: dayIndex + 1,
+                                    transactionIndex: transIndex + 1,
+                                    transactionId: transaction.transaction_id,
+                                    groupId: transaction.group_id,
+                                    categoryName: transaction.category_name
+                                });
+                            }
+                        });
+                    }
+                });
+                
+                if (!hasGroupTransactions) {
+                    console.log('ℹ️ No group transactions found in API response - all transactions appear to be personal');
+                }
+            }
+            
             if (data?.by_date && Array.isArray(data.by_date)) {
                 data.by_date.forEach((dailyData, index) => {
                     console.log(`📆 Day ${index + 1}:`, {
@@ -331,6 +356,16 @@ const CalendarScreen = () => {
             return null;
         }
         
+        // Filter out transactions with group_id (group transactions)
+        if (item.group_id) {
+            console.log('⚠️ Filtered out group transaction:', {
+                transactionId: item.transaction_id,
+                groupId: item.group_id,
+                categoryName: item.category_name
+            });
+            return null;
+        }
+        
         // Use iconUtils to get proper icon and color from category_icon_url
         const categoryType = transactionType === 'income' ? 'income' : 'expense';
         const iconName = getIconForCategory(item.category_icon_url, categoryType);
@@ -367,6 +402,8 @@ const CalendarScreen = () => {
         }
         
         const transactions: Transaction[] = [];
+        let totalTransactions = 0;
+        let filteredGroupTransactions = 0;
         
         overviewData.by_date.forEach((dailyTransaction: DailyTransactions, dayIndex: number) => {
             console.log(`📅 Processing day ${dayIndex + 1}:`, dailyTransaction.date);
@@ -374,28 +411,55 @@ const CalendarScreen = () => {
             if (dailyTransaction && dailyTransaction.transactions && Array.isArray(dailyTransaction.transactions)) {
                 console.log(`📝 Found ${dailyTransaction.transactions.length} transactions for ${dailyTransaction.date}`);
                 
-                dailyTransaction.transactions.forEach((item: TransactionItem, transIndex: number) => {
-                    if (item) {
-                        const convertedTransaction = convertToLocalTransaction(item, dailyTransaction.date);
-                        if (convertedTransaction) {
-                            console.log(`💰 Transaction ${transIndex + 1}:`, {
-                                id: convertedTransaction.id,
-                                category: convertedTransaction.category,
-                                amount: convertedTransaction.amount,
-                                type: convertedTransaction.type,
-                                icon: convertedTransaction.icon,
-                                iconColor: convertedTransaction.iconColor
-                            });
-                            transactions.push(convertedTransaction);
-                        }
-                    }
-                });
+                                        dailyTransaction.transactions.forEach((item: TransactionItem, transIndex: number) => {
+                            if (item) {
+                                totalTransactions++;
+                                
+                                // Debug: Log the raw transaction item to see if group_id exists
+                                console.log(`🔍 Raw transaction ${transIndex + 1}:`, {
+                                    transactionId: item.transaction_id,
+                                    categoryName: item.category_name,
+                                    amount: item.amount,
+                                    transactionType: item.transaction_type,
+                                    groupId: item.group_id,
+                                    hasGroupId: item.group_id !== undefined && item.group_id !== null
+                                });
+                                
+                                // Check if this is a group transaction
+                                if (item.group_id) {
+                                    filteredGroupTransactions++;
+                                    console.log(`🚫 Group transaction filtered:`, {
+                                        transactionId: item.transaction_id,
+                                        groupId: item.group_id,
+                                        categoryName: item.category_name
+                                    });
+                                }
+                                
+                                const convertedTransaction = convertToLocalTransaction(item, dailyTransaction.date);
+                                if (convertedTransaction) {
+                                    console.log(`💰 Transaction ${transIndex + 1}:`, {
+                                        id: convertedTransaction.id,
+                                        category: convertedTransaction.category,
+                                        amount: convertedTransaction.amount,
+                                        type: convertedTransaction.type,
+                                        icon: convertedTransaction.icon,
+                                        iconColor: convertedTransaction.iconColor
+                                    });
+                                    transactions.push(convertedTransaction);
+                                }
+                            }
+                        });
             } else {
                 console.log(`⚠️ No transactions found for ${dailyTransaction.date}`);
             }
         });
         
         console.log(`✅ Total transactions processed: ${transactions.length}`);
+        console.log(`📊 Transaction summary:`, {
+            totalTransactions,
+            filteredGroupTransactions,
+            displayedTransactions: transactions.length
+        });
         return transactions;
     };
 

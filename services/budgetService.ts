@@ -53,6 +53,15 @@ export interface Budget {
   category_list?: Category[]; // Optional categories
 }
 
+// Budget Period Response interface
+export interface BudgetPeriodResponse {
+  period_index: number;
+  start_date: string;
+  end_date: string;
+  amount_limit: number;
+  remaining_amount: number;
+}
+
 // API response structure
 interface ApiBudgetResponse {
   status_code: number;
@@ -73,6 +82,13 @@ interface ApiBudgetResponse {
 
 // Convert camelCase field names to snake_case only
 const convertToSnakeCase = (budget: any): Budget => {
+  console.log('🔄 Converting budget:', {
+    budget_id: budget.budget_id,
+    budget_name: budget.budget_name,
+    categories: budget.categories,
+    category_list: budget.category_list
+  });
+  
   return {
     budget_id: budget.budget_id,
     budget_name: budget.budget_name,
@@ -82,7 +98,7 @@ const convertToSnakeCase = (budget: any): Budget => {
     overall_amount_limit: budget.overall_amount_limit,
     budget_remaining_amount: budget.budget_remaining_amount,
     created_at: budget.created_at,
-    category_list: budget.category_list || budget.categories || []
+    category_list: budget.categories || budget.category_list || []
   };
 };
 
@@ -100,26 +116,45 @@ export class BudgetService {
   }
 
   // Get list of budgets
-  async getBudgetList(page: number = 0, size: number = 10): Promise<Budget[]> {
+  async getBudgetList(): Promise<Budget[]> {
     try {
       console.log('🔄 Fetching budget list...');
-      console.log('📄 Page:', page, 'Size:', size);
       
       const response = await apiService.get<any>(
-        `${BUDGET_ENDPOINTS.LIST}?page=${page}&size=${size}`
+        `${BUDGET_ENDPOINTS.LIST}`
       );
 
       console.log('📥 Budget list response:', JSON.stringify(response, null, 2));
 
-      // Handle response structure properly
-      if (response && response.data && response.data.content) {
-        const budgets = response.data.content.map(convertToSnakeCase);
-        console.log('✅ Budget list converted to snake_case:', budgets.length, 'items');
-        console.log('🔍 Sample converted budget:', budgets[0]);
-        return budgets;
+      // Handle different response structures
+      let budgets: any[] = [];
+      
+      if (response && response.data) {
+        // Check if data is directly an array (your case)
+        if (Array.isArray(response.data)) {
+          budgets = response.data;
+          console.log('✅ Found direct array in response.data:', budgets.length, 'items');
+        }
+        // Check if data has content property (pagination structure)
+        else if (response.data.content && Array.isArray(response.data.content)) {
+          budgets = response.data.content;
+          console.log('✅ Found content array in response.data.content:', budgets.length, 'items');
+        }
+        // Check if data has data property (nested structure)
+        else if (response.data.data && Array.isArray(response.data.data)) {
+          budgets = response.data.data;
+          console.log('✅ Found data array in response.data.data:', budgets.length, 'items');
+        }
       }
 
-      console.log('⚠️ No budget content found in response');
+      if (budgets.length > 0) {
+        const convertedBudgets = budgets.map(convertToSnakeCase);
+        console.log('✅ Budget list converted to snake_case:', convertedBudgets.length, 'items');
+        console.log('🔍 Sample converted budget:', convertedBudgets[0]);
+        return convertedBudgets;
+      }
+
+      console.log('⚠️ No budget data found in response');
       return [];
     } catch (error) {
       console.error('❌ Error fetching budget list:', error);
@@ -259,6 +294,88 @@ export class BudgetService {
       await apiService.delete(BUDGET_ENDPOINTS.DELETE(id.toString()));
     } catch (error) {
       console.error('❌ Error deleting budget:', error);
+      throw error;
+    }
+  }
+
+  // Get budget periods list
+  async getBudgetPeriods(budgetId: number | string, page: number = 0, size: number = 10): Promise<BudgetPeriodResponse[]> {
+    try {
+      console.log('🔄 Fetching budget periods for budget ID:', budgetId);
+      console.log('🌐 API URL:', `${BUDGET_ENDPOINTS.LIST_PERIODS(budgetId.toString())}?page=${page}&size=${size}`);
+      
+      const response = await apiService.get<any>(
+        `${BUDGET_ENDPOINTS.LIST_PERIODS(budgetId.toString())}?page=${page}&size=${size}`
+      );
+
+      console.log('📥 Budget periods response:', JSON.stringify(response, null, 2));
+      console.log('📥 Response type:', typeof response);
+      console.log('📥 Response keys:', response ? Object.keys(response) : 'null');
+
+      // Handle different response structures
+      let periods: any[] = [];
+      
+      if (response && response.data) {
+        console.log('📊 Response.data type:', typeof response.data);
+        console.log('📊 Response.data isArray:', Array.isArray(response.data));
+        
+        // Check if data is directly an array
+        if (Array.isArray(response.data)) {
+          periods = response.data;
+          console.log('✅ Found direct array in response.data:', periods.length, 'items');
+        }
+        // Check if data has content property (pagination structure)
+        else if (response.data.content && Array.isArray(response.data.content)) {
+          periods = response.data.content;
+          console.log('✅ Found content array in response.data.content:', periods.length, 'items');
+        }
+        // Check if data has data property (nested structure)
+        else if (response.data.data && Array.isArray(response.data.data)) {
+          periods = response.data.data;
+          console.log('✅ Found data array in response.data.data:', periods.length, 'items');
+        }
+        else {
+          console.log('⚠️ No array found in response.data');
+          console.log('📊 Response.data structure:', response.data);
+        }
+      } else {
+        console.log('⚠️ No response.data found');
+      }
+
+      if (periods.length > 0) {
+        console.log('📊 Raw periods data:', JSON.stringify(periods, null, 2));
+        
+        const convertedPeriods = periods.map((period: any, index: number) => {
+          console.log(`🔄 Converting period ${index}:`, period);
+          
+          const converted = {
+            period_index: period.periodIndex || period.period_index,
+            start_date: period.startDate || period.start_date,
+            end_date: period.endDate || period.end_date,
+            amount_limit: period.amountLimit || period.amount_limit,
+            remaining_amount: period.remainingAmount || period.remaining_amount,
+          };
+          
+          console.log(`✅ Converted period ${index}:`, converted);
+          return converted;
+        });
+        
+        console.log('✅ Budget periods converted:', convertedPeriods.length, 'items');
+        console.log('🔍 Sample converted period:', convertedPeriods[0]);
+        return convertedPeriods;
+      }
+
+      console.log('⚠️ No budget periods found in response');
+      return [];
+    } catch (error) {
+      console.error('❌ Error fetching budget periods:', error);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        budgetId,
+        page,
+        size
+      });
       throw error;
     }
   }

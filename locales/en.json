@@ -457,7 +457,8 @@
     "editIncome": "Edit Income",
     "addExpense": "Add Expense",
     "addIncome": "Add Income",
-    "validation": "Validation"
+    "validation": "Validation",
+    "noNote": "No note"
   },
 
   "changePasswordBtn": "Change Password",
@@ -889,27 +890,7 @@
       "success": "Successfully deleted budget for",
       "deleted": "from your list"
     },
-    "detail": {
-      "title": "Budget Detail",
-      "loading": "Loading budget details...",
-      "loadError": "Failed to load budget details",
-      "back": "Go Back",
-      "progressUsed": "used",
-      "amountUsed": "Amount Used",
-      "amountRemaining": "Amount Remaining",
-      "timeRange": "Time Range",
-      "fromDate": "From Date",
-      "toDate": "To Date",
-      "appliedCategories": "Applied Categories",
-      "confirmDelete": "Delete Budget",
-      "deleteMessage": "Are you sure you want to delete this budget? This action cannot be undone.",
-      "cancel": "Cancel",
-      "delete": "Delete",
-      "deleteError": "Failed to delete budget",
-      "deleting": "Deleting budget...",
-      "deleteSuccess": "Budget Deleted",
-      "deleteSuccessMessage": "Budget has been successfully deleted."
-    },
+   
     "categories": {
       "transport": "Transport",
       "food": "Food & Dining", 
@@ -985,6 +966,10 @@
       }
     },
     "detail": {
+    
+      "periods": "Budget Periods",
+
+      "deleteSuccessMessage": "Budget has been successfully deleted.",
       "title": "Budget Detail",
       "budgetDetail": "Budget Detail",
       "periodType": "Period",
@@ -1066,7 +1051,14 @@
       "enterDescription": "Enter description"
     },
     "update": "Update Wallet",
-    "save": "Save Wallet"
+    "save": "Save Wallet",
+    "transactionHistory": "Transaction History",
+    "summary": "Summary",
+    "income": "Income",
+    "expense": "Expense",
+    "net": "Net",
+    "noTransactions": "No transactions found",
+    "noTransactionsMessage": "This wallet doesn't have any transactions yet."
   },
 
   "transaction": {
@@ -1091,7 +1083,7 @@
   "groupTransaction": {
     "confirmDelete": "Are you sure you want to delete this transaction?",
     "deleteSuccess": "Transaction deleted successfully",
-
+      "groupTransactionNote": "All transactions in this group will not be saved to your personal history",
     "title": "Group Transactions",
     "myTransactions": "My Transactions",
     "groupTransactions": "Group Transactions",

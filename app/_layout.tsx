@@ -132,6 +132,7 @@ function AuthNavigator() {
       <Stack.Screen name="CategoryReportDetailScreen" children={(props) => <CategoryReportDetailScreenWithNav {...props} />} />
       <Stack.Screen name="CategoryDetailReportScreen" component={require('../screens/CategoryDetailReportScreen').default} />
       <Stack.Screen name="ViewCategoryReportScreen" children={(props) => <ViewCategoryReportScreenWithNav {...props} />} />
+      <Stack.Screen name="WalletTransactionHistory" component={require('../screens/WalletTransactionHistoryScreen').default} />
       <Stack.Screen name="PendingGroups" children={(props) => <PendingGroupsScreenWithNav {...props} />} />
     </Stack.Navigator>
   );

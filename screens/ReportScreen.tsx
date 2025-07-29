@@ -759,11 +759,7 @@ export default function ReportScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Icon name="arrow-left" size={24} color="#000" />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('reports.title')}</Text>
-        <View style={styles.placeholder} />
       </View>
 
       {/* Period Filter Bar (reusable) */}
@@ -924,22 +920,16 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  backButton: {
-    padding: 8,
-  },
   headerTitle: {
     ...typography.medium,
     fontSize: 18,
     color: '#1F2937',
-  },
-  placeholder: {
-    width: 40,
   },
   monthSelector: {
     flexDirection: 'row',
