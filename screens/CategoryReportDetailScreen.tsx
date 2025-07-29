@@ -443,7 +443,7 @@ export default function CategoryReportDetailScreen() {
       {/* Summary Section */}
       <View style={styles.summaryContainer}>
         <View style={styles.summaryHeader}>
-          <Text style={styles.summaryTitle}>Tổng cộng</Text>
+          <Text style={styles.summaryTitle}>{t('reports.total')}</Text>
           <Text style={styles.summaryAmount}>
             {getTotalAmount().toLocaleString('vi-VN')} ₫
           </Text>

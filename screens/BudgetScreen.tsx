@@ -3,15 +3,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -180,7 +180,7 @@ const BudgetScreen = () => {
         try {
           setIsLoading(true);
           console.log('🔄 Fetching budgets...');
-          const budgetList = await budgetService.getBudgetList(0, 20);
+          const budgetList = await budgetService.getBudgetList();
           console.log('📦 Raw budgets data:', JSON.stringify(budgetList, null, 2));
           setBudgets(budgetList);
           console.log('✅ Budgets fetched:', budgetList.length, 'items');

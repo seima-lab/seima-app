@@ -173,7 +173,14 @@
       "enterBalancevalid": "Vui lòng nhập số dư hợp lệ",
       "enterBalanceNegative": "Số dư không được âm",
       "enterBalanceMax": "Số dư không được vượt quá 15 chữ số"
-    }
+    },
+    "transactionHistory": "Lịch sử giao dịch",
+    "summary": "Tổng kết",
+    "income": "Thu nhập",
+    "expense": "Chi tiêu",
+    "net": "Thu nhập ròng",
+    "noTransactions": "Không tìm thấy giao dịch",
+    "noTransactionsMessage": "Ví này chưa có giao dịch nào."
   },
   "group": {
 
@@ -542,7 +549,8 @@
     "editIncome": "Sửa thu nhập",
     "addExpense": "Thêm chi tiêu",
     "addIncome": "Thêm thu nhập",
-    "validation": "Xác thực"
+    "validation": "Xác thực",
+    "noNote": "Không có ghi chú"
   },
 
   "changePasswordBtn": "Đổi mật khẩu",
@@ -902,6 +910,7 @@
   },
   
   "budget": {
+   
     "title": "Hạn mức chi",
     "currentMonth": "Tháng 6 2025",
     "daysLeft": "Còn {{days}} ngày nữa hết tháng",
@@ -966,27 +975,10 @@
       "success": "Đã xóa thành công ngân sách",
       "deleted": "khỏi danh sách của bạn"
     },
-    "detail": {
-      "title": "Chi tiết ngân sách",
-      "loading": "Đang tải chi tiết ngân sách...",
-      "loadError": "Không thể tải chi tiết ngân sách",
-      "back": "Quay lại",
-      "progressUsed": "đã sử dụng",
-      "amountUsed": "Số tiền đã chi",
-      "amountRemaining": "Số tiền còn lại",
-      "timeRange": "Khoảng thời gian",
-      "fromDate": "Từ ngày",
-      "toDate": "Đến ngày",
-      "appliedCategories": "Danh mục áp dụng",
-      "confirmDelete": "Xóa ngân sách",
-      "deleteMessage": "Bạn có chắc chắn muốn xóa ngân sách này? Hành động này không thể hoàn tác.",
-      "cancel": "Hủy",
-      "delete": "Xóa",
-      "deleteError": "Không thể xóa ngân sách",
-      "deleting": "Đang xóa ngân sách...",
-      "deleteSuccess": "Đã xóa ngân sách",
-      "deleteSuccessMessage": "Ngân sách đã được xóa thành công."
-    },
+    
+    
+     
+  
     "categories": {
       "transport": "Di chuyển",
       "food": "Ăn uống", 
@@ -1062,6 +1054,10 @@
       }
     },
     "detail": {
+     
+      "periods": "Chu kỳ ngân sách",
+    
+      "deleteSuccessMessage": "Ngân sách đã được xóa thành công.",
       "title": "Chi tiết hạn mức",
       "budgetDetail": "Chi tiết hạn mức",
       "periodType": "Chu kỳ",
@@ -1105,6 +1101,7 @@
     "logout": "Đăng xuất"
   },
   "groupTransaction": {
+   
     "confirmDelete": "Bạn có chắc chắn muốn xoá giao dịch này không?",
     "deleteSuccess": "Đã xoá giao dịch thành công",
     "title": "Giao dịch nhóm",
@@ -1116,7 +1113,8 @@
     "emptyTitle": "Chưa có giao dịch nào",
     "emptyDescription": "Nhóm {{groupName}} chưa có giao dịch nào được thực hiện",
     "income": "Thu nhập",
-    "expense": "Chi tiêu"
+    "expense": "Chi tiêu",
+    "groupTransactionNote": "Mọi giao dịch này sẽ không lưu vào lịch sử cá nhân của bạn"
   },
   "group": {
     "invitation": {

@@ -17,7 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
 import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
-import { budgetService } from '../services/budgetService';
+import { BudgetPeriodResponse, budgetService } from '../services/budgetService';
 import { deduplicateCategories, getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 const { width } = Dimensions.get('window');
@@ -28,6 +28,7 @@ const BudgetDetailScreen = () => {
   const navigation = useNavigation();
   const { budgetId } = (route as any).params;
   const [budget, setBudget] = useState<any>(null);
+  const [budgetPeriods, setBudgetPeriods] = useState<BudgetPeriodResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -48,29 +49,35 @@ const BudgetDetailScreen = () => {
       try {
         console.log('🔄 Fetching budget detail for ID:', budgetId);
         setLoading(true);
-        const data = await budgetService.getBudgetDetail(budgetId);
-        console.log('📊 Budget detail API response:', data);
-        console.log('📊 Budget detail type:', typeof data);
-        console.log('📊 Budget detail keys:', data ? Object.keys(data) : 'null');
+        
+        // Fetch budget detail and periods in parallel
+        const [budgetData, periodsData] = await Promise.all([
+          budgetService.getBudgetDetail(budgetId),
+          budgetService.getBudgetPeriods(budgetId)
+        ]);
+        
+        console.log('📊 Budget detail API response:', budgetData);
+        console.log('📊 Budget periods API response:', periodsData);
         
         // Log specific fields
-        if (data) {
-          console.log('📊 Budget name:', data.budget_name);
-          console.log('📊 Budget amount:', data.overall_amount_limit);
-          console.log('📊 Budget period:', data.period_type);
-          console.log('📊 Budget start date:', data.start_date);
-          console.log('📊 Budget end date:', data.end_date);
-          console.log('📊 Budget categories:', data.category_list);
-          console.log('📊 Categories type:', typeof data.category_list);
-          console.log('📊 Categories isArray:', Array.isArray(data.category_list));
-          if (data.category_list && Array.isArray(data.category_list)) {
-            console.log('📊 Categories count:', data.category_list.length);
-            console.log('📊 First category:', data.category_list[0]);
-            console.log('📊 All categories:', data.category_list);
+        if (budgetData) {
+          console.log('📊 Budget name:', budgetData.budget_name);
+          console.log('📊 Budget amount:', budgetData.overall_amount_limit);
+          console.log('📊 Budget period:', budgetData.period_type);
+          console.log('📊 Budget start date:', budgetData.start_date);
+          console.log('📊 Budget end date:', budgetData.end_date);
+          console.log('📊 Budget categories:', budgetData.category_list);
+          console.log('📊 Categories type:', typeof budgetData.category_list);
+          console.log('📊 Categories isArray:', Array.isArray(budgetData.category_list));
+          if (budgetData.category_list && Array.isArray(budgetData.category_list)) {
+            console.log('📊 Categories count:', budgetData.category_list.length);
+            console.log('📊 First category:', budgetData.category_list[0]);
+            console.log('📊 All categories:', budgetData.category_list);
           }
         }
         
-        setBudget(data);
+        setBudget(budgetData);
+        setBudgetPeriods(periodsData);
       } catch (err) {
         console.error('❌ Error fetching budget detail:', err);
         setError(t('budget.detail.loadError'));
@@ -90,9 +97,18 @@ const BudgetDetailScreen = () => {
           try {
             setLoading(true);
             setError(null);
-            const data = await budgetService.getBudgetDetail(budgetId);
-            console.log('📊 Budget detail reloaded:', data ? 'success' : 'null');
-            setBudget(data);
+            
+            // Fetch budget detail and periods in parallel
+            const [budgetData, periodsData] = await Promise.all([
+              budgetService.getBudgetDetail(budgetId),
+              budgetService.getBudgetPeriods(budgetId)
+            ]);
+            
+            console.log('📊 Budget detail reloaded:', budgetData ? 'success' : 'null');
+            console.log('📊 Budget periods reloaded:', periodsData ? periodsData.length : 0, 'items');
+            
+            setBudget(budgetData);
+            setBudgetPeriods(periodsData);
           } catch (err) {
             console.error('❌ Error reloading budget detail:', err);
             setError(t('budget.detail.loadError'));
@@ -131,11 +147,6 @@ const BudgetDetailScreen = () => {
 
   if (!budget) return null;
 
-  const spentAmount = (budget.overall_amount_limit || 0) - (budget.budget_remaining_amount || 0);
-  const progressPercentage = budget.overall_amount_limit > 0 
-    ? (spentAmount / budget.overall_amount_limit) * 100 
-    : 0;
-
   // Helper function to get period type label
   const getPeriodTypeLabel = (periodType: string) => {
     console.log('🔍 getPeriodTypeLabel - Input periodType:', periodType);
@@ -167,6 +178,71 @@ const BudgetDetailScreen = () => {
         console.log('⚠️ No match found, returning original:', periodType);
         return periodType || 'Unknown';
     }
+  };
+
+  // Helper function to format date range
+  const formatDateRange = (startDate: string, endDate: string) => {
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      const startDay = start.getDate().toString().padStart(2, '0');
+      const startMonth = (start.getMonth() + 1).toString().padStart(2, '0');
+      const endDay = end.getDate().toString().padStart(2, '0');
+      const endMonth = (end.getMonth() + 1).toString().padStart(2, '0');
+      
+      return `${startDay}/${startMonth} - ${endDay}/${endMonth}`;
+    } catch (error) {
+      console.error('❌ Error formatting date range:', error);
+      return 'Invalid Date';
+    }
+  };
+
+  // Budget Period Item Component
+  const BudgetPeriodItem = ({ period }: { period: BudgetPeriodResponse }) => {
+    const spentAmount = period.amount_limit - period.remaining_amount;
+    const progressPercentage = period.amount_limit > 0 
+      ? (spentAmount / period.amount_limit) * 100 
+      : 0;
+
+    return (
+      <View style={styles.periodItem}>
+        <View style={styles.periodHeader}>
+          <Text style={styles.periodDateRange}>
+            {formatDateRange(period.start_date, period.end_date)}
+          </Text>
+          <Text style={styles.periodIndex}>
+            Period {period.period_index}
+          </Text>
+        </View>
+        
+        <View style={styles.periodAmounts}>
+          <Text style={styles.periodTotalAmount}>
+            {period.amount_limit.toLocaleString()} ₫
+          </Text>
+          <Text style={styles.periodRemainingAmount}>
+            {period.remaining_amount.toLocaleString()} ₫
+          </Text>
+        </View>
+        
+        <View style={styles.periodProgressContainer}>
+          <View style={styles.periodProgressBar}>
+            <View 
+              style={[
+                styles.periodProgressFill, 
+                { 
+                  width: `${Math.min(progressPercentage, 100)}%`,
+                  backgroundColor: progressPercentage > 80 ? '#EF4444' : '#10B981'
+                }
+              ]} 
+            />
+          </View>
+          <Text style={styles.periodProgressText}>
+            {progressPercentage.toFixed(1)}% used
+          </Text>
+        </View>
+      </View>
+    );
   };
 
   // Menu handling functions
@@ -287,107 +363,73 @@ const BudgetDetailScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-        {/* Budget Summary Card */}
-        <View style={styles.summaryCard}>
-          <View style={styles.budgetHeader}>
-            <Text style={styles.budgetName}>{budget.budget_name}</Text>
-            <View style={styles.periodBadge}>
-              <Text style={styles.periodText}>{getPeriodTypeLabel(budget.period_type)}</Text>
+          {/* Budget Periods Card */}
+          {Array.isArray(budgetPeriods) && budgetPeriods.length > 0 && (
+            <View style={styles.infoCard}>
+              <View style={styles.infoHeader}>
+                <Icon name="calendar-range" size={24} color="#1e90ff" />
+                <Text style={styles.infoTitle}>{t('budget.detail.periods')}</Text>
+              </View>
+              <View style={styles.periodsContainer}>
+                {budgetPeriods.map((period, index) => (
+                  <BudgetPeriodItem key={`${period.period_index}-${index}`} period={period} />
+                ))}
+              </View>
             </View>
-          </View>
-          
-          <Text style={styles.budgetAmount}>
-            {(budget.overall_amount_limit ?? 0).toLocaleString()} ₫
-          </Text>
-          
-          {/* Progress Bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { 
-                    width: `${Math.min(progressPercentage, 100)}%`,
-                    backgroundColor: progressPercentage > 80 ? '#EF4444' : '#10B981'
-                  }
-                ]} 
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {progressPercentage.toFixed(1)}% {t('budget.detail.progressUsed')}
-            </Text>
-          </View>
+          )}
 
-          {/* Amount Details */}
-          <View style={styles.amountDetails}>
-            <View style={styles.amountItem}>
-              <Text style={styles.amountLabel}>{t('budget.detail.amountUsed')}</Text>
-              <Text style={[styles.amountValue, { color: '#EF4444' }]}>
-                {spentAmount.toLocaleString()} ₫
-              </Text>
-            </View>
-            <View style={styles.amountItem}>
-              <Text style={styles.amountLabel}>{t('budget.detail.amountRemaining')}</Text>
-              <Text style={[styles.amountValue, { color: '#10B981' }]}>
-                {(budget.budget_remaining_amount ?? 0).toLocaleString()} ₫
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Date Range Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoHeader}>
-            <Icon name="calendar-range" size={24} color="#1e90ff" />
-            <Text style={styles.infoTitle}>{t('budget.detail.timeRange')}</Text>
-          </View>
-          <View style={styles.dateRange}>
-            <View style={styles.dateItem}>
-              <Text style={styles.dateLabel}>{t('budget.detail.fromDate')}</Text>
-              <Text style={styles.dateValue}>{budget.start_date?.slice(0,10)}</Text>
-            </View>
-            <Icon name="arrow-right" size={16} color="#9CA3AF" />
-            <View style={styles.dateItem}>
-              <Text style={styles.dateLabel}>{t('budget.detail.toDate')}</Text>
-              <Text style={styles.dateValue}>{budget.end_date?.slice(0,10)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Categories Card */}
-        {Array.isArray(budget.category_list) && budget.category_list.length > 0 && (
+          {/* Date Range Card */}
           <View style={styles.infoCard}>
             <View style={styles.infoHeader}>
-              <Icon name="shape" size={24} color="#1e90ff" />
-              <Text style={styles.infoTitle}>{t('budget.detail.appliedCategories')}</Text>
+              <Icon name="calendar-range" size={24} color="#1e90ff" />
+              <Text style={styles.infoTitle}>{t('budget.detail.timeRange')}</Text>
             </View>
-            <View style={styles.categoriesContainer}>
-              {/* Deduplicate categories before rendering */}
-              {(() => {
-                const uniqueCategories = deduplicateCategories(budget.category_list);
-                
-                console.log('�� BudgetDetailScreen - Original categories:', budget.category_list.length);
-                console.log('🔄 BudgetDetailScreen - Unique categories:', uniqueCategories.length);
-                
-                return uniqueCategories.map((cat: any, index: number) => {
-                  const iconName = getIconForCategory(cat.category_icon_url, 'expense');
-                  const iconColor = getIconColor(iconName, 'expense');
-                  
-                  return (
-                    <View key={`${cat.category_id}-${index}`} style={styles.categoryChip}>
-                      <Icon name={iconName} size={16} color={iconColor} />
-                      <Text style={styles.categoryName}>{cat.category_name}</Text>
-                    </View>
-                  );
-                });
-              })()}
+            <View style={styles.dateRange}>
+              <View style={styles.dateItem}>
+                <Text style={styles.dateLabel}>{t('budget.detail.fromDate')}</Text>
+                <Text style={styles.dateValue}>{budget.start_date?.slice(0,10)}</Text>
+              </View>
+              <Icon name="arrow-right" size={16} color="#9CA3AF" />
+              <View style={styles.dateItem}>
+                <Text style={styles.dateLabel}>{t('budget.detail.toDate')}</Text>
+                <Text style={styles.dateValue}>{budget.end_date?.slice(0,10)}</Text>
+              </View>
             </View>
           </View>
-        )}
 
+          {/* Categories Card */}
+          {Array.isArray(budget.category_list) && budget.category_list.length > 0 && (
+            <View style={styles.infoCard}>
+              <View style={styles.infoHeader}>
+                <Icon name="shape" size={24} color="#1e90ff" />
+                <Text style={styles.infoTitle}>{t('budget.detail.appliedCategories')}</Text>
+              </View>
+              <View style={styles.categoriesContainer}>
+                {/* Deduplicate categories before rendering */}
+                {(() => {
+                  const uniqueCategories = deduplicateCategories(budget.category_list);
+                  
+                  console.log('🔄 BudgetDetailScreen - Original categories:', budget.category_list.length);
+                  console.log('🔄 BudgetDetailScreen - Unique categories:', uniqueCategories.length);
+                  
+                  return uniqueCategories.map((cat: any, index: number) => {
+                    const iconName = getIconForCategory(cat.category_icon_url, 'expense');
+                    const iconColor = getIconColor(iconName, 'expense');
+                    
+                    return (
+                      <View key={`${cat.category_id}-${index}`} style={styles.categoryChip}>
+                        <Icon name={iconName} size={16} color={iconColor} />
+                        <Text style={styles.categoryName}>{cat.category_name}</Text>
+                      </View>
+                    );
+                  });
+                })()}
+              </View>
+            </View>
+          )}
 
-      </ScrollView>
-    </TouchableWithoutFeedback>
+        </ScrollView>
+      </TouchableWithoutFeedback>
 
       {/* Custom Modals */}
       
@@ -553,85 +595,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   
-  // Summary Card
-  summaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  budgetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  budgetName: {
-    fontSize: 20,
-    color: '#1F2937',
-    flex: 1,
-    ...typography.semibold,
-  },
-  periodBadge: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  periodText: {
-    fontSize: 12,
-    color: '#1e90ff',
-    ...typography.semibold,
-  },
-  budgetAmount: {
-    fontSize: 32,
-    color: '#1e90ff',
-    marginBottom: 20,
-    ...typography.semibold,
-  },
-  progressContainer: {
-    marginBottom: 20,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    ...typography.regular,
-  },
-  amountDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  amountItem: {
-    alignItems: 'center',
-  },
-  amountLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
-    ...typography.regular,
-  },
-  amountValue: {
-    fontSize: 16,
-    ...typography.semibold,
-  },
-  
   // Info Cards
   infoCard: {
     backgroundColor: '#FFFFFF',
@@ -700,6 +663,72 @@ const styles = StyleSheet.create({
     ...typography.medium,
   },
   
+  // Budget Periods
+  periodsContainer: {
+    marginTop: 16,
+  },
+  periodItem: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  periodHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  periodDateRange: {
+    fontSize: 14,
+    color: '#374151',
+    ...typography.medium,
+  },
+  periodIndex: {
+    fontSize: 12,
+    color: '#6B7280',
+    ...typography.regular,
+  },
+  periodAmounts: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  periodTotalAmount: {
+    fontSize: 16,
+    color: '#1F2937',
+    ...typography.semibold,
+  },
+  periodRemainingAmount: {
+    fontSize: 16,
+    color: '#10B981',
+    ...typography.semibold,
+  },
+  periodProgressContainer: {
+    marginTop: 8,
+  },
+  periodProgressBar: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  periodProgressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  periodProgressText: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 4,
+    ...typography.regular,
+  },
 
 
   // Modal Styles

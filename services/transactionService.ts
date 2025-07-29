@@ -11,7 +11,7 @@ export enum TransactionType {
 // Request interfaces
 export interface CreateTransactionRequest {
   user_id: number;
-  wallet_id: number;
+  wallet_id: number; // Use 0 for group transactions
   category_id: number;
   group_id?: number;
   amount: number;
@@ -65,6 +65,7 @@ export interface TransactionItem {
   transaction_type: string;
   description?: string;
   transaction_date: string; // LocalDateTime as string
+  group_id?: number; // Add group_id field to filter group transactions
 }
 
 // Transaction Report interfaces
@@ -191,10 +192,10 @@ export class TransactionService {
   /**
    * Get all transactions
    */
-  async getAllTransactions(): Promise<TransactionResponse[]> {
+  async getAllTransactions(page: number = 0, size: number = 1000): Promise<TransactionResponse[]> {
     try {
       const response = await apiService.get<TransactionResponse[]>(
-        `${TRANSACTION_ENDPOINTS.LIST}/view-history-transactions`
+        `${TRANSACTION_ENDPOINTS.LIST}/view-history-transactions?page=${page}&size=${size}`
       );
       
       if (response.data) {

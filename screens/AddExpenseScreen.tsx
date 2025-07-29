@@ -967,7 +967,7 @@ export default function AddExpenseScreen() {
 
       const transactionData: CreateTransactionRequest = {
         user_id: userId, // Use real userId from /me API
-        wallet_id: selectedWallet!,
+        wallet_id: fromGroupOverview ? 0 : selectedWallet!, // Set wallet_id to 0 for group transactions
         category_id: categoryId,
         group_id: fromGroupOverview && groupContextId ? parseInt(groupContextId) : undefined, // Convert groupId to number
 
@@ -1389,7 +1389,7 @@ export default function AddExpenseScreen() {
           <View style={styles.groupContextContainer}>
             <Icon name="account-group" size={16} color="#4A90E2" />
             <Text style={styles.groupContextText}>
-              Thêm cho nhóm "{groupContextName}"
+              {t('groupTransaction.groupTransactionNote')}
             </Text>
           </View>
         )}
@@ -1405,7 +1405,8 @@ export default function AddExpenseScreen() {
               </TouchableOpacity>
           </View>
 
-        {/* Wallet */}
+        {/* Wallet - Hide when from group overview */}
+        {!fromGroupOverview && (
           <View style={styles.row}>
           <Text style={styles.label}>{t('wallet.title')}</Text>
               <TouchableOpacity 
@@ -1427,6 +1428,7 @@ export default function AddExpenseScreen() {
                 />
               </TouchableOpacity>
           </View>
+        )}
 
         {/* Wallet Picker - Moved outside of main content to be an overlay */}
 

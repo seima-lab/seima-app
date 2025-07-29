@@ -129,11 +129,12 @@ export const AI_CHAT_ENDPOINTS = {
 
 // Budget endpoints
 export const BUDGET_ENDPOINTS = {
-  LIST: `${ApiConfig.API_PREFIX}/budgets`,
+  LIST: `${ApiConfig.API_PREFIX}/budgets/last-budget`,
   CREATE: `${ApiConfig.API_PREFIX}/budgets`,
   GET_BY_ID: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,
   UPDATE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/update/${id}`,
   DELETE: (id: string) => `${ApiConfig.API_PREFIX}/budgets/delete/${id}`,
+  LIST_PERIODS: (id: string) => `${ApiConfig.API_PREFIX}/budgets/list-budget-period/${id}`,
 } as const;
 
 // Notification endpoints

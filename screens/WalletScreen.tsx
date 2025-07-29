@@ -426,7 +426,18 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                     return a.exclude_from_total ? 1 : -1;
                   })
                   .map((wallet, index) => (
-                    <View key={`${wallet.id}-${index}`} style={[styles.accountItem, wallet.exclude_from_total && styles.disabledAccountItem]} pointerEvents="box-none">
+                    <TouchableOpacity 
+                      key={`${wallet.id}-${index}`} 
+                      style={[styles.accountItem, wallet.exclude_from_total && styles.disabledAccountItem]} 
+                      onPress={() => {
+                        console.log('📱 Navigating to wallet transaction history:', wallet.id, wallet.wallet_name);
+                        navigation.navigate('WalletTransactionHistory', {
+                          walletId: wallet.id,
+                          walletName: wallet.wallet_name
+                        });
+                      }}
+                      activeOpacity={0.7}
+                    >
                       <View style={[getWalletIconStyle(wallet.wallet_type_name), wallet.exclude_from_total && styles.disabledAccountIcon]}>
                         {getWalletIcon(wallet.wallet_type_name)}
                       </View>
@@ -452,13 +463,16 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                       <View style={styles.moreButtonContainer}>
                         <TouchableOpacity 
                           style={styles.moreButton}
-                          onPress={() => handleMenuPress(wallet.id)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleMenuPress(wallet.id);
+                          }}
                         >
                           <Icon name="more-vert" size={rf(24)} color="#666" />
                         </TouchableOpacity>
                         {renderMenu(wallet.id, index)}
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))
               ) : (
                 <View style={styles.emptyWalletContainer}>
