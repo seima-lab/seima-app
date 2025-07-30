@@ -101,18 +101,25 @@ export class AIService {
       console.log('🔄 Processing AI response...');
 
       // Xử lý response từ API - có thể có message và suggested_wallets
-      if (responseData && responseData.message) {
-        console.log('✅ Found response in message field:', responseData.message);
+      // Kiểm tra nếu responseData là array (trường hợp response trả về array)
+      let actualResponseData = responseData;
+      if (Array.isArray(responseData) && responseData.length > 0) {
+        console.log('📦 Response is an array, taking first element');
+        actualResponseData = responseData[0];
+      }
+
+      if (actualResponseData && actualResponseData.message) {
+        console.log('✅ Found response in message field:', actualResponseData.message);
         
         const result: AIChatResponse = {
-          message: responseData.message,
-          status_code: responseData.status_code || 200
+          message: actualResponseData.message,
+          status_code: actualResponseData.status_code || 200
         };
 
         // Kiểm tra và xử lý suggested_wallets
-        if (responseData.suggested_wallets && Array.isArray(responseData.suggested_wallets)) {
+        if (actualResponseData.suggested_wallets && Array.isArray(actualResponseData.suggested_wallets)) {
           // Giới hạn tối đa 5 phần tử
-          result.suggested_wallets = responseData.suggested_wallets.slice(0, 5);
+          result.suggested_wallets = actualResponseData.suggested_wallets.slice(0, 5);
           console.log('💼 Found suggested wallets:', result.suggested_wallets);
         }
 

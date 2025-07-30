@@ -5,23 +5,32 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { categoryService } from '../services/categoryService';
+import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 interface Transaction {
   transaction_id: number;
+  transaction_type: 'EXPENSE' | 'INCOME';
   amount: number;
-  description: string;
+  currency_code: string;
   transaction_date: string;
-  transaction_type: 'expense' | 'income';
-  wallet_name?: string;
-  category_name?: string;
+  description: string;
+}
+
+interface DayData {
+  expense: number;
+  income: number;
+  category_id: number;
+  category_name: string;
+  category_icon_url: string;
+  transaction_detail_list: Transaction[];
 }
 
 interface CategoryDetailReportResponse {
-  category_id: number;
-  category_name: string;
-  total_amount: number;
-  transaction_count: number;
-  transactions: Transaction[];
+  total_expense: number;
+  total_income: number;
+  data: {
+    [date: string]: DayData;
+  };
 }
 
 export default function CategoryDetailReportScreen() {
@@ -37,6 +46,10 @@ export default function CategoryDetailReportScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<CategoryDetailReportResponse | null>(null);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [totalAmount, setTotalAmount] = useState<number>(0);
+  const [categoryIcon, setCategoryIcon] = useState<string>('cash');
+  const [iconColor, setIconColor] = useState<string>('#007AFF');
 
   useEffect(() => {
     fetchCategoryDetailReport();
@@ -56,6 +69,44 @@ export default function CategoryDetailReportScreen() {
       
       console.log('📊 Category detail report data:', data);
       setReportData(data);
+      
+      // Process the data to extract all transactions and calculate totals
+      if (data && data.data) {
+        const transactions: Transaction[] = [];
+        let total = 0;
+        let iconUrl = '';
+        
+        // Extract all transactions from all dates
+        Object.keys(data.data).forEach(date => {
+          const dayData = data.data[date];
+          if (dayData.transaction_detail_list) {
+            transactions.push(...dayData.transaction_detail_list);
+            // Add to total based on transaction type
+            dayData.transaction_detail_list.forEach((transaction: Transaction) => {
+              if (transaction.transaction_type === 'EXPENSE') {
+                total += transaction.amount;
+              } else if (transaction.transaction_type === 'INCOME') {
+                total += transaction.amount;
+              }
+            });
+          }
+          // Get category icon from first available day data
+          if (!iconUrl && dayData.category_icon_url) {
+            iconUrl = dayData.category_icon_url;
+          }
+        });
+        
+        setAllTransactions(transactions);
+        setTotalAmount(total);
+        
+        // Set category icon using iconUtils
+        if (iconUrl) {
+          const iconName = getIconForCategory(iconUrl, 'expense');
+          const color = getIconColor(iconName, 'expense');
+          setCategoryIcon(iconName);
+          setIconColor(color);
+        }
+      }
     } catch (err: any) {
       console.error('❌ Error fetching category detail report:', err);
       setError(err.message || 'Lỗi tải dữ liệu');
@@ -67,29 +118,38 @@ export default function CategoryDetailReportScreen() {
   const renderTransactionItem = ({ item }: { item: Transaction }) => (
     <View style={styles.transactionItem}>
       <View style={styles.transactionLeft}>
-        <Text style={styles.transactionDescription} numberOfLines={2}>
-          {item.description || 'Không có mô tả'}
-        </Text>
-        <Text style={styles.transactionDate}>
-          {format(new Date(item.transaction_date), 'dd/MM/yyyy')}
-        </Text>
-        {item.wallet_name && (
-          <Text style={styles.transactionWallet}>{item.wallet_name}</Text>
-        )}
+        <View style={styles.transactionHeader}>
+          <View style={[styles.iconContainer, { backgroundColor: iconColor + '20' }]}>
+            <Icon name={categoryIcon} size={20} color={iconColor} />
+          </View>
+          <View style={styles.transactionInfo}>
+            <Text style={styles.transactionDescription} numberOfLines={2}>
+              {item.description || 'Không có mô tả'}
+            </Text>
+            <Text style={styles.categoryName}>
+              {category_name}
+            </Text>
+          </View>
+        </View>
       </View>
       <View style={styles.transactionRight}>
-        <Text style={[
-          styles.transactionAmount,
-          { color: item.transaction_type === 'expense' ? '#E53935' : '#4CAF50' }
-        ]}>
-          {item.transaction_type === 'expense' ? '-' : '+'}
-          {item.amount.toLocaleString('vi-VN')} ₫
+        <View style={styles.amountContainer}>
+          <Text style={[
+            styles.transactionAmount,
+            { color: item.transaction_type === 'EXPENSE' ? '#E53935' : '#4CAF50' }
+          ]}>
+            {item.transaction_type === 'EXPENSE' ? '-' : '+'}
+            {item.amount.toLocaleString('vi-VN')} ₫
+          </Text>
+          <Icon 
+            name={item.transaction_type === 'EXPENSE' ? 'arrow-down' : 'arrow-up'} 
+            size={16} 
+            color={item.transaction_type === 'EXPENSE' ? '#E53935' : '#4CAF50'} 
+          />
+        </View>
+        <Text style={styles.transactionDateTime}>
+          {format(new Date(item.transaction_date), 'dd/MM/yyyy HH:mm')}
         </Text>
-        <Icon 
-          name={item.transaction_type === 'expense' ? 'arrow-down' : 'arrow-up'} 
-          size={16} 
-          color={item.transaction_type === 'expense' ? '#E53935' : '#4CAF50'} 
-        />
       </View>
     </View>
   );
@@ -142,7 +202,7 @@ export default function CategoryDetailReportScreen() {
           <Icon name="cash" size={24} color="#007AFF" />
           <Text style={styles.summaryLabel}>Tổng cộng</Text>
           <Text style={styles.summaryAmount}>
-            {reportData?.total_amount?.toLocaleString('vi-VN') || '0'} ₫
+            {totalAmount.toLocaleString('vi-VN')} ₫
           </Text>
         </View>
         
@@ -150,7 +210,7 @@ export default function CategoryDetailReportScreen() {
           <Icon name="format-list-bulleted" size={24} color="#FF9500" />
           <Text style={styles.summaryLabel}>Số giao dịch</Text>
           <Text style={styles.summaryAmount}>
-            {reportData?.transaction_count || '0'}
+            {allTransactions.length}
           </Text>
         </View>
       </View>
@@ -160,13 +220,13 @@ export default function CategoryDetailReportScreen() {
         <View style={styles.transactionsHeader}>
           <Text style={styles.transactionsTitle}>Danh sách giao dịch</Text>
           <Text style={styles.transactionsCount}>
-            {reportData?.transactions?.length || 0} giao dịch
+            {allTransactions.length} giao dịch
           </Text>
         </View>
 
-        {reportData?.transactions && reportData.transactions.length > 0 ? (
+        {allTransactions.length > 0 ? (
           <FlatList
-            data={reportData.transactions}
+            data={allTransactions}
             renderItem={renderTransactionItem}
             keyExtractor={(item) => item.transaction_id.toString()}
             showsVerticalScrollIndicator={false}
@@ -297,24 +357,39 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  transactionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  transactionInfo: {
+    flex: 1,
+  },
   transactionDescription: {
     fontSize: 16,
     color: '#1a1a1a',
     ...typography.medium,
     marginBottom: 4,
   },
-  transactionDate: {
+  categoryName: {
     fontSize: 14,
     color: '#666',
     ...typography.regular,
-    marginBottom: 2,
-  },
-  transactionWallet: {
-    fontSize: 12,
-    color: '#999',
-    ...typography.regular,
   },
   transactionRight: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  amountContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -322,6 +397,11 @@ const styles = StyleSheet.create({
   transactionAmount: {
     fontSize: 16,
     ...typography.semibold,
+  },
+  transactionDateTime: {
+    fontSize: 14,
+    color: '#999',
+    ...typography.regular,
   },
   emptyContainer: {
     flex: 1,
