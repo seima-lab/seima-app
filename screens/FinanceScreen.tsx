@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Dimensions,
-  FlatList,
   Image,
   ScrollView,
   StatusBar,
@@ -983,7 +982,7 @@ const FinanceScreen = React.memo(() => {
             ) : (
               <>
                 <Text style={styles.sectionTitle}>
-                  📊 {t('finance.health.title')}: {apiHealthStatus?.score || 75}/100 ⓘ
+                  ❤️ {t('finance.health.title')}: {apiHealthStatus?.score || 75}/100 ⓘ
                 </Text>
                 
                 {/* Health Status Bar - using real API data */}
@@ -1076,7 +1075,7 @@ const FinanceScreen = React.memo(() => {
                       <View style={styles.amountRow}>
                         <Text style={styles.amountLabel}>{t('finance.income1')}</Text>
                         <Text style={[styles.percentAmount, { color: '#4CAF50' }]}>
-                          {getPercent(chartData.income, chartData.income + chartData.expenses)}%
+                          {getPercent(chartData.income, chartData.income + chartData.expenses)}
                         </Text>
                       </View>
                       <View style={styles.amountRow}>
@@ -1094,44 +1093,6 @@ const FinanceScreen = React.memo(() => {
             </View>
 
           {/* Removed old Financial Health Section */}
-
-          {/* Transaction History Card */}
-         <Text style={styles.historyTitle}>{t('finance.transactionHistoryToday')}</Text>
-         {transactionHistoryLoading ? (
-           <ActivityIndicator size="small" color="#1e90ff" style={{ marginVertical: 20 }} />
-         ) : transactionHistory.length === 0 ? (
-           <Text style={styles.historyEmpty}>{t('finance.noTransactionHistory') || 'Không có thu chi trong ngày hôm nay.'}</Text>
-         ) : (
-           <FlatList
-             data={transactionHistory}
-             keyExtractor={(item, idx) => item.transaction_id?.toString() || item.id?.toString() || idx.toString()}
-             renderItem={({ item }) => {
-               const { iconName, iconColor, type } = getIconAndColor(item);
-               // Lấy category name từ map nếu có
-               const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
-               const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || 'Không rõ';
-               return (
-                 <View style={styles.historyItem}>
-                   <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
-                     <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
-                   </View>
-                   <View style={styles.historyInfo}>
-                     <Text style={styles.historyCategory} numberOfLines={1}>{categoryName}</Text>
-                     {item.description ? (
-                       <Text style={styles.historyDesc} numberOfLines={1}>{item.description}</Text>
-                     ) : null}
-                     <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
-                   </View>
-                   <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]}>
-                     {type === 'income' ? '+' : '-'}{(item.amount || 0).toLocaleString('vi-VN')} đ
-                   </Text>
-                 </View>
-               );
-             }}
-             style={{ maxHeight: 320 }}
-             showsVerticalScrollIndicator={false}
-           />
-         )}
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
@@ -1172,6 +1133,50 @@ const FinanceScreen = React.memo(() => {
               <Text style={styles.buttonTitle}>{t('navigation.budget')}</Text>
             </View>
           </View>
+
+          {/* Transaction History Card */}
+         <Text style={styles.historyTitle}>{t('finance.transactionHistoryToday')}</Text>
+         {transactionHistoryLoading ? (
+           <ActivityIndicator size="small" color="#1e90ff" style={{ marginVertical: 20 }} />
+         ) : transactionHistory.length === 0 ? (
+           <Text style={styles.historyEmpty}>{t('finance.noTransactionHistory') || 'Không có thu chi trong ngày hôm nay.'}</Text>
+         ) : (
+                        <View style={styles.transactionHistoryContainer}>
+               <ScrollView 
+                 style={styles.transactionHistoryFlatList}
+                 contentContainerStyle={styles.transactionHistoryContent}
+                 showsVerticalScrollIndicator={true}
+                 nestedScrollEnabled={true}
+                 scrollEnabled={true}
+                 bounces={false}
+                 alwaysBounceVertical={false}
+               >
+                 {transactionHistory.map((item, index) => {
+                   const { iconName, iconColor, type } = getIconAndColor(item);
+                   // Lấy category name từ map nếu có
+                   const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
+                   const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || 'Không rõ';
+                   return (
+                     <View key={item.transaction_id?.toString() || item.id?.toString() || index.toString()} style={styles.historyItem}>
+                       <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
+                         <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
+                       </View>
+                       <View style={styles.historyInfo}>
+                         <Text style={styles.historyCategory} numberOfLines={1}>{categoryName}</Text>
+                         {item.description ? (
+                           <Text style={styles.historyDesc} numberOfLines={1}>{item.description}</Text>
+                         ) : null}
+                         <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
+                       </View>
+                       <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]}>
+                         {type === 'income' ? '+' : '-'}{(item.amount || 0).toLocaleString('vi-VN')} đ
+                       </Text>
+                     </View>
+                   );
+                 })}
+               </ScrollView>
+             </View>
+         )}
         </View>
       </ScrollView>
     </View>
@@ -1771,6 +1776,21 @@ legendValue: {
     ...typography.semibold,
     minWidth: 80,
     textAlign: 'right',
+  },
+  transactionHistoryContainer: {
+    height: 320,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    overflow: 'hidden',
+  },
+  transactionHistoryContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  transactionHistoryFlatList: {
+    flex: 1,
   },
 });
 

@@ -131,6 +131,7 @@ export type RootStackParamList = {
     categoryType: 'expense' | 'income';
     data: import('../services/transactionService').ReportByCategory[];
     totalAmount: number;
+    groupId?: number;
   };
   SelectCategoryScreen: {
     categoryType: 'expense' | 'income';
@@ -159,6 +160,7 @@ export type RootStackParamList = {
     category_name: string;
     start_date?: string;
     end_date?: string;
+    groupId?: number;
   };
   CategoryDetailReportScreen: {
     category_id: number;
@@ -167,6 +169,10 @@ export type RootStackParamList = {
     end_date: string;
   };
   ViewCategoryReportScreen: { type: 'expense' | 'income' };
+  ReportScreen: { 
+    groupId?: number; 
+    groupName?: string; 
+  } | undefined;
 };
   
 export type ScreenNames = keyof RootStackParamList; 

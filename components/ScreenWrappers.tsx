@@ -22,6 +22,7 @@ import NotificationDetailScreen from '../screens/NotificationDetailScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import PendingGroupsScreen from '../screens/PendingGroupsScreen';
 import ReportDetailScreen from '../screens/ReportDetailScreen';
+import ReportScreen from '../screens/ReportScreen';
 import SelectCategoryScreen from '../screens/SelectCategoryScreen';
 import SetBudgetLimitScreen from '../screens/SetBudgetLimitScreen';
 import StatusInviteMember, { GroupMemberStatus } from '../screens/StatusInviteMember';
@@ -200,6 +201,12 @@ export const CategoryReportDetailScreenWithNav = (props: any) => (
 export const ViewCategoryReportScreenWithNav = (props: any) => (
   <WithBottomNavigation showBottomNav={false}>
     <ViewCategoryReportScreen {...props} />
+  </WithBottomNavigation>
+); 
+
+export const ReportScreenWithNav = (props: any) => (
+  <WithBottomNavigation showBottomNav={false}>
+    <ReportScreen {...props} />
   </WithBottomNavigation>
 ); 
 

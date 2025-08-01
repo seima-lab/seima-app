@@ -1,6 +1,6 @@
 import { typography } from '@/constants/typography';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -161,8 +161,12 @@ export default function ReportScreen() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute();
   const insets = useSafeAreaInsets();
   const { transactionRefreshTrigger } = useAuth();
+
+  // Get route params
+  const { groupId, groupName } = route.params as { groupId?: number; groupName?: string };
 
   // State
   const [isLoading, setIsLoading] = useState(false);
@@ -349,13 +353,15 @@ export default function ReportScreen() {
         selectedPeriodType,
         selectedPeriod,
         startDate, 
-        endDate
+        endDate,
+        groupId
       });
 
       const data = await transactionService.viewTransactionReport(
         undefined, // categoryId - load all categories
         startDate,
-        endDate
+        endDate,
+        groupId // Add groupId parameter
       );
 
       console.log('✅ Raw API Response:', data);
@@ -367,7 +373,7 @@ export default function ReportScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedPeriodType, selectedPeriod, customStartDate, customEndDate, weekReferenceDate, getDateRange, showToastMessage, t]);
+  }, [selectedPeriodType, selectedPeriod, customStartDate, customEndDate, weekReferenceDate, getDateRange, showToastMessage, t, groupId]);
 
   // Load data on mount and when period changes
   useEffect(() => {
@@ -759,7 +765,9 @@ export default function ReportScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('reports.title')}</Text>
+        <Text style={styles.headerTitle}>
+          {groupName ? `${groupName} - ${t('reports.title')}` : t('reports.title')}
+        </Text>
       </View>
 
       {/* Period Filter Bar (reusable) */}
@@ -851,6 +859,7 @@ export default function ReportScreen() {
                   categoryType: 'expense',
                   data: getExpenseData(),
                   totalAmount: (reportData as any)?.summary?.total_expense || 0,
+                  groupId: groupId,
                 })}
               >
                 <Text style={styles.seeAllText}>{t('reports.seeDetails')}</Text>
@@ -876,6 +885,7 @@ export default function ReportScreen() {
                   categoryType: 'income',
                   data: getIncomeData(),
                   totalAmount: (reportData as any)?.summary?.total_income || 0,
+                  groupId: groupId,
                 })}
               >
                 <Text style={styles.seeAllText}>{t('reports.seeDetails')}</Text>

@@ -261,11 +261,19 @@ const BudgetScreen = () => {
     const currentDate = new Date();
     const endDateObj = new Date(endDate);
     
-    // Convert to Vietnam timezone (UTC+7)
-    const vietnamTimeOffset = 7 * 60; // 7 hours in minutes
-    const currentVietnamTime = new Date(currentDate.getTime() + (vietnamTimeOffset * 60 * 1000));
+    // Compare current date with end date
+    // end_date from API is already in local timezone
+    const isExpired = currentDate > endDateObj;
     
-    return currentVietnamTime > endDateObj;
+    // Debug log
+    console.log('🔍 Budget expiry check:', {
+      budgetEndDate: endDate,
+      endDateObj: endDateObj.toISOString(),
+      currentDate: currentDate.toISOString(),
+      isExpired
+    });
+    
+    return isExpired;
   };
 
   const BudgetItem = ({ budget }: { budget: Budget }) => {
@@ -288,7 +296,15 @@ const BudgetScreen = () => {
                 </View>
               ) : (
                 <Text style={styles.budgetItemPeriod}>
-                  {new Date(budget.start_date).toLocaleDateString('vi-VN')} - {new Date(budget.end_date).toLocaleDateString('vi-VN')}
+                  {new Date(budget.start_date).toLocaleDateString('vi-VN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  })} - {new Date(budget.end_date).toLocaleDateString('vi-VN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  })}
                 </Text>
               )}
             </View>

@@ -67,11 +67,12 @@ function generateSampleDataForMonth(date: Date) {
 export default function CategoryReportDetailScreen() {
   const route = useRoute();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { category_name, category_id, start_date, end_date } = route.params as {
+  const { category_name, category_id, start_date, end_date, groupId } = route.params as {
     category_name?: string;
     category_id?: number;
     start_date?: string;
     end_date?: string;
+    groupId?: number;
   };
 
   const [selectedPeriodType, setSelectedPeriodType] = useState('thisMonth');
@@ -144,7 +145,8 @@ export default function CategoryReportDetailScreen() {
           String(category_id),
           type,
           formatDate(start),
-          formatDate(end)
+          formatDate(end),
+          groupId
         );
         if (isMounted && report) {
           setApiData(report.data || {});
@@ -159,7 +161,7 @@ export default function CategoryReportDetailScreen() {
     }
     fetchData();
     return () => { isMounted = false; };
-  }, [category_id, selectedPeriodType, currentDate, startDate, endDate, start_date, end_date]);
+  }, [category_id, selectedPeriodType, currentDate, startDate, endDate, start_date, end_date, groupId]);
 
   const handlePrev = () => {
     if (selectedPeriodType === 'custom') return;

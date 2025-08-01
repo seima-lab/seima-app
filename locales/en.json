@@ -110,6 +110,7 @@
   },
 
   "group": {
+    
     "title": "Groups",
     "createGroup": "Create Group",
     "joinGroup": "Join Group",
@@ -123,6 +124,8 @@
     "joined": "Joined",
     "created": "Created",
     "loading": "Loading groups...",
+    "noPendingGroups": "No pending groups",
+    "noPendingGroupsDesc": "No pending groups",
     "noGroups": "No groups available",
     "errorLoadingGroups": "Failed to load groups",
     "errorLoadingDetail": "Failed to load group details",
@@ -213,6 +216,7 @@
       "settings": "Settings"
     },
     "overview": {
+      "viewReport": "View Report",
       "financialSummary": "Financial Overview",
       "totalIncome": "Income",
       "totalExpense": "Expense",

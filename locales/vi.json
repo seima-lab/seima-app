@@ -183,7 +183,9 @@
     "noTransactionsMessage": "Ví này chưa có giao dịch nào."
   },
   "group": {
-
+    "invitation": {
+      "alreadyInvited": "Người dùng này đã được mời vào nhóm"
+    },
     "title": "Nhóm",
     "createGroup": "Tạo nhóm",
     "joinGroup": "Tham gia nhóm",
@@ -294,6 +296,7 @@
       "settings": "Cài đặt"
     },
     "overview": {
+      "viewReport": "Xem báo cáo",
       "financialSummary": "Tổng quan tài chính",
       "totalIncome": "Thu nhập",
       "totalExpense": "Chi tiêu",
@@ -1116,11 +1119,8 @@
     "expense": "Chi tiêu",
     "groupTransactionNote": "Mọi giao dịch này sẽ không lưu vào lịch sử cá nhân của bạn"
   },
-  "group": {
-    "invitation": {
-      "alreadyInvited": "Người dùng này đã được mời vào nhóm"
-    }
-  },
+ 
+
   "voiceRecording": {
     "title": "Ghi âm giọng nói",
     "startRecording": "Bấm để bắt đầu ghi âm",

@@ -371,6 +371,8 @@ const ChatAIScreen = () => {
     const [isVoiceLoading, setIsVoiceLoading] = useState(false);
     const [recognizedText, setRecognizedText] = useState('');
     const audioFilePath = useRef<string | null>(null); // Đường dẫn file audio
+    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
     
     const suggestions = [
         { text: 'Tôi tiêu 50k cho ăn uống 🍜', icon: 'restaurant' },
@@ -437,6 +439,13 @@ const ChatAIScreen = () => {
             console.log('📝 User message created:', JSON.stringify(userMessage, null, 2));
             setMessages(prev => [...prev, userMessage]);
             
+            // Auto scroll to bottom when user sends message
+            setTimeout(() => {
+                if (shouldAutoScroll) {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                }
+            }, 100);
+            
             if (!messageText) {
                 setInputText('');
             }
@@ -452,29 +461,37 @@ const ChatAIScreen = () => {
                 console.log('🤖 Calling aiService.sendMessage...');
                 const aiResponse = await aiService.sendMessage(userId, textToSend);
                 
-                // Support both 'suggested_wallets' and 'suggest_wallet' (for API compatibility)
-                const suggestedWallets = aiResponse.suggested_wallets || (aiResponse as any).suggest_wallet || undefined;
-                
-                console.log('✅ AI response received:', aiResponse);
-                console.log('📝 AI response structure:', {
-                    hasMessage: !!aiResponse.message,
-                    messageLength: aiResponse.message?.length,
-                    hasSuggestedWallets: !!aiResponse.suggested_wallets || !!(aiResponse as any).suggest_wallet,
-                    suggestedWalletsCount: aiResponse.suggested_wallets?.length || (aiResponse as any).suggest_wallet?.length,
-                    suggestedWallets,
-                });
-                
-                const aiMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    text: aiResponse.message,
-                    isUser: false,
-                    timestamp: new Date(),
-                    suggestedWallets,
-                };
-                
-                console.log('🤖 AI message created:', JSON.stringify(aiMessage, null, 2));
-                setMessages(prev => [...prev, aiMessage]);
-                console.log('📤 === SEND MESSAGE SUCCESS ===');
+                                 // Support both 'suggested_wallets' and 'suggest_wallet' (for API compatibility)
+                 const suggestedWallets = aiResponse.suggested_wallets || (aiResponse as any).suggest_wallet || undefined;
+                 
+                 console.log('✅ AI response received:', aiResponse);
+                 console.log('📝 AI response structure:', {
+                     hasMessage: !!aiResponse.message,
+                     messageLength: aiResponse.message?.length,
+                     hasSuggestedWallets: !!aiResponse.suggested_wallets || !!(aiResponse as any).suggest_wallet,
+                     suggestedWalletsCount: aiResponse.suggested_wallets?.length || (aiResponse as any).suggest_wallet?.length,
+                     suggestedWallets,
+                 });
+            
+            const aiMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                text: aiResponse.message,
+                isUser: false,
+                timestamp: new Date(),
+                suggestedWallets,
+            };
+            
+            console.log('🤖 AI message created:', JSON.stringify(aiMessage, null, 2));
+            setMessages(prev => [...prev, aiMessage]);
+            
+            // Auto scroll to bottom when new message is added
+            setTimeout(() => {
+                if (shouldAutoScroll) {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                }
+            }, 100);
+            
+            console.log('📤 === SEND MESSAGE SUCCESS ===');
                 
             } catch (error) {
                 console.error('❌ === SEND MESSAGE ERROR ===');
@@ -496,6 +513,14 @@ const ChatAIScreen = () => {
                 
             } finally {
                 setIsLoading(false);
+                
+                // Auto scroll when loading finishes
+                setTimeout(() => {
+                    if (shouldAutoScroll) {
+                        scrollViewRef.current?.scrollToEnd({ animated: true });
+                    }
+                }, 100);
+                
                 console.log('📤 === SEND MESSAGE DEBUG END ===');
             }
         } else {
@@ -637,75 +662,107 @@ const ChatAIScreen = () => {
     );
 
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <LinearGradient
+            colors={['#f8f9fa', '#e9ecef']}
+            style={styles.container}
+        >
+            <StatusBar 
+                barStyle="dark-content" 
+                backgroundColor="transparent" 
+                translucent={true}
+                animated={true}
+            />
+            
+            {/* Header */}
             <LinearGradient
-                colors={['#f8f9fa', '#e9ecef']}
-                style={styles.container}
+                colors={['#1e90ff', '#0066cc']}
+                style={[styles.header, { paddingTop: insets.top + 16 }]}
             >
-                <StatusBar 
-                    barStyle="dark-content" 
-                    backgroundColor="transparent" 
-                    translucent={true}
-                    animated={true}
-                />
+                <TouchableOpacity 
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                >
+                    <Icon name="chevron-left" size={28} color="#FFFFFF" style={{ alignSelf: 'center' }} />
+                </TouchableOpacity>
                 
-                {/* Header */}
-                <LinearGradient
-                    colors={['#1e90ff', '#0066cc']}
-                    style={[styles.header, { paddingTop: insets.top + 16 }]}
-                >
-                    <TouchableOpacity 
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Icon name="chevron-left" size={28} color="#FFFFFF" style={{ alignSelf: 'center' }} />
-                    </TouchableOpacity>
-                    
-                    <View style={styles.headerCenter}>
-                        <View style={styles.robotIconHeader}>
-                            <Icon2 name="robot" size={20} color="#FFFFFF" />
-                        </View>
-                        <View style={styles.headerTextContainer}>
-                            <Text style={styles.headerTitle}>Seima AI</Text>
-                            <Text style={styles.headerSubtitle}>Trợ lý tài chính thông minh</Text>
-                        </View>
+                <View style={styles.headerCenter}>
+                    <View style={styles.robotIconHeader}>
+                        <Icon2 name="robot" size={20} color="#FFFFFF" />
                     </View>
-                </LinearGradient>
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headerTitle}>Seima AI</Text>
+                        <Text style={styles.headerSubtitle}>Trợ lý tài chính thông minh</Text>
+                    </View>
+                </View>
+            </LinearGradient>
 
-                <KeyboardAvoidingView 
-                    style={styles.chatContainer}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            <KeyboardAvoidingView 
+                style={styles.chatContainer}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            >
+                {/* Messages */}
+                <ScrollView 
+                    ref={scrollViewRef}
+                    style={styles.messagesContainer}
+                    contentContainerStyle={styles.messagesContent}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="never"
+                    keyboardDismissMode="on-drag"
+                    onScrollBeginDrag={() => {
+                        Keyboard.dismiss();
+                        setShouldAutoScroll(false);
+                        setShowScrollToBottom(true);
+                    }}
+                    onScrollEndDrag={() => {
+                        // Reset auto scroll when user manually scrolls
+                        setShouldAutoScroll(true);
+                    }}
+                    onMomentumScrollEnd={() => {
+                        // Reset auto scroll when user manually scrolls
+                        setShouldAutoScroll(true);
+                    }}
+                    onScroll={(event) => {
+                        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+                        const isAtBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - 20;
+                        setShowScrollToBottom(!isAtBottom);
+                    }}
+                    scrollEventThrottle={16}
                 >
-                    {/* Messages */}
-                    <ScrollView 
-                        ref={scrollViewRef}
-                        style={styles.messagesContainer}
-                        contentContainerStyle={styles.messagesContent}
-                        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                        keyboardDismissMode="interactive"
-                        maintainVisibleContentPosition={{
-                            minIndexForVisible: 0,
-                            autoscrollToTopThreshold: 10
-                        }}
-                    >
-                        {showWelcome && <WelcomeMessage />}
-                        
-                        {messages.map(renderMessage)}
-                        
-                        {isLoading && (
-                            <View style={styles.messageRow}>
-                                <Avatar isUser={false} />
-                                <View style={styles.messageContent}>
-                                    <View style={[styles.messageContainer, styles.aiMessage, styles.typingMessage]}>
-                                        <TypingIndicator />
-                                    </View>
+                    {showWelcome && <WelcomeMessage />}
+                    
+                    {messages.map(renderMessage)}
+                    
+                    {isLoading && (
+                        <View style={styles.messageRow}>
+                            <Avatar isUser={false} />
+                            <View style={styles.messageContent}>
+                                <View style={[styles.messageContainer, styles.aiMessage, styles.typingMessage]}>
+                                    <TypingIndicator />
                                 </View>
                             </View>
-                        )}
-                    </ScrollView>
+                        </View>
+                    )}
+                </ScrollView>
+                    
+                    {/* Scroll to bottom button */}
+                    {showScrollToBottom && (
+                        <TouchableOpacity
+                            style={styles.scrollToBottomButton}
+                            onPress={() => {
+                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                                setShowScrollToBottom(false);
+                                setShouldAutoScroll(true);
+                            }}
+                        >
+                            <LinearGradient
+                                colors={['#1e90ff', '#0066cc']}
+                                style={styles.scrollToBottomGradient}
+                            >
+                                <Icon name="keyboard-arrow-down" size={24} color="#FFFFFF" />
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    )}
 
                     {/* Suggestions - Temporarily hidden */}
                     {/* <View style={styles.suggestionsContainer}>
@@ -828,8 +885,7 @@ const ChatAIScreen = () => {
                     />
                 </KeyboardAvoidingView>
             </LinearGradient>
-        </TouchableWithoutFeedback>
-    );
+        );
 };
 
 const styles = StyleSheet.create({
@@ -1196,6 +1252,24 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         opacity: 0.6,
+    },
+    scrollToBottomButton: {
+        position: 'absolute',
+        bottom: 100,
+        right: 20,
+        zIndex: 1000,
+    },
+    scrollToBottomGradient: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: '#1e90ff',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
 });
 console.log("styles", styles);

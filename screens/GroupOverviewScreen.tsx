@@ -2,18 +2,18 @@ import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Clipboard,
-  FlatList,
-  Image,
-  ListRenderItem,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Clipboard,
+    FlatList,
+    Image,
+    ListRenderItem,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { typography } from '../constants/typography';
@@ -359,6 +359,13 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
     });
   };
 
+  const handleViewGroupReport = () => {
+    navigation.navigate('ReportScreen', { 
+      groupId: parseInt(groupId),
+      groupName: groupName
+    });
+  };
+
   // Helper: format time luôn là AM/PM
   const formatTimeAMPM = (date: Date) => {
     return date.toLocaleString('en-US', {
@@ -610,6 +617,14 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
               ) : null
             )}
           />
+        </View>
+
+        {/* Group Report Button */}
+        <View style={styles.reportCard}>
+          <TouchableOpacity style={styles.reportButton} onPress={handleViewGroupReport}>
+            <Icon name="assessment" size={24} color="#FFFFFF" />
+            <Text style={styles.reportButtonText}>{t('group.overview.viewReport')}</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -973,6 +988,33 @@ const styles = StyleSheet.create({
   modalOkText: {
     color: '#FFFFFF',
     fontSize: 16,
+    ...typography.medium,
+  },
+  reportCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4A90E2',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  reportButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginLeft: 8,
     ...typography.medium,
   },
 });

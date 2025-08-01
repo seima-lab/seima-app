@@ -1,8 +1,10 @@
+import { AuthService } from './authService';
 import { AI_CHAT_ENDPOINTS } from './config';
 
 export interface AIChatMessage {
   user_id: number;
   text_input: string;
+  // access_token: string;
 }
 
 export interface SuggestedWallet {
@@ -51,9 +53,22 @@ export class AIService {
       console.log('   - Text Input:', textInput);
       console.log('   - Endpoint:', AI_CHAT_ENDPOINTS.SEND_MESSAGE);
       
+      // Lấy access_token từ AuthService
+      const authService = AuthService.getInstance();
+      const accessToken = await authService.getStoredToken();
+      
+      if (!accessToken) {
+        console.error('❌ No access token available');
+        return {
+          message: 'Xin lỗi, phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+          status_code: 401
+        };
+      }
+      
       const payload: AIChatMessage = {
         user_id: userId,
-        text_input: textInput
+        text_input: textInput,
+        // access_token: accessToken
       };
 
       console.log('📤 Request payload:', JSON.stringify(payload, null, 2));

@@ -969,9 +969,7 @@ const CalendarScreen = () => {
                 
                 <Text style={styles.headerTitle}>{t('calendar.title')}</Text>
                 
-                <TouchableOpacity style={styles.searchButton}>
-                    <Icon name="magnify" size={24} color="#1e90ff" />
-                </TouchableOpacity>
+                <View style={styles.headerSpacer} />
             </View>
 
             <View style={styles.content}>
@@ -1122,8 +1120,8 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlign: 'center',
     },
-    searchButton: {
-        padding: 8,
+    headerSpacer: {
+        width: 40, // Same width as backButton for balance
     },
     content: {
         flex: 1,

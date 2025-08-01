@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    ...typography.semibold,
     color: '#FFFFFF',
   },
   placeholder: {
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   inviteButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   instructionsContainer: {
     backgroundColor: '#E3F2FD',
@@ -745,7 +745,7 @@ const styles = StyleSheet.create({
   invitedRole: {
     color: '#4CAF50',
     fontSize: 12,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   invitedStatus: {
     width: 40,

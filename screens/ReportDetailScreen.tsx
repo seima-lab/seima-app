@@ -236,7 +236,8 @@ const ReportDetailScreen = () => {
       const res = await transactionService.viewTransactionReport(
         undefined, // Nếu muốn lọc theo category thì truyền categoryId ở đây
         dateRange.startDate,
-        dateRange.endDate
+        dateRange.endDate,
+        groupId // Add groupId parameter
       );
       setReportData(res);
     } catch (err: any) {
@@ -244,7 +245,7 @@ const ReportDetailScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [dateRange.startDate, dateRange.endDate]);
+  }, [dateRange.startDate, dateRange.endDate, groupId]);
 
   React.useEffect(() => {
     fetchData();
@@ -554,7 +555,7 @@ const ReportDetailScreen = () => {
     });
   };
 
-  const { title, categoryType, data, totalAmount } = route.params;
+  const { title, categoryType, data, totalAmount, groupId } = route.params;
 
   // Lấy dữ liệu cho biểu đồ và danh sách từ reportData
   const chartData = React.useMemo(() => {
@@ -770,7 +771,8 @@ const ReportDetailScreen = () => {
                     // Không truyền start_date/end_date để type mặc định là MONTHLY
                     navigation.navigate('CategoryReportDetailScreen', {
                       category_name: item.category_name,
-                      category_id: item.category_id
+                      category_id: item.category_id,
+                      groupId: groupId
                     });
                   } catch (err) {
                     console.error('Error navigating to category report:', err);

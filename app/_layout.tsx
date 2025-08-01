@@ -34,6 +34,7 @@ import {
     NotificationsScreenWithNav,
     PendingGroupsScreenWithNav,
     ReportDetailScreenWithNav,
+    ReportScreenWithNav,
     SelectCategoryScreenWithNav,
     SetBudgetLimitScreenWithNav,
     StatusInviteMemberWithNav,
@@ -134,6 +135,7 @@ function AuthNavigator() {
       <Stack.Screen name="ViewCategoryReportScreen" children={(props) => <ViewCategoryReportScreenWithNav {...props} />} />
       <Stack.Screen name="WalletTransactionHistory" component={require('../screens/WalletTransactionHistoryScreen').default} />
       <Stack.Screen name="PendingGroups" children={(props) => <PendingGroupsScreenWithNav {...props} />} />
+      <Stack.Screen name="ReportScreen" children={(props) => <ReportScreenWithNav {...props} />} />
     </Stack.Navigator>
   );
 }

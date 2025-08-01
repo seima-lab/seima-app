@@ -318,10 +318,11 @@ export class TransactionService {
   async viewTransactionReport(
     categoryId?: number,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    groupId?: number
   ): Promise<TransactionReportResponse> {
     try {
-      console.log('🔄 Getting transaction report:', { categoryId, startDate, endDate });
+      console.log('🔄 Getting transaction report:', { categoryId, startDate, endDate, groupId });
       
       const params = new URLSearchParams();
       if (categoryId) {
@@ -332,6 +333,9 @@ export class TransactionService {
       }
       if (endDate) {
         params.append('endDate', endDate);
+      }
+      if (groupId) {
+        params.append('groupId', groupId.toString());
       }
       
       const response = await apiService.get<TransactionReportResponse>(

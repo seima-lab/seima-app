@@ -830,9 +830,10 @@ export class CategoryService {
     id: string,
     type: string,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    groupId?: number
   ): Promise<TransactionCategoryReportResponse> {
-    const url = TRANSACTION_ENDPOINTS.VIEW_REPORT_BY_CATEGORY(id, type, startDate, endDate);
+    const url = TRANSACTION_ENDPOINTS.VIEW_REPORT_BY_CATEGORY(id, type, startDate, endDate, groupId);
     const response = await apiService.get<{ data?: TransactionCategoryReportResponseRaw }>(url);
     const raw = response.data as TransactionCategoryReportResponseRaw | undefined;
     if (!raw) throw new Error('No data in response');

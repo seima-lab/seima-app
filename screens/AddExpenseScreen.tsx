@@ -81,7 +81,9 @@ export default function AddExpenseScreen() {
     return new Date();
   });
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedWallet, setSelectedWallet] = useState<number | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<number | null>(
+    fromGroupOverview ? 0 : null // Set to 0 for group transactions
+  );
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   // Data
@@ -447,7 +449,8 @@ export default function AddExpenseScreen() {
       setWallets(walletsData);
 
       // Update wallet selection if current one is invalid or if no wallet selected
-      if (!selectedWallet || !walletsData.some(w => w.id === selectedWallet)) {
+      // But don't reset if from group overview (keep it as 0)
+      if (!fromGroupOverview && (!selectedWallet || !walletsData.some(w => w.id === selectedWallet))) {
         if (walletsData.length > 0) {
           const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
           setSelectedWallet(defaultWallet.id);
@@ -1133,7 +1136,8 @@ export default function AddExpenseScreen() {
       return false;
     }
     
-    if (!selectedWallet) {
+    // Only validate wallet selection if not from group overview
+    if (!fromGroupOverview && !selectedWallet) {
       setErrorModalTitle(t('common.error'));
       setErrorModalMessage(t('common.pleaseSelectWallet'));
       setErrorModalVisible(true);
@@ -1205,6 +1209,11 @@ export default function AddExpenseScreen() {
   };
 
   const getSelectedWalletName = () => {
+    // For group transactions, show a special message
+    if (fromGroupOverview && selectedWallet === 0) {
+      return t('groupTransaction.groupWallet');
+    }
+    
     if (wallets.length === 0) {
       return t('wallet.addWallet');
     }

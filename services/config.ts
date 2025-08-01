@@ -75,10 +75,11 @@ export const USER_ENDPOINTS = {
 // Transaction endpoints
 export const TRANSACTION_ENDPOINTS = {
   
-  VIEW_REPORT_BY_CATEGORY: (id: string, type: string, startDate?: string, endDate?: string) => {
+  VIEW_REPORT_BY_CATEGORY: (id: string, type: string, startDate?: string, endDate?: string, groupId?: number) => {
     let url = `${ApiConfig.API_PREFIX}/transactions/view-report/category/${id}?type=${type}`;
     if (startDate) url += `&startDate=${startDate}`;
     if (endDate) url += `&endDate=${endDate}`;
+    if (groupId) url += `&groupId=${groupId}`;
     return url;
   },
   VIEW_REPORT_CATEGORY_DETAIL: (id: string, startDate?: string, endDate?: string) => {
