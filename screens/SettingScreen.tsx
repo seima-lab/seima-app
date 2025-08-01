@@ -1,8 +1,8 @@
 import { typography } from '@/constants/typography';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react'; // Added missing import for React
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LogoutModal from '../components/LogoutModal';
@@ -23,31 +23,17 @@ const SettingScreen = () => {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const { t, i18n } = useTranslation();
   
+  // Cache state để tránh gọi API không cần thiết
+  const [profileCache, setProfileCache] = useState<UserProfile | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const CACHE_DURATION = 30000; // 30 giây
+  
   // Prevent multiple concurrent API calls
   const isLoadingRef = useRef(false);
   const isMountedRef = useRef(true);
 
-  // Load user profile from API
-  useEffect(() => {
-    loadUserProfile();
-    
-    // Cleanup on unmount
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [isAuthenticated]);
-
-  // Auto reload data when screen comes into focus (after returning from UpdateProfile)
-  useFocusEffect(
-    useCallback(() => {
-      if (isAuthenticated) {
-        console.log('🔄 SettingScreen focused, force reloading profile...');
-        loadUserProfile(true); // Force refresh
-      }
-    }, [isAuthenticated])
-  );
-
-  const loadUserProfile = async (forceRefresh: boolean = false) => {
+  // Load user profile với cache
+  const loadUserProfile = useCallback(async (forceRefresh: boolean = false) => {
     if (!isAuthenticated || !isMountedRef.current) {
       setLoading(false);
       return;
@@ -56,6 +42,14 @@ const SettingScreen = () => {
     // Prevent multiple concurrent calls
     if (isLoadingRef.current && !forceRefresh) {
       console.log('⏭️ Skipping profile load - already loading');
+      return;
+    }
+
+    const now = Date.now();
+    if (!forceRefresh && now - lastFetchTime < CACHE_DURATION && profileCache) {
+      console.log('📦 Using cached profile data, last fetch:', new Date(lastFetchTime));
+      setUserProfile(profileCache);
+      setLoading(false);
       return;
     }
 
@@ -69,6 +63,8 @@ const SettingScreen = () => {
       
       if (isMountedRef.current) {
         setUserProfile(profile);
+        setProfileCache(profile);
+        setLastFetchTime(now);
       }
     } catch (error: any) {
       console.error('🔴 Failed to load user profile:', error);
@@ -100,10 +96,35 @@ const SettingScreen = () => {
       }
       isLoadingRef.current = false;
     }
-  };
+  }, [isAuthenticated, lastFetchTime, profileCache, t]);
+
+  // Load user profile from API khi mount
+  useEffect(() => {
+    loadUserProfile();
+    
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [isAuthenticated]);
+
+  // Auto reload data when screen comes into focus với debounce
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        const now = Date.now();
+        if (now - lastFetchTime > CACHE_DURATION) {
+          console.log('🔄 SettingScreen focused, refreshing profile...');
+          loadUserProfile();
+        } else {
+          console.log('🔄 SettingScreen focused, using cached data');
+        }
+      }
+    }, [isAuthenticated, lastFetchTime, loadUserProfile])
+  );
 
   // Helper function to get avatar source based on gender
-  const getAvatarSource = () => {
+  const getAvatarSource = useCallback(() => {
     if (userProfile?.user_avatar_url) {
       return { uri: userProfile.user_avatar_url };
     }
@@ -117,36 +138,72 @@ const SettingScreen = () => {
     
     // Fallback to unknown avatar
     return require('../assets/images/Unknown.jpg');
-  };
+  }, [userProfile]);
 
-  const handleUpdateProfile = () => {
+  // Memoized callback functions for better performance
+  const handleUpdateProfile = useCallback(() => {
     navigation.navigate('UpdateProfile');
-  };
+  }, [navigation]);
 
-  const handleChangePassword = () => {
+  const handleChangePassword = useCallback(() => {
     navigation.navigate('ChangePassword');
-  };
+  }, [navigation]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setLogoutModalVisible(true);
-  };
+  }, []);
 
-  const handleLanguageChange = (lang: Language) => setLanguage(lang);
+  const handleLanguageChange = useCallback((lang: Language) => {
+    setLanguage(lang);
+  }, [setLanguage]);
 
-  const handleTabChange = (tab: string) => {
+  const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
     if (tab === 'FinanceScreen') navigation.replace('FinanceScreen');
     if (tab === 'Setting') return;
-  };
+  }, [navigation]);
 
-  // Show loading state
-  if (loading) {
+  // Progressive loading - không block UI hoàn toàn
+  const showFullLoading = loading && !userProfile;
+
+  // Skeleton Loading Component
+  const SkeletonLoader = React.memo(() => (
+    <View style={styles.skeletonContainer}>
+      <View style={styles.skeletonHeader}>
+        <View style={styles.skeletonLogo} />
+        <View style={styles.skeletonIcon} />
+      </View>
+      <View style={styles.skeletonProfileSection}>
+        <View style={styles.skeletonAvatar} />
+        <View style={styles.skeletonName} />
+        <View style={styles.skeletonInfoBlock}>
+          <View style={styles.skeletonInfoText} />
+          <View style={styles.skeletonInfoText} />
+          <View style={styles.skeletonInfoText} />
+        </View>
+        <View style={styles.skeletonButton} />
+        <View style={styles.skeletonButton} />
+        <View style={styles.skeletonLogoutButton} />
+      </View>
+      <View style={styles.skeletonCard}>
+        <View style={styles.skeletonCardTitle} />
+        <View style={styles.skeletonCardDesc} />
+        <View style={styles.skeletonLangRow}>
+          <View style={styles.skeletonLangBtn} />
+          <View style={styles.skeletonLangBtn} />
+        </View>
+      </View>
+    </View>
+  ));
+
+  SkeletonLoader.displayName = 'SkeletonLoader';
+
+  // Show full loading only when no user profile
+  if (showFullLoading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1e90ff" />
-          <Text style={styles.loadingText}>{t('common.loading')}...</Text>
-        </View>
+        <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+        <SkeletonLoader />
       </View>
     );
   }
@@ -177,6 +234,7 @@ const SettingScreen = () => {
         showsVerticalScrollIndicator={false}
         bounces={false}
         overScrollMode="never"
+        removeClippedSubviews={true}
       >
       {/* Header */}
       <View style={styles.header}>
@@ -233,7 +291,7 @@ const SettingScreen = () => {
         <View style={styles.langRow}>
           <TouchableOpacity
             style={[styles.langBtn, language === 'en' && styles.langBtnActive]}
-            onPress={() => setLanguage('en')}
+            onPress={() => handleLanguageChange('en')}
           >
             <View style={[styles.radio, language === 'en' && styles.radioActive]}>
               {language === 'en' && <View style={styles.radioDot} />}
@@ -243,7 +301,7 @@ const SettingScreen = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.langBtn, language === 'vi' && styles.langBtnActive]}
-            onPress={() => setLanguage('vi')}
+            onPress={() => handleLanguageChange('vi')}
           >
             <View style={[styles.radio, language === 'vi' && styles.radioActive]}>
               {language === 'vi' && <View style={styles.radioDot} />}
@@ -253,7 +311,6 @@ const SettingScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
-
 
       </ScrollView>
              <LogoutModal
@@ -315,6 +372,108 @@ const styles = StyleSheet.create({
   logoutBtnText: { color: '#fff', ...typography.semibold, fontSize: 15 },
   headerRight: { flexDirection: 'row', alignItems: 'center' },
   refreshBtn: { padding: 8 },
+  
+  // Skeleton Styles
+  skeletonContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#fff',
+  },
+  skeletonLogo: {
+    width: 100,
+    height: 60,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+  },
+  skeletonIcon: {
+    width: 36,
+    height: 36,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 18,
+  },
+  skeletonProfileSection: {
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+  },
+  skeletonAvatar: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#f0f0f0',
+    marginBottom: 16,
+  },
+  skeletonName: {
+    width: 200,
+    height: 30,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  skeletonInfoBlock: {
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  skeletonInfoText: {
+    width: 250,
+    height: 18,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  skeletonButton: {
+    width: 180,
+    height: 44,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    marginTop: 12,
+  },
+  skeletonLogoutButton: {
+    width: 180,
+    height: 44,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    marginTop: 12,
+  },
+  skeletonCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    marginHorizontal: 16,
+    marginTop: 18,
+    padding: 18,
+  },
+  skeletonCardTitle: {
+    width: 150,
+    height: 20,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    marginBottom: 6,
+  },
+  skeletonCardDesc: {
+    width: 200,
+    height: 16,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    marginBottom: 12,
+  },
+  skeletonLangRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  skeletonLangBtn: {
+    flex: 1,
+    height: 40,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginRight: 8,
+  },
 });
 
 export default SettingScreen; 

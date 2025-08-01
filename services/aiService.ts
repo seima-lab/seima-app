@@ -4,7 +4,7 @@ import { AI_CHAT_ENDPOINTS } from './config';
 export interface AIChatMessage {
   user_id: number;
   text_input: string;
-  // access_token: string;
+  access_token: string;
 }
 
 export interface SuggestedWallet {
@@ -68,7 +68,7 @@ export class AIService {
       const payload: AIChatMessage = {
         user_id: userId,
         text_input: textInput,
-        // access_token: accessToken
+        access_token: accessToken
       };
 
       console.log('📤 Request payload:', JSON.stringify(payload, null, 2));

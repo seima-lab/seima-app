@@ -125,7 +125,7 @@ export const GROUP_MEMBER_ENDPOINTS = {
 } as const;
 // AI Chat endpoints
 export const AI_CHAT_ENDPOINTS = {
-  SEND_MESSAGE: 'https://vyntthe173293.app.n8n.cloud/webhook/seima_chatbot',
+  SEND_MESSAGE: 'https://cuongnmhe172187.app.n8n.cloud/webhook/seima_chatbot',
 } as const;
 
 // Budget endpoints

@@ -3,7 +3,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
@@ -59,11 +59,20 @@ export default function AddExpenseScreen() {
   );
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   
+  // Cache state để tránh gọi API không cần thiết
+  const [dataCache, setDataCache] = useState<{[key: string]: any}>({});
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const CACHE_DURATION = 30000; // 30 giây
+  
+  // Prevent multiple concurrent API calls
+  const isLoadingRef = useRef(false);
+  const isMountedRef = useRef(true);
+  
   // Hàm format số tiền từ OCR hoặc số nguyên
-  const formatAmountFromNumber = (value: number): string => {
+  const formatAmountFromNumber = useCallback((value: number): string => {
     if (value <= 0) return '';
     return value.toLocaleString('vi-VN');
-  };
+  }, []);
 
   // Form data - pre-fill if in edit mode
   const [amount, setAmount] = useState(isEditMode && transactionData?.amount ? formatAmountFromNumber(transactionData.amount) : '');
@@ -138,17 +147,27 @@ export default function AddExpenseScreen() {
     
     // Load data directly using /me API to get user info
     loadData();
+    
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [authLoading]);
 
-  // Refresh data when screen is focused (for updated categories and wallets)
+  // Refresh data when screen is focused với debounce
   useFocusEffect(
     useCallback(() => {
       // Only refresh if we have initially loaded data (not on first mount)
       if (hasInitiallyLoaded) {
-        console.log('🔄 AddExpenseScreen focused - refreshing categories and wallets');
-        refreshData();
+        const now = Date.now();
+        if (now - lastFetchTime > CACHE_DURATION) {
+          console.log('🔄 AddExpenseScreen focused - refreshing data');
+          refreshData();
+        } else {
+          console.log('🔄 AddExpenseScreen focused - using cached data');
+        }
       }
-    }, [hasInitiallyLoaded])
+    }, [hasInitiallyLoaded, lastFetchTime])
   );
 
   // Sau khi setExpenseCategories và setIncomeCategories, nếu chưa có selectedCategory thì chọn mặc định
@@ -161,10 +180,31 @@ export default function AddExpenseScreen() {
     }
   }, [expenseCategories, incomeCategories, activeTab]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async (forceRefresh: boolean = false) => {
+    if (!isMountedRef.current) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Prevent multiple concurrent calls
+    if (isLoadingRef.current && !forceRefresh) {
+      console.log('⏭️ Skipping data load - already loading');
+      return;
+    }
+
+    const now = Date.now();
+    if (!forceRefresh && now - lastFetchTime < CACHE_DURATION && Object.keys(dataCache).length > 0) {
+      console.log('📦 Using cached data, last fetch:', new Date(lastFetchTime));
+      setWallets(dataCache.wallets || []);
+      setExpenseCategories(dataCache.expenseCategories || []);
+      setIncomeCategories(dataCache.incomeCategories || []);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      console.log('🔄 Loading wallets and user profile...');
+      console.log('🔄 Loading all data in parallel...');
       
       // Load wallets and user profile in parallel
       const [walletsData, userProfile] = await Promise.all([
@@ -174,15 +214,6 @@ export default function AddExpenseScreen() {
       
       console.log('✅ Wallets loaded:', walletsData.length);
       console.log('✅ User profile loaded:', userProfile);
-
-      setWallets(walletsData);
-
-      // Set default wallet selection
-      if (walletsData.length > 0) {
-        const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
-        setSelectedWallet(defaultWallet.id);
-        console.log('✅ Default wallet selected:', defaultWallet.wallet_name);
-      }
 
       // Determine userId and groupId based on context
       let userId, groupId;
@@ -240,16 +271,17 @@ export default function AddExpenseScreen() {
 
       // Convert to local format và sort theo id tăng dần
       const categoryServiceInstance = CategoryService.getInstance();
-      setExpenseCategories(
-        expenseCats
-          .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
-          .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0))
-      );
-      setIncomeCategories(
-        incomeCats
-          .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
-          .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0))
-      );
+      const convertedExpenseCategories = expenseCats
+        .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
+        .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0));
+      
+      const convertedIncomeCategories = incomeCats
+        .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
+        .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0));
+
+      setWallets(walletsData);
+      setExpenseCategories(convertedExpenseCategories);
+      setIncomeCategories(convertedIncomeCategories);
 
       console.log('🔄 Converted expense categories:', expenseCats.map(cat => {
         const converted = categoryServiceInstance.convertToLocalCategory(cat);
@@ -342,6 +374,21 @@ export default function AddExpenseScreen() {
         }
       }
 
+      // Set default wallet selection
+      if (walletsData.length > 0) {
+        const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+        setSelectedWallet(defaultWallet.id);
+        console.log('✅ Default wallet selected:', defaultWallet.wallet_name);
+      }
+
+      // Update cache
+      setDataCache({
+        wallets: walletsData,
+        expenseCategories: convertedExpenseCategories,
+        incomeCategories: convertedIncomeCategories
+      });
+      setLastFetchTime(now);
+
       console.log('✅ All data loaded successfully');
       setHasInitiallyLoaded(true);
 
@@ -360,8 +407,9 @@ export default function AddExpenseScreen() {
       }
     } finally {
       setIsLoading(false);
+      isLoadingRef.current = false;
     }
-  };
+  }, [fromGroupOverview, groupContextId, groupContextName, isEditMode, transactionData, activeTab, fromGroupTransactionList, lastFetchTime, dataCache, t, navigation]);
 
   const refreshCategories = async () => {
     try {
@@ -435,7 +483,7 @@ export default function AddExpenseScreen() {
     }
   };
 
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     try {
       console.log('🔄 Refreshing categories and wallets...');
       
@@ -466,7 +514,7 @@ export default function AddExpenseScreen() {
     } catch (error: any) {
       console.error('❌ Error refreshing data:', error);
     }
-  };
+  }, [fromGroupOverview, selectedWallet]);
 
   const handleTabChange = (tab: 'expense' | 'income') => {
     console.log('🔄 Tab change started:', {
@@ -1177,7 +1225,7 @@ export default function AddExpenseScreen() {
     }
   };
 
-  const getCurrentCategories = () => {
+  const getCurrentCategories = useCallback(() => {
     const categories = activeTab === 'expense' ? expenseCategories : incomeCategories;
     
     // Only add "Edit" item if not called from GroupOverviewScreen
@@ -1206,9 +1254,9 @@ export default function AddExpenseScreen() {
       ...categories.filter(c => !c.is_system_defined),
       editItem
     ];
-  };
+  }, [activeTab, expenseCategories, incomeCategories, fromGroupOverview]);
 
-  const getSelectedWalletName = () => {
+  const getSelectedWalletName = useCallback(() => {
     // For group transactions, show a special message
     if (fromGroupOverview && selectedWallet === 0) {
       return t('groupTransaction.groupWallet');
@@ -1219,7 +1267,7 @@ export default function AddExpenseScreen() {
     }
     const wallet = wallets.find(w => w.id === selectedWallet);
     return wallet ? wallet.wallet_name : t('wallet.addWallet');
-  };
+  }, [fromGroupOverview, selectedWallet, wallets, t]);
 
   const handleWalletPickerPress = () => {
     if (wallets.length === 0) {
@@ -1267,7 +1315,7 @@ export default function AddExpenseScreen() {
   };
 
 
-  const renderCategoryItem = ({ item }: { item: LocalCategory }) => {
+  const renderCategoryItem = useCallback(({ item }: { item: LocalCategory }) => {
     const isSelected = selectedCategory === item.key;
     
     // Handle Edit item specially
@@ -1308,19 +1356,63 @@ export default function AddExpenseScreen() {
         <Text style={styles.categoryText} numberOfLines={2}>{item.label}</Text>
       </TouchableOpacity>
     );
-  };
+  }, [selectedCategory, activeTab, navigation]);
 
-  if (authLoading || isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centerContent}>
-        <ActivityIndicator size="large" color="#1e90ff" />
-                      <Text style={styles.loadingText}>
-              {authLoading ? t('common.loading') : t('common.loading')}
-            </Text>
+  // Progressive loading - không block UI hoàn toàn
+  const showFullLoading = (authLoading || isLoading) && !hasInitiallyLoaded;
+
+  // Skeleton Loading Component
+  const SkeletonLoader = React.memo(() => (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        {/* Header Skeleton */}
+        <View style={styles.skeletonHeader}>
+          <View style={styles.skeletonBackButton} />
+          <View style={styles.skeletonTabContainer}>
+            <View style={styles.skeletonTab} />
+            <View style={styles.skeletonTab} />
+          </View>
+          <View style={styles.skeletonCameraButton} />
+        </View>
+
+        {/* Form Skeleton */}
+        <View style={styles.skeletonFormContainer}>
+          <View style={styles.skeletonRow}>
+            <View style={styles.skeletonLabel} />
+            <View style={styles.skeletonInput} />
+          </View>
+          <View style={styles.skeletonRow}>
+            <View style={styles.skeletonLabel} />
+            <View style={styles.skeletonInput} />
+          </View>
+          <View style={styles.skeletonRow}>
+            <View style={styles.skeletonLabel} />
+            <View style={styles.skeletonAmountInput} />
+          </View>
+          <View style={styles.skeletonRow}>
+            <View style={styles.skeletonLabel} />
+            <View style={styles.skeletonNoteInput} />
+          </View>
+        </View>
+
+        {/* Categories Skeleton */}
+        <View style={styles.skeletonCategoriesContainer}>
+          <View style={styles.skeletonSectionTitle} />
+          <View style={styles.skeletonCategoriesGrid}>
+            {Array.from({ length: 8 }).map((_, index) => (
+              <View key={index} style={styles.skeletonCategoryItem} />
+            ))}
+          </View>
+        </View>
       </View>
-      </SafeAreaView>
-    );
+    </SafeAreaView>
+  ));
+
+  SkeletonLoader.displayName = 'SkeletonLoader';
+
+  // Show full loading only when no data has been loaded
+  if (showFullLoading) {
+    return <SkeletonLoader />;
   }
 
   // Show scanning overlay when OCR is processing
@@ -1338,7 +1430,12 @@ export default function AddExpenseScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        style={styles.content} 
+        keyboardShouldPersistTaps="handled"
+        removeClippedSubviews={true}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -2174,5 +2271,96 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#eee',
     // Đảm bảo nút Save luôn ở dưới cùng và không bị che
+  },
+  
+  // Skeleton Styles
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  skeletonBackButton: {
+    width: 24,
+    height: 24,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+  },
+  skeletonTabContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginLeft: 16,
+    height: 36,
+  },
+  skeletonTab: {
+    flex: 1,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 8,
+    margin: 2,
+  },
+  skeletonCameraButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+    marginLeft: 12,
+  },
+  skeletonFormContainer: {
+    marginBottom: 20,
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  skeletonLabel: {
+    width: 80,
+    height: 16,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+  },
+  skeletonInput: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  skeletonAmountInput: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  skeletonNoteInput: {
+    flex: 1,
+    height: 80,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  skeletonCategoriesContainer: {
+    marginTop: 20,
+  },
+  skeletonSectionTitle: {
+    width: 120,
+    height: 16,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    marginBottom: 12,
+  },
+  skeletonCategoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  skeletonCategoryItem: {
+    width: '23%',
+    aspectRatio: 1,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginBottom: 8,
   },
 });
