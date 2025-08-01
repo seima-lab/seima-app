@@ -310,68 +310,153 @@ const FinanceScreen = React.memo(() => {
     loadChartData(startDate, endDate);
   };
 
-  // Load user profile and wallet data
-  useEffect(() => {
-    loadUserProfile();
-    loadWalletData();
-    loadChartData();
-    loadNotificationCount();
-    loadHealthStatus(); // Load health status on mount
-  }, [isAuthenticated]);
+  // Cache state để tránh gọi API không cần thiết
+  const [dataCache, setDataCache] = useState<{[key: string]: any}>({});
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const CACHE_DURATION = 30000; // 30 giây
 
-  // Listen to transaction changes to refresh wallet balance
-  useEffect(() => {
-    if (transactionRefreshTrigger > 0) {
-      console.log('🔄 Transaction updated - refreshing finance data');
-      loadWalletData();
-      loadChartData();
-      loadNotificationCount();
-      loadHealthStatus(); // Refresh health status on transaction update
-    }
-  }, [transactionRefreshTrigger]);
-
-  // Auto reload data when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      if (isAuthenticated) {
-        console.log('🔄 FinanceScreen focused, reloading data...');
-        loadUserProfile();
-        loadWalletData();
-        loadChartData();
-        loadNotificationCount();
-        loadHealthStatus(); // Refresh health status on focus
-      }
-    }, [isAuthenticated])
-  );
-
-  // Khi vào màn hình hoặc selectedPeriod đổi, tự động gọi loadChartData
-  useEffect(() => {
-    const { startDate, endDate } = getPeriodRange(selectedPeriodValue);
-    loadChartData(startDate, endDate);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, selectedPeriodValue, transactionRefreshTrigger, t]);
-
-  const loadUserProfile = useCallback(async (forceRefresh: boolean = false) => {
+  // Load tất cả data song song với cache
+  const loadAllData = useCallback(async (forceRefresh: boolean = false) => {
     if (!isAuthenticated) {
       setLoading(false);
+      setWalletLoading(false);
+      return;
+    }
+
+    const now = Date.now();
+    if (!forceRefresh && now - lastFetchTime < CACHE_DURATION) {
+      console.log('📦 Using cached data, last fetch:', new Date(lastFetchTime));
       return;
     }
 
     try {
       setLoading(true);
-      console.log('🟡 Loading user profile in FinanceScreen...', forceRefresh ? '(Force Refresh)' : '');
+      setWalletLoading(true);
+      console.log('🟡 Loading all data in parallel...');
       
-      const profile = await userService.getCurrentUserProfile(forceRefresh);
-      console.log('🟢 User profile loaded in FinanceScreen:', profile);
+      // Gọi tất cả API song song
+      const [profile, walletsData, chartResponse, notificationResponse, healthData] = await Promise.all([
+        userService.getCurrentUserProfile(forceRefresh),
+        walletService.getAllWallets(),
+        (async () => {
+          const { startDate, endDate } = getPeriodRange(selectedPeriodValue);
+          const startDateStr = toLocalDateString(startDate);
+          const endDateStr = toLocalDateString(endDate);
+          return transactionService.viewTransactionReport(undefined, startDateStr, endDateStr);
+        })(),
+        getUnreadCount(),
+        statusService.getHealthStatus()
+      ]);
+
+      console.log('🟢 All data loaded successfully');
       
+      // Set states
       setUserProfile(profile);
+      setWallets(walletsData);
+      
+      // Calculate total balance
+      const totalBalance = walletsData.reduce((total: number, wallet: WalletResponse) => {
+        if (wallet.is_active !== false && !wallet.exclude_from_total) {
+          return total + (wallet.current_balance || 0);
+        }
+        return total;
+      }, 0);
+      
+      setFinanceData({
+        totalBalance,
+        income: 0,
+        expenses: 0,
+        difference: 0
+      });
+
+      // Process chart data
+      const summary = (chartResponse as any).summary || chartResponse.summary;
+      const income = summary?.total_income || summary?.totalIncome || 0;
+      const expenses = summary?.total_expense || summary?.totalExpense || 0;
+      const difference = income - expenses;
+      
+      setChartData({
+        income,
+        expenses,
+        difference,
+        isLoading: false
+      });
+      
+      setReportData(chartResponse);
+
+      // Process notification count
+      let count = 0;
+      const responseAny = notificationResponse as any;
+      if (responseAny?.data?.count !== undefined) {
+        count = responseAny.data.count;
+      } else if (responseAny?.count !== undefined) {
+        count = responseAny.count;
+      } else if (typeof responseAny?.data === 'number') {
+        count = responseAny.data;
+      } else if (typeof responseAny === 'number') {
+        count = responseAny;
+      } else if (responseAny?.data?.data?.count !== undefined) {
+        count = responseAny.data.data.count;
+      }
+      setNotificationCount(count);
+
+      // Set health status
+      setApiHealthStatus(healthData);
+      
+      // Update cache
+      setDataCache({
+        profile,
+        wallets: walletsData,
+        chartData: chartResponse,
+        notifications: count,
+        health: healthData
+      });
+      setLastFetchTime(now);
+
     } catch (error: any) {
-      console.error('🔴 Failed to load user profile in FinanceScreen:', error);
-      // Don't show alert on finance screen, just use fallback data
+      console.error('🔴 Failed to load data:', error);
     } finally {
       setLoading(false);
+      setWalletLoading(false);
+      setHealthStatusLoading(false);
     }
+  }, [isAuthenticated, selectedPeriodValue, lastFetchTime]);
+
+  // Load data khi mount
+  useEffect(() => {
+    loadAllData();
   }, [isAuthenticated]);
+
+  // Refresh khi có transaction mới
+  useEffect(() => {
+    if (transactionRefreshTrigger > 0) {
+      console.log('🔄 Transaction updated - refreshing data');
+      loadAllData(true); // Force refresh
+    }
+  }, [transactionRefreshTrigger]);
+
+  // Refresh khi focus với debounce
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        const now = Date.now();
+        if (now - lastFetchTime > CACHE_DURATION) {
+          console.log('🔄 FinanceScreen focused, refreshing data...');
+          loadAllData();
+        }
+      }
+    }, [isAuthenticated, lastFetchTime])
+  );
+
+  // Chỉ load chart data khi period thay đổi
+  useEffect(() => {
+    if (isAuthenticated && selectedPeriodValue) {
+      const { startDate, endDate } = getPeriodRange(selectedPeriodValue);
+      loadChartData(startDate, endDate);
+    }
+  }, [selectedPeriodValue]);
+
+  // Removed individual loadUserProfile - now handled in loadAllData
 
   // Helper function to format money - memoized
   const formatMoney = useCallback((amount: number): string => {
@@ -390,50 +475,14 @@ const FinanceScreen = React.memo(() => {
     return str;
   };
 
-  const loadWalletData = useCallback(async () => {
-    if (!isAuthenticated) {
-      setWalletLoading(false);
-      return;
-    }
-
-    try {
-      setWalletLoading(true);
-      console.log('🟡 Loading wallet data in FinanceScreen...');
-      
-      const walletsData = await walletService.getAllWallets();
-      console.log('🟢 Wallet data loaded in FinanceScreen:', walletsData);
-      
-      setWallets(walletsData);
-      
-      // Calculate total balance from current_balance field
-      const totalBalance = walletsData.reduce((total: number, wallet: WalletResponse) => {
-        // Only include active wallets and those not excluded from total
-        if (wallet.is_active !== false && !wallet.exclude_from_total) {
-          return total + (wallet.current_balance || 0);
-        }
-        return total;
-      }, 0);
-      
-      setFinanceData({
-        totalBalance: totalBalance,
-        income: 0, // TODO: Get from transaction API
-        expenses: 0, // TODO: Get from transaction API
-        difference: 0 // TODO: Calculate from income - expenses
-      });
-    } catch (error: any) {
-      console.error('🔴 Failed to load wallet data in FinanceScreen:', error);
-      // Don't show alert on finance screen, just use fallback data
-    } finally {
-      setWalletLoading(false);
-    }
-  }, [isAuthenticated]);
+  // Removed individual loadWalletData - now handled in loadAllData
 
   // Helper: Lấy ngày local dạng YYYY-MM-DD
   const pad = (n: number) => n.toString().padStart(2, '0');
   const toLocalDateString = (date: Date) =>
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-  // Load chart data from report API
+  // Optimized chart data loading - chỉ gọi khi period thay đổi
   const loadChartData = useCallback(async (startDate?: Date, endDate?: Date) => {
     if (!isAuthenticated) {
       return;
@@ -441,30 +490,24 @@ const FinanceScreen = React.memo(() => {
 
     try {
       setChartData(prev => ({ ...prev, isLoading: true }));
-      console.log('📊 Loading chart data in FinanceScreen...');
+      console.log('📊 Loading chart data for period change...');
       
-      // Nếu không truyền vào thì mặc định là tháng này hoặc theo selectedPeriod
       let _startDate = startDate, _endDate = endDate;
       if (!_startDate || !_endDate) {
         const range = getPeriodRange(selectedPeriodValue);
         _startDate = range.startDate;
         _endDate = range.endDate;
       }
-      // Sử dụng ngày local thay vì toISOString
+      
       const startDateStr = toLocalDateString(_startDate);
       const endDateStr = toLocalDateString(_endDate);
       
-      console.log('📅 Loading report for period:', { selectedPeriod: 'This Month', startDateStr, endDateStr });
-      
       const reportResponse = await transactionService.viewTransactionReport(
-        undefined, // categoryId - load all categories
+        undefined,
         startDateStr,
         endDateStr
       );
       
-      console.log('✅ Chart data loaded:', reportResponse);
-      
-      // Extract data from snake_case API response
       const summary = (reportResponse as any).summary || reportResponse.summary;
       const income = summary?.total_income || summary?.totalIncome || 0;
       const expenses = summary?.total_expense || summary?.totalExpense || 0;
@@ -480,91 +523,29 @@ const FinanceScreen = React.memo(() => {
       setReportData(reportResponse);
       
     } catch (error: any) {
-      console.error('🔴 Failed to load chart data in FinanceScreen:', error);
+      console.error('🔴 Failed to load chart data:', error);
       setChartData(prev => ({ ...prev, isLoading: false }));
     }
   }, [isAuthenticated, selectedPeriodValue]);
 
-  // Load unread notification count
-  const loadNotificationCount = useCallback(async () => {
-    if (!isAuthenticated) {
-      return;
-    }
+  // Removed individual loadNotificationCount - now handled in loadAllData
 
-    try {
-      console.log('🟡 Loading unread notification count...');
-      const response = await getUnreadCount();
-      console.log('📊 Notification count response:', JSON.stringify(response, null, 2));
-      
-      // Handle different response structures
-      let count = 0;
-      const responseAny = response as any;
-      
-      // Case 1: response.data.count (nested data structure)
-      if (responseAny?.data?.count !== undefined) {
-        count = responseAny.data.count;
-        console.log('📦 Found nested data structure, count:', count);
-      }
-      // Case 2: response.count (direct count)
-      else if (responseAny?.count !== undefined) {
-        count = responseAny.count;
-        console.log('📦 Found direct count structure, count:', count);
-      }
-      // Case 3: response.data is the count directly
-      else if (typeof responseAny?.data === 'number') {
-        count = responseAny.data;
-        console.log('📦 Found direct data as number, count:', count);
-      }
-      // Case 4: response is the count directly
-      else if (typeof responseAny === 'number') {
-        count = responseAny;
-        console.log('📦 Found response as number, count:', count);
-      }
-      // Case 5: response.data.data.count (double nested)
-      else if (responseAny?.data?.data?.count !== undefined) {
-        count = responseAny.data.data.count;
-        console.log('📦 Found double nested data structure, count:', count);
-      }
-      
-      console.log('🟢 Unread notification count loaded:', count);
-      setNotificationCount(count);
-    } catch (error: any) {
-      console.error('🔴 Failed to load unread notification count:', error);
-      setNotificationCount(0);
-    }
-  }, [isAuthenticated]);
+  // Removed individual loadHealthStatus - now handled in loadAllData
 
-  // Load health status from API
-  const loadHealthStatus = useCallback(async () => {
-    if (!isAuthenticated) {
-      return;
+  // Memoized expense data - chỉ sử dụng khi cần thiết
+  const expenseData: ExpenseData[] = useMemo(() => {
+    // Chỉ tạo mock data khi không có real data
+    if (reportData && Object.keys(reportData).length > 0) {
+      return [];
     }
-
-    try {
-      setHealthStatusLoading(true);
-      console.log('🟡 Loading health status from API...');
-      
-      const healthData = await statusService.getHealthStatus();
-      console.log('🟢 Health status loaded:', healthData);
-      
-      setApiHealthStatus(healthData);
-    } catch (error: any) {
-      console.error('🔴 Failed to load health status:', error);
-      // Don't set error state, just keep using mock data
-      setApiHealthStatus(null);
-    } finally {
-      setHealthStatusLoading(false);
-    }
-  }, [isAuthenticated]);
-
-  // Memoized expense data
-  const expenseData: ExpenseData[] = useMemo(() => [
-    { category: 'Leisure', percentage: 54.55, color: '#FFA726' },
-    { category: 'Self-development', percentage: 25.25, color: '#EF5350' },
-    { category: 'Clothing', percentage: 18.74, color: '#26A69A' },
-    { category: 'Food', percentage: 0.76, color: '#AB47BC' },
-    { category: 'Undefined', percentage: 0.7, color: '#42A5F5' },
-  ], []);
+    return [
+      { category: 'Leisure', percentage: 54.55, color: '#FFA726' },
+      { category: 'Self-development', percentage: 25.25, color: '#EF5350' },
+      { category: 'Clothing', percentage: 18.74, color: '#26A69A' },
+      { category: 'Food', percentage: 0.76, color: '#AB47BC' },
+      { category: 'Undefined', percentage: 0.7, color: '#42A5F5' },
+    ];
+  }, [reportData]);
 
   // Optimized ScrollView props
   const scrollViewProps = useMemo(() => ({
@@ -648,20 +629,20 @@ const FinanceScreen = React.memo(() => {
 
   // Memoized callback functions for better performance
   const handleRefreshProfile = useCallback(() => {
-    loadUserProfile(true);
-  }, [loadUserProfile]);
+    loadAllData(true); // Force refresh all data
+  }, [loadAllData]);
 
   const handleToggleBalance = useCallback(() => {
-    setIsBalanceVisible(!isBalanceVisible);
-  }, [isBalanceVisible]);
+    setIsBalanceVisible(prev => !prev);
+  }, []);
 
   const handleNavigateToNotifications = useCallback(() => {
     navigation.navigate('Notifications');
     // Refresh notification count when returning from notifications screen
     setTimeout(() => {
-      loadNotificationCount();
+      loadAllData(true);
     }, 1000);
-  }, [navigation, loadNotificationCount]);
+  }, [navigation, loadAllData]);
 
   const handleNavigateToCalendar = useCallback(() => {
     navigation.navigate('Calendar');
@@ -811,7 +792,11 @@ const FinanceScreen = React.memo(() => {
   const [categoriesMap, setCategoriesMap] = useState<{ [id: number]: CategoryResponse }>({});
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-  // Load categories when userProfile is available
+  // Optimized categories loading với cache
+  const [categoriesCache, setCategoriesCache] = useState<{ [id: number]: CategoryResponse }>({});
+  const [lastCategoriesFetch, setLastCategoriesFetch] = useState(0);
+  const CATEGORIES_CACHE_DURATION = 300000; // 5 phút
+
   useEffect(() => {
     const loadCategories = async () => {
       if (!userProfile?.user_id) {
@@ -819,8 +804,18 @@ const FinanceScreen = React.memo(() => {
         setCategoriesLoading(false);
         return;
       }
+
+      const now = Date.now();
+      if (now - lastCategoriesFetch < CATEGORIES_CACHE_DURATION && Object.keys(categoriesCache).length > 0) {
+        console.log('📦 Using cached categories');
+        setCategoriesMap(categoriesCache);
+        setCategoriesLoading(false);
+        return;
+      }
+
       setCategoriesLoading(true);
       try {
+        console.log('🟡 Loading categories...');
         const categoryService = CategoryService.getInstance();
         const [incomeCats, expenseCats] = await Promise.all([
           categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
@@ -829,15 +824,19 @@ const FinanceScreen = React.memo(() => {
         const allCats = [...incomeCats, ...expenseCats];
         const map: { [id: number]: CategoryResponse } = {};
         allCats.forEach(cat => { map[cat.category_id] = cat; });
+        
         setCategoriesMap(map);
+        setCategoriesCache(map);
+        setLastCategoriesFetch(now);
       } catch (err) {
+        console.error('🔴 Failed to load categories:', err);
         setCategoriesMap({});
       } finally {
         setCategoriesLoading(false);
       }
     };
     loadCategories();
-  }, [userProfile?.user_id]);
+  }, [userProfile?.user_id, lastCategoriesFetch, categoriesCache]);
 
   // Helper: Lấy ngày hôm nay (YYYY-MM-DD) theo giờ local
   const getTodayString = () => {
@@ -848,31 +847,44 @@ const FinanceScreen = React.memo(() => {
     return `${year}-${month}-${day}`;
   };
 
-  // Load transaction history chỉ cho hôm nay (KHÔNG liên quan đến chart/report)
+  // Optimized transaction history loading với cache
+  const [transactionCache, setTransactionCache] = useState<any[]>([]);
+  const [lastTransactionFetch, setLastTransactionFetch] = useState(0);
+  const TRANSACTION_CACHE_DURATION = 60000; // 1 phút
+
   const loadTransactionHistory = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastTransactionFetch < TRANSACTION_CACHE_DURATION && transactionCache.length > 0) {
+      console.log('📦 Using cached transaction history');
+      setTransactionHistory(transactionCache);
+      return;
+    }
+
     setTransactionHistoryLoading(true);
     try {
-      // Gọi API mới lấy 30 giao dịch gần nhất
-      const apiResponse: any = await viewHistoryTransactions({ page: 0, size: 50 });
-      console.log('🧾 Transaction history:', apiResponse.data.content);
+      console.log('🟡 Loading transaction history...');
+      const apiResponse: any = await viewHistoryTransactions({ page: 0, size: 30 }); // Giảm từ 50 xuống 30
       const all: any[] = (apiResponse?.data?.content && Array.isArray(apiResponse.data.content)) ? apiResponse.data.content : [];
 
       const today = getTodayString();
-      // Lọc các giao dịch trong ngày hôm nay
       const filtered = all.filter((tr: any) => {
         if (!tr.transaction_date) return false;
-        const datePart = tr.transaction_date.slice(0, 10); // 'YYYY-MM-DD'
+        const datePart = tr.transaction_date.slice(0, 10);
         return datePart === today;
       });
-      // Sắp xếp theo transaction_date giảm dần
+      
       filtered.sort((a: any, b: any) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
+      
       setTransactionHistory(filtered);
+      setTransactionCache(filtered);
+      setLastTransactionFetch(now);
     } catch (err) {
+      console.error('🔴 Failed to load transaction history:', err);
       setTransactionHistory([]);
     } finally {
       setTransactionHistoryLoading(false);
     }
-  }, []);
+  }, [lastTransactionFetch, transactionCache]);
 
   // Gọi khi mount hoặc có giao dịch mới
   useEffect(() => {
@@ -899,15 +911,35 @@ const FinanceScreen = React.memo(() => {
     };
   };
 
-  // Show loading state
-  if (loading || walletLoading || categoriesLoading) {
+  // Progressive loading - không block UI hoàn toàn
+  const showFullLoading = loading && !userProfile;
+  const showPartialLoading = (walletLoading || categoriesLoading) && userProfile;
+
+  // Skeleton Loading Component
+  const SkeletonLoader = React.memo(() => (
+    <View style={styles.skeletonContainer}>
+      <View style={styles.skeletonHeader}>
+        <View style={styles.skeletonAvatar} />
+        <View style={styles.skeletonTextContainer}>
+          <View style={styles.skeletonGreeting} />
+          <View style={styles.skeletonName} />
+        </View>
+      </View>
+      <View style={styles.skeletonBalance}>
+        <View style={styles.skeletonBalanceLabel} />
+        <View style={styles.skeletonBalanceAmount} />
+      </View>
+    </View>
+  ));
+
+  SkeletonLoader.displayName = 'SkeletonLoader';
+
+  // Show full loading only when no user profile
+  if (showFullLoading) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#4285F4" translucent={true} />
-        <View style={[styles.loadingContainer, { paddingTop: insets.top }]}> 
-          <ActivityIndicator size="large" color="#FFFFFF" />
-          <Text style={styles.loadingText}>{t('common.loading')}...</Text>
-        </View>
+        <SkeletonLoader />
       </View>
     );
   }
@@ -962,7 +994,6 @@ const FinanceScreen = React.memo(() => {
                 color="white" 
               />
             </TouchableOpacity>
-            {/* Removed Mock Data Toggle Button */}
           </View>
         </View>
       </View>
@@ -1137,45 +1168,64 @@ const FinanceScreen = React.memo(() => {
           {/* Transaction History Card */}
          <Text style={styles.historyTitle}>{t('finance.transactionHistoryToday')}</Text>
          {transactionHistoryLoading ? (
-           <ActivityIndicator size="small" color="#1e90ff" style={{ marginVertical: 20 }} />
+           <View style={styles.transactionHistoryContainer}>
+             <View style={styles.skeletonTransactionItem}>
+               <View style={styles.skeletonTransactionIcon} />
+               <View style={styles.skeletonTransactionInfo}>
+                 <View style={styles.skeletonTransactionCategory} />
+                 <View style={styles.skeletonTransactionDesc} />
+                 <View style={styles.skeletonTransactionDate} />
+               </View>
+               <View style={styles.skeletonTransactionAmount} />
+             </View>
+             <View style={styles.skeletonTransactionItem}>
+               <View style={styles.skeletonTransactionIcon} />
+               <View style={styles.skeletonTransactionInfo}>
+                 <View style={styles.skeletonTransactionCategory} />
+                 <View style={styles.skeletonTransactionDesc} />
+                 <View style={styles.skeletonTransactionDate} />
+               </View>
+               <View style={styles.skeletonTransactionAmount} />
+             </View>
+           </View>
          ) : transactionHistory.length === 0 ? (
            <Text style={styles.historyEmpty}>{t('finance.noTransactionHistory') || 'Không có thu chi trong ngày hôm nay.'}</Text>
          ) : (
-                        <View style={styles.transactionHistoryContainer}>
-               <ScrollView 
-                 style={styles.transactionHistoryFlatList}
-                 contentContainerStyle={styles.transactionHistoryContent}
-                 showsVerticalScrollIndicator={true}
-                 nestedScrollEnabled={true}
-                 scrollEnabled={true}
-                 bounces={false}
-                 alwaysBounceVertical={false}
-               >
-                 {transactionHistory.map((item, index) => {
-                   const { iconName, iconColor, type } = getIconAndColor(item);
-                   // Lấy category name từ map nếu có
-                   const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
-                   const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || 'Không rõ';
-                   return (
-                     <View key={item.transaction_id?.toString() || item.id?.toString() || index.toString()} style={styles.historyItem}>
-                       <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
-                         <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
-                       </View>
-                       <View style={styles.historyInfo}>
-                         <Text style={styles.historyCategory} numberOfLines={1}>{categoryName}</Text>
-                         {item.description ? (
-                           <Text style={styles.historyDesc} numberOfLines={1}>{item.description}</Text>
-                         ) : null}
-                         <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
-                       </View>
-                       <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]}>
-                         {type === 'income' ? '+' : '-'}{(item.amount || 0).toLocaleString('vi-VN')} đ
-                       </Text>
+           <View style={styles.transactionHistoryContainer}>
+             <ScrollView 
+               style={styles.transactionHistoryFlatList}
+               contentContainerStyle={styles.transactionHistoryContent}
+               showsVerticalScrollIndicator={true}
+               nestedScrollEnabled={true}
+               scrollEnabled={true}
+               bounces={false}
+               alwaysBounceVertical={false}
+               removeClippedSubviews={true}
+             >
+               {transactionHistory.map((item, index) => {
+                 const { iconName, iconColor, type } = getIconAndColor(item);
+                 const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
+                 const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || 'Không rõ';
+                 return (
+                   <View key={item.transaction_id?.toString() || item.id?.toString() || index.toString()} style={styles.historyItem}>
+                     <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
+                       <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
                      </View>
-                   );
-                 })}
-               </ScrollView>
-             </View>
+                     <View style={styles.historyInfo}>
+                       <Text style={styles.historyCategory} numberOfLines={1}>{categoryName}</Text>
+                       {item.description ? (
+                         <Text style={styles.historyDesc} numberOfLines={1}>{item.description}</Text>
+                       ) : null}
+                       <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
+                     </View>
+                     <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]}>
+                       {type === 'income' ? '+' : '-'}{(item.amount || 0).toLocaleString('vi-VN')} đ
+                     </Text>
+                   </View>
+                 );
+               })}
+             </ScrollView>
+           </View>
          )}
         </View>
       </ScrollView>
@@ -1791,6 +1841,102 @@ legendValue: {
   },
   transactionHistoryFlatList: {
     flex: 1,
+  },
+  // Skeleton Loading Styles
+  skeletonContainer: {
+    flex: 1,
+    backgroundColor: '#4285F4',
+    paddingHorizontal: rp(20),
+    paddingTop: rp(60),
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: rp(20),
+  },
+  skeletonAvatar: {
+    width: rp(50),
+    height: rp(50),
+    borderRadius: rp(25),
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginRight: rp(15),
+  },
+  skeletonTextContainer: {
+    flex: 1,
+  },
+  skeletonGreeting: {
+    width: rp(80),
+    height: rf(16),
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: rp(4),
+    marginBottom: rp(8),
+  },
+  skeletonName: {
+    width: rp(120),
+    height: rf(18),
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: rp(4),
+  },
+  skeletonBalance: {
+    alignItems: 'flex-start',
+  },
+  skeletonBalanceLabel: {
+    width: rp(100),
+    height: rf(16),
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: rp(4),
+    marginBottom: rp(8),
+  },
+  skeletonBalanceAmount: {
+    width: rp(200),
+    height: rf(32),
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: rp(4),
+  },
+  // Transaction Skeleton Styles
+  skeletonTransactionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  skeletonTransactionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    marginRight: 12,
+  },
+  skeletonTransactionInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  skeletonTransactionCategory: {
+    width: rp(100),
+    height: rf(14),
+    backgroundColor: '#f0f0f0',
+    borderRadius: rp(2),
+    marginBottom: 4,
+  },
+  skeletonTransactionDesc: {
+    width: rp(80),
+    height: rf(12),
+    backgroundColor: '#f0f0f0',
+    borderRadius: rp(2),
+    marginBottom: 2,
+  },
+  skeletonTransactionDate: {
+    width: rp(60),
+    height: rf(11),
+    backgroundColor: '#f0f0f0',
+    borderRadius: rp(2),
+  },
+  skeletonTransactionAmount: {
+    width: rp(80),
+    height: rf(15),
+    backgroundColor: '#f0f0f0',
+    borderRadius: rp(2),
   },
 });
 
