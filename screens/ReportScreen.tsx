@@ -239,6 +239,8 @@ export default function ReportScreen() {
           let year = now.getFullYear();
           let month = now.getMonth() + 1;
           
+          console.log('🔍 Debug selectedPeriod:', selectedPeriod);
+          
           if (selectedPeriod && selectedPeriod.includes('-')) {
             const parts = selectedPeriod.split('-');
             if (parts.length === 2) {
@@ -247,12 +249,38 @@ export default function ReportScreen() {
               if (!isNaN(parsedYear) && !isNaN(parsedMonth) && parsedYear > 1900 && parsedYear < 3000 && parsedMonth >= 1 && parsedMonth <= 12) {
                 year = parsedYear;
                 month = parsedMonth;
+                console.log('✅ Parsed year/month:', { year, month });
               }
             }
           }
           
-          const startDate = new Date(year, month - 1, 1);
-          const endDate = new Date(year, month, 0); // Last day of month
+          // Start date: ngày 1 của tháng (sử dụng UTC để tránh timezone issues)
+          const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+          
+          // End date: ngày cuối của tháng (sử dụng UTC để tránh timezone issues)
+          const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+          
+          // Debug: kiểm tra xem có đúng không
+          console.log('🔍 Date calculation debug:', {
+            year,
+            month,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            startDateDay: startDate.getDate(),
+            endDateDay: endDate.getDate(),
+            startDateMonth: startDate.getMonth() + 1,
+            endDateMonth: endDate.getMonth() + 1
+          });
+          
+          console.log('📅 Month date range:', {
+            selectedPeriod,
+            year,
+            month,
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            startDateObj: startDate,
+            endDateObj: endDate
+          });
           
           return {
             startDate: startDate.toISOString().split('T')[0],
@@ -329,7 +357,9 @@ export default function ReportScreen() {
           break;
         
         case 'thisMonth':
-          setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+          const monthPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          console.log('🔄 Initialize month period:', monthPeriod);
+          setSelectedPeriod(monthPeriod);
           break;
           
         case 'thisYear':
@@ -360,7 +390,10 @@ export default function ReportScreen() {
         selectedPeriod,
         startDate, 
         endDate,
-        groupId
+        groupId,
+        weekReferenceDate: weekReferenceDate?.toISOString(),
+        customStartDate: customStartDate?.toISOString(),
+        customEndDate: customEndDate?.toISOString()
       });
 
       const data = await transactionService.viewTransactionReport(
@@ -532,6 +565,8 @@ export default function ReportScreen() {
           let year = new Date().getFullYear();
           let month = new Date().getMonth() + 1;
           
+          console.log('🔄 Navigate month - current selectedPeriod:', selectedPeriod);
+          
           if (selectedPeriod && selectedPeriod.includes('-')) {
             const parts = selectedPeriod.split('-');
             if (parts.length === 2) {
@@ -540,6 +575,7 @@ export default function ReportScreen() {
               if (!isNaN(parsedYear) && !isNaN(parsedMonth) && parsedYear > 1900 && parsedYear < 3000 && parsedMonth >= 1 && parsedMonth <= 12) {
                 year = parsedYear;
                 month = parsedMonth;
+                console.log('✅ Navigate month - parsed:', { year, month });
               }
             }
           }
@@ -548,6 +584,7 @@ export default function ReportScreen() {
           newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
           
           const newMonth = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`;
+          console.log('🔄 Navigate month - new month:', newMonth);
           setSelectedPeriod(newMonth);
           break;
         }
@@ -868,13 +905,23 @@ export default function ReportScreen() {
             <View style={styles.chartHeader}>
               <Text style={styles.chartTitle}>{t('reports.expense')}</Text>
               <TouchableOpacity 
-                onPress={() => navigation.navigate('ReportDetailScreen', {
-                  title: t('reports.expenseDetails'),
-                  categoryType: 'expense',
-                  data: getExpenseData(),
-                  totalAmount: (reportData as any)?.summary?.total_expense || 0,
-                  groupId: groupId,
-                })}
+                onPress={() => {
+                  const { startDate, endDate } = getDateRange();
+                  navigation.navigate('ReportDetailScreen', {
+                    title: t('reports.expenseDetails'),
+                    categoryType: 'expense',
+                    data: getExpenseData(),
+                    totalAmount: (reportData as any)?.summary?.total_expense || 0,
+                    groupId: groupId,
+                    startDate,
+                    endDate,
+                    periodType: selectedPeriodType,
+                    selectedPeriod,
+                    weekReferenceDate,
+                    customStartDate,
+                    customEndDate,
+                  });
+                }}
               >
                 <Text style={styles.seeAllText}>{t('reports.seeDetails')}</Text>
               </TouchableOpacity>
@@ -894,13 +941,23 @@ export default function ReportScreen() {
             <View style={styles.chartHeader}>
               <Text style={styles.chartTitle}>{t('reports.income')}</Text>
               <TouchableOpacity
-                onPress={() => navigation.navigate('ReportDetailScreen', {
-                  title: t('reports.incomeDetails'),
-                  categoryType: 'income',
-                  data: getIncomeData(),
-                  totalAmount: (reportData as any)?.summary?.total_income || 0,
-                  groupId: groupId,
-                })}
+                onPress={() => {
+                  const { startDate, endDate } = getDateRange();
+                  navigation.navigate('ReportDetailScreen', {
+                    title: t('reports.incomeDetails'),
+                    categoryType: 'income',
+                    data: getIncomeData(),
+                    totalAmount: (reportData as any)?.summary?.total_income || 0,
+                    groupId: groupId,
+                    startDate,
+                    endDate,
+                    periodType: selectedPeriodType,
+                    selectedPeriod,
+                    weekReferenceDate,
+                    customStartDate,
+                    customEndDate,
+                  });
+                }}
               >
                 <Text style={styles.seeAllText}>{t('reports.seeDetails')}</Text>
               </TouchableOpacity>

@@ -14,6 +14,27 @@ export interface SuggestedWallet {
   currency?: string;
 }
 
+export interface ChatHistoryMessage {
+  chat_id: number;
+  user_id: number;
+  sender_type: 'USER' | 'AI';
+  message_content: string;
+  timestamp: string;
+}
+
+export interface ChatHistoryResponse {
+  status_code: number;
+  message: string;
+  data: {
+    content: ChatHistoryMessage[];
+    totalPages: number;
+    totalElements: number;
+    first: boolean;
+    last: boolean;
+    size: number;
+  };
+}
+
 export interface AIChatResponse {
   message: string;
   suggested_wallets?: SuggestedWallet[];
@@ -159,6 +180,71 @@ export class AIService {
         message: this.getFriendlyErrorMessage('network_error'),
         status_code: 500
       };
+    }
+  }
+
+  // Lấy lịch sử chat từ API
+  async getChatHistory(page: number = 0, size: number = 10): Promise<ChatHistoryMessage[]> {
+    try {
+      console.log('📚 === CHAT HISTORY DEBUG START ===');
+      console.log('📚 Loading chat history:');
+      console.log('   - Page:', page);
+      console.log('   - Size:', size);
+      console.log('   - Endpoint:', AI_CHAT_ENDPOINTS.CHAT_HISTORY);
+      console.log('   - Full URL:', `${AI_CHAT_ENDPOINTS.CHAT_HISTORY}?page=${page}&size=${size}`);
+      
+      // Lấy access_token từ AuthService
+      const authService = AuthService.getInstance();
+      const accessToken = await authService.getStoredToken();
+      
+      if (!accessToken) {
+        console.error('❌ No access token available');
+        return [];
+      }
+      
+      const url = `${AI_CHAT_ENDPOINTS.CHAT_HISTORY}?page=${page}&size=${size}`;
+      console.log('📤 Request URL:', url);
+      console.log('📤 Access Token:', accessToken.substring(0, 20) + '...');
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('📥 Chat History Response received:');
+      console.log('   - Status:', response.status);
+      console.log('   - Status Text:', response.statusText);
+      console.log('   - Headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        console.error('❌ Chat history request failed:', response.status);
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        return [];
+      }
+
+      const responseData: ChatHistoryResponse = await response.json();
+      console.log('📥 Parsed Chat History Data:', JSON.stringify(responseData, null, 2));
+
+      if (responseData.data && responseData.data.content && Array.isArray(responseData.data.content)) {
+        console.log('✅ Chat history loaded successfully:', responseData.data.content.length, 'messages');
+        console.log('📚 === CHAT HISTORY DEBUG END ===');
+        return responseData.data.content;
+      } else {
+        console.log('⚠️ No content found in chat history response');
+        console.log('📚 === CHAT HISTORY DEBUG END ===');
+        return [];
+      }
+    } catch (error) {
+      console.error('❌ === CHAT HISTORY ERROR ===');
+      console.error('❌ Error loading chat history:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      console.error('❌ === CHAT HISTORY ERROR END ===');
+      
+      return [];
     }
   }
 

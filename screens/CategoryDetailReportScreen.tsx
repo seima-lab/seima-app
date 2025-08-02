@@ -36,11 +36,26 @@ interface CategoryDetailReportResponse {
 export default function CategoryDetailReportScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { category_id, category_name, start_date, end_date } = route.params as {
+  const { 
+    category_id, 
+    category_name, 
+    start_date, 
+    end_date,
+    periodType,
+    selectedPeriod: initialSelectedPeriod,
+    weekReferenceDate: initialWeekReferenceDate,
+    customStartDate: initialCustomStartDate,
+    customEndDate: initialCustomEndDate,
+  } = route.params as {
     category_id: number;
     category_name: string;
     start_date: string;
     end_date: string;
+    periodType?: import('../components/PeriodFilterBar').PeriodType;
+    selectedPeriod?: string;
+    weekReferenceDate?: Date;
+    customStartDate?: Date;
+    customEndDate?: Date;
   };
 
   const [loading, setLoading] = useState(true);

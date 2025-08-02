@@ -8,12 +8,13 @@ import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from
 import { BarChart as KitBarChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomDropdown from '../components/CustomDropdown';
+import { PeriodType } from '../components/PeriodFilterBar';
 import { RootStackParamList } from '../navigation/types';
 import { categoryService } from '../services/categoryService';
 // Xoá declare module ở đây, sẽ tạo file types/react-native-svg-charts.d.ts ở gốc dự án
 
 const periodTypeOptions = [
-  { value: 'today', label: 'reports.today' },
+  // { value: 'today', label: 'reports.today' },
   { value: 'thisWeek', label: 'reports.thisWeek' },
   { value: 'thisMonth', label: 'reports.thisMonth' },
   { value: 'thisYear', label: 'reports.thisYear' },
@@ -67,21 +68,59 @@ function generateSampleDataForMonth(date: Date) {
 export default function CategoryReportDetailScreen() {
   const route = useRoute();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { category_name, category_id, start_date, end_date, groupId } = route.params as {
+  const { 
+    category_name, 
+    category_id, 
+    start_date, 
+    end_date, 
+    groupId,
+    periodType,
+    selectedPeriod: initialSelectedPeriod,
+    weekReferenceDate: initialWeekReferenceDate,
+    customStartDate: initialCustomStartDate,
+    customEndDate: initialCustomEndDate,
+  } = route.params as {
     category_name?: string;
     category_id?: number;
     start_date?: string;
     end_date?: string;
     groupId?: number;
+    periodType?: import('../components/PeriodFilterBar').PeriodType;
+    selectedPeriod?: string;
+    weekReferenceDate?: Date;
+    customStartDate?: Date;
+    customEndDate?: Date;
   };
 
-  const [selectedPeriodType, setSelectedPeriodType] = useState('thisMonth');
+  const [selectedPeriodType, setSelectedPeriodType] = useState<PeriodType>('thisMonth');
   const [showDropdown, setShowDropdown] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [visibleStartDate, setVisibleStartDate] = useState(startOfMonth(new Date()));
+  const [startDate, setStartDate] = useState(() => {
+    if (initialCustomStartDate) {
+      return new Date(initialCustomStartDate);
+    }
+    return new Date();
+  });
+  const [endDate, setEndDate] = useState(() => {
+    if (initialCustomEndDate) {
+      return new Date(initialCustomEndDate);
+    }
+    return new Date();
+  });
+  const [currentDate, setCurrentDate] = useState(() => {
+    if (start_date && end_date) {
+      // Use the passed date range to determine current date
+      const start = new Date(start_date);
+      return start;
+    }
+    return new Date();
+  });
+  const [visibleStartDate, setVisibleStartDate] = useState(() => {
+    if (start_date) {
+      return startOfMonth(new Date(start_date));
+    }
+    return startOfMonth(new Date());
+  });
   const [apiData, setApiData] = useState<Record<string, { income?: number; expense?: number }>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,12 +150,7 @@ export default function CategoryReportDetailScreen() {
       try {
         let type = '';
         let start: Date, end: Date;
-        if (start_date && end_date) {
-          // Nếu có start_date/end_date truyền vào thì ưu tiên dùng
-          type = 'CUSTOM';
-          start = new Date(start_date);
-          end = new Date(end_date);
-        } else if (selectedPeriodType === 'thisMonth') {
+        if (selectedPeriodType === 'thisMonth') {
           type = 'MONTHLY';
           start = startOfMonth(currentDate);
           end = endOfMonth(currentDate);
@@ -163,6 +197,30 @@ export default function CategoryReportDetailScreen() {
     return () => { isMounted = false; };
   }, [category_id, selectedPeriodType, currentDate, startDate, endDate, start_date, end_date, groupId]);
 
+  // Initialize filter state with passed parameters on mount
+  useEffect(() => {
+    // Nếu có periodType được truyền từ ReportDetailScreen thì sử dụng, không thì mặc định 'thisMonth'
+    if (periodType && ['today', 'thisWeek', 'thisMonth', 'thisYear', 'custom'].includes(periodType)) {
+      setSelectedPeriodType(periodType as PeriodType);
+    } else {
+      setSelectedPeriodType('thisMonth');
+    }
+    
+    if (initialCustomStartDate) {
+      setStartDate(new Date(initialCustomStartDate));
+    }
+    if (initialCustomEndDate) {
+      setEndDate(new Date(initialCustomEndDate));
+    }
+    
+    // Sử dụng start_date làm currentDate ban đầu để filter bắt đầu từ đúng thời điểm
+    if (start_date) {
+      const start = new Date(start_date);
+      setCurrentDate(start);
+      setVisibleStartDate(startOfMonth(start));
+    }
+  }, [periodType, initialCustomStartDate, initialCustomEndDate, start_date, end_date]);
+
   const handlePrev = () => {
     if (selectedPeriodType === 'custom') return;
     if (selectedPeriodType === 'thisMonth') {
@@ -196,7 +254,7 @@ export default function CategoryReportDetailScreen() {
     if (option.value === 'custom') {
       setShowDateModal(true);
     } else {
-      setSelectedPeriodType(option.value);
+      setSelectedPeriodType(option.value as PeriodType);
     }
   };
 
@@ -296,13 +354,17 @@ export default function CategoryReportDetailScreen() {
   // Replace sampleData and barData logic with API data mapping
   let chartLabels: string[] = [];
   let chartData: number[] = [];
+  
+  // Kiểm tra xem có dữ liệu thực sự không
+  const hasData = Object.keys(apiData).length > 0 && Object.values(apiData).some(item => getAmount(item) > 0);
+  
   if (selectedPeriodType === 'thisMonth') {
     const weeks = getWeeksOfMonthISO(currentDate);
     chartLabels = weeks.map(w => `${format(w.start, 'dd')}-${format(w.end, 'dd')}`);
     const apiKeys = weeks.map(w => `${format(w.start, 'yyyy-MM-dd')}_to_${format(w.end, 'yyyy-MM-dd')}`);
     chartData = apiKeys.map(key => getAmount(apiData[key]));
   } else if (selectedPeriodType === 'today') {
-    const key = format(currentDate, 'yyyy-MM-dd'); // Sửa lại key cho đúng với API
+    const key = format(currentDate, 'yyyy-MM-dd');
     chartLabels = [format(currentDate, 'dd')];
     chartData = [getAmount(apiData[key])];
   } else if (selectedPeriodType === 'thisWeek') {
@@ -311,7 +373,7 @@ export default function CategoryReportDetailScreen() {
     chartLabels = days;
     chartData = days.map((_, idx) => {
       const d = addDaysFns(start, idx);
-      const key = format(d, 'yyyy-MM-dd'); // Sửa lại key cho đúng với API
+      const key = format(d, 'yyyy-MM-dd');
       return getAmount(apiData[key]);
     });
   } else if (selectedPeriodType === 'thisYear') {
@@ -320,33 +382,26 @@ export default function CategoryReportDetailScreen() {
       const month = idx + 1;
       const start = new Date(currentDate.getFullYear(), idx, 1);
       
-      // Sử dụng ngày hiện tại cho tháng hiện tại thay vì cuối tháng
       let end: Date;
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
       
       if (idx === currentMonth && currentDate.getFullYear() === currentYear) {
-        // Tháng hiện tại, sử dụng ngày hiện tại
         end = currentDate;
       } else {
-        // Các tháng khác, sử dụng cuối tháng
         end = new Date(currentDate.getFullYear(), idx + 1, 0);
       }
       
-      // Tìm dữ liệu có sẵn trong API response
       const targetKey = `${format(start, 'yyyy-MM-dd')}_to_${format(end, 'yyyy-MM-dd')}`;
       
-      // Nếu không tìm thấy dữ liệu cho key chính xác, tìm key gần nhất có sẵn
       if (apiData[targetKey]) {
         return getAmount(apiData[targetKey]);
       } else {
-        // Tìm key có sẵn trong API data cho tháng này
         const availableKeys = Object.keys(apiData).filter(key => {
           return key.startsWith(`${format(start, 'yyyy-MM-dd')}_to_`);
         });
         
         if (availableKeys.length > 0) {
-          // Lấy key có sẵn đầu tiên (thường là key có dữ liệu gần nhất)
           const availableKey = availableKeys[0];
           console.log(`🔍 Using available data for month ${month}: ${availableKey}`);
           return getAmount(apiData[availableKey]);
@@ -356,11 +411,16 @@ export default function CategoryReportDetailScreen() {
       }
     });
   } else if (selectedPeriodType === 'custom') {
-    // For custom, show one bar for the selected range
     const key = `${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
     chartLabels = [`${format(startDate, 'dd/MM')} - ${format(endDate, 'dd/MM')}`];
     chartData = [getAmount(apiData[key])];
   } else {
+    chartLabels = [];
+    chartData = [];
+  }
+  
+  // Nếu không có dữ liệu, chỉ hiển thị thông báo
+  if (!hasData) {
     chartLabels = [];
     chartData = [];
   }
@@ -429,17 +489,23 @@ export default function CategoryReportDetailScreen() {
 
       {/* Chart Container */}
       <View style={styles.chartContainer}>
-        <KitBarChart
-          data={chartKitData}
-          width={width - 32}
-          height={220}
-          chartConfig={chartKitConfig}
-          style={styles.chart}
-          showValuesOnTopOfBars={false}
-          fromZero={true}
-          yAxisLabel=""
-          yAxisSuffix=""
-        />
+        {hasData ? (
+          <KitBarChart
+            data={chartKitData}
+            width={width - 32}
+            height={220}
+            chartConfig={chartKitConfig}
+            style={styles.chart}
+            showValuesOnTopOfBars={false}
+            fromZero={true}
+            yAxisLabel=""
+            yAxisSuffix=""
+          />
+        ) : (
+          <View style={styles.noDataContainer}>
+            <Text style={styles.noDataText}>{t('reports.noData')}</Text>
+          </View>
+        )}
       </View>
 
       {/* Summary Section */}
@@ -498,7 +564,12 @@ export default function CategoryReportDetailScreen() {
                       category_id: Number(category_id),
                       category_name: category_name || '',
                       start_date: itemStartDate,
-                      end_date: itemEndDate
+                      end_date: itemEndDate,
+                      periodType: selectedPeriodType,
+                      selectedPeriod: initialSelectedPeriod,
+                      weekReferenceDate: initialWeekReferenceDate,
+                      customStartDate: initialCustomStartDate,
+                      customEndDate: initialCustomEndDate,
                     });
                   }
                 }}
@@ -656,5 +727,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     marginBottom: 12,
+  },
+  noDataContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 220,
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
   },
 });
