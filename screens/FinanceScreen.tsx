@@ -258,6 +258,13 @@ const FinanceScreen = React.memo(() => {
   const [apiHealthStatus, setApiHealthStatus] = useState<HealthStatusData | null>(null);
   const [healthStatusLoading, setHealthStatusLoading] = useState(false);
 
+  // Transaction history state
+  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
+  const [transactionHistoryLoading, setTransactionHistoryLoading] = useState(false);
+  const [transactionCache, setTransactionCache] = useState<any[]>([]);
+  const [lastTransactionFetch, setLastTransactionFetch] = useState(0);
+  const TRANSACTION_CACHE_DURATION = 60000; // 1 phút
+
   // 1. Thêm state và options cho dropdown filter
   const PERIOD_OPTIONS = [
     { label: t('finance.periods.thisDay') || 'Hôm nay', value: 'today' },
@@ -440,12 +447,27 @@ const FinanceScreen = React.memo(() => {
     useCallback(() => {
       if (isAuthenticated) {
         const now = Date.now();
-        if (now - lastFetchTime > CACHE_DURATION) {
-          console.log('🔄 FinanceScreen focused, refreshing data...');
-          loadAllData();
-        }
+        // Force refresh khi quay lại từ NotificationsScreen
+        console.log('🔄 FinanceScreen focused, refreshing data...');
+        
+        // Load main data first, then transaction history with a small delay
+        // This prevents overwhelming the API and reduces perceived delay
+        loadAllData(true).then(() => {
+          // Add a small delay to prevent API overload
+          setTimeout(() => {
+            console.log('🔄 FinanceScreen focused, refreshing transaction history...');
+            loadTransactionHistory(true);
+          }, 200); // Increased delay to 200ms for better performance
+        }).catch((error) => {
+          console.error('🔴 Error loading main data:', error);
+          // Still try to load transaction history even if main data fails
+          setTimeout(() => {
+            console.log('🔄 FinanceScreen focused, refreshing transaction history...');
+            loadTransactionHistory(true);
+          }, 200);
+        });
       }
-    }, [isAuthenticated, lastFetchTime])
+    }, [isAuthenticated])
   );
 
   // Chỉ load chart data khi period thay đổi
@@ -785,8 +807,6 @@ const FinanceScreen = React.memo(() => {
   // ... giữ nguyên loadChartData và reportData ...
 
   // Transaction history hôm nay: lấy từ getAllTransactions, lọc local
-  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
-  const [transactionHistoryLoading, setTransactionHistoryLoading] = useState(false);
 
   // State for categories
   const [categoriesMap, setCategoriesMap] = useState<{ [id: number]: CategoryResponse }>({});
@@ -848,13 +868,10 @@ const FinanceScreen = React.memo(() => {
   };
 
   // Optimized transaction history loading với cache
-  const [transactionCache, setTransactionCache] = useState<any[]>([]);
-  const [lastTransactionFetch, setLastTransactionFetch] = useState(0);
-  const TRANSACTION_CACHE_DURATION = 60000; // 1 phút
 
-  const loadTransactionHistory = useCallback(async () => {
+  const loadTransactionHistory = useCallback(async (forceRefresh = false) => {
     const now = Date.now();
-    if (now - lastTransactionFetch < TRANSACTION_CACHE_DURATION && transactionCache.length > 0) {
+    if (!forceRefresh && now - lastTransactionFetch < TRANSACTION_CACHE_DURATION && transactionCache.length > 0) {
       console.log('📦 Using cached transaction history');
       setTransactionHistory(transactionCache);
       return;
@@ -884,12 +901,20 @@ const FinanceScreen = React.memo(() => {
     } finally {
       setTransactionHistoryLoading(false);
     }
-  }, [lastTransactionFetch, transactionCache]);
+  }, []);
 
   // Gọi khi mount hoặc có giao dịch mới
   useEffect(() => {
     loadTransactionHistory();
-  }, [loadTransactionHistory, transactionRefreshTrigger]);
+  }, []);
+
+  // Refresh transaction history when transactionRefreshTrigger changes
+  useEffect(() => {
+    if (transactionRefreshTrigger > 0) {
+      console.log('🔄 Transaction refresh triggered - reloading transaction history');
+      loadTransactionHistory(true);
+    }
+  }, [transactionRefreshTrigger]);
 
   // Helper format ngày -> giờ:phút AM/PM
   const formatDate = (dateStr: string) => {

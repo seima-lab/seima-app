@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, Svg } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 import CustomToast from '../components/CustomToast';
 import { useAuth } from '../contexts/AuthContext';
@@ -190,6 +191,11 @@ export default function ReportScreen() {
     setToastType(type);
     setShowToast(true);
   }, []);
+
+  // Handle back navigation
+  const handleBackPress = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
 
   // Get date range based on period type and selected period
   const getDateRange = useCallback((): { startDate: string; endDate: string } => {
@@ -765,9 +771,17 @@ export default function ReportScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
+        {groupId ? (
+          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+            <MaterialIcons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
         <Text style={styles.headerTitle}>
           {groupName ? `${groupName} - ${t('reports.title')}` : t('reports.title')}
         </Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       {/* Period Filter Bar (reusable) */}
@@ -930,11 +944,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
+  },
+  headerSpacer: {
+    width: 40,
   },
   headerTitle: {
     ...typography.medium,
