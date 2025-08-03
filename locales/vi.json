@@ -913,7 +913,12 @@
   },
   
   "budget": {
-   
+    "summary": "Tổng quan",
+    "total": "Tổng",
+    "noTransactions": "Không có giao dịch",
+    "noTransactionsMessage": "Không tìm thấy giao dịch nào trong khoảng thời gian này.",
+    "totalTransactions": "Tổng giao dịch",
+    "transactionHistory": "Lịch sử giao dịch",
     "title": "Hạn mức chi",
     "currentMonth": "Tháng 6 2025",
     "daysLeft": "Còn {{days}} ngày nữa hết tháng",
@@ -1083,7 +1088,16 @@
       "back": "Quay lại",
       "loading": "Đang tải...",
       "loadError": "Không thể tải chi tiết hạn mức.",
-      "retry": "Thử lại"
+      "retry": "Thử lại",
+      "transactionHistory": "Lịch sử giao dịch",
+      "summary": "Tổng quan",
+      "income": "Thu nhập",
+      "expense": "Chi tiêu",
+      "net": "Còn lại",
+              "noTransactions": "Không có giao dịch",
+        "noTransactionsMessage": "Không tìm thấy giao dịch nào trong khoảng thời gian này.",
+        "total": "Tổng",
+        "totalTransactions": "Tổng giao dịch"
     }
   },
   "transaction": {

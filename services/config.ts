@@ -74,6 +74,7 @@ export const USER_ENDPOINTS = {
 
 // Transaction endpoints
 export const TRANSACTION_ENDPOINTS = {
+  TRANSACTION_BUDGET_HISTORY: (id: string) => `${ApiConfig.API_PREFIX}/transactions/view-history-transactions-by-budget/${id}`,
   
   VIEW_REPORT_BY_CATEGORY: (id: string, type: string, startDate?: string, endDate?: string, groupId?: number) => {
     let url = `${ApiConfig.API_PREFIX}/transactions/view-report/category/${id}?type=${type}`;
@@ -131,6 +132,7 @@ export const AI_CHAT_ENDPOINTS = {
 
 // Budget endpoints
 export const BUDGET_ENDPOINTS = {
+
   LIST: `${ApiConfig.API_PREFIX}/budgets/last-budget`,
   CREATE: `${ApiConfig.API_PREFIX}/budgets`,
   GET_BY_ID: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,

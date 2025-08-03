@@ -9,6 +9,7 @@ import {
     Dimensions,
     Image,
     Keyboard,
+    KeyboardAvoidingView,
     Modal,
     PermissionsAndroid,
     Platform,
@@ -27,7 +28,7 @@ import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
-import { aiService, SuggestedWallet } from '../services/aiService';
+import { aiService, SuggestedBudget, SuggestedWallet } from '../services/aiService';
 import { TranscriptionService } from '../services/transcriptionService';
 import { UserService } from '../services/userService';
 
@@ -39,6 +40,7 @@ interface Message {
     isUser: boolean;
     timestamp: Date;
     suggestedWallets?: SuggestedWallet[];
+    suggestedBudgets?: SuggestedBudget[];
 }
 
 // Typing indicator component with 3 bouncing dots
@@ -150,6 +152,42 @@ const SuggestedWallets = ({ wallets, onWalletSelect }: {
                                     {wallet.balance.toLocaleString('vi-VN')} {wallet.currency || 'đ'}
                                 </Text>
                             )}
+                        </View>
+                    </TouchableOpacity>
+                ))}
+            </View>
+        </View>
+    );
+};
+
+// Suggested Budgets component
+const SuggestedBudgets = ({ budgets, onBudgetSelect }: { 
+    budgets: SuggestedBudget[], 
+    onBudgetSelect: (budget: SuggestedBudget) => void 
+}) => {
+    // Early return if no budgets or empty array
+    if (!budgets || budgets.length === 0) {
+        console.log('💰 No suggested budgets to display');
+        return null;
+    }
+
+    console.log('💰 Rendering suggested budgets:', budgets.length, 'budgets');
+
+    return (
+        <View style={styles.suggestedBudgetsContainer}>
+            <Text style={styles.suggestedBudgetsTitle}>💰 Ngân sách được đề xuất:</Text>
+            <View style={styles.suggestedBudgetsGrid}>
+                {budgets.map((budget) => (
+                    <TouchableOpacity
+                        key={budget.id}
+                        style={styles.suggestedBudgetButton}
+                        onPress={() => onBudgetSelect(budget)}
+                    >
+                        <View style={styles.suggestedBudgetContent}>
+                            <Icon name="account-balance" size={16} color="#28a745" />
+                            <Text style={styles.suggestedBudgetName} numberOfLines={1}>
+                                {budget.budget_name}
+                            </Text>
                         </View>
                     </TouchableOpacity>
                 ))}
@@ -391,7 +429,6 @@ const ChatAIScreen = () => {
     const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
     const [showVoiceModal, setShowVoiceModal] = useState(false);
     const [isVoiceLoading, setIsVoiceLoading] = useState(false);
-    const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     
 
@@ -401,6 +438,9 @@ const ChatAIScreen = () => {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [canLoadMore, setCanLoadMore] = useState(true);
     const [currentScrollY, setCurrentScrollY] = useState(0);
+    
+    // Track when new messages are added (for auto-scroll)
+    const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
     
     const inputRef = useRef<TextInput>(null);
     
@@ -436,8 +476,7 @@ const ChatAIScreen = () => {
                 setHasMoreMessages(history.length === 10); // Nếu có 10 tin nhắn, có thể còn thêm
                 console.log('✅ Chat history loaded:', reversedMessages.length, 'messages');
                 
-                            // Set flag to scroll to bottom after loading history
-            setShouldScrollToBottom(true);
+            
             } else {
                 // If no history, don't add any messages, just show welcome message
                 setMessages([]);
@@ -455,14 +494,12 @@ const ChatAIScreen = () => {
         }
     };
 
-    // Auto scroll to bottom only when first loading or when user sends a new message
-    const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
-    
+    // Auto scroll to bottom only when new messages are added
     useEffect(() => {
         if (messages.length > 0 && !isLoadingHistory && shouldScrollToBottom) {
             // Use requestAnimationFrame to ensure DOM is ready
             requestAnimationFrame(() => {
-                scrollViewRef.current?.scrollToEnd({ animated: false });
+                scrollViewRef.current?.scrollToEnd({ animated: true });
             });
             setShouldScrollToBottom(false); // Reset after scrolling
         }
@@ -496,15 +533,13 @@ const ChatAIScreen = () => {
         // Hide welcome message after 3 seconds
         setTimeout(() => setShowWelcome(false), 3000);
         
-        // Keyboard listeners
-        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+        // Keyboard listeners for UI state tracking
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
             setIsKeyboardVisible(true);
-            setKeyboardHeight(e.endCoordinates.height);
         });
 
         const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
             setIsKeyboardVisible(false);
-            setKeyboardHeight(0);
         });
 
         return () => {
@@ -536,6 +571,9 @@ const ChatAIScreen = () => {
             console.log('📝 User message created:', JSON.stringify(userMessage, null, 2));
             setMessages(prev => [...prev, userMessage]);
             
+            // Set flag to scroll to bottom after sending message
+            setShouldScrollToBottom(true);
+            
             if (!messageText) {
                 setInputText('');
             }
@@ -545,8 +583,7 @@ const ChatAIScreen = () => {
             // Dismiss keyboard after sending
             Keyboard.dismiss();
             
-            // Set flag to scroll to bottom after sending message
-            setShouldScrollToBottom(true);
+
             
             console.log('🚀 Starting AI request with input:', textToSend);
             
@@ -558,6 +595,9 @@ const ChatAIScreen = () => {
                 // Support both 'suggested_wallets' and 'suggest_wallet' (for API compatibility)
                 const suggestedWallets = aiResponse.suggested_wallets || (aiResponse as any).suggest_wallet || undefined;
                 
+                // Support suggested budgets
+                const suggestedBudgets = aiResponse.list_suggested_budgets || undefined;
+                
                 console.log('✅ AI response received:', aiResponse);
                 console.log('📝 AI response structure:', {
                     hasMessage: !!aiResponse.message,
@@ -565,6 +605,9 @@ const ChatAIScreen = () => {
                     hasSuggestedWallets: !!aiResponse.suggested_wallets || !!(aiResponse as any).suggest_wallet,
                     suggestedWalletsCount: aiResponse.suggested_wallets?.length || (aiResponse as any).suggest_wallet?.length,
                     suggestedWallets,
+                    hasSuggestedBudgets: !!aiResponse.list_suggested_budgets,
+                    suggestedBudgetsCount: aiResponse.list_suggested_budgets?.length,
+                    suggestedBudgets,
                 });
                 
                 const aiMessage: Message = {
@@ -573,6 +616,7 @@ const ChatAIScreen = () => {
                     isUser: false,
                     timestamp: new Date(),
                     suggestedWallets,
+                    suggestedBudgets,
                 };
                 
                 console.log('🤖 AI message created:', JSON.stringify(aiMessage, null, 2));
@@ -580,6 +624,8 @@ const ChatAIScreen = () => {
                 
                 // Set flag to scroll to bottom after AI response
                 setShouldScrollToBottom(true);
+                
+
                 
                 console.log('📤 === SEND MESSAGE SUCCESS ===');
                 
@@ -599,6 +645,7 @@ const ChatAIScreen = () => {
                 
                 console.log('⚠️ Error message created:', JSON.stringify(errorMessage, null, 2));
                 setMessages(prev => [...prev, errorMessage]);
+                
                 // Set flag to scroll to bottom after error message
                 setShouldScrollToBottom(true);
                 console.error('❌ === SEND MESSAGE ERROR END ===');
@@ -622,6 +669,11 @@ const ChatAIScreen = () => {
     const handleWalletSelect = (wallet: SuggestedWallet) => {
         const walletMessage = wallet.name;
         handleSendMessage(walletMessage);
+    };
+
+    const handleBudgetSelect = (budget: SuggestedBudget) => {
+        const budgetMessage = budget.budget_name;
+        handleSendMessage(budgetMessage);
     };
 
     // Hàm bắt đầu ghi âm (bạn tích hợp recorder của bạn ở đây)
@@ -806,6 +858,14 @@ const ChatAIScreen = () => {
                         onWalletSelect={handleWalletSelect}
                     />
                 )}
+                
+                {/* Suggested Budgets - Only show if budgets exist */}
+                {message.suggestedBudgets && message.suggestedBudgets.length > 0 && (
+                    <SuggestedBudgets 
+                        budgets={message.suggestedBudgets} 
+                        onBudgetSelect={handleBudgetSelect}
+                    />
+                )}
                 <Text style={[
                     styles.timestamp,
                     message.isUser ? styles.userTimestamp : styles.aiTimestamp
@@ -817,10 +877,15 @@ const ChatAIScreen = () => {
     );
 
     return (
-        <LinearGradient
-            colors={['#f8f9fa', '#e9ecef']}
+        <KeyboardAvoidingView 
             style={styles.container}
+            behavior="padding"
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
+            <LinearGradient
+                colors={['#f8f9fa', '#e9ecef']}
+                style={styles.container}
+            >
                 <StatusBar 
                     barStyle="dark-content" 
                     backgroundColor="transparent" 
@@ -864,7 +929,7 @@ const ChatAIScreen = () => {
                         alwaysBounceVertical={true}
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
-                        automaticallyAdjustKeyboardInsets={false}
+                        automaticallyAdjustKeyboardInsets={true}
                         onScroll={(event) => {
                             const offsetY = event.nativeEvent.contentOffset.y;
                             setCurrentScrollY(offsetY);
@@ -914,8 +979,7 @@ const ChatAIScreen = () => {
                     <View style={[
                         styles.inputContainer, 
                         { 
-                            paddingBottom: insets.bottom + 16,
-                            marginBottom: isKeyboardVisible ? keyboardHeight : 0,
+                            paddingBottom: insets.bottom,
                         }
                     ]}>
                         <LinearGradient
@@ -985,6 +1049,7 @@ const ChatAIScreen = () => {
                     onStopRecord={handleStopRecord}
                 />
             </LinearGradient>
+        </KeyboardAvoidingView>
     );
 };
 
@@ -1058,7 +1123,6 @@ const styles = StyleSheet.create({
         paddingTop: 16,
         paddingBottom: 16,
         flexGrow: 1,
-        minHeight: '100%',
     },
     welcomeContainer: {
         alignItems: 'center',
@@ -1275,16 +1339,54 @@ const styles = StyleSheet.create({
         width: '100%',
         textAlign: 'center',
     },
+    // Suggested Budgets styles
+    suggestedBudgetsContainer: {
+        marginTop: 8,
+        marginBottom: 8,
+    },
+    suggestedBudgetsTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#4a5568',
+        marginBottom: 8,
+    },
+    suggestedBudgetsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    suggestedBudgetButton: {
+        backgroundColor: '#f0fff4',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#28a745',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        minWidth: 100,
+        maxWidth: '48%',
+    },
+    suggestedBudgetContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+    },
+    suggestedBudgetName: {
+        color: '#28a745',
+        fontSize: 13,
+        fontWeight: '600',
+        marginLeft: 6,
+        flex: 1,
+    },
     inputContainer: {
         paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 16,
+        paddingTop: 4,
+        paddingBottom: 4,
         backgroundColor: 'transparent',
         flexShrink: 0,
     },
     inputGradient: {
         borderRadius: 24,
-        padding: 12,
+        padding: 6,
         elevation: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },

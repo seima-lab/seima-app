@@ -3,15 +3,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -182,10 +182,39 @@ const BudgetScreen = () => {
           console.log('🔄 Fetching budgets...');
           const budgetList = await budgetService.getBudgetList();
           console.log('📦 Raw budgets data:', JSON.stringify(budgetList, null, 2));
-          setBudgets(budgetList);
-          console.log('✅ Budgets fetched:', budgetList.length, 'items');
+          console.log('📦 Budget list type:', typeof budgetList);
+          console.log('📦 Budget list is array:', Array.isArray(budgetList));
+          console.log('📦 Budget list length:', budgetList ? budgetList.length : 'null/undefined');
+          
+          if (budgetList && Array.isArray(budgetList)) {
+            console.log('📦 First budget item:', budgetList[0]);
+            console.log('📦 All budget items:', budgetList.map(budget => ({
+              id: budget.budget_id,
+              name: budget.budget_name,
+              status: budget.status,
+              amount: budget.overall_amount_limit
+            })));
+          }
+          
+          // Lọc chỉ hiển thị các budget có status "ACTIVE"
+          const activeBudgets = budgetList.filter(budget => budget.status === 'ACTIVE');
+          console.log('✅ Active budgets filtered:', activeBudgets.length, 'items');
+          console.log('✅ Active budgets details:', activeBudgets.map(budget => ({
+            id: budget.budget_id,
+            name: budget.budget_name,
+            status: budget.status,
+            amount: budget.overall_amount_limit
+          })));
+          
+          setBudgets(activeBudgets);
+          console.log('✅ Budgets fetched:', activeBudgets.length, 'items');
         } catch (error) {
           console.error('❌ Error fetching budgets:', error);
+          console.error('❌ Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : 'No stack trace',
+            name: error instanceof Error ? error.name : 'Unknown error type'
+          });
           setBudgets([]);
         } finally {
           setIsLoading(false);
@@ -345,7 +374,14 @@ const BudgetScreen = () => {
     navigation.navigate('BudgetDetailScreen', { budgetId: budget.budget_id });
   };
 
+  console.log('🔍 BudgetScreen render state:', {
+    isLoading,
+    budgetsLength: budgets.length,
+    budgets: budgets.map(b => ({ id: b.budget_id, name: b.budget_name, status: b.status }))
+  });
+
   if (isLoading) {
+    console.log('🔄 Showing loading state');
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#2196F3" />
@@ -372,6 +408,8 @@ const BudgetScreen = () => {
     );
   }
 
+  console.log('🔍 Rendering main content, budgets length:', budgets.length);
+  
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#2196F3" />
@@ -392,33 +430,43 @@ const BudgetScreen = () => {
 
       <View style={styles.content}>
         {budgets.length === 0 ? (
-          <EmptyState 
-            onAddBudget={handleAddBudget}
-            onWhatIsBudget={() => setIsWhatIsBudgetModalVisible(true)}
-          />
+          (() => {
+            console.log('🔍 Showing empty state');
+            return (
+              <EmptyState 
+                onAddBudget={handleAddBudget}
+                onWhatIsBudget={() => setIsWhatIsBudgetModalVisible(true)}
+              />
+            );
+          })()
         ) : (
-          <ScrollView 
-            style={styles.budgetsList}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.budgetsContainer}>
-              {budgets.map((budget, index) => (
-                <TouchableOpacity key={`${budget.budget_id}-${index}`} onPress={() => handleBudgetPress(budget)}>
-                  <BudgetItem budget={budget} />
+          (() => {
+            console.log('🔍 Showing budget list with', budgets.length, 'items');
+            return (
+              <ScrollView 
+                style={styles.budgetsList}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.budgetsContainer}>
+                  {budgets.map((budget, index) => (
+                    <TouchableOpacity key={`${budget.budget_id}-${index}`} onPress={() => handleBudgetPress(budget)}>
+                      <BudgetItem budget={budget} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                
+                {/* Add More Budget Button */}
+                <TouchableOpacity 
+                  style={styles.addMoreBudgetButton}
+                  onPress={handleAddBudget}
+                >
+                  <Icon name="add" size={20} color="#2196F3" />
+                  <Text style={styles.addMoreBudgetText}>{t('budget.addMoreBudget')}</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-            
-            {/* Add More Budget Button */}
-            <TouchableOpacity 
-              style={styles.addMoreBudgetButton}
-              onPress={handleAddBudget}
-            >
-              <Icon name="add" size={20} color="#2196F3" />
-              <Text style={styles.addMoreBudgetText}>{t('budget.addMoreBudget')}</Text>
-            </TouchableOpacity>
-          </ScrollView>
+              </ScrollView>
+            );
+          })()
         )}
       </View>
 
@@ -808,6 +856,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
 });
 
 export default BudgetScreen; 

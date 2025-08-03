@@ -14,6 +14,11 @@ export interface SuggestedWallet {
   currency?: string;
 }
 
+export interface SuggestedBudget {
+  id: number;
+  budget_name: string;
+}
+
 export interface ChatHistoryMessage {
   chat_id: number;
   user_id: number;
@@ -38,6 +43,7 @@ export interface ChatHistoryResponse {
 export interface AIChatResponse {
   message: string;
   suggested_wallets?: SuggestedWallet[];
+  list_suggested_budgets?: SuggestedBudget[];
   status_code: number;
   data?: any;
 }

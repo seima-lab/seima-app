@@ -830,6 +830,14 @@
   },
   
   "budget": {
+    "summary": "Summary",
+
+    "total": "Total",
+   
+    "noTransactions": "No transactions",
+    "noTransactionsMessage": "No transactions found for this period.",
+    "totalTransactions": "Total Transactions",
+    "transactionHistory": "Transaction History",
     "title": "Budget Limit",
     "currentMonth": "June 2025",
     "daysLeft": "{{days}} days left this month",
@@ -996,7 +1004,16 @@
       "back": "Back",
       "loading": "Loading...",
       "loadError": "Cannot load budget detail.",
-      "retry": "Retry"
+      "retry": "Retry",
+      "transactionHistory": "Transaction History",
+      "summary": "Summary",
+      "income": "Income",
+      "expense": "Expense",
+      "net": "Net",
+              "noTransactions": "No transactions",
+        "noTransactionsMessage": "No transactions found for this period.",
+        "total": "Total",
+        "totalTransactions": "Total Transactions"
     }
   },
   

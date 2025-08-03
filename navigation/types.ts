@@ -162,6 +162,12 @@ export type RootStackParamList = {
     walletId: number;
     walletName: string;
   };
+  BudgetTransactionHistoryScreen: {
+    budgetId: number;
+    budgetName: string;
+    page?: number;
+    size?: number;
+  };
   CategoryReportDetailScreen: {
     category_id: number | string;
     category_name: string;

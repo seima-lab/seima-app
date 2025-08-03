@@ -400,29 +400,51 @@ export class TransactionService {
     size: number = 10
   ): Promise<GroupTransactionResponse[]> {
     try {
-      console.log(`🔄 Getting group transaction history for group ${groupId}, page ${page}, size ${size}`);
-      
-      const response = await apiService.get<PaginatedGroupTransactionsResponse>(
-        `${TRANSACTION_ENDPOINTS.LIST}/view-history-transactions-group/${groupId}?page=${page}&size=${size}`
+      const response = await apiService.get(
+        `${TRANSACTION_ENDPOINTS.LIST}/group/${groupId}?page=${page}&size=${size}`
       );
+      return response.data as GroupTransactionResponse[];
+    } catch (error) {
+      console.error('Error fetching group transaction history:', error);
+      throw error;
+    }
+  }
+
+  async getBudgetTransactionHistory(
+    budgetId: number,
+    page: number = 0,
+    size: number = 10000
+  ): Promise<TransactionResponse[]> {
+    try {
+      // Use the endpoint from config
+      const url = `${TRANSACTION_ENDPOINTS.TRANSACTION_BUDGET_HISTORY(budgetId.toString())}?page=${page}&size=${size}`;
+      console.log('🔍 Generated URL:', url);
       
-      if (response.data && response.data.content) {
-        console.log(`✅ Group transaction history retrieved: ${response.data.content.length} transactions`);
-        
-        // Sort by transaction_date descending (newest first) and take first 10
-        const sortedTransactions = response.data.content
-          .sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime())
-          .slice(0, 10);
-        
-        console.log(`🔢 Returning ${sortedTransactions.length} latest transactions`);
-        return sortedTransactions;
+      const response = await apiService.get(url);
+      console.log('🔍 API Response:', response);
+      
+      // Handle different response structures
+      if (response.data && Array.isArray(response.data)) {
+        return response.data as TransactionResponse[];
+      } else if (response.data && typeof response.data === 'object' && 'content' in response.data && Array.isArray((response.data as any).content)) {
+        return (response.data as any).content as TransactionResponse[];
+      } else if (response && typeof response === 'object' && 'content' in response && Array.isArray((response as any).content)) {
+        return (response as any).content as TransactionResponse[];
+      } else if (response.data && typeof response.data === 'object' && 'data' in response.data && 'content' in (response.data as any).data && Array.isArray(((response.data as any).data as any).content)) {
+        return ((response.data as any).data as any).content as TransactionResponse[];
+      } else if (Array.isArray(response)) {
+        return response as TransactionResponse[];
+      } else {
+        console.error('❌ Unexpected response structure:', response);
+        console.log('❌ Response keys:', Object.keys(response || {}));
+        if (response.data) {
+          console.log('❌ Response.data keys:', Object.keys(response.data || {}));
+        }
+        return [];
       }
-      
-      throw new Error(response.message || 'Failed to get group transaction history');
-      
-    } catch (error: any) {
-      console.error('❌ Failed to get group transaction history:', error);
-      throw new Error(error.message || 'Failed to get group transaction history');
+    } catch (error) {
+      console.error('Error fetching budget transaction history:', error);
+      throw error;
     }
   }
 }
