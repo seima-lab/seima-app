@@ -439,9 +439,6 @@ const ChatAIScreen = () => {
     const [canLoadMore, setCanLoadMore] = useState(true);
     const [currentScrollY, setCurrentScrollY] = useState(0);
     
-    // Track when new messages are added (for auto-scroll)
-    const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
-    
     const inputRef = useRef<TextInput>(null);
     
     const suggestions = [
@@ -476,7 +473,8 @@ const ChatAIScreen = () => {
                 setHasMoreMessages(history.length === 10); // Nếu có 10 tin nhắn, có thể còn thêm
                 console.log('✅ Chat history loaded:', reversedMessages.length, 'messages');
                 
-            
+                            // Set flag to scroll to bottom after loading history
+            setShouldScrollToBottom(true);
             } else {
                 // If no history, don't add any messages, just show welcome message
                 setMessages([]);
@@ -494,12 +492,14 @@ const ChatAIScreen = () => {
         }
     };
 
-    // Auto scroll to bottom only when new messages are added
+    // Auto scroll to bottom only when first loading or when user sends a new message
+    const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
+    
     useEffect(() => {
         if (messages.length > 0 && !isLoadingHistory && shouldScrollToBottom) {
             // Use requestAnimationFrame to ensure DOM is ready
             requestAnimationFrame(() => {
-                scrollViewRef.current?.scrollToEnd({ animated: true });
+                scrollViewRef.current?.scrollToEnd({ animated: false });
             });
             setShouldScrollToBottom(false); // Reset after scrolling
         }
@@ -571,9 +571,6 @@ const ChatAIScreen = () => {
             console.log('📝 User message created:', JSON.stringify(userMessage, null, 2));
             setMessages(prev => [...prev, userMessage]);
             
-            // Set flag to scroll to bottom after sending message
-            setShouldScrollToBottom(true);
-            
             if (!messageText) {
                 setInputText('');
             }
@@ -583,7 +580,8 @@ const ChatAIScreen = () => {
             // Dismiss keyboard after sending
             Keyboard.dismiss();
             
-
+            // Set flag to scroll to bottom after sending message
+            setShouldScrollToBottom(true);
             
             console.log('🚀 Starting AI request with input:', textToSend);
             
@@ -625,8 +623,6 @@ const ChatAIScreen = () => {
                 // Set flag to scroll to bottom after AI response
                 setShouldScrollToBottom(true);
                 
-
-                
                 console.log('📤 === SEND MESSAGE SUCCESS ===');
                 
             } catch (error) {
@@ -645,7 +641,6 @@ const ChatAIScreen = () => {
                 
                 console.log('⚠️ Error message created:', JSON.stringify(errorMessage, null, 2));
                 setMessages(prev => [...prev, errorMessage]);
-                
                 // Set flag to scroll to bottom after error message
                 setShouldScrollToBottom(true);
                 console.error('❌ === SEND MESSAGE ERROR END ===');
