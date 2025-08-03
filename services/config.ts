@@ -74,6 +74,7 @@ export const USER_ENDPOINTS = {
 
 // Transaction endpoints
 export const TRANSACTION_ENDPOINTS = {
+  TRANSACTION_BUDGET_HISTORY: (id: string) => `${ApiConfig.API_PREFIX}/transactions/view-history-transactions-by-budget/${id}`,
   
   VIEW_REPORT_BY_CATEGORY: (id: string, type: string, startDate?: string, endDate?: string, groupId?: number) => {
     let url = `${ApiConfig.API_PREFIX}/transactions/view-report/category/${id}?type=${type}`;
@@ -126,10 +127,12 @@ export const GROUP_MEMBER_ENDPOINTS = {
 // AI Chat endpoints
 export const AI_CHAT_ENDPOINTS = {
   SEND_MESSAGE: 'https://cuongnmhe172187.app.n8n.cloud/webhook/seima_chatbot',
+  CHAT_HISTORY: `${ApiConfig.BASE_URL}${ApiConfig.API_PREFIX}/chat-history`,
 } as const;
 
 // Budget endpoints
 export const BUDGET_ENDPOINTS = {
+
   LIST: `${ApiConfig.API_PREFIX}/budgets/last-budget`,
   CREATE: `${ApiConfig.API_PREFIX}/budgets`,
   GET_BY_ID: (id: string) => `${ApiConfig.API_PREFIX}/budgets/${id}`,

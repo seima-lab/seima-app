@@ -122,15 +122,49 @@ const ReportDetailScreen = () => {
   const route = useRoute<ReportDetailScreenRouteProp>();
   const { t, i18n } = useTranslation();
 
+  // Destructure route params first
+  const { 
+    title, 
+    categoryType, 
+    data, 
+    totalAmount, 
+    groupId,
+    startDate,
+    endDate,
+    periodType,
+    selectedPeriod: initialSelectedPeriod,
+    weekReferenceDate: initialWeekReferenceDate,
+    customStartDate: initialCustomStartDate,
+    customEndDate: initialCustomEndDate,
+  } = route.params;
+
   // FILTER STATE & LOGIC (copy từ ReportScreen)
-  const [selectedPeriodType, setSelectedPeriodType] = React.useState<PeriodType>('thisMonth');
+  const [selectedPeriodType, setSelectedPeriodType] = React.useState<PeriodType>(periodType || 'thisMonth');
   const [selectedPeriod, setSelectedPeriod] = React.useState(() => {
+    if (initialSelectedPeriod) {
+      return initialSelectedPeriod;
+    }
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [customStartDate, setCustomStartDate] = React.useState(new Date());
-  const [customEndDate, setCustomEndDate] = React.useState(new Date());
-  const [weekReferenceDate, setWeekReferenceDate] = React.useState(new Date());
+  const [customStartDate, setCustomStartDate] = React.useState(() => {
+    if (initialCustomStartDate) {
+      return new Date(initialCustomStartDate);
+    }
+    return new Date();
+  });
+  const [customEndDate, setCustomEndDate] = React.useState(() => {
+    if (initialCustomEndDate) {
+      return new Date(initialCustomEndDate);
+    }
+    return new Date();
+  });
+  const [weekReferenceDate, setWeekReferenceDate] = React.useState(() => {
+    if (initialWeekReferenceDate) {
+      return new Date(initialWeekReferenceDate);
+    }
+    return new Date();
+  });
 
   // Dummy fetchData: bạn thay bằng API thực tế nếu cần
   const [loading, setLoading] = React.useState(false);
@@ -180,8 +214,12 @@ const ReportDetailScreen = () => {
               }
             }
           }
-          const startDate = new Date(year, month - 1, 1);
-          const endDate = new Date(year, month, 0);
+          // Start date: ngày 1 của tháng (sử dụng UTC để tránh timezone issues)
+          const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+          
+          // End date: ngày cuối của tháng (sử dụng UTC để tránh timezone issues)
+          const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+          
           return {
             startDate: startDate.toISOString().split('T')[0],
             endDate: endDate.toISOString().split('T')[0]
@@ -233,6 +271,7 @@ const ReportDetailScreen = () => {
     setLoading(true);
     setError(null);
     try {
+      // Luôn sử dụng dateRange được tính toán từ filter hiện tại
       const res = await transactionService.viewTransactionReport(
         undefined, // Nếu muốn lọc theo category thì truyền categoryId ở đây
         dateRange.startDate,
@@ -294,8 +333,12 @@ const ReportDetailScreen = () => {
               }
             }
           }
-          const startDate = new Date(year, month - 1, 1);
-          const endDate = new Date(year, month, 0);
+          // Start date: ngày 1 của tháng (sử dụng UTC để tránh timezone issues)
+          const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+          
+          // End date: ngày cuối của tháng (sử dụng UTC để tránh timezone issues)
+          const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+          
           return {
             startDate: startDate.toISOString().split('T')[0],
             endDate: endDate.toISOString().split('T')[0]
@@ -340,7 +383,7 @@ const ReportDetailScreen = () => {
       const dateStr = now.toISOString().split('T')[0];
       return { startDate: dateStr, endDate: dateStr };
     }
-  }, [selectedPeriodType, selectedPeriod, weekReferenceDate]);
+  }, [selectedPeriodType, selectedPeriod, weekReferenceDate, customStartDate, customEndDate]);
 
   // UI filter giống ReportScreen
   const periodTypeOptions = [
@@ -555,8 +598,6 @@ const ReportDetailScreen = () => {
     });
   };
 
-  const { title, categoryType, data, totalAmount, groupId } = route.params;
-
   // Lấy dữ liệu cho biểu đồ và danh sách từ reportData
   const chartData = React.useMemo(() => {
     if (!reportData) return [];
@@ -617,6 +658,25 @@ const ReportDetailScreen = () => {
       setSelectedPeriod(getLocalDateString());
     }
   }, [selectedPeriodType]);
+
+  // Initialize filter state with passed parameters on mount
+  React.useEffect(() => {
+    if (periodType) {
+      setSelectedPeriodType(periodType);
+    }
+    if (initialSelectedPeriod) {
+      setSelectedPeriod(initialSelectedPeriod);
+    }
+    if (initialWeekReferenceDate) {
+      setWeekReferenceDate(new Date(initialWeekReferenceDate));
+    }
+    if (initialCustomStartDate) {
+      setCustomStartDate(new Date(initialCustomStartDate));
+    }
+    if (initialCustomEndDate) {
+      setCustomEndDate(new Date(initialCustomEndDate));
+    }
+  }, [periodType, initialSelectedPeriod, initialWeekReferenceDate, initialCustomStartDate, initialCustomEndDate]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -768,11 +828,18 @@ const ReportDetailScreen = () => {
                       startOfMonth = new Date(year, month, 1);
                       endOfMonth = new Date(year, month + 1, 0);
                     }
-                    // Không truyền start_date/end_date để type mặc định là MONTHLY
+                    // Luôn sử dụng dateRange hiện tại từ filter
                     navigation.navigate('CategoryReportDetailScreen', {
                       category_name: item.category_name,
                       category_id: item.category_id,
-                      groupId: groupId
+                      groupId: groupId,
+                      start_date: dateRange.startDate,
+                      end_date: dateRange.endDate,
+                      periodType: selectedPeriodType,
+                      selectedPeriod,
+                      weekReferenceDate,
+                      customStartDate,
+                      customEndDate,
                     });
                   } catch (err) {
                     console.error('Error navigating to category report:', err);

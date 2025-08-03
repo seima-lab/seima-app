@@ -198,6 +198,21 @@ const BudgetDetailScreen = () => {
     }
   };
 
+  // Helper function to format date as dd-mm-yyyy
+  const formatDateAsDDMMYYYY = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${day}-${month}-${year}`;
+    } catch (error) {
+      console.error('❌ Error formatting date:', error);
+      return 'Invalid Date';
+    }
+  };
+
   // Budget Period Item Component
   const BudgetPeriodItem = ({ period }: { period: BudgetPeriodResponse }) => {
     const spentAmount = period.amount_limit - period.remaining_amount;
@@ -372,7 +387,28 @@ const BudgetDetailScreen = () => {
               </View>
               <View style={styles.periodsContainer}>
                 {budgetPeriods.map((period, index) => (
-                  <BudgetPeriodItem key={`${period.period_index}-${index}`} period={period} />
+                  <TouchableOpacity
+                    key={`${period.period_index}-${index}`}
+                    onPress={() => {
+                      console.log('🎯 Budget period pressed:', period);
+                      console.log('🎯 Navigation params:', {
+                        budgetId: budgetId,
+                        budgetName: budget.budget_name,
+                        page: 0,
+                        size: 10000
+                      });
+                      
+                      (navigation as any).navigate('BudgetTransactionHistoryScreen', {
+                        budgetId: budgetId,
+                        budgetName: budget.budget_name,
+                        page: 0,
+                        size: 10000
+                      });
+                    }}
+                    style={styles.periodItemTouchable}
+                  >
+                    <BudgetPeriodItem period={period} />
+                  </TouchableOpacity>
                 ))}
               </View>
             </View>
@@ -387,12 +423,12 @@ const BudgetDetailScreen = () => {
             <View style={styles.dateRange}>
               <View style={styles.dateItem}>
                 <Text style={styles.dateLabel}>{t('budget.detail.fromDate')}</Text>
-                <Text style={styles.dateValue}>{budget.start_date?.slice(0,10)}</Text>
+                <Text style={styles.dateValue}>{formatDateAsDDMMYYYY(budget.start_date)}</Text>
               </View>
               <Icon name="arrow-right" size={16} color="#9CA3AF" />
               <View style={styles.dateItem}>
                 <Text style={styles.dateLabel}>{t('budget.detail.toDate')}</Text>
-                <Text style={styles.dateValue}>{budget.end_date?.slice(0,10)}</Text>
+                <Text style={styles.dateValue}>{formatDateAsDDMMYYYY(budget.end_date)}</Text>
               </View>
             </View>
           </View>
@@ -667,11 +703,13 @@ const styles = StyleSheet.create({
   periodsContainer: {
     marginTop: 16,
   },
+  periodItemTouchable: {
+    marginBottom: 12,
+  },
   periodItem: {
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

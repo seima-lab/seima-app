@@ -20,7 +20,7 @@ import {
     TextInput,
     TouchableOpacity,
     TouchableWithoutFeedback,
-    View,
+    View
 } from 'react-native';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +28,7 @@ import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
-import { aiService, SuggestedWallet } from '../services/aiService';
+import { aiService, SuggestedBudget, SuggestedWallet } from '../services/aiService';
 import { TranscriptionService } from '../services/transcriptionService';
 import { UserService } from '../services/userService';
 
@@ -40,6 +40,7 @@ interface Message {
     isUser: boolean;
     timestamp: Date;
     suggestedWallets?: SuggestedWallet[];
+    suggestedBudgets?: SuggestedBudget[];
 }
 
 // Typing indicator component with 3 bouncing dots
@@ -159,6 +160,42 @@ const SuggestedWallets = ({ wallets, onWalletSelect }: {
     );
 };
 
+// Suggested Budgets component
+const SuggestedBudgets = ({ budgets, onBudgetSelect }: { 
+    budgets: SuggestedBudget[], 
+    onBudgetSelect: (budget: SuggestedBudget) => void 
+}) => {
+    // Early return if no budgets or empty array
+    if (!budgets || budgets.length === 0) {
+        console.log('💰 No suggested budgets to display');
+        return null;
+    }
+
+    console.log('💰 Rendering suggested budgets:', budgets.length, 'budgets');
+
+    return (
+        <View style={styles.suggestedBudgetsContainer}>
+            <Text style={styles.suggestedBudgetsTitle}>💰 Ngân sách được đề xuất:</Text>
+            <View style={styles.suggestedBudgetsGrid}>
+                {budgets.map((budget) => (
+                    <TouchableOpacity
+                        key={budget.id}
+                        style={styles.suggestedBudgetButton}
+                        onPress={() => onBudgetSelect(budget)}
+                    >
+                        <View style={styles.suggestedBudgetContent}>
+                            <Icon name="account-balance" size={16} color="#28a745" />
+                            <Text style={styles.suggestedBudgetName} numberOfLines={1}>
+                                {budget.budget_name}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+                ))}
+            </View>
+        </View>
+    );
+};
+
 // Welcome message component
 const WelcomeMessage = () => {
     return (
@@ -187,14 +224,37 @@ const formatTime = (date: Date) => {
     });
 };
 
-// Voice Recorder Modal (bạn tích hợp logic ghi âm vào đây)
+// Format relative time in Vietnamese
+const formatRelativeTime = (date: Date) => {
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+    const diffInMonths = Math.floor(diffInDays / 30);
+    const diffInYears = Math.floor(diffInDays / 365);
+
+    if (diffInMinutes < 1) {
+        return 'Vừa xong';
+    } else if (diffInMinutes < 60) {
+        return `${diffInMinutes} phút trước`;
+    } else if (diffInHours < 24) {
+        return `${diffInHours} giờ trước`;
+    } else if (diffInDays < 30) {
+        return `${diffInDays} ngày trước`;
+    } else if (diffInMonths < 12) {
+        return `${diffInMonths} tháng trước`;
+    } else {
+        return `${diffInYears} năm trước`;
+    }
+};
+
+// Voice Recorder Modal - Half screen from bottom
 const VoiceRecorderModal = ({
     visible,
     onClose,
     onResult,
     isLoading,
-    recognizedText,
-    setRecognizedText,
     onStartRecord,
     onStopRecord,
 }: {
@@ -202,21 +262,17 @@ const VoiceRecorderModal = ({
     onClose: () => void;
     onResult: (text: string) => void;
     isLoading: boolean;
-    recognizedText: string;
-    setRecognizedText: (text: string) => void;
     onStartRecord: () => Promise<void>;
     onStopRecord: () => Promise<void>;
 }) => {
     const { t } = useTranslation();
     const [isRecording, setIsRecording] = useState(false);
     const [hasAudioPermission, setHasAudioPermission] = useState<boolean | null>(null);
-    // const [justGrantedPermission, setJustGrantedPermission] = useState(false);
 
     // Reset state khi đóng modal
     useEffect(() => {
         if (!visible) {
             setIsRecording(false);
-            // setJustGrantedPermission(false);
         }
     }, [visible]);
 
@@ -236,7 +292,7 @@ const VoiceRecorderModal = ({
         }
     }, [visible]);
 
-    const handleRecordPress = async () => {
+    const handlePressIn = async () => {
         if (Platform.OS === 'android' && !hasAudioPermission) {
             try {
                 const granted = await PermissionsAndroid.request(
@@ -264,14 +320,17 @@ const VoiceRecorderModal = ({
                 return;
             }
         }
-        if (!isRecording) {
-            try {
-                await onStartRecord();
-                setIsRecording(true);
-            } catch (err) {
-                setIsRecording(false);
-            }
-        } else {
+        
+        try {
+            await onStartRecord();
+            setIsRecording(true);
+        } catch (err) {
+            setIsRecording(false);
+        }
+    };
+
+    const handlePressOut = async () => {
+        if (isRecording) {
             try {
                 await onStopRecord();
                 setIsRecording(false);
@@ -282,63 +341,73 @@ const VoiceRecorderModal = ({
     };
 
     return (
-        <Modal visible={visible} animationType="slide" transparent={false}>
-            <View style={{ flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-                {/* Nút X đóng modal */}
-                <TouchableOpacity
-                    style={{ position: 'absolute', top: 32, right: 24, zIndex: 10, backgroundColor: '#eee', borderRadius: 16, padding: 6 }}
-                    onPress={onClose}
-                >
-                    <Icon name="close" size={24} color="#333" />
-                </TouchableOpacity>
-                <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 16, marginTop: 24 }}>{t('voiceRecording.title')}</Text>
-                {/* Recorder UI: bấm 1 lần bắt đầu, bấm lần nữa dừng */}
-                <TouchableOpacity
-                    style={{ backgroundColor: isRecording ? '#ff4d4f' : '#1e90ff', padding: 24, borderRadius: 50, marginBottom: 24 }}
-                    onPress={handleRecordPress}
-                    disabled={isLoading}
-                >
-                    <Icon name={isRecording ? 'stop' : 'mic'} size={40} color="#fff" />
-                </TouchableOpacity>
-                <Text style={{ color: '#888', marginBottom: 16 }}>
-                    {isRecording ? t('voiceRecording.recording') : t('voiceRecording.startRecording')}
-                </Text>
-                {isLoading && (
-                    <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                        <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 8 }} />
-                        <Text style={{ color: '#666', fontSize: 14, textAlign: 'center' }}>
-                            {t('voiceRecording.processing')}{'\n'}
-                            <Text style={{ fontSize: 12, color: '#999' }}>
-                                {t('voiceRecording.processingNote')}
-                            </Text>
-                        </Text>
+        <Modal visible={visible} animationType="slide" transparent={true}>
+            <View style={styles.voiceModalOverlay}>
+                <View style={styles.voiceModalContainer}>
+                    {/* Header */}
+                    <View style={styles.voiceModalHeader}>
+                        <View style={styles.voiceModalHandle} />
+                        <Text style={styles.voiceModalTitle}>Ghi âm giọng nói</Text>
+                        <TouchableOpacity
+                            style={styles.voiceModalCloseButton}
+                            onPress={onClose}
+                        >
+                            <Icon name="close" size={20} color="#666" />
+                        </TouchableOpacity>
                     </View>
-                )}
-                {recognizedText ? (
-                    <>
-                        <Text style={{ fontSize: 16, marginBottom: 8 }}>{t('voiceRecording.recognitionResult')}</Text>
-                        <TextInput
-                            style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, minWidth: 250, minHeight: 40, marginBottom: 16 }}
-                            value={recognizedText}
-                            onChangeText={setRecognizedText}
-                            multiline
-                        />
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity
-                                style={{ backgroundColor: '#1e90ff', padding: 12, borderRadius: 8 }}
-                                onPress={() => onResult(recognizedText)}
-                            >
-                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('voiceRecording.accept')}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={{ backgroundColor: '#ccc', padding: 12, borderRadius: 8 }}
-                                onPress={onClose}
-                            >
-                                <Text style={{ color: '#333' }}>{t('voiceRecording.cancel')}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </>
-                ) : null}
+
+                    {/* Content */}
+                    <View style={styles.voiceModalContent}>
+                        {isLoading ? (
+                            <View style={styles.voiceLoadingContainer}>
+                                <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 16 }} />
+                                <Text style={styles.voiceLoadingText}>
+                                    Đang xử lý giọng nói...{'\n'}
+                                    <Text style={styles.voiceLoadingSubtext}>
+                                        Vui lòng chờ trong giây lát
+                                    </Text>
+                                </Text>
+                            </View>
+                        ) : (
+                            <>
+                                {/* Recording Button */}
+                                <TouchableOpacity
+                                    style={[
+                                        styles.voiceRecordButton,
+                                        isRecording && styles.voiceRecordButtonRecording
+                                    ]}
+                                    onPressIn={handlePressIn}
+                                    onPressOut={handlePressOut}
+                                    disabled={isLoading}
+                                >
+                                    <LinearGradient
+                                        colors={isRecording ? ['#ff4d4f', '#ff7875'] : ['#1e90ff', '#0066cc']}
+                                        style={styles.voiceRecordButtonGradient}
+                                    >
+                                        <Icon 
+                                            name={isRecording ? 'stop' : 'mic'} 
+                                            size={32} 
+                                            color="#fff" 
+                                        />
+                                    </LinearGradient>
+                                </TouchableOpacity>
+
+                                {/* Instructions */}
+                                <Text style={styles.voiceInstructionText}>
+                                    {isRecording ? 'Đang ghi âm... Nhả ra để dừng' : 'Giữ để ghi âm, nhả ra để dừng'}
+                                </Text>
+
+                                {/* Recording indicator */}
+                                {isRecording && (
+                                    <View style={styles.voiceRecordingIndicator}>
+                                        <View style={styles.voiceRecordingDot} />
+                                        <Text style={styles.voiceRecordingText}>Đang ghi âm</Text>
+                                    </View>
+                                )}
+                            </>
+                        )}
+                    </View>
+                </View>
             </View>
         </Modal>
     );
@@ -351,28 +420,26 @@ const ChatAIScreen = () => {
     const scrollViewRef = useRef<ScrollView>(null);
     const textInputRef = useRef<TextInput>(null);
     
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            text: 'Xin chào! Tôi có thể giúp bạn gì về tài chính hôm nay? 😊',
-            isUser: false,
-            timestamp: new Date(),
-        },
-    ]);
-    
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [inputText, setInputText] = useState('');
+    const [showWelcome, setShowWelcome] = useState(true);
     const [userId, setUserId] = useState<number | null>(null);
     const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [showWelcome, setShowWelcome] = useState(true);
-    const [isInputFocused, setIsInputFocused] = useState(false);
-    const [showExtraButtons, setShowExtraButtons] = useState(true);
     const [showVoiceModal, setShowVoiceModal] = useState(false);
     const [isVoiceLoading, setIsVoiceLoading] = useState(false);
-    const [recognizedText, setRecognizedText] = useState('');
-    const audioFilePath = useRef<string | null>(null); // Đường dẫn file audio
-    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+    
+
+    // Pagination states
+    const [currentPage, setCurrentPage] = useState(0);
+    const [hasMoreMessages, setHasMoreMessages] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [canLoadMore, setCanLoadMore] = useState(true);
+    const [currentScrollY, setCurrentScrollY] = useState(0);
+    
+    const inputRef = useRef<TextInput>(null);
     
     const suggestions = [
         { text: 'Tôi tiêu 50k cho ăn uống 🍜', icon: 'restaurant' },
@@ -383,7 +450,62 @@ const ChatAIScreen = () => {
 
     const audioRecorderPlayer = new AudioRecorderPlayer();
 
-    // Lấy user_id khi component mount
+    // Load chat history from API
+    const loadChatHistory = async () => {
+        try {
+            console.log('🔄 Loading chat history...');
+            
+            // Load page 0 (newest messages) - API trả về tin nhắn mới nhất trước
+            const history = await aiService.getChatHistory(0, 10);
+            
+            if (history && history.length > 0) {
+                const formattedMessages: Message[] = history.map((msg) => ({
+                    id: msg.chat_id?.toString() || `fallback_${Date.now()}_${Math.random()}`,
+                    text: msg.message_content || '',
+                    isUser: msg.sender_type === 'USER',
+                    timestamp: new Date(msg.timestamp || Date.now()),
+                }));
+                
+                // API trả về tin nhắn mới nhất trước, cần reverse để tin nhắn mới nhất ở cuối
+                const reversedMessages = formattedMessages.reverse();
+                setMessages(reversedMessages);
+                setCurrentPage(0);
+                setHasMoreMessages(history.length === 10); // Nếu có 10 tin nhắn, có thể còn thêm
+                console.log('✅ Chat history loaded:', reversedMessages.length, 'messages');
+                
+                            // Set flag to scroll to bottom after loading history
+            setShouldScrollToBottom(true);
+            } else {
+                // If no history, don't add any messages, just show welcome message
+                setMessages([]);
+                setHasMoreMessages(false);
+                console.log('✅ No chat history found, will show welcome message');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error loading chat history:', error);
+            // Fallback to empty messages if history loading fails
+            setMessages([]);
+            setHasMoreMessages(false);
+        } finally {
+            setIsLoadingHistory(false);
+        }
+    };
+
+    // Auto scroll to bottom only when first loading or when user sends a new message
+    const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
+    
+    useEffect(() => {
+        if (messages.length > 0 && !isLoadingHistory && shouldScrollToBottom) {
+            // Use requestAnimationFrame to ensure DOM is ready
+            requestAnimationFrame(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: false });
+            });
+            setShouldScrollToBottom(false); // Reset after scrolling
+        }
+    }, [messages.length, isLoadingHistory, shouldScrollToBottom]);
+
+    // Lấy user_id và load chat history khi component mount
     useEffect(() => {
         const fetchUserId = async () => {
             try {
@@ -395,9 +517,14 @@ const ChatAIScreen = () => {
                 setUserAvatarUrl(userProfile.avatar_url || userProfile.user_avatar_url || null);
                 console.log('✅ User ID loaded successfully:', userProfile.user_id);
                 console.log('👤 Full user profile:', JSON.stringify(userProfile, null, 2));
+                
+                // Load chat history after getting user ID
+                await loadChatHistory();
+                
             } catch (error) {
                 console.error('❌ Error loading user profile:', error);
                 console.error('❌ Error details:', JSON.stringify(error, null, 2));
+                setIsLoadingHistory(false);
             }
         };
 
@@ -406,17 +533,22 @@ const ChatAIScreen = () => {
         // Hide welcome message after 3 seconds
         setTimeout(() => setShowWelcome(false), 3000);
         
-        // Listen to keyboard events
+        // Keyboard listeners for UI state tracking
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
-            setTimeout(() => {
-                scrollViewRef.current?.scrollToEnd({ animated: true });
-            }, 100);
+            setIsKeyboardVisible(true);
+        });
+
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+            setIsKeyboardVisible(false);
         });
 
         return () => {
             keyboardDidShowListener?.remove();
+            keyboardDidHideListener?.remove();
         };
     }, []);
+
+
 
     const handleSendMessage = async (messageText?: string) => {
         const textToSend = messageText || inputText.trim();
@@ -439,20 +571,17 @@ const ChatAIScreen = () => {
             console.log('📝 User message created:', JSON.stringify(userMessage, null, 2));
             setMessages(prev => [...prev, userMessage]);
             
-            // Auto scroll to bottom when user sends message
-            setTimeout(() => {
-                if (shouldAutoScroll) {
-                    scrollViewRef.current?.scrollToEnd({ animated: true });
-                }
-            }, 100);
-            
             if (!messageText) {
                 setInputText('');
             }
             setIsLoading(true);
-            setShowWelcome(false);
+            setShowWelcome(false); // Hide welcome message when user sends message
             
-            // Keep input focused after sending message for continuous chatting
+            // Dismiss keyboard after sending
+            Keyboard.dismiss();
+            
+            // Set flag to scroll to bottom after sending message
+            setShouldScrollToBottom(true);
             
             console.log('🚀 Starting AI request with input:', textToSend);
             
@@ -461,37 +590,40 @@ const ChatAIScreen = () => {
                 console.log('🤖 Calling aiService.sendMessage...');
                 const aiResponse = await aiService.sendMessage(userId, textToSend);
                 
-                                 // Support both 'suggested_wallets' and 'suggest_wallet' (for API compatibility)
-                 const suggestedWallets = aiResponse.suggested_wallets || (aiResponse as any).suggest_wallet || undefined;
-                 
-                 console.log('✅ AI response received:', aiResponse);
-                 console.log('📝 AI response structure:', {
-                     hasMessage: !!aiResponse.message,
-                     messageLength: aiResponse.message?.length,
-                     hasSuggestedWallets: !!aiResponse.suggested_wallets || !!(aiResponse as any).suggest_wallet,
-                     suggestedWalletsCount: aiResponse.suggested_wallets?.length || (aiResponse as any).suggest_wallet?.length,
-                     suggestedWallets,
-                 });
-            
-            const aiMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                text: aiResponse.message,
-                isUser: false,
-                timestamp: new Date(),
-                suggestedWallets,
-            };
-            
-            console.log('🤖 AI message created:', JSON.stringify(aiMessage, null, 2));
-            setMessages(prev => [...prev, aiMessage]);
-            
-            // Auto scroll to bottom when new message is added
-            setTimeout(() => {
-                if (shouldAutoScroll) {
-                    scrollViewRef.current?.scrollToEnd({ animated: true });
-                }
-            }, 100);
-            
-            console.log('📤 === SEND MESSAGE SUCCESS ===');
+                // Support both 'suggested_wallets' and 'suggest_wallet' (for API compatibility)
+                const suggestedWallets = aiResponse.suggested_wallets || (aiResponse as any).suggest_wallet || undefined;
+                
+                // Support suggested budgets
+                const suggestedBudgets = aiResponse.list_suggested_budgets || undefined;
+                
+                console.log('✅ AI response received:', aiResponse);
+                console.log('📝 AI response structure:', {
+                    hasMessage: !!aiResponse.message,
+                    messageLength: aiResponse.message?.length,
+                    hasSuggestedWallets: !!aiResponse.suggested_wallets || !!(aiResponse as any).suggest_wallet,
+                    suggestedWalletsCount: aiResponse.suggested_wallets?.length || (aiResponse as any).suggest_wallet?.length,
+                    suggestedWallets,
+                    hasSuggestedBudgets: !!aiResponse.list_suggested_budgets,
+                    suggestedBudgetsCount: aiResponse.list_suggested_budgets?.length,
+                    suggestedBudgets,
+                });
+                
+                const aiMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: aiResponse.message,
+                    isUser: false,
+                    timestamp: new Date(),
+                    suggestedWallets,
+                    suggestedBudgets,
+                };
+                
+                console.log('🤖 AI message created:', JSON.stringify(aiMessage, null, 2));
+                setMessages(prev => [...prev, aiMessage]);
+                
+                // Set flag to scroll to bottom after AI response
+                setShouldScrollToBottom(true);
+                
+                console.log('📤 === SEND MESSAGE SUCCESS ===');
                 
             } catch (error) {
                 console.error('❌ === SEND MESSAGE ERROR ===');
@@ -509,18 +641,12 @@ const ChatAIScreen = () => {
                 
                 console.log('⚠️ Error message created:', JSON.stringify(errorMessage, null, 2));
                 setMessages(prev => [...prev, errorMessage]);
+                // Set flag to scroll to bottom after error message
+                setShouldScrollToBottom(true);
                 console.error('❌ === SEND MESSAGE ERROR END ===');
                 
             } finally {
                 setIsLoading(false);
-                
-                // Auto scroll when loading finishes
-                setTimeout(() => {
-                    if (shouldAutoScroll) {
-                        scrollViewRef.current?.scrollToEnd({ animated: true });
-                    }
-                }, 100);
-                
                 console.log('📤 === SEND MESSAGE DEBUG END ===');
             }
         } else {
@@ -540,11 +666,16 @@ const ChatAIScreen = () => {
         handleSendMessage(walletMessage);
     };
 
+    const handleBudgetSelect = (budget: SuggestedBudget) => {
+        const budgetMessage = budget.budget_name;
+        handleSendMessage(budgetMessage);
+    };
+
     // Hàm bắt đầu ghi âm (bạn tích hợp recorder của bạn ở đây)
     const handleStartRecord = async () => {
         try {
             const result = await audioRecorderPlayer.startRecorder();
-            audioFilePath.current = result;
+            // audioFilePath.current = result; // This line was removed
             console.log('Start record, file path:', result);
         } catch (err) {
             console.log('Error startRecorder:', err);
@@ -560,18 +691,17 @@ const ChatAIScreen = () => {
             if (result && result.startsWith('file:////')) {
                 result = result.replace('file:////', 'file:///');
             }
-            audioFilePath.current = result;
             console.log('Chuẩn hóa file path:', result);
 
             // Chờ file được ghi ra ổ đĩa
             await new Promise(res => setTimeout(res, 200));
 
             // Kiểm tra file tồn tại
-            if (!audioFilePath.current) {
+            if (!result) {
                 Alert.alert(t('voiceRecording.fileError'), t('voiceRecording.fileNotFound'));
                 return;
             }
-            const info = await FileSystem.getInfoAsync(audioFilePath.current);
+            const info = await FileSystem.getInfoAsync(result);
             console.log('File info:', info);
             if (!info.exists) {
                 Alert.alert(t('voiceRecording.fileError'), t('voiceRecording.fileNotExist'));
@@ -581,7 +711,7 @@ const ChatAIScreen = () => {
             // Upload như cũ, đồng bộ extension và type
             const formData = new FormData();
             formData.append('file', {
-                uri: audioFilePath.current,
+                uri: result,
                 name: 'sound.mp4', // hoặc sound.m4a nếu đúng định dạng
                 type: 'audio/mp4', // hoặc audio/m4a nếu đúng định dạng
             } as any);
@@ -589,7 +719,11 @@ const ChatAIScreen = () => {
             console.log('🎤 Bắt đầu gửi audio lên server...');
             const text = await TranscriptionService.uploadAudio(formData);
             console.log('✅ Nhận diện thành công:', text);
-            setRecognizedText(text);
+            
+            // Tự động gửi tin nhắn sau khi nhận diện thành công
+            if (text && text.trim()) {
+                handleVoiceResult(text.trim());
+            }
         } catch (err: any) {
             console.error('❌ Lỗi nhận diện giọng nói:', err);
             
@@ -609,11 +743,79 @@ const ChatAIScreen = () => {
             setIsVoiceLoading(false);
         }
     };
-    // Khi xác nhận text, điền vào input chat
+
+    // Load more messages when scrolling up to the top
+    const loadMoreMessages = async () => {
+        if (!hasMoreMessages || isLoadingMore || !userId || !canLoadMore) {
+            console.log('❌ Cannot load more messages:', { hasMoreMessages, isLoadingMore, userId, canLoadMore });
+            return;
+        }
+        
+        try {
+            setIsLoadingMore(true);
+            const nextPage = currentPage + 1;
+            console.log('🔄 Loading more messages, current page:', currentPage, 'next page:', nextPage);
+            const history = await aiService.getChatHistory(nextPage, 10);
+            console.log('📥 API response:', history?.length, 'messages');
+            
+            if (history && history.length > 0) {
+                const formattedMessages: Message[] = history.map((msg) => ({
+                    id: msg.chat_id?.toString() || `fallback_${Date.now()}_${Math.random()}`,
+                    text: msg.message_content || '',
+                    isUser: msg.sender_type === 'USER',
+                    timestamp: new Date(msg.timestamp || Date.now()),
+                }));
+                
+                // Reverse the order so newest messages are at the bottom
+                const reversedMessages = formattedMessages.reverse();
+                
+                // Use current scroll position from state
+                
+                // Add new messages to the beginning of the list, remove duplicates
+                setMessages(prev => {
+                    const existingIds = new Set(prev.map(msg => msg.id));
+                    const newMessages = reversedMessages.filter(msg => !existingIds.has(msg.id));
+                    const updatedMessages = [...newMessages, ...prev];
+                    
+                    // Keep scroll position after adding new messages
+                    setTimeout(() => {
+                        if (scrollViewRef.current) {
+                            // Calculate the height of new messages added
+                            const newMessagesHeight = newMessages.length * 120; // Approximate height per message
+                            const newScrollY = currentScrollY + newMessagesHeight;
+                            scrollViewRef.current.scrollTo({
+                                y: newScrollY,
+                                animated: false
+                            });
+                            console.log('📏 Adjusted scroll position:', { currentScrollY, newMessagesHeight, newScrollY });
+                        }
+                    }, 100);
+                    
+                    return updatedMessages;
+                });
+                setCurrentPage(nextPage);
+                setHasMoreMessages(history.length === 10);
+                console.log('✅ Loaded more messages successfully, new page:', nextPage, 'hasMore:', history.length === 10);
+            } else {
+                setHasMoreMessages(false);
+                console.log('✅ No more messages to load');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error loading more messages:', error);
+        } finally {
+            setIsLoadingMore(false);
+            // Reset canLoadMore after a delay to prevent rapid calls
+            setTimeout(() => {
+                setCanLoadMore(true);
+                console.log('✅ Reset canLoadMore to true');
+            }, 1000);
+        }
+    };
+
     const handleVoiceResult = (text: string) => {
-        setInputText(text);
+        handleSendMessage(text);
         setShowVoiceModal(false);
-        setRecognizedText('');
     };
 
     const renderMessage = (message: Message) => (
@@ -624,7 +826,7 @@ const ChatAIScreen = () => {
                 message.isUser && { flexDirection: 'row-reverse', justifyContent: 'flex-end' },
             ]}
         >
-            <Avatar isUser={message.isUser} avatarUrl={message.isUser ? userAvatarUrl : undefined} />
+            <Avatar isUser={message.isUser} avatarUrl={message.isUser ? undefined : undefined} />
             <View
                 style={[
                     styles.messageContent,
@@ -651,246 +853,205 @@ const ChatAIScreen = () => {
                         onWalletSelect={handleWalletSelect}
                     />
                 )}
+                
+                {/* Suggested Budgets - Only show if budgets exist */}
+                {message.suggestedBudgets && message.suggestedBudgets.length > 0 && (
+                    <SuggestedBudgets 
+                        budgets={message.suggestedBudgets} 
+                        onBudgetSelect={handleBudgetSelect}
+                    />
+                )}
                 <Text style={[
                     styles.timestamp,
                     message.isUser ? styles.userTimestamp : styles.aiTimestamp
                 ]}>
-                    {formatTime(message.timestamp)}
+                    {formatRelativeTime(message.timestamp)}
                 </Text>
             </View>
         </View>
     );
 
     return (
-        <LinearGradient
-            colors={['#f8f9fa', '#e9ecef']}
+        <KeyboardAvoidingView 
             style={styles.container}
+            behavior="padding"
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
-            <StatusBar 
-                barStyle="dark-content" 
-                backgroundColor="transparent" 
-                translucent={true}
-                animated={true}
-            />
-            
-            {/* Header */}
             <LinearGradient
-                colors={['#1e90ff', '#0066cc']}
-                style={[styles.header, { paddingTop: insets.top + 16 }]}
+                colors={['#f8f9fa', '#e9ecef']}
+                style={styles.container}
             >
-                <TouchableOpacity 
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Icon name="chevron-left" size={28} color="#FFFFFF" style={{ alignSelf: 'center' }} />
-                </TouchableOpacity>
+                <StatusBar 
+                    barStyle="dark-content" 
+                    backgroundColor="transparent" 
+                    translucent={true}
+                    animated={true}
+                />
                 
-                <View style={styles.headerCenter}>
-                    <View style={styles.robotIconHeader}>
-                        <Icon2 name="robot" size={20} color="#FFFFFF" />
+                {/* Header */}
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <LinearGradient
+                        colors={['#1e90ff', '#0066cc']}
+                        style={[styles.header, { paddingTop: insets.top + 16 }]}
+                    >
+                    <TouchableOpacity 
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Icon name="chevron-left" size={28} color="#FFFFFF" style={{ alignSelf: 'center' }} />
+                    </TouchableOpacity>
+                    
+                    <View style={styles.headerCenter}>
+                        <View style={styles.robotIconHeader}>
+                            <Icon2 name="robot" size={20} color="#FFFFFF" />
+                        </View>
+                        <View style={styles.headerTextContainer}>
+                            <Text style={styles.headerTitle}>Seima AI</Text>
+                            <Text style={styles.headerSubtitle}>Trợ lý tài chính thông minh</Text>
+                        </View>
                     </View>
-                    <View style={styles.headerTextContainer}>
-                        <Text style={styles.headerTitle}>Seima AI</Text>
-                        <Text style={styles.headerSubtitle}>Trợ lý tài chính thông minh</Text>
-                    </View>
-                </View>
-            </LinearGradient>
+                </LinearGradient>
+                </TouchableWithoutFeedback>
 
-            <KeyboardAvoidingView 
-                style={styles.chatContainer}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-            >
-                {/* Messages */}
-                <ScrollView 
-                    ref={scrollViewRef}
-                    style={styles.messagesContainer}
-                    contentContainerStyle={styles.messagesContent}
-                    showsVerticalScrollIndicator={true}
-                    keyboardShouldPersistTaps="never"
-                    keyboardDismissMode="on-drag"
-                    onScrollBeginDrag={() => {
-                        Keyboard.dismiss();
-                        setShouldAutoScroll(false);
-                        setShowScrollToBottom(true);
-                    }}
-                    onScrollEndDrag={() => {
-                        // Reset auto scroll when user manually scrolls
-                        setShouldAutoScroll(true);
-                    }}
-                    onMomentumScrollEnd={() => {
-                        // Reset auto scroll when user manually scrolls
-                        setShouldAutoScroll(true);
-                    }}
-                    onScroll={(event) => {
-                        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-                        const isAtBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - 20;
-                        setShowScrollToBottom(!isAtBottom);
-                    }}
-                    scrollEventThrottle={16}
-                >
-                    {showWelcome && <WelcomeMessage />}
-                    
-                    {messages.map(renderMessage)}
-                    
-                    {isLoading && (
-                        <View style={styles.messageRow}>
-                            <Avatar isUser={false} />
-                            <View style={styles.messageContent}>
-                                <View style={[styles.messageContainer, styles.aiMessage, styles.typingMessage]}>
-                                    <TypingIndicator />
+                <View style={styles.chatContainer}>
+                    {/* Messages */}
+                    <ScrollView 
+                        ref={scrollViewRef}
+                        showsVerticalScrollIndicator={true}
+                        contentContainerStyle={styles.messagesContent}
+                        style={styles.messagesContainer}
+                        bounces={true}
+                        alwaysBounceVertical={true}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
+                        automaticallyAdjustKeyboardInsets={true}
+                        onScroll={(event) => {
+                            const offsetY = event.nativeEvent.contentOffset.y;
+                            setCurrentScrollY(offsetY);
+                            
+                            // Load more messages when scrolling up to the top (within 50px)
+                            // Only load if we're at the very top of the content
+                            if (offsetY <= 0 && hasMoreMessages && !isLoadingMore && canLoadMore) {
+                                console.log('🔄 Scrolling up to top, loading more messages...');
+                                setCanLoadMore(false); // Prevent multiple calls
+                                loadMoreMessages();
+                            }
+                        }}
+                        scrollEventThrottle={300}
+                    >
+                        {isLoadingHistory ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 16 }} />
+                                <Text style={styles.loadingText}>Đang tải lịch sử chat...</Text>
+                            </View>
+                        ) : (showWelcome && messages.length === 0) ? (
+                            <WelcomeMessage />
+                        ) : null}
+                        
+                        {/* Loading more messages indicator */}
+                        {isLoadingMore && (
+                            <View style={styles.loadingMoreContainer}>
+                                <ActivityIndicator size="small" color="#1e90ff" style={{ marginBottom: 8 }} />
+                                <Text style={styles.loadingMoreText}>Đang tải thêm tin nhắn...</Text>
+                            </View>
+                        )}
+                        
+                        {messages.map(renderMessage)}
+                        
+                        {isLoading ? (
+                            <View style={styles.messageRow}>
+                                <Avatar isUser={false} />
+                                <View style={styles.messageContent}>
+                                    <View style={[styles.messageContainer, styles.aiMessage, styles.typingMessage]}>
+                                        <TypingIndicator />
+                                    </View>
                                 </View>
                             </View>
-                        </View>
-                    )}
-                </ScrollView>
-                    
-                    {/* Scroll to bottom button */}
-                    {showScrollToBottom && (
-                        <TouchableOpacity
-                            style={styles.scrollToBottomButton}
-                            onPress={() => {
-                                scrollViewRef.current?.scrollToEnd({ animated: true });
-                                setShowScrollToBottom(false);
-                                setShouldAutoScroll(true);
-                            }}
-                        >
-                            <LinearGradient
-                                colors={['#1e90ff', '#0066cc']}
-                                style={styles.scrollToBottomGradient}
-                            >
-                                <Icon name="keyboard-arrow-down" size={24} color="#FFFFFF" />
-                            </LinearGradient>
-                        </TouchableOpacity>
-                    )}
-
-                    {/* Suggestions - Temporarily hidden */}
-                    {/* <View style={styles.suggestionsContainer}>
-                        <Text style={styles.suggestionsTitle}>Gợi ý cho bạn:</Text>
-                        <View style={styles.suggestionsGrid}>
-                            {suggestions.map((suggestion, index) => (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={styles.suggestionButton}
-                                    onPress={() => handleSuggestion(suggestion.text)}
-                                >
-                                    <Icon name={suggestion.icon} size={16} color="#1e90ff" />
-                                    <Text style={styles.suggestionText}>{suggestion.text}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View> */}
+                        ) : null}
+                    </ScrollView>
 
                     {/* Input Area */}
-                    <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 16 }]}>
+                    <View style={[
+                        styles.inputContainer, 
+                        { 
+                            paddingBottom: insets.bottom,
+                        }
+                    ]}>
                         <LinearGradient
                             colors={['#FFFFFF', '#f8f9fa']}
                             style={styles.inputGradient}
                         >
                             <View style={styles.inputRow}>
-                                {showExtraButtons ? (
-                                    <View style={styles.inputButtons}>
-                                        <TouchableOpacity 
-                                            style={styles.inputButton}
-                                            onPress={() => setShowVoiceModal(true)}
-                                        >
-                                            <Icon name="mic" size={20} color="#1e90ff" />
-                                        </TouchableOpacity>
-                                        
-                                        <TouchableOpacity style={styles.inputButton}>
-                                            <Icon name="photo-camera" size={20} color="#1e90ff" />
-                                        </TouchableOpacity>
-                                    </View>
-                                ) : (
+                                <View style={styles.inputButtons}>
                                     <TouchableOpacity 
-                                        style={styles.smallArrowButton}
-                                        onPress={() => setShowExtraButtons(true)}
+                                        style={styles.inputButton}
+                                        onPress={() => setShowVoiceModal(true)}
                                     >
-                                        <Icon name="keyboard-arrow-right" size={16} color="#1e90ff" />
+                                        <Icon name="mic" size={20} color="#1e90ff" />
                                     </TouchableOpacity>
-                                )}
+                                </View>
                                 
-                                <View style={[
-                                    styles.textInputContainer,
-                                    !showExtraButtons && styles.expandedInput
-                                ]}>
+                                <View style={styles.textInputContainer}>
                                     <TextInput
-                                        ref={textInputRef}
+                                        ref={inputRef}
                                         style={styles.textInput}
                                         value={inputText}
                                         onChangeText={setInputText}
-                                        onContentSizeChange={() => {
-                                            // Scroll to bottom when input expands
-                                            setTimeout(() => {
-                                                scrollViewRef.current?.scrollToEnd({ animated: true });
-                                            }, 100);
-                                        }}
-                                        onFocus={() => {
-                                            setIsInputFocused(true);
-                                            setShowExtraButtons(false);
-                                            // Scroll to bottom when focusing
-                                            setTimeout(() => {
-                                                scrollViewRef.current?.scrollToEnd({ animated: true });
-                                            }, 300);
-                                        }}
-                                        onBlur={() => {
-                                            setIsInputFocused(false);
-                                            setShowExtraButtons(true);
-                                        }}
-                                        placeholder={showExtraButtons ? "Tin nhắn..." : "Nhập tin nhắn của bạn..."}
+                                        placeholder="Tin nhắn..."
                                         placeholderTextColor="#8e9aaf"
                                         multiline
+                                        maxLength={1000}
+                                        onFocus={() => {
+                                            // Set flag to scroll to bottom when input is focused
+                                            setShouldScrollToBottom(true);
+                                        }}
                                     />
                                 </View>
                                 
                                 <TouchableOpacity 
                                     style={[
                                         styles.sendButton, 
-                                        (isLoading || !userId || !inputText.trim()) && styles.disabledButton
+                                        (!inputText.trim() || isLoading) && styles.disabledButton
                                     ]}
                                     onPress={() => handleSendMessage()}
-                                    disabled={isLoading || !userId || !inputText.trim()}
+                                    disabled={!inputText.trim() || isLoading}
+                                    activeOpacity={0.8}
                                 >
                                     <LinearGradient
-                                        colors={
-                                            (isLoading || !userId || !inputText.trim()) 
-                                                ? ['#ccc', '#999'] 
-                                                : ['#1e90ff', '#0066cc']
-                                        }
+                                        colors={inputText.trim() && !isLoading ? ['#1e90ff', '#0066cc'] : ['#cbd5e0', '#a0aec0']}
                                         style={styles.sendButtonGradient}
                                     >
                                         <Icon 
-                                            name={isLoading ? "hourglass-empty" : "send"} 
-                                            size={20} 
-                                            color="#FFFFFF" 
+                                            name="send" 
+                                            size={18} 
+                                            color={inputText.trim() && !isLoading ? "#FFFFFF" : "#718096"} 
                                         />
                                     </LinearGradient>
                                 </TouchableOpacity>
                             </View>
                         </LinearGradient>
                     </View>
-                    {/* Voice Recorder Modal */}
-                    <VoiceRecorderModal
-                        visible={showVoiceModal}
-                        onClose={() => {
-                            setShowVoiceModal(false);
-                            setRecognizedText('');
-                        }}
-                        onResult={handleVoiceResult}
-                        isLoading={isVoiceLoading}
-                        recognizedText={recognizedText}
-                        setRecognizedText={setRecognizedText}
-                        onStartRecord={handleStartRecord}
-                        onStopRecord={handleStopRecord}
-                    />
-                </KeyboardAvoidingView>
+                </View>
+                {/* Voice Recorder Modal */}
+                <VoiceRecorderModal
+                    visible={showVoiceModal}
+                    onClose={() => {
+                        setShowVoiceModal(false);
+                    }}
+                    onResult={handleVoiceResult}
+                    isLoading={isVoiceLoading}
+                    onStartRecord={handleStartRecord}
+                    onStopRecord={handleStopRecord}
+                />
             </LinearGradient>
-        );
+        </KeyboardAvoidingView>
+    );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#f8f9fa',
     },
     header: {
         flexDirection: 'row',
@@ -954,8 +1115,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     messagesContent: {
-        paddingVertical: 20,
-        paddingBottom: 40,
+        paddingTop: 16,
+        paddingBottom: 16,
+        flexGrow: 1,
     },
     welcomeContainer: {
         alignItems: 'center',
@@ -1172,28 +1334,74 @@ const styles = StyleSheet.create({
         width: '100%',
         textAlign: 'center',
     },
+    // Suggested Budgets styles
+    suggestedBudgetsContainer: {
+        marginTop: 8,
+        marginBottom: 8,
+    },
+    suggestedBudgetsTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#4a5568',
+        marginBottom: 8,
+    },
+    suggestedBudgetsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    suggestedBudgetButton: {
+        backgroundColor: '#f0fff4',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#28a745',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        minWidth: 100,
+        maxWidth: '48%',
+    },
+    suggestedBudgetContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+    },
+    suggestedBudgetName: {
+        color: '#28a745',
+        fontSize: 13,
+        fontWeight: '600',
+        marginLeft: 6,
+        flex: 1,
+    },
     inputContainer: {
         paddingHorizontal: 16,
-        paddingTop: 16,
+        paddingTop: 4,
+        paddingBottom: 4,
+        backgroundColor: 'transparent',
+        flexShrink: 0,
     },
     inputGradient: {
         borderRadius: 24,
-        padding: 12,
+        padding: 6,
         elevation: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        // Ensure consistent background
+        backgroundColor: '#FFFFFF',
     },
     // ✅ SỬA: Thêm dấu phẩy và căn chỉnh thụt lề đúng
     inputRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+        // Ensure stable height
+        minHeight: 40,
     },
     inputButtons: {
         flexDirection: 'row',
         gap: 8,
+        width: 40,
     },
     textInputContainer: {
         flex: 1,
@@ -1203,9 +1411,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#e2e8f0',
         justifyContent: 'center',
-    },
-    expandedInput: {
-        marginLeft: -10,
+        paddingVertical: 0,
     },
     textInput: {
         paddingHorizontal: 16,
@@ -1215,6 +1421,8 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         textAlignVertical: 'top',
         maxHeight: 100,
+        // Ensure consistent text input behavior
+        includeFontPadding: false,
     },
     inputButton: {
         width: 40,
@@ -1225,23 +1433,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#f7fafc',
+        // Ensure stable size
+        flexShrink: 0,
     },
-    smallArrowButton: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: '#f7fafc',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#f7fafc',
-        marginRight: 4,
-    },
+
     sendButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
         overflow: 'hidden',
+        // Ensure stable size
+        flexShrink: 0,
     },
     sendButtonGradient: {
         width: 40,
@@ -1253,23 +1455,151 @@ const styles = StyleSheet.create({
     disabledButton: {
         opacity: 0.6,
     },
-    scrollToBottomButton: {
-        position: 'absolute',
-        bottom: 100,
-        right: 20,
-        zIndex: 1000,
-    },
-    scrollToBottomGradient: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+    loadingContainer: {
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        paddingVertical: 40,
+    },
+    loadingText: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+        marginTop: 8,
+    },
+    loadingMoreContainer: {
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+    },
+    loadingMoreText: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+    },
+
+    // Voice Modal Styles
+    voiceModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    voiceModalContainer: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingBottom: 34, // Safe area for home indicator
+        maxHeight: '50%',
+        minHeight: 300,
+    },
+    voiceModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 16,
+        paddingBottom: 20,
+        paddingHorizontal: 20,
+        position: 'relative',
+    },
+    voiceModalHandle: {
+        width: 40,
+        height: 4,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 2,
+        position: 'absolute',
+        top: 8,
+        left: '50%',
+        marginLeft: -20,
+    },
+    voiceModalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#2D3748',
+    },
+    voiceModalCloseButton: {
+        position: 'absolute',
+        right: 20,
+        top: 16,
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: '#F7FAFC',
+    },
+    voiceModalContent: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 40,
+        paddingBottom: 40,
+    },
+    voiceLoadingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 40,
+    },
+    voiceLoadingText: {
+        fontSize: 16,
+        color: '#4A5568',
+        textAlign: 'center',
+        lineHeight: 24,
+    },
+    voiceLoadingSubtext: {
+        fontSize: 14,
+        color: '#718096',
+        fontWeight: '400',
+    },
+    voiceRecordButton: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        marginBottom: 24,
         elevation: 8,
-        shadowColor: '#1e90ff',
+        shadowColor: '#1E90FF',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
+    },
+    voiceRecordButtonRecording: {
+        elevation: 12,
+        shadowColor: '#FF4D4F',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+    },
+    voiceRecordButtonGradient: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    voiceInstructionText: {
+        fontSize: 16,
+        color: '#4A5568',
+        textAlign: 'center',
+        marginBottom: 16,
+        lineHeight: 24,
+    },
+    voiceRecordingIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF5F5',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#FEB2B2',
+    },
+    voiceRecordingDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#FF4D4F',
+        marginRight: 8,
+    },
+    voiceRecordingText: {
+        fontSize: 14,
+        color: '#FF4D4F',
+        fontWeight: '600',
     },
 });
 console.log("styles", styles);

@@ -132,6 +132,13 @@ export type RootStackParamList = {
     data: import('../services/transactionService').ReportByCategory[];
     totalAmount: number;
     groupId?: number;
+    startDate?: string;
+    endDate?: string;
+    periodType?: import('../components/PeriodFilterBar').PeriodType;
+    selectedPeriod?: string;
+    weekReferenceDate?: Date;
+    customStartDate?: Date;
+    customEndDate?: Date;
   };
   SelectCategoryScreen: {
     categoryType: 'expense' | 'income';
@@ -155,18 +162,34 @@ export type RootStackParamList = {
     walletId: number;
     walletName: string;
   };
+  BudgetTransactionHistoryScreen: {
+    budgetId: number;
+    budgetName: string;
+    page?: number;
+    size?: number;
+  };
   CategoryReportDetailScreen: {
     category_id: number | string;
     category_name: string;
     start_date?: string;
     end_date?: string;
     groupId?: number;
+    periodType?: import('../components/PeriodFilterBar').PeriodType;
+    selectedPeriod?: string;
+    weekReferenceDate?: Date;
+    customStartDate?: Date;
+    customEndDate?: Date;
   };
   CategoryDetailReportScreen: {
     category_id: number;
     category_name: string;
     start_date: string;
     end_date: string;
+    periodType?: import('../components/PeriodFilterBar').PeriodType;
+    selectedPeriod?: string;
+    weekReferenceDate?: Date;
+    customStartDate?: Date;
+    customEndDate?: Date;
   };
   ViewCategoryReportScreen: { type: 'expense' | 'income' };
   ReportScreen: { 

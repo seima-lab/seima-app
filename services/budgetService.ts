@@ -8,10 +8,11 @@ export interface BudgetResponseDto {
   start_date: string; // "yyyy-MM-dd HH:mm:ss"
   end_date: string; // "yyyy-MM-dd HH:mm:ss"
   period_type: string;
+  status: string; // "ACTIVE", "INACTIVE"
   overall_amount_limit: number;
   budget_remaining_amount: number;
   created_at: string; // "yyyy-MM-dd HH:mm:ss"
-  category_list: Category[]; // Thay đổi từ categories thành category_list để nhất quán
+  categories: Category[]; // API trả về categories thay vì category_list
 }
 
 // Create Budget Request structure (snake_case for app usage)
@@ -47,6 +48,7 @@ export interface Budget {
   start_date: string;
   end_date: string;
   period_type: string;
+  status: string; // "ACTIVE", "INACTIVE"
   overall_amount_limit: number;
   budget_remaining_amount: number;
   created_at: string;
@@ -86,7 +88,7 @@ const convertToSnakeCase = (budget: any): Budget => {
     budget_id: budget.budget_id,
     budget_name: budget.budget_name,
     categories: budget.categories,
-    category_list: budget.category_list
+    status: budget.status
   });
   
   return {
@@ -95,6 +97,7 @@ const convertToSnakeCase = (budget: any): Budget => {
     start_date: budget.start_date,
     end_date: budget.end_date,
     period_type: budget.period_type,
+    status: budget.status || 'ACTIVE', // Default to 'ACTIVE' if not provided
     overall_amount_limit: budget.overall_amount_limit,
     budget_remaining_amount: budget.budget_remaining_amount,
     created_at: budget.created_at,
@@ -203,6 +206,7 @@ export class BudgetService {
           start_date: response.data.start_date || response.data.startDate,
           end_date: response.data.end_date || response.data.endDate,
           period_type: response.data.period_type || response.data.periodType,
+          status: response.data.status || 'ACTIVE', // Default to 'ACTIVE' if not provided
           overall_amount_limit: response.data.overall_amount_limit || response.data.overallAmountLimit,
           budget_remaining_amount: response.data.budget_remaining_amount || response.data.budgetRemainingAmount,
           created_at: response.data.created_at || response.data.createdAt,
