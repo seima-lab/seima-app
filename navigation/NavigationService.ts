@@ -52,5 +52,17 @@ export const useNavigationService = () => {
         console.warn('NavigationService - cannot go back');
       }
     },
+
+    reset: (routes: { name: RoutePath; params?: any }[]) => {
+      console.log('NavigationService - reset:', { routes });
+      if (navigationRef.isReady()) {
+        navigationRef.reset({
+          index: 0,
+          routes: routes,
+        });
+      } else {
+        console.warn('NavigationService - navigation not ready for reset');
+      }
+    },
   };
 }; 

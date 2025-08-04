@@ -18,6 +18,7 @@ import {
 import Calendar from 'react-native-calendars/src/calendar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import CustomConfirmModal from '../components/CustomConfirmModal';
 import { typography } from '../constants/typography';
 import { useNavigationService } from '../navigation/NavigationService';
 import { Budget, budgetService } from '../services/budgetService';
@@ -110,6 +111,15 @@ const BudgetLimitScreen = () => {
   const [modalTitle, setModalTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   
+  // Edit mode specific state
+  const [isUpdateAmount, setIsUpdateAmount] = useState(false);
+  const [originalAmount, setOriginalAmount] = useState('');
+  const [originalStartDate, setOriginalStartDate] = useState<Date | null>(null);
+  const [originalEndDate, setOriginalEndDate] = useState<Date | null>(null);
+  const [showAmountConfirmModal, setShowAmountConfirmModal] = useState(false);
+  const [pendingSaveRequest, setPendingSaveRequest] = useState<any>(null);
+  const [changeType, setChangeType] = useState<'amount' | 'date' | null>(null);
+  
   const insets = useSafeAreaInsets();
 
   // Helper function to calculate end date based on period type
@@ -172,7 +182,13 @@ const BudgetLimitScreen = () => {
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false);
     // Navigate back after success
-    navigation.goBack();
+    if (isEditMode) {
+      // If in edit mode, reset navigation to BudgetScreen to refresh the list
+      navigation.reset([{ name: 'BudgetScreen' }]);
+    } else {
+      // If in create mode, just go back
+      navigation.goBack();
+    }
   };
 
   // Helper function to render category icons
@@ -250,15 +266,21 @@ const BudgetLimitScreen = () => {
       // Fill form with budget data
       if (budgetDetail) {
         setLimitName(budgetDetail.budget_name || '');
-        setAmount(formatCurrency(budgetDetail.overall_amount_limit?.toString() || ''));
+        const originalAmountValue = budgetDetail.overall_amount_limit?.toString() || '';
+        setAmount(formatCurrency(originalAmountValue));
+        setOriginalAmount(originalAmountValue); // Lưu amount ban đầu
         setPeriodType(budgetDetail.period_type || 'NONE');
         
         // Set dates
         if (budgetDetail.start_date) {
-          setStartDate(new Date(budgetDetail.start_date));
+          const startDateValue = new Date(budgetDetail.start_date);
+          setStartDate(startDateValue);
+          setOriginalStartDate(startDateValue); // Lưu startDate ban đầu
         }
         if (budgetDetail.end_date) {
-          setEndDate(new Date(budgetDetail.end_date));
+          const endDateValue = new Date(budgetDetail.end_date);
+          setEndDate(endDateValue);
+          setOriginalEndDate(endDateValue); // Lưu endDate ban đầu
         }
         
         // Set categories if available
@@ -527,6 +549,97 @@ const BudgetLimitScreen = () => {
       return;
     }
     
+    // Check if amount, startDate, or endDate changed in edit mode
+    if (isEditMode) {
+      let hasChanges = false;
+      let changeType: 'amount' | 'date' | null = null;
+      let amountChanged = false;
+      let dateChanged = false;
+      
+      // Check amount changes
+      if (originalAmount) {
+        const currentAmountNumeric = Number(amount.replace(/[^0-9]/g, ''));
+        const originalAmountNumeric = Number(originalAmount);
+        
+        console.log('🔍 Amount comparison:', {
+          current: currentAmountNumeric,
+          original: originalAmountNumeric,
+          changed: currentAmountNumeric !== originalAmountNumeric
+        });
+        
+        if (currentAmountNumeric !== originalAmountNumeric) {
+          hasChanges = true;
+          amountChanged = true;
+        }
+      }
+      
+      // Check startDate changes
+      if (originalStartDate) {
+        const currentStartDate = startDate.toISOString().split('T')[0];
+        const originalStartDateStr = originalStartDate.toISOString().split('T')[0];
+        
+        console.log('🔍 StartDate comparison:', {
+          current: currentStartDate,
+          original: originalStartDateStr,
+          changed: currentStartDate !== originalStartDateStr
+        });
+        
+        if (currentStartDate !== originalStartDateStr) {
+          hasChanges = true;
+          dateChanged = true;
+        }
+      }
+      
+      // Check endDate changes
+      if (originalEndDate && endDate) {
+        const currentEndDate = endDate.toISOString().split('T')[0];
+        const originalEndDateStr = originalEndDate.toISOString().split('T')[0];
+        
+        console.log('🔍 EndDate comparison:', {
+          current: currentEndDate,
+          original: originalEndDateStr,
+          changed: currentEndDate !== originalEndDateStr
+        });
+        
+        if (currentEndDate !== originalEndDateStr) {
+          hasChanges = true;
+          dateChanged = true;
+        }
+      } else if (originalEndDate && !endDate) {
+        // Original had endDate but current doesn't
+        hasChanges = true;
+        dateChanged = true;
+      } else if (!originalEndDate && endDate) {
+        // Original didn't have endDate but current does
+        hasChanges = true;
+        dateChanged = true;
+      }
+      
+      if (hasChanges) {
+        // Determine change type: if amount changed, prioritize amount logic
+        if (amountChanged) {
+          changeType = 'amount';
+        } else if (dateChanged) {
+          changeType = 'date';
+        }
+        
+        // Amount, startDate, or endDate changed, show confirmation modal
+        console.log('💰 Changes detected, showing confirmation modal');
+        console.log('🔍 Change type:', changeType, 'Amount changed:', amountChanged, 'Date changed:', dateChanged);
+        setChangeType(changeType);
+        setShowAmountConfirmModal(true);
+        return;
+      }
+    }
+    
+    // Proceed with save (amount not changed or not in edit mode)
+    await performSave(false);
+  };
+
+  const performSave = async (updateAmount: boolean = false) => {
+    console.log('🔄 ===== PERFORM SAVE START =====');
+    console.log('🎯 Update amount:', updateAmount);
+    
     // Show loading state
     setIsSaving(true);
     
@@ -544,6 +657,7 @@ const BudgetLimitScreen = () => {
         name: cat.category_name
       })));
       console.log('  - selectedWalletIds:', selectedWalletIds);
+      console.log('  - isUpdateAmount:', updateAmount);
       
       const request = {
         user_id: 0, // hoặc lấy user_id thực tế nếu cần
@@ -556,6 +670,7 @@ const BudgetLimitScreen = () => {
         category_list: selectedCategories.map(category => ({ category_id: category.category_id })), // Array of objects with category_id
         wallet_list: selectedWalletIds.map(id => ({ id: id })), // Array of objects with id instead of wallet_id
         currency_code: 'VND', // Hardcoded currency code
+        is_update_amount: updateAmount, // Thêm trường này
       };
 
       console.log('📤 Final request object:', JSON.stringify(request, null, 2));
@@ -574,13 +689,13 @@ const BudgetLimitScreen = () => {
         showSuccessMessage(t('budget.setBudgetLimit.success.create'));
       }
       
-      console.log('🔄 ===== HANDLE SAVE END =====');
+      console.log('🔄 ===== PERFORM SAVE END =====');
     } catch (err) {
-      console.error('❌ ===== HANDLE SAVE ERROR =====');
+      console.error('❌ ===== PERFORM SAVE ERROR =====');
       console.error('❌ Error:', err);
       console.error('❌ Error type:', typeof err);
       console.error('❌ Error message:', err instanceof Error ? err.message : 'Unknown error');
-      console.error('🔄 ===== HANDLE SAVE END =====');
+      console.error('🔄 ===== PERFORM SAVE END =====');
       showErrorMessage(isEditMode ? t('budget.setBudgetLimit.error.update') : t('budget.setBudgetLimit.error.create'));
     } finally {
       setIsSaving(false);
@@ -864,32 +979,61 @@ const BudgetLimitScreen = () => {
         </View>
       </Modal>
 
-      {/* Validation Modal */}
-      <Modal
-        visible={showValidationModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleModalClose}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.customModalContainer}>
-            <View style={styles.modalIconContainer}>
-              <Icon name="alert" size={48} color="#F59E0B" />
-            </View>
-            <Text style={styles.modalTitle}>{modalTitle}</Text>
-            <Text style={styles.modalMessage}>{modalMessage}</Text>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleModalClose}
-            >
-              <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </KeyboardAvoidingView>
-  );
-};
+             {/* Validation Modal */}
+       <Modal
+         visible={showValidationModal}
+         transparent
+         animationType="fade"
+         onRequestClose={handleModalClose}
+       >
+         <View style={styles.modalOverlay}>
+           <View style={styles.customModalContainer}>
+             <View style={styles.modalIconContainer}>
+               <Icon name="alert" size={48} color="#F59E0B" />
+             </View>
+             <Text style={styles.modalTitle}>{modalTitle}</Text>
+             <Text style={styles.modalMessage}>{modalMessage}</Text>
+             <TouchableOpacity
+               style={styles.modalButton}
+               onPress={handleModalClose}
+             >
+               <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
+             </TouchableOpacity>
+           </View>
+         </View>
+       </Modal>
+
+       {/* Amount Change Confirmation Modal */}
+       <CustomConfirmModal
+         visible={showAmountConfirmModal}
+         title={t('budget.setBudgetLimit.confirmAmountChange.title')}
+         message={t('budget.setBudgetLimit.confirmAmountChange.message')}
+         confirmText={t('budget.setBudgetLimit.confirmAmountChange.yes')}
+         cancelText={t('budget.setBudgetLimit.confirmAmountChange.no')}
+         onConfirm={() => {
+           console.log('✅ User confirmed change');
+           setShowAmountConfirmModal(false);
+           setChangeType(null);
+           performSave(false); // is_update_amount = false
+         }}
+         onCancel={() => {
+           console.log('❌ User cancelled change');
+           setShowAmountConfirmModal(false);
+           setChangeType(null);
+           if (changeType === 'amount') {
+             // For amount changes: save with is_update_amount = true
+             performSave(true);
+           } else if (changeType === 'date') {
+             // For date changes: stay on screen (don't save)
+             console.log('📅 Date change cancelled - staying on screen');
+           }
+         }}
+         type="warning"
+         iconName="currency-usd-off"
+       />
+     </KeyboardAvoidingView>
+   );
+ };
 
 export default BudgetLimitScreen;
 

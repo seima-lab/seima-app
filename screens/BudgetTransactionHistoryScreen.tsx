@@ -74,6 +74,8 @@ interface BudgetTransactionHistoryScreenProps {
       budgetName: string;
       page?: number;
       size?: number;
+      startDate?: string;
+      endDate?: string;
     };
   };
 }
@@ -82,7 +84,7 @@ const BudgetTransactionHistoryScreen = ({ route }: BudgetTransactionHistoryScree
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigationService();
-  const { budgetId, budgetName, page = 0, size = 10000 } = route.params;
+  const { budgetId, budgetName, page = 0, size = 10000, startDate, endDate } = route.params;
 
   // Transaction data state
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -142,11 +144,31 @@ const BudgetTransactionHistoryScreen = ({ route }: BudgetTransactionHistoryScree
 
       console.log('🔄 Loading budget transactions for budget:', budgetId);
       console.log('🔄 Pagination:', { page, size });
+      console.log('🔄 Date filter:', { startDate, endDate });
       
       const response = await transactionService.getBudgetTransactionHistory(budgetId, page, size);
       
       console.log('✅ Budget transactions loaded:', response?.length || 0);
-      setTransactions(response || []);
+      
+      // Filter transactions by date range if startDate and endDate are provided
+      let filteredTransactions = response || [];
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        filteredTransactions = (response || []).filter((transaction: any) => {
+          const transactionDate = new Date(transaction.transaction_date);
+          return transactionDate >= start && transactionDate <= end;
+        });
+        
+        console.log('🔍 Filtered transactions by date range:', {
+          totalTransactions: response?.length || 0,
+          filteredTransactions: filteredTransactions.length,
+          dateRange: { startDate, endDate }
+        });
+      }
+      
+      setTransactions(filteredTransactions);
     } catch (err: any) {
       console.error('❌ Failed to load budget transactions:', err);
       setError(err.message || 'Failed to load transactions');
@@ -154,7 +176,7 @@ const BudgetTransactionHistoryScreen = ({ route }: BudgetTransactionHistoryScree
       setLoading(false);
       setRefreshing(false);
     }
-  }, [budgetId, page, size]);
+  }, [budgetId, page, size, startDate, endDate]);
 
   // Load transactions on component mount
   useEffect(() => {
@@ -371,7 +393,10 @@ const BudgetTransactionHistoryScreen = ({ route }: BudgetTransactionHistoryScree
               {budgetName}
             </Text>
             <Text style={[styles.headerSubtitle, typography.regular]}>
-              {t('budget.transactionHistory')}
+              {startDate && endDate 
+                ? `${new Date(startDate).toLocaleDateString('vi-VN')} - ${new Date(endDate).toLocaleDateString('vi-VN')}`
+                : t('budget.transactionHistory')
+              }
             </Text>
           </View>
           <TouchableOpacity onPress={onRefresh} disabled={loading || refreshing}>

@@ -1059,6 +1059,12 @@
         "create": "Tạo hạn mức thất bại!",
         "update": "Cập nhật hạn mức thất bại!",
         "loadData": "Không thể tải dữ liệu hạn mức!"
+      },
+      "confirmAmountChange": {
+        "title": "SỬA CHU KỲ/ SỐ TIỀN/ NGÀY THÁNG TRONG BUDGET",
+        "message": "Trước khi lưu: confirm :Bạn có muốn sửa cả những kỳ hạn mức trước đó không?",
+        "yes": "Có",
+        "no": "Không"
       }
     },
     "detail": {

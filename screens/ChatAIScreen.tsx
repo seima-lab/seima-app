@@ -452,6 +452,7 @@ const ChatAIScreen = () => {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [canLoadMore, setCanLoadMore] = useState(true);
     const [currentScrollY, setCurrentScrollY] = useState(0);
+    const [lastLoadTriggerY, setLastLoadTriggerY] = useState(0); // Track last trigger position
     
     const inputRef = useRef<TextInput>(null);
     
@@ -711,7 +712,7 @@ const ChatAIScreen = () => {
 
             // Use proper audio configuration for better compatibility
             const result = await audioRecorderPlayer.startRecorder(
-                '/sdcard/Download/seima_recording.wav', // Use default path
+                undefined, // Use default path
                 audioSet,
                 meteringEnabled
             );
@@ -849,7 +850,9 @@ const ChatAIScreen = () => {
             // Reset canLoadMore after a delay to prevent rapid calls
             setTimeout(() => {
                 setCanLoadMore(true);
-                console.log('✅ Reset canLoadMore to true');
+                // Reset lastLoadTriggerY to allow new triggers
+                setLastLoadTriggerY(0);
+                console.log('✅ Reset canLoadMore to true and lastLoadTriggerY to 0');
             }, 1000);
         }
     };
@@ -970,10 +973,17 @@ const ChatAIScreen = () => {
                             const offsetY = event.nativeEvent.contentOffset.y;
                             setCurrentScrollY(offsetY);
                             
-                            // Load more messages when scrolling up to the top (within 50px)
-                            // Only load if we're at the very top of the content
-                            if (offsetY <= 0 && hasMoreMessages && !isLoadingMore && canLoadMore) {
-                                console.log('🔄 Scrolling up to top, loading more messages...');
+                            // Load more messages when scrolling near the top (within 150px)
+                            // Also check if we've scrolled up significantly from last trigger
+                            const shouldLoad = offsetY <= 2000 && 
+                                             hasMoreMessages && 
+                                             !isLoadingMore && 
+                                             canLoadMore &&
+                                             (lastLoadTriggerY === 0 || offsetY < lastLoadTriggerY - 50);
+                            
+                            if (shouldLoad) {
+                                console.log('🔄 Scrolling near top (offsetY:', offsetY, '), loading more messages...');
+                                setLastLoadTriggerY(offsetY);
                                 setCanLoadMore(false); // Prevent multiple calls
                                 loadMoreMessages();
                             }
@@ -994,6 +1004,13 @@ const ChatAIScreen = () => {
                             <View style={styles.loadingMoreContainer}>
                                 <ActivityIndicator size="small" color="#1e90ff" style={{ marginBottom: 8 }} />
                                 <Text style={styles.loadingMoreText}>Đang tải thêm tin nhắn...</Text>
+                            </View>
+                        )}
+                        
+                        {/* Show indicator when near top and can load more */}
+                        {!isLoadingMore && hasMoreMessages && currentScrollY <= 150 && (
+                            <View style={styles.loadMoreHintContainer}>
+                                <Text style={styles.loadMoreHintText}>⬆️ Kéo lên để xem tin nhắn cũ hơn</Text>
                             </View>
                         )}
                         
@@ -1641,6 +1658,21 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#FF4D4F',
         fontWeight: '600',
+    },
+    loadMoreHintContainer: {
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: 'rgba(30, 144, 255, 0.1)',
+        marginHorizontal: 16,
+        borderRadius: 12,
+        marginBottom: 8,
+    },
+    loadMoreHintText: {
+        fontSize: 13,
+        color: '#1e90ff',
+        fontWeight: '500',
+        textAlign: 'center',
     },
 });
 console.log("styles", styles);

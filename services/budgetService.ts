@@ -8,11 +8,10 @@ export interface BudgetResponseDto {
   start_date: string; // "yyyy-MM-dd HH:mm:ss"
   end_date: string; // "yyyy-MM-dd HH:mm:ss"
   period_type: string;
-  status: string; // "ACTIVE", "INACTIVE"
   overall_amount_limit: number;
   budget_remaining_amount: number;
   created_at: string; // "yyyy-MM-dd HH:mm:ss"
-  categories: Category[]; // API trả về categories thay vì category_list
+  category_list: Category[]; // Thay đổi từ categories thành category_list để nhất quán
 }
 
 // Create Budget Request structure (snake_case for app usage)
@@ -48,10 +47,10 @@ export interface Budget {
   start_date: string;
   end_date: string;
   period_type: string;
-  status: string; // "ACTIVE", "INACTIVE"
   overall_amount_limit: number;
   budget_remaining_amount: number;
   created_at: string;
+  status: string;
   category_list?: Category[]; // Optional categories
 }
 
@@ -62,6 +61,8 @@ export interface BudgetPeriodResponse {
   end_date: string;
   amount_limit: number;
   remaining_amount: number;
+  overall_amount_limit: number;
+  budget_remaining_amount: number;
 }
 
 // API response structure
@@ -88,7 +89,7 @@ const convertToSnakeCase = (budget: any): Budget => {
     budget_id: budget.budget_id,
     budget_name: budget.budget_name,
     categories: budget.categories,
-    status: budget.status
+    category_list: budget.category_list
   });
   
   return {
@@ -97,10 +98,10 @@ const convertToSnakeCase = (budget: any): Budget => {
     start_date: budget.start_date,
     end_date: budget.end_date,
     period_type: budget.period_type,
-    status: budget.status || 'ACTIVE', // Default to 'ACTIVE' if not provided
     overall_amount_limit: budget.overall_amount_limit,
     budget_remaining_amount: budget.budget_remaining_amount,
     created_at: budget.created_at,
+    status: budget.status,
     category_list: budget.categories || budget.category_list || []
   };
 };
@@ -206,10 +207,10 @@ export class BudgetService {
           start_date: response.data.start_date || response.data.startDate,
           end_date: response.data.end_date || response.data.endDate,
           period_type: response.data.period_type || response.data.periodType,
-          status: response.data.status || 'ACTIVE', // Default to 'ACTIVE' if not provided
           overall_amount_limit: response.data.overall_amount_limit || response.data.overallAmountLimit,
           budget_remaining_amount: response.data.budget_remaining_amount || response.data.budgetRemainingAmount,
           created_at: response.data.created_at || response.data.createdAt,
+          status: response.data.status || response.data.status,
           category_list: response.data.category_list || response.data.categories || response.data.categoryList || []
         };
         
@@ -349,7 +350,7 @@ export class BudgetService {
       if (periods.length > 0) {
         console.log('📊 Raw periods data:', JSON.stringify(periods, null, 2));
         
-        const convertedPeriods = periods.map((period: any, index: number) => {
+                const convertedPeriods = periods.map((period: any, index: number) => {
           console.log(`🔄 Converting period ${index}:`, period);
           
           const converted = {
@@ -358,6 +359,8 @@ export class BudgetService {
             end_date: period.endDate || period.end_date,
             amount_limit: period.amountLimit || period.amount_limit,
             remaining_amount: period.remainingAmount || period.remaining_amount,
+            overall_amount_limit: period.overallAmountLimit || period.overall_amount_limit,
+            budget_remaining_amount: period.budgetRemainingAmount || period.budget_remaining_amount,
           };
           
           console.log(`✅ Converted period ${index}:`, converted);

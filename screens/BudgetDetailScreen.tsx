@@ -2,16 +2,16 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
@@ -26,7 +26,7 @@ const BudgetDetailScreen = () => {
   const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
-  const { budgetId } = (route as any).params;
+  const { budgetId, budgetPeriod } = (route as any).params;
   const [budget, setBudget] = useState<any>(null);
   const [budgetPeriods, setBudgetPeriods] = useState<BudgetPeriodResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +39,10 @@ const BudgetDetailScreen = () => {
   const [showDeleteSuccessModal, setShowDeleteSuccessModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+  const [showAllPeriods, setShowAllPeriods] = useState(false);
+  
+  // Calculate displayed periods like GroupMembersScreen
+  const displayedPeriods = showAllPeriods ? budgetPeriods : budgetPeriods.slice(0, 2);
 
   useEffect(() => {
     console.log('🔍 BudgetDetailScreen - useEffect triggered');
@@ -77,7 +81,14 @@ const BudgetDetailScreen = () => {
         }
         
         setBudget(budgetData);
-        setBudgetPeriods(periodsData);
+        
+        // Thêm budgetPeriod vào đầu danh sách periods nếu có
+        if (budgetPeriod) {
+          console.log('🎯 Adding budgetPeriod to periods list:', budgetPeriod);
+          setBudgetPeriods([budgetPeriod, ...periodsData]);
+        } else {
+          setBudgetPeriods(periodsData);
+        }
       } catch (err) {
         console.error('❌ Error fetching budget detail:', err);
         setError(t('budget.detail.loadError'));
@@ -108,7 +119,14 @@ const BudgetDetailScreen = () => {
             console.log('📊 Budget periods reloaded:', periodsData ? periodsData.length : 0, 'items');
             
             setBudget(budgetData);
-            setBudgetPeriods(periodsData);
+            
+            // Thêm budgetPeriod vào đầu danh sách periods nếu có
+            if (budgetPeriod) {
+              console.log('🎯 Adding budgetPeriod to periods list (reload):', budgetPeriod);
+              setBudgetPeriods([budgetPeriod, ...periodsData]);
+            } else {
+              setBudgetPeriods(periodsData);
+            }
           } catch (err) {
             console.error('❌ Error reloading budget detail:', err);
             setError(t('budget.detail.loadError'));
@@ -215,9 +233,13 @@ const BudgetDetailScreen = () => {
 
   // Budget Period Item Component
   const BudgetPeriodItem = ({ period }: { period: BudgetPeriodResponse }) => {
-    const spentAmount = period.amount_limit - period.remaining_amount;
-    const progressPercentage = period.amount_limit > 0 
-      ? (spentAmount / period.amount_limit) * 100 
+    // Add safety checks for undefined values
+    const amountLimit = period.amount_limit || 0;
+    const remainingAmount = period.remaining_amount || 0;
+    
+    const spentAmount = amountLimit - remainingAmount;
+    const progressPercentage = amountLimit > 0 
+      ? (spentAmount / amountLimit) * 100 
       : 0;
 
     return (
@@ -226,17 +248,14 @@ const BudgetDetailScreen = () => {
           <Text style={styles.periodDateRange}>
             {formatDateRange(period.start_date, period.end_date)}
           </Text>
-          <Text style={styles.periodIndex}>
-            Period {period.period_index}
-          </Text>
         </View>
         
         <View style={styles.periodAmounts}>
           <Text style={styles.periodTotalAmount}>
-            {period.amount_limit.toLocaleString()} ₫
+            {amountLimit.toLocaleString()} ₫
           </Text>
           <Text style={styles.periodRemainingAmount}>
-            {period.remaining_amount.toLocaleString()} ₫
+            {remainingAmount.toLocaleString()} ₫
           </Text>
         </View>
         
@@ -378,6 +397,8 @@ const BudgetDetailScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+
+
           {/* Budget Periods Card */}
           {Array.isArray(budgetPeriods) && budgetPeriods.length > 0 && (
             <View style={styles.infoCard}>
@@ -386,23 +407,23 @@ const BudgetDetailScreen = () => {
                 <Text style={styles.infoTitle}>{t('budget.detail.periods')}</Text>
               </View>
               <View style={styles.periodsContainer}>
-                {budgetPeriods.map((period, index) => (
+                {displayedPeriods.map((period, index) => (
                   <TouchableOpacity
                     key={`${period.period_index}-${index}`}
                     onPress={() => {
                       console.log('🎯 Budget period pressed:', period);
-                      console.log('🎯 Navigation params:', {
-                        budgetId: budgetId,
-                        budgetName: budget.budget_name,
-                        page: 0,
-                        size: 10000
+                      console.log('🎯 Period date range:', {
+                        startDate: period.start_date,
+                        endDate: period.end_date
                       });
                       
                       (navigation as any).navigate('BudgetTransactionHistoryScreen', {
                         budgetId: budgetId,
                         budgetName: budget.budget_name,
                         page: 0,
-                        size: 10000
+                        size: 10000,
+                        startDate: period.start_date,
+                        endDate: period.end_date
                       });
                     }}
                     style={styles.periodItemTouchable}
@@ -410,6 +431,27 @@ const BudgetDetailScreen = () => {
                     <BudgetPeriodItem period={period} />
                   </TouchableOpacity>
                 ))}
+                
+                {/* View All/Collapse Button */}
+                {!showAllPeriods && budgetPeriods.length > 2 && (
+                  <TouchableOpacity 
+                    style={styles.viewAllButton}
+                    onPress={() => setShowAllPeriods(true)}
+                  >
+                    <Text style={styles.viewAllText}>{t('budget.detail.viewAllPeriods')}</Text>
+                   
+                  </TouchableOpacity>
+                )}
+                
+                {showAllPeriods && (
+                  <TouchableOpacity 
+                    style={styles.viewAllButton}
+                    onPress={() => setShowAllPeriods(false)}
+                  >
+                    <Text style={styles.viewAllText}>{t('budget.detail.collapse')}</Text>
+             
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
@@ -675,6 +717,7 @@ const styles = StyleSheet.create({
     ...typography.semibold,
   },
   
+
   // Categories
   categoriesContainer: {
     flexDirection: 'row',
@@ -766,6 +809,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
     ...typography.regular,
+  },
+  showMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  showMoreText: {
+    fontSize: 14,
+    color: '#1e90ff',
+    marginRight: 4,
+    ...typography.medium,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: '#1e90ff',
+    ...typography.medium,
+    marginRight: 4,
   },
 
 

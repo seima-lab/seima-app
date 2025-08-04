@@ -831,7 +831,7 @@
   
   "budget": {
     "summary": "Summary",
-
+   
     "total": "Total",
    
     "noTransactions": "No transactions",
@@ -975,10 +975,17 @@
         "create": "Failed to create budget!",
         "update": "Failed to update budget!",
         "loadData": "Cannot load budget data!"
+      },
+      "confirmAmountChange": {
+        "title": "EDIT PERIOD / AMOUNT / DATES IN BUDGET",
+        "message": "Before saving: confirm: Do you want to modify all previous period limits?",
+        "yes": "Yes",
+        "no": "No"
       }
     },
     "detail": {
-    
+      "viewAllPeriods": "View All Periods",
+      "collapse": "Collapse",
       "periods": "Budget Periods",
 
       "deleteSuccessMessage": "Budget has been successfully deleted.",
