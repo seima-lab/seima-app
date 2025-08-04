@@ -182,13 +182,7 @@ const BudgetLimitScreen = () => {
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false);
     // Navigate back after success
-    if (isEditMode) {
-      // If in edit mode, reset navigation to BudgetScreen to refresh the list
-      navigation.reset([{ name: 'BudgetScreen' }]);
-    } else {
-      // If in create mode, just go back
-      navigation.goBack();
-    }
+    navigation.goBack();
   };
 
   // Helper function to render category icons
@@ -659,31 +653,29 @@ const BudgetLimitScreen = () => {
       console.log('  - selectedWalletIds:', selectedWalletIds);
       console.log('  - isUpdateAmount:', updateAmount);
       
-      const request = {
-        user_id: 0, // hoặc lấy user_id thực tế nếu cần
-        budget_name: limitName,
-        start_date: startDate.toISOString().slice(0, 10) + ' 00:00:00',
-        end_date: endDate ? endDate.toISOString().slice(0, 10) + ' 23:59:59' : '',
-        period_type: periodType, // 'WEEKLY' | 'MONTHLY' | 'YEARLY'
-        overall_amount_limit: Number(amount.replace(/[^0-9]/g, '')),
-        budget_remaining_amount: Number(amount.replace(/[^0-9]/g, '')),
-        category_list: selectedCategories.map(category => ({ category_id: category.category_id })), // Array of objects with category_id
-        wallet_list: selectedWalletIds.map(id => ({ id: id })), // Array of objects with id instead of wallet_id
-        currency_code: 'VND', // Hardcoded currency code
-        is_update_amount: updateAmount, // Thêm trường này
-      };
+             const request = {
+         user_id: 0, // hoặc lấy user_id thực tế nếu cần
+         budget_name: limitName,
+         start_date: startDate.toISOString().slice(0, 10) + ' 00:00:00',
+         end_date: endDate ? endDate.toISOString().slice(0, 10) + ' 23:59:59' : '',
+         period_type: periodType, // 'WEEKLY' | 'MONTHLY' | 'YEARLY'
+         overall_amount_limit: Number(amount.replace(/[^0-9]/g, '')),
+         budget_remaining_amount: Number(amount.replace(/[^0-9]/g, '')),
+         category_list: selectedCategories.map(category => ({ category_id: category.category_id })), // Array of objects with category_id
+         wallet_list: selectedWalletIds.map(id => ({ id: id })), // Array of objects with id instead of wallet_id
+         currency_code: 'VND', // Hardcoded currency code
+         ...(isEditMode && { is_update_amount: updateAmount }), // Chỉ thêm trường này khi edit
+       };
 
       console.log('📤 Final request object:', JSON.stringify(request, null, 2));
 
       if (isEditMode && budgetId) {
         console.log('🔄 Calling updateBudget API...');
-        // Update existing budget
         await budgetService.updateBudget(budgetId, request);
         console.log('✅ Update successful!');
         showSuccessMessage(t('budget.setBudgetLimit.success.update'));
       } else {
         console.log('🔄 Calling createBudget API...');
-        // Create new budget
         await budgetService.createBudget(request);
         console.log('✅ Create successful!');
         showSuccessMessage(t('budget.setBudgetLimit.success.create'));
@@ -1029,7 +1021,7 @@ const BudgetLimitScreen = () => {
            }
          }}
          type="warning"
-         iconName="currency-usd-off"
+         iconName="warning"
        />
      </KeyboardAvoidingView>
    );

@@ -603,7 +603,9 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
             </TouchableOpacity>
           </View>
           <FlatList
-            data={transactions.slice(0, 5)}
+            data={transactions
+              .sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime())
+              .slice(0, 5)}
             renderItem={renderTransaction}
             keyExtractor={(item) => item.transaction_id?.toString() || `transaction-${Math.random()}`}
             scrollEnabled={false}

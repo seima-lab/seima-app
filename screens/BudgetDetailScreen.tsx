@@ -17,7 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
 import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
-import { BudgetPeriodResponse, budgetService } from '../services/budgetService';
+import { Budget, BudgetPeriodResponse, budgetService } from '../services/budgetService';
 import { deduplicateCategories, getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 const { width } = Dimensions.get('window');
@@ -29,6 +29,7 @@ const BudgetDetailScreen = () => {
   const { budgetId, budgetPeriod } = (route as any).params;
   const [budget, setBudget] = useState<any>(null);
   const [budgetPeriods, setBudgetPeriods] = useState<BudgetPeriodResponse[]>([]);
+  const [budgetList, setBudgetList] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -54,14 +55,16 @@ const BudgetDetailScreen = () => {
         console.log('🔄 Fetching budget detail for ID:', budgetId);
         setLoading(true);
         
-        // Fetch budget detail and periods in parallel
-        const [budgetData, periodsData] = await Promise.all([
+        // Fetch budget detail, periods, and budget list in parallel
+        const [budgetData, periodsData, budgetListData] = await Promise.all([
           budgetService.getBudgetDetail(budgetId),
-          budgetService.getBudgetPeriods(budgetId)
+          budgetService.getBudgetPeriods(budgetId),
+          budgetService.getBudgetList()
         ]);
         
         console.log('📊 Budget detail API response:', budgetData);
         console.log('📊 Budget periods API response:', periodsData);
+        console.log('📊 Budget list API response:', budgetListData);
         
         // Log specific fields
         if (budgetData) {
@@ -81,14 +84,43 @@ const BudgetDetailScreen = () => {
         }
         
         setBudget(budgetData);
+        setBudgetList(budgetListData);
+        
+        // Tìm budget từ budget list có budget_id trùng với budget detail
+        const matchingBudget = budgetListData.find(b => b.budget_id === parseInt(budgetId));
+        console.log('🔍 Matching budget from list:', matchingBudget);
+        
+        // Tạo period đặc biệt từ budget list nếu tìm thấy
+        let specialPeriod: BudgetPeriodResponse | null = null;
+        if (matchingBudget) {
+          const spent = (matchingBudget.overall_amount_limit ?? 0) - (matchingBudget.budget_remaining_amount ?? 0);
+          specialPeriod = {
+            period_index: 0, // Đặt index 0 để hiển thị đầu tiên
+            start_date: matchingBudget.start_date,
+            end_date: matchingBudget.end_date,
+            amount_limit: matchingBudget.overall_amount_limit,
+            remaining_amount: matchingBudget.budget_remaining_amount,
+            overall_amount_limit: matchingBudget.overall_amount_limit,
+            budget_remaining_amount: matchingBudget.budget_remaining_amount,
+          };
+          console.log('🎯 Created special period from budget list:', specialPeriod);
+        }
         
         // Thêm budgetPeriod vào đầu danh sách periods nếu có
+        let finalPeriods = [...periodsData];
+        
         if (budgetPeriod) {
           console.log('🎯 Adding budgetPeriod to periods list:', budgetPeriod);
-          setBudgetPeriods([budgetPeriod, ...periodsData]);
-        } else {
-          setBudgetPeriods(periodsData);
+          finalPeriods = [budgetPeriod, ...finalPeriods];
         }
+        
+        // Thêm special period vào đầu danh sách nếu có
+        if (specialPeriod) {
+          console.log('🎯 Adding special period to periods list:', specialPeriod);
+          finalPeriods = [specialPeriod, ...finalPeriods];
+        }
+        
+        setBudgetPeriods(finalPeriods);
       } catch (err) {
         console.error('❌ Error fetching budget detail:', err);
         setError(t('budget.detail.loadError'));
@@ -109,24 +141,55 @@ const BudgetDetailScreen = () => {
             setLoading(true);
             setError(null);
             
-            // Fetch budget detail and periods in parallel
-            const [budgetData, periodsData] = await Promise.all([
+            // Fetch budget detail, periods, and budget list in parallel
+            const [budgetData, periodsData, budgetListData] = await Promise.all([
               budgetService.getBudgetDetail(budgetId),
-              budgetService.getBudgetPeriods(budgetId)
+              budgetService.getBudgetPeriods(budgetId),
+              budgetService.getBudgetList()
             ]);
             
             console.log('📊 Budget detail reloaded:', budgetData ? 'success' : 'null');
             console.log('📊 Budget periods reloaded:', periodsData ? periodsData.length : 0, 'items');
+            console.log('📊 Budget list reloaded:', budgetListData ? budgetListData.length : 0, 'items');
             
             setBudget(budgetData);
+            setBudgetList(budgetListData);
+            
+            // Tìm budget từ budget list có budget_id trùng với budget detail
+            const matchingBudget = budgetListData.find(b => b.budget_id === parseInt(budgetId));
+            console.log('🔍 Matching budget from list (reload):', matchingBudget);
+            
+            // Tạo period đặc biệt từ budget list nếu tìm thấy
+            let specialPeriod: BudgetPeriodResponse | null = null;
+            if (matchingBudget) {
+              const spent = (matchingBudget.overall_amount_limit ?? 0) - (matchingBudget.budget_remaining_amount ?? 0);
+              specialPeriod = {
+                period_index: 0, // Đặt index 0 để hiển thị đầu tiên
+                start_date: matchingBudget.start_date,
+                end_date: matchingBudget.end_date,
+                amount_limit: matchingBudget.overall_amount_limit,
+                remaining_amount: matchingBudget.budget_remaining_amount,
+                overall_amount_limit: matchingBudget.overall_amount_limit,
+                budget_remaining_amount: matchingBudget.budget_remaining_amount,
+              };
+              console.log('🎯 Created special period from budget list (reload):', specialPeriod);
+            }
             
             // Thêm budgetPeriod vào đầu danh sách periods nếu có
+            let finalPeriods = [...periodsData];
+            
             if (budgetPeriod) {
               console.log('🎯 Adding budgetPeriod to periods list (reload):', budgetPeriod);
-              setBudgetPeriods([budgetPeriod, ...periodsData]);
-            } else {
-              setBudgetPeriods(periodsData);
+              finalPeriods = [budgetPeriod, ...finalPeriods];
             }
+            
+            // Thêm special period vào đầu danh sách nếu có
+            if (specialPeriod) {
+              console.log('🎯 Adding special period to periods list (reload):', specialPeriod);
+              finalPeriods = [specialPeriod, ...finalPeriods];
+            }
+            
+            setBudgetPeriods(finalPeriods);
           } catch (err) {
             console.error('❌ Error reloading budget detail:', err);
             setError(t('budget.detail.loadError'));
@@ -232,7 +295,7 @@ const BudgetDetailScreen = () => {
   };
 
   // Budget Period Item Component
-  const BudgetPeriodItem = ({ period }: { period: BudgetPeriodResponse }) => {
+  const BudgetPeriodItem = ({ period, index }: { period: BudgetPeriodResponse; index: number }) => {
     // Add safety checks for undefined values
     const amountLimit = period.amount_limit || 0;
     const remainingAmount = period.remaining_amount || 0;
@@ -242,20 +305,36 @@ const BudgetDetailScreen = () => {
       ? (spentAmount / amountLimit) * 100 
       : 0;
 
+    // Kiểm tra xem có phải là special period (period đầu tiên từ budget list)
+    const isSpecialPeriod = index === 0 && period.period_index === 0;
+    
+    // Sử dụng 2 trường riêng cho special period
+    const displayAmountLimit = isSpecialPeriod ? period.overall_amount_limit : amountLimit;
+    const displayRemainingAmount = isSpecialPeriod ? period.budget_remaining_amount : remainingAmount;
+    const displaySpentAmount = displayAmountLimit - displayRemainingAmount;
+    const displayProgressPercentage = displayAmountLimit > 0 
+      ? (displaySpentAmount / displayAmountLimit) * 100 
+      : 0;
+
     return (
-      <View style={styles.periodItem}>
+      <View style={[styles.periodItem, isSpecialPeriod && styles.specialPeriodItem]}>
         <View style={styles.periodHeader}>
           <Text style={styles.periodDateRange}>
             {formatDateRange(period.start_date, period.end_date)}
           </Text>
+          {isSpecialPeriod && (
+            <View style={styles.specialPeriodBadge}>
+              <Text style={styles.specialPeriodBadgeText}>Current Budget</Text>
+            </View>
+          )}
         </View>
         
         <View style={styles.periodAmounts}>
           <Text style={styles.periodTotalAmount}>
-            {amountLimit.toLocaleString()} ₫
+            {displayAmountLimit.toLocaleString()} ₫
           </Text>
           <Text style={styles.periodRemainingAmount}>
-            {remainingAmount.toLocaleString()} ₫
+            {displayRemainingAmount.toLocaleString()} ₫
           </Text>
         </View>
         
@@ -265,14 +344,14 @@ const BudgetDetailScreen = () => {
               style={[
                 styles.periodProgressFill, 
                 { 
-                  width: `${Math.min(progressPercentage, 100)}%`,
-                  backgroundColor: progressPercentage > 80 ? '#EF4444' : '#10B981'
+                  width: `${Math.min(displayProgressPercentage, 100)}%`,
+                  backgroundColor: displayProgressPercentage > 80 ? '#EF4444' : '#10B981'
                 }
               ]} 
             />
           </View>
           <Text style={styles.periodProgressText}>
-            {progressPercentage.toFixed(1)}% used
+            {displayProgressPercentage.toFixed(1)}% used
           </Text>
         </View>
       </View>
@@ -428,7 +507,7 @@ const BudgetDetailScreen = () => {
                     }}
                     style={styles.periodItemTouchable}
                   >
-                    <BudgetPeriodItem period={period} />
+                    <BudgetPeriodItem period={period} index={index} />
                   </TouchableOpacity>
                 ))}
                 
@@ -809,6 +888,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
     ...typography.regular,
+  },
+  // Special period styles
+  specialPeriodItem: {
+    borderWidth: 2,
+    borderColor: '#1e90ff',
+    backgroundColor: '#F0F8FF',
+  },
+  specialPeriodBadge: {
+    backgroundColor: '#1e90ff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  specialPeriodBadgeText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    ...typography.medium,
   },
   showMoreButton: {
     flexDirection: 'row',
