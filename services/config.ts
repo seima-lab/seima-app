@@ -83,10 +83,11 @@ export const TRANSACTION_ENDPOINTS = {
     if (groupId) url += `&groupId=${groupId}`;
     return url;
   },
-  VIEW_REPORT_CATEGORY_DETAIL: (id: string, startDate?: string, endDate?: string) => {
+  VIEW_REPORT_CATEGORY_DETAIL: (id: string, startDate?: string, endDate?: string, groupId?: number) => {
     let url = `${ApiConfig.API_PREFIX}/transactions/view-report/category-detail/${id}`;
     if (startDate) url += `?startDate=${startDate}`;
     if (endDate) url += `${startDate ? '&' : '?'}endDate=${endDate}`;
+    if (groupId) url += `${startDate || endDate ? '&' : '?'}groupId=${groupId}`;
     return url;
   },
   LIST: `${ApiConfig.API_PREFIX}/transactions`,

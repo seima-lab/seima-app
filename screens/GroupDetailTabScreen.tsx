@@ -21,7 +21,28 @@ const GroupDetailTabScreen = () => {
   const { t } = useTranslation();
   const [groupDetail, setGroupDetail] = useState<GroupDetailResponse | null>(null);
 
-  const { groupId, groupName } = route.params;
+  // Add null checks for route.params
+  const groupId = route.params?.groupId || '';
+  const groupName = route.params?.groupName || '';
+
+  // Early return if required params are missing
+  if (!groupId || !groupName) {
+    console.error('🔴 [GroupDetailTabScreen] Missing required params:', { groupId, groupName });
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color="#333333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t('common.error')}</Text>
+          <View style={styles.settingsButton} />
+        </View>
+        <View style={styles.content}>
+          <Text style={styles.errorText}>{t('group.errorLoadingGroups')}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const fetchGroupDetail = async () => {
     try {
@@ -117,6 +138,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  errorText: {
+    textAlign: 'center',
+    padding: 20,
+    color: '#FF0000',
+    fontSize: 16,
   },
 });
 

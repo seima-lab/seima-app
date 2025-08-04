@@ -41,6 +41,7 @@ export default function CategoryDetailReportScreen() {
     category_name, 
     start_date, 
     end_date,
+    groupId, // Thêm groupId từ params
     periodType,
     selectedPeriod: initialSelectedPeriod,
     weekReferenceDate: initialWeekReferenceDate,
@@ -51,6 +52,7 @@ export default function CategoryDetailReportScreen() {
     category_name: string;
     start_date: string;
     end_date: string;
+    groupId?: number; // Thêm groupId type
     periodType?: import('../components/PeriodFilterBar').PeriodType;
     selectedPeriod?: string;
     weekReferenceDate?: Date;
@@ -68,18 +70,19 @@ export default function CategoryDetailReportScreen() {
 
   useEffect(() => {
     fetchCategoryDetailReport();
-  }, [category_id, start_date, end_date]);
+  }, [category_id, start_date, end_date, groupId]);
 
   const fetchCategoryDetailReport = async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔄 Fetching category detail report:', { category_id, start_date, end_date });
+      console.log('🔄 Fetching category detail report:', { category_id, start_date, end_date, groupId });
       
       const data = await categoryService.getCategoryDetailReport(
         String(category_id),
         start_date,
-        end_date
+        end_date,
+        groupId // Thêm groupId parameter
       );
       
       console.log('📊 Category detail report data:', data);

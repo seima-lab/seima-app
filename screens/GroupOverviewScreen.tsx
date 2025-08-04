@@ -229,21 +229,28 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
       // Load all transactions for accurate financial summary calculation
       // Use a large page size to get all transactions at once
       const transactionsResponse = await transactionService.getGroupTransactionHistory(parseInt(groupId), 0, 1000);
-      console.log('🟢 Group transactions loaded:', transactionsResponse.length, 'transactions');
+      console.log('🟢 Group transactions loaded:', transactionsResponse?.length || 0, 'transactions');
       
-      // Log transaction types for debugging
-      const incomeCount = transactionsResponse.filter(t => t.transaction_type === TransactionType.INCOME).length;
-      const expenseCount = transactionsResponse.filter(t => t.transaction_type === TransactionType.EXPENSE).length;
-      console.log('📊 Transaction breakdown:', {
-        total: transactionsResponse.length,
-        income: incomeCount,
-        expense: expenseCount
-      });
-      
-      setTransactions(transactionsResponse);
+      // Add null/undefined check before using filter
+      if (transactionsResponse && Array.isArray(transactionsResponse)) {
+        // Log transaction types for debugging
+        const incomeCount = transactionsResponse.filter(t => t.transaction_type === TransactionType.INCOME).length;
+        const expenseCount = transactionsResponse.filter(t => t.transaction_type === TransactionType.EXPENSE).length;
+        console.log('📊 Transaction breakdown:', {
+          total: transactionsResponse.length,
+          income: incomeCount,
+          expense: expenseCount
+        });
+        
+        setTransactions(transactionsResponse);
+      } else {
+        console.warn('⚠️ transactionsResponse is not an array:', transactionsResponse);
+        setTransactions([]);
+      }
     } catch (error: any) {
       console.error('🔴 Failed to load group transactions:', error);
       setTransactionsError(error.message || 'Failed to load transactions');
+      setTransactions([]); // Set empty array on error
     } finally {
       setTransactionsLoading(false);
     }
@@ -598,7 +605,7 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
           <FlatList
             data={transactions.slice(0, 5)}
             renderItem={renderTransaction}
-            keyExtractor={(item) => item.transaction_id.toString()}
+            keyExtractor={(item) => item.transaction_id?.toString() || `transaction-${Math.random()}`}
             scrollEnabled={false}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListHeaderComponent={() => (
