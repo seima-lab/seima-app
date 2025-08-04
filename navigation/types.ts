@@ -185,6 +185,7 @@ export type RootStackParamList = {
     category_name: string;
     start_date: string;
     end_date: string;
+    groupId?: number; // Thêm groupId parameter
     periodType?: import('../components/PeriodFilterBar').PeriodType;
     selectedPeriod?: string;
     weekReferenceDate?: Date;

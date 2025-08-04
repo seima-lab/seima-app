@@ -164,7 +164,7 @@ const GroupTransactionListScreen: React.FC = () => {
       await transactionService.deleteTransaction(parseInt(selectedTransactionIdToDelete));
       
       // Remove transaction from local state
-      setTransactions(prev => prev.filter(t => t.transaction_id.toString() !== selectedTransactionIdToDelete));
+      setTransactions(prev => prev.filter(t => t.transaction_id?.toString() !== selectedTransactionIdToDelete));
       
       // Clean up animated value
       delete animatedValues.current[selectedTransactionIdToDelete];
@@ -320,7 +320,7 @@ const GroupTransactionListScreen: React.FC = () => {
     const transactionType = item.transaction_type?.toLowerCase();
     
     return {
-      id: item.transaction_id.toString(),
+      id: item.transaction_id?.toString() || `transaction-${Math.random()}`,
       date: item.transaction_date,
       category: categoryName,
       amount: item.amount || 0,
@@ -420,7 +420,7 @@ const GroupTransactionListScreen: React.FC = () => {
     (navigation as any).navigate('AddExpenseScreen', {
       editMode: true,
       transactionData: {
-        id: transaction.transaction_id.toString(),
+        id: transaction.transaction_id?.toString() || `transaction-${Math.random()}`,
         amount: transaction.amount,
         note: transaction.description || '',
         date: transaction.transaction_date,
@@ -456,7 +456,7 @@ const GroupTransactionListScreen: React.FC = () => {
     const isIncome = item.transaction_type === TransactionType.INCOME;
     const userInfo = getUserInfo(item.user_id);
     const isMyTransaction = item.user_id === currentUserId;
-    const transactionId = item.transaction_id.toString();
+    const transactionId = item.transaction_id?.toString() || `transaction-${Math.random()}`;
     const animatedValue = getAnimatedValue(transactionId);
     const isDeleting = deletingTransactionId === transactionId;
 
@@ -722,7 +722,7 @@ const GroupTransactionListScreen: React.FC = () => {
           <FlatList
             data={groupTransactions}
             renderItem={renderTransaction}
-            keyExtractor={(item) => item.transaction_id.toString()}
+            keyExtractor={(item) => item.transaction_id?.toString() || `transaction-${Math.random()}`}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}

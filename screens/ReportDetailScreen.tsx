@@ -800,11 +800,18 @@ const ReportDetailScreen = () => {
           <View style={styles.summarySection}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{t('reports.total')}</Text>
-              <Text style={styles.summaryAmount}>{totalAmount.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} {t('currency')}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>{t('reports.dailyAverage')}</Text>
-              <Text style={styles.summaryAmount}>{Math.round(totalAmount / new Date(dateRange.endDate).getDate()).toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} {t('currency')}</Text>
+              <Text style={styles.summaryAmount}>
+                {(() => {
+                  if (!reportData) return `${totalAmount.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} ${t('currency')}`;
+                  
+                  const summary = reportData.summary;
+                  const currentTotal = categoryType === 'expense' 
+                    ? (summary?.totalExpense || summary?.total_expense || 0)
+                    : (summary?.totalIncome || summary?.total_income || 0);
+                  
+                  return `${currentTotal.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} ${t('currency')}`;
+                })()}
+              </Text>
             </View>
           </View>
           <View style={styles.listSection}>

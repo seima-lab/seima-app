@@ -565,6 +565,7 @@ export default function CategoryReportDetailScreen() {
                       category_name: category_name || '',
                       start_date: itemStartDate,
                       end_date: itemEndDate,
+                      groupId: groupId, // Thêm groupId từ CategoryReportDetailScreen
                       periodType: selectedPeriodType,
                       selectedPeriod: initialSelectedPeriod,
                       weekReferenceDate: initialWeekReferenceDate,

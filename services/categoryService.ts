@@ -850,11 +850,12 @@ export class CategoryService {
   async getCategoryDetailReport(
     id: string,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    groupId?: number
   ): Promise<any> {
     try {
-      console.log('🔄 Fetching category detail report:', { id, startDate, endDate });
-      const url = TRANSACTION_ENDPOINTS.VIEW_REPORT_CATEGORY_DETAIL(id, startDate, endDate);
+      console.log('🔄 Fetching category detail report:', { id, startDate, endDate, groupId });
+      const url = TRANSACTION_ENDPOINTS.VIEW_REPORT_CATEGORY_DETAIL(id, startDate, endDate, groupId);
       const response = await apiService.get<any>(url);
       console.log('📊 Category detail report response:', response);
       return response.data || response;

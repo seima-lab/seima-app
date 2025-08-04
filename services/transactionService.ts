@@ -400,12 +400,29 @@ export class TransactionService {
     size: number = 10
   ): Promise<GroupTransactionResponse[]> {
     try {
+      console.log('🔄 Fetching group transaction history:', { groupId, page, size });
+      
       const response = await apiService.get(
-        `${TRANSACTION_ENDPOINTS.LIST}/group/${groupId}?page=${page}&size=${size}`
+        `${TRANSACTION_ENDPOINTS.LIST}/view-history-transactions-group/${groupId}?page=${page}&size=${size}`
       );
-      return response.data as GroupTransactionResponse[];
+      
+      console.log('🟢 Group transaction history response:', response);
+      
+      // Handle different response structures
+      if (response.data && Array.isArray(response.data)) {
+        return response.data as GroupTransactionResponse[];
+      } else if (response.data && typeof response.data === 'object' && 'content' in response.data && Array.isArray((response.data as any).content)) {
+        return (response.data as any).content as GroupTransactionResponse[];
+      } else if (response && typeof response === 'object' && 'content' in response && Array.isArray((response as any).content)) {
+        return (response as any).content as GroupTransactionResponse[];
+      } else if (Array.isArray(response)) {
+        return response as GroupTransactionResponse[];
+      } else {
+        console.error('❌ Unexpected response structure:', response);
+        return [];
+      }
     } catch (error) {
-      console.error('Error fetching group transaction history:', error);
+      console.error('❌ Error fetching group transaction history:', error);
       throw error;
     }
   }
