@@ -22,7 +22,13 @@ import {
     TouchableWithoutFeedback,
     View
 } from 'react-native';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import AudioRecorderPlayer, {
+    AudioEncoderAndroidType,
+    AudioSourceAndroidType,
+    AVEncoderAudioQualityIOSType,
+    AVEncodingOption,
+    RecordBackType
+} from 'react-native-audio-recorder-player';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -295,18 +301,26 @@ const VoiceRecorderModal = ({
     const handlePressIn = async () => {
         if (Platform.OS === 'android' && !hasAudioPermission) {
             try {
-                const granted = await PermissionsAndroid.request(
+                const permissions = await PermissionsAndroid.requestMultiple([
                     PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-                    {
-                        title: t('voiceRecording.permissionTitle'),
-                        message: t('voiceRecording.permissionMessage'),
-                        buttonNeutral: t('voiceRecording.permissionAskLater'),
-                        buttonNegative: t('voiceRecording.permissionDeny'),
-                        buttonPositive: t('voiceRecording.permissionAllow'),
-                    }
-                );
-                if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+                    PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+                    PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+                ]);
+                
+                const audioGranted = permissions[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED;
+                const writeGranted = permissions[PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE] === PermissionsAndroid.RESULTS.GRANTED;
+                const readGranted = permissions[PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE] === PermissionsAndroid.RESULTS.GRANTED;
+                
+                if (audioGranted) {
                     setHasAudioPermission(true);
+                    console.log('✅ Audio permission granted');
+                    
+                    if (writeGranted && readGranted) {
+                        console.log('✅ Storage permissions granted');
+                    } else {
+                        console.log('⚠️ Some storage permissions not granted:', { writeGranted, readGranted });
+                    }
+                    
                     Alert.alert(t('voiceRecording.permissionGranted'), t('voiceRecording.permissionGrantedMessage'));
                     return;
                 } else {
@@ -448,6 +462,22 @@ const ChatAIScreen = () => {
         { text: 'Tư vấn tiết kiệm 💡', icon: 'lightbulb' },
     ];
 
+    // Audio configuration for better compatibility across devices
+    const audioSet = {
+        // iOS Settings
+        AVSampleRateKeyIOS: 44100,
+        AVFormatIDKeyIOS: AVEncodingOption.aac,
+        AVEncoderAudioQualityKeyIOS: AVEncoderAudioQualityIOSType.high,
+        AVNumberOfChannelsKeyIOS: 2,
+
+        // Android Settings
+        AudioEncoderAndroid: AudioEncoderAndroidType.AAC,
+        AudioSourceAndroid: AudioSourceAndroidType.MIC,
+    };
+
+    const meteringEnabled = true; // Enable audio metering
+    
+    // Create AudioRecorderPlayer instance
     const audioRecorderPlayer = new AudioRecorderPlayer();
 
     // Load chat history from API
@@ -671,11 +701,20 @@ const ChatAIScreen = () => {
         handleSendMessage(budgetMessage);
     };
 
-    // Hàm bắt đầu ghi âm (bạn tích hợp recorder của bạn ở đây)
+    // Hàm bắt đầu ghi âm với cấu hình audio tối ưu
     const handleStartRecord = async () => {
         try {
-            const result = await audioRecorderPlayer.startRecorder();
-            // audioFilePath.current = result; // This line was removed
+            // Set up recording progress listener
+            audioRecorderPlayer.addRecordBackListener((e: RecordBackType) => {
+                console.log('Recording progress:', e.currentPosition, e.currentMetering);
+            });
+
+            // Use proper audio configuration for better compatibility
+            const result = await audioRecorderPlayer.startRecorder(
+                '/sdcard/Download/seima_recording.wav', // Use default path
+                audioSet,
+                meteringEnabled
+            );
             console.log('Start record, file path:', result);
         } catch (err) {
             console.log('Error startRecorder:', err);
@@ -687,6 +726,8 @@ const ChatAIScreen = () => {
         setIsVoiceLoading(true);
         try {
             let result = await audioRecorderPlayer.stopRecorder();
+            audioRecorderPlayer.removeRecordBackListener();
+            
             // Chuẩn hóa lại đường dẫn (loại bớt dấu / dư thừa)
             if (result && result.startsWith('file:////')) {
                 result = result.replace('file:////', 'file:///');
@@ -694,7 +735,7 @@ const ChatAIScreen = () => {
             console.log('Chuẩn hóa file path:', result);
 
             // Chờ file được ghi ra ổ đĩa
-            await new Promise(res => setTimeout(res, 200));
+            await new Promise(res => setTimeout(res, 500));
 
             // Kiểm tra file tồn tại
             if (!result) {
@@ -708,12 +749,12 @@ const ChatAIScreen = () => {
                 return;
             }
 
-            // Upload như cũ, đồng bộ extension và type
+            // Upload với định dạng AAC cho tương thích tốt hơn
             const formData = new FormData();
             formData.append('file', {
                 uri: result,
-                name: 'sound.mp4', // hoặc sound.m4a nếu đúng định dạng
-                type: 'audio/mp4', // hoặc audio/m4a nếu đúng định dạng
+                name: 'sound.m4a',
+                type: 'audio/m4a',
             } as any);
             
             console.log('🎤 Bắt đầu gửi audio lên server...');
