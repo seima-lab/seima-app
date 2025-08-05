@@ -185,6 +185,7 @@ export class BudgetService {
       throw new Error('Invalid response format');
     } catch (error) {
       console.error('❌ Error creating budget:', error);
+      // Re-throw the original error to preserve the API error message
       throw error;
     }
   }

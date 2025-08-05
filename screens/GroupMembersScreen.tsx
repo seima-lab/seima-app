@@ -20,6 +20,8 @@ import {
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomConfirmModal from '../components/CustomConfirmModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation/types';
@@ -282,6 +284,26 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [removingMember, setRemovingMember] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<GroupMemberRole>(GroupMemberRole.MEMBER);
+  
+  // Modal states
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [confirmModalData, setConfirmModalData] = useState<{
+    title: string;
+    message: string;
+    confirmText: string;
+    cancelText: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info';
+    iconName: string;
+  } | null>(null);
+  const [successModalData, setSuccessModalData] = useState<{
+    title: string;
+    message: string;
+    buttonText: string;
+    onConfirm: () => void;
+    iconName: string;
+  } | null>(null);
 
   useEffect(() => {
     loadGroupMembers();
@@ -295,6 +317,12 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
       
       const response = await groupService.getActiveGroupMembers(parseInt(groupId));
       console.log('🟢 Members loaded:', response);
+      console.log('🔍 DEBUG API Response:', {
+        groupLeader: response.group_leader,
+        members: response.members,
+        currentUserRole: response.current_user_role,
+        totalMembersCount: response.total_members_count
+      });
       
       setMemberData(response);
     } catch (error: any) {
@@ -309,6 +337,12 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
   // Transform API data to display format with enhanced role handling
   const transformMemberData = (): DisplayMember[] => {
     if (!memberData) return [];
+    
+    console.log('🔍 DEBUG transformMemberData - Input:', {
+      groupLeader: memberData.group_leader,
+      members: memberData.members,
+      currentUserRole: memberData.current_user_role
+    });
     
     const allMembers: DisplayMember[] = [];
     
@@ -349,6 +383,12 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
     }
     
     console.log('🟢 Transformed members with fixed emails:', allMembers);
+    console.log('🔍 DEBUG Final Transformed Data:', {
+      totalMembers: allMembers.length,
+      currentUserId: user?.id,
+      currentUserRole: memberData.current_user_role,
+      membersWithRoles: allMembers.map(m => ({ name: m.name, role: m.role, isCurrentUser: m.isCurrentUser }))
+    });
     return allMembers;
   };
 
@@ -371,45 +411,107 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
     console.log('🟡 Current member data:', memberData);
     console.log('🟡 Transformed members:', members);
     console.log('🟡 Members length:', members.length);
+    console.log('🟡 Loading state:', loading);
+    console.log('🟡 Current user role:', memberData?.current_user_role);
+    
+    // ❌ Không mở modal nếu đang loading hoặc không có data
+    if (loading || !memberData) {
+      console.log('❌ Cannot open modal: Still loading or no data');
+      setSuccessModalData({
+        title: t('common.error'),
+        message: t('group.memberManagement.dataNotReady'),
+        buttonText: t('common.ok'),
+        iconName: 'error',
+        onConfirm: () => {
+          setShowSuccessModal(false);
+          setSuccessModalData(null);
+        }
+      });
+      setShowSuccessModal(true);
+      return;
+    }
+    
+    // ❌ Không mở modal nếu không có current_user_role
+    if (!memberData.current_user_role) {
+      console.log('❌ Cannot open modal: No current_user_role');
+      setSuccessModalData({
+        title: t('common.error'),
+        message: t('group.memberManagement.noPermission'),
+        buttonText: t('common.ok'),
+        iconName: 'error',
+        onConfirm: () => {
+          setShowSuccessModal(false);
+          setSuccessModalData(null);
+        }
+      });
+      setShowSuccessModal(true);
+      return;
+    }
+    
+    console.log('✅ Opening modal with valid data');
     setShowMemberModal(true);
   };
 
 
 
   const handleRemoveMember = async (member: DisplayMember) => {
-    Alert.alert(
-      t('group.memberManagement.removeMember'),
-      t('group.memberManagement.confirmRemove', { name: member.name }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setRemovingMember(member.id);
-              console.log('🟡 Removing member:', member.name, member.id);
-              
-              await groupService.removeMemberFromGroup(
-                parseInt(groupId), 
-                parseInt(member.id)
-              );
-              
-              console.log('🟢 Member removed successfully');
-              Alert.alert(t('common.success'), t('group.memberManagement.removeSuccess', { name: member.name }));
-              
-              // Reload member list
-              await loadGroupMembers();
-            } catch (error: any) {
-              console.error('🔴 Failed to remove member:', error);
-              Alert.alert(t('common.error'), error.message || t('group.memberManagement.removeFailed'));
-            } finally {
-              setRemovingMember(null);
+    setConfirmModalData({
+      title: t('group.memberManagement.removeMember'),
+      message: t('group.memberManagement.confirmRemove', { name: member.name }),
+      confirmText: t('common.remove'),
+      cancelText: t('common.cancel'),
+      type: 'danger',
+      iconName: 'delete-forever',
+      onConfirm: async () => {
+        try {
+          setRemovingMember(member.id);
+          console.log('🟡 Removing member:', member.name, member.id);
+          
+          await groupService.removeMemberFromGroup(
+            parseInt(groupId), 
+            parseInt(member.id)
+          );
+          
+          console.log('🟢 Member removed successfully');
+          
+          // Reload member list
+          await loadGroupMembers();
+          
+          // Show success modal AFTER data reload
+          setSuccessModalData({
+            title: t('common.success'),
+            message: t('group.memberManagement.removeSuccess', { name: member.name }),
+            buttonText: t('common.ok'),
+            iconName: 'check-circle',
+            onConfirm: () => {
+              setShowSuccessModal(false);
+              setSuccessModalData(null);
             }
-          }
+          });
+          setShowSuccessModal(true);
+        } catch (error: any) {
+          console.error('🔴 Failed to remove member:', error);
+          
+          // Show error modal
+          setSuccessModalData({
+            title: t('common.error'),
+            message: error.message || t('group.memberManagement.removeFailed'),
+            buttonText: t('common.ok'),
+            iconName: 'error',
+            onConfirm: () => {
+              setShowSuccessModal(false);
+              setSuccessModalData(null);
+            }
+          });
+          setShowSuccessModal(true);
+        } finally {
+          setRemovingMember(null);
+          setShowConfirmModal(false);
+          setConfirmModalData(null);
         }
-      ]
-    );
+      }
+    });
+    setShowConfirmModal(true);
   };
 
   // Check if current user can manage roles
@@ -422,37 +524,77 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
   const canChangeRole = (targetMemberRole: GroupMemberRole) => {
     const currentUserRole = memberData?.current_user_role;
     
+    console.log('🔍 DEBUG canChangeRole:', {
+      targetMemberRole: targetMemberRole,
+      currentUserRole: currentUserRole
+    });
+    
     if (currentUserRole === GroupMemberRole.OWNER) {
+      console.log('✅ canChangeRole: Owner can change anyone\'s role');
       return true; // Owner can change anyone's role
     }
     
     if (currentUserRole === GroupMemberRole.ADMIN) {
       // Admin can manage other Members, but not other Admins or the Owner.
-      return targetMemberRole === GroupMemberRole.MEMBER;
+      const canChange = targetMemberRole === GroupMemberRole.MEMBER;
+      console.log('🔍 canChangeRole: Admin can change role?', canChange);
+      return canChange;
     }
     
+    console.log('❌ canChangeRole: No permissions');
     return false;
   };
 
   // Check if the current user can perform any action on a target member
   const canActOnMember = (targetMember: DisplayMember) => {
     const currentUserRole = memberData?.current_user_role;
-    if (!currentUserRole || !user) return false;
+    console.log('🔍 DEBUG canActOnMember:', {
+      targetMemberName: targetMember.name,
+      targetMemberId: targetMember.id,
+      targetMemberRole: targetMember.role,
+      currentUserRole: currentUserRole,
+      currentUserId: user?.id,
+      memberDataExists: !!memberData,
+      loading: loading
+    });
+
+    // ❌ ĐIỀU KIỆN 1: Đang loading hoặc không có dữ liệu
+    if (loading || !memberData) {
+      console.log('❌ canActOnMember: Still loading or no memberData');
+      return false;
+    }
+
+    if (!currentUserRole || !user) {
+      console.log('❌ canActOnMember: No currentUserRole or user');
+      return false;
+    }
 
     // Cannot act on self
-    if (targetMember.id === user.id?.toString()) return false;
+    if (targetMember.id === user.id?.toString()) {
+      console.log('❌ canActOnMember: Cannot act on self');
+      return false;
+    }
 
     // Cannot act on Owner
-    if (targetMember.role === GroupMemberRole.OWNER) return false;
+    if (targetMember.role === GroupMemberRole.OWNER) {
+      console.log('❌ canActOnMember: Cannot act on Owner');
+      return false;
+    }
 
     // Owner can act on anyone (except themselves)
-    if (currentUserRole === GroupMemberRole.OWNER) return true;
+    if (currentUserRole === GroupMemberRole.OWNER) {
+      console.log('✅ canActOnMember: Owner can act on', targetMember.name);
+      return true;
+    }
 
     // Admin can act on Members
     if (currentUserRole === GroupMemberRole.ADMIN) {
-      return targetMember.role === GroupMemberRole.MEMBER;
+      const canAct = targetMember.role === GroupMemberRole.MEMBER;
+      console.log('🔍 canActOnMember: Admin can act on', targetMember.name, 'result:', canAct);
+      return canAct;
     }
 
+    console.log('❌ canActOnMember: No permissions');
     return false;
   };
 
@@ -469,40 +611,66 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
       }
     };
 
-    Alert.alert(
-      t('group.memberManagement.confirmRoleChange'),
-      t('group.memberManagement.changeRoleFrom', { 
+    setConfirmModalData({
+      title: t('group.memberManagement.confirmRoleChange'),
+      message: t('group.memberManagement.changeRoleFrom', { 
         name: member.name, 
         oldRole: getRoleLabel(member.role), 
         newRole: getRoleLabel(newRole) 
       }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('group.memberManagement.confirm'),
-          onPress: async () => {
-            try {
-              console.log('🟡 Updating member role:', member.name, newRole);
-              
-              await groupService.updateMemberRole(
-                parseInt(groupId),
-                parseInt(member.id),
-                newRole
-              );
-              
-              console.log('🟢 Member role updated successfully');
-              Alert.alert(t('common.success'), t('group.memberManagement.roleUpdateSuccess', { name: member.name }));
-              
-              // Reload member list to get updated data
-              await loadGroupMembers();
-            } catch (error: any) {
-              console.error('🔴 Failed to update member role:', error);
-              Alert.alert(t('common.error'), error.message || t('group.memberManagement.roleUpdateFailed'));
+      confirmText: t('group.memberManagement.confirm'),
+      cancelText: t('common.cancel'),
+      type: 'warning',
+      iconName: 'admin-panel-settings',
+      onConfirm: async () => {
+        try {
+          console.log('🟡 Updating member role:', member.name, newRole);
+          
+          await groupService.updateMemberRole(
+            parseInt(groupId),
+            parseInt(member.id),
+            newRole
+          );
+          
+          console.log('🟢 Member role updated successfully');
+          
+          // Reload member list to get updated data
+          await loadGroupMembers();
+          
+          // Show success modal AFTER data reload
+          setSuccessModalData({
+            title: t('common.success'),
+            message: t('group.memberManagement.roleUpdateSuccess', { name: member.name }),
+            buttonText: t('common.ok'),
+            iconName: 'check-circle',
+            onConfirm: () => {
+              setShowSuccessModal(false);
+              setSuccessModalData(null);
             }
-          }
+          });
+          setShowSuccessModal(true);
+        } catch (error: any) {
+          console.error('🔴 Failed to update member role:', error);
+          
+          // Show error modal
+          setSuccessModalData({
+            title: t('common.error'),
+            message: error.message || t('group.memberManagement.roleUpdateFailed'),
+            buttonText: t('common.ok'),
+            iconName: 'error',
+            onConfirm: () => {
+              setShowSuccessModal(false);
+              setSuccessModalData(null);
+            }
+          });
+          setShowSuccessModal(true);
+        } finally {
+          setShowConfirmModal(false);
+          setConfirmModalData(null);
         }
-      ]
-    );
+      }
+    });
+    setShowConfirmModal(true);
   };
 
   // Enhanced member modal rendering with role management
@@ -617,7 +785,7 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
 
       {/* Member Management Modal */}
       <Modal
-        visible={showMemberModal}
+        visible={showMemberModal && !loading && !!memberData}
         animationType="slide"
         transparent={true}
         onRequestClose={() => setShowMemberModal(false)}
@@ -635,96 +803,123 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
               </TouchableOpacity>
             </View>
             
+            {/* Loading State in Modal */}
+            {loading && (
+              <View style={styles.modalLoadingContainer}>
+                <ActivityIndicator size="large" color="#4A90E2" />
+                <Text style={styles.modalLoadingText}>{t('common.loading')}...</Text>
+              </View>
+            )}
+            
             {/* Member Count */}
-            <View style={styles.memberCountBadge}>
-              <Text style={styles.memberCountText}>
-                {t('group.memberManagement.totalMembersCount', { count: members.length })}
-              </Text>
-            </View>
+            {!loading && memberData && (
+              <View style={styles.memberCountBadge}>
+                <Text style={styles.memberCountText}>
+                  {t('group.memberManagement.totalMembersCount', { count: members.length })}
+                </Text>
+              </View>
+            )}
             
             {/* Member List */}
-            <View style={styles.modalListContainer}>
-              {members.length > 0 ? (
-                <ScrollView 
-                  style={styles.modalScrollView}
-                  showsVerticalScrollIndicator={true}
-                >
-                  {members.map((member) => (
-                    <View key={member.id} style={styles.modalMemberCard}>
-                      <View style={styles.modalMemberHeader}>
-                        <Image source={member.avatar} style={styles.modalMemberAvatar} />
-                        <View style={styles.modalMemberInfo}>
-                          <Text style={styles.modalMemberName}>{member.name}</Text>
-                        </View>
-                      </View>
-                      
-                      {/* Role and Actions */}
-                      <View style={styles.modalMemberFooter}>
-                        <View style={[
-                          styles.roleTag,
-                          member.role === GroupMemberRole.OWNER && styles.roleTagOwner,
-                          member.role === GroupMemberRole.ADMIN && styles.roleTagAdmin,
-                          member.role === GroupMemberRole.MEMBER && styles.roleTagMember,
-                        ]}>
-                          <Text style={styles.roleTagText}>
-                            {member.role === GroupMemberRole.OWNER ? t('group.memberManagement.roles.owner') :
-                             member.role === GroupMemberRole.ADMIN ? t('group.memberManagement.roles.admin') : t('group.memberManagement.roles.member')}
-                          </Text>
-                        </View>
-
-                        {/* Action Buttons */}
-                        {canActOnMember(member) && (
-                          <View style={styles.modalActionsContainer}>
-                            {canChangeRole(member.role) && (
-                              <>
-                                {member.role === GroupMemberRole.MEMBER && (
-                                  <TouchableOpacity
-                                    style={[styles.actionButton, styles.promoteButton]}
-                                    onPress={() => handleRoleUpdate(member, GroupMemberRole.ADMIN)}
-                                  >
-                                    <Icon name="arrow-upward" size={14} color="#fff" />
-                                    <Text style={styles.actionButtonText}>{t('group.memberManagement.promoteToAdmin')}</Text>
-                                  </TouchableOpacity>
-                                )}
-                                {member.role === GroupMemberRole.ADMIN && (
-                                  <TouchableOpacity
-                                    style={[styles.actionButton, styles.demoteButton]}
-                                    onPress={() => handleRoleUpdate(member, GroupMemberRole.MEMBER)}
-                                  >
-                                    <Icon name="arrow-downward" size={14} color="#fff" />
-                                    <Text style={styles.actionButtonText}>{t('group.memberManagement.demoteToMember')}</Text>
-                                  </TouchableOpacity>
-                                )}
-                              </>
-                            )}
-                            <TouchableOpacity
-                              style={[styles.actionButton, styles.removeButton]}
-                              onPress={() => handleRemoveMember(member)}
-                            >
-                              <Icon name="delete-forever" size={14} color="#fff" />
-                              <Text style={styles.actionButtonText}>{t('common.remove')}</Text>
-                            </TouchableOpacity>
+            {!loading && memberData && (
+              <View style={styles.modalListContainer}>
+                {members.length > 0 ? (
+                  <ScrollView 
+                    style={styles.modalScrollView}
+                    showsVerticalScrollIndicator={true}
+                  >
+                    {members.map((member) => (
+                      <View key={member.id} style={styles.modalMemberCard}>
+                        <View style={styles.modalMemberHeader}>
+                          <Image source={member.avatar} style={styles.modalMemberAvatar} />
+                          <View style={styles.modalMemberInfo}>
+                            <Text style={styles.modalMemberName}>{member.name}</Text>
                           </View>
-                        )}
+                        </View>
+                        
+                        {/* Role and Actions */}
+                        <View style={styles.modalMemberFooter}>
+                          <View style={[
+                            styles.roleTag,
+                            member.role === GroupMemberRole.OWNER && styles.roleTagOwner,
+                            member.role === GroupMemberRole.ADMIN && styles.roleTagAdmin,
+                            member.role === GroupMemberRole.MEMBER && styles.roleTagMember,
+                          ]}>
+                            <Text style={styles.roleTagText}>
+                              {member.role === GroupMemberRole.OWNER ? t('group.memberManagement.roles.owner') :
+                               member.role === GroupMemberRole.ADMIN ? t('group.memberManagement.roles.admin') : t('group.memberManagement.roles.member')}
+                            </Text>
+                          </View>
+
+                          {/* Action Buttons */}
+                          {(() => {
+                            const canAct = canActOnMember(member);
+                            const canChange = canChangeRole(member.role);
+                            console.log('🔍 DEBUG Button Display:', {
+                              memberName: member.name,
+                              memberRole: member.role,
+                              canAct: canAct,
+                              canChange: canChange,
+                              willShowButtons: canAct,
+                              loading: loading,
+                              memberDataExists: !!memberData
+                            });
+                            return canAct && (
+                              <View style={styles.modalActionsContainer}>
+                                {canChange && (
+                                  <>
+                                    {member.role === GroupMemberRole.MEMBER && (
+                                      <TouchableOpacity
+                                        style={[styles.actionButton, styles.promoteButton]}
+                                        onPress={() => handleRoleUpdate(member, GroupMemberRole.ADMIN)}
+                                      >
+                                        <Icon name="arrow-upward" size={14} color="#fff" />
+                                        <Text style={styles.actionButtonText}>{t('group.memberManagement.promoteToAdmin')}</Text>
+                                      </TouchableOpacity>
+                                    )}
+                                    {member.role === GroupMemberRole.ADMIN && (
+                                      <TouchableOpacity
+                                        style={[styles.actionButton, styles.demoteButton]}
+                                        onPress={() => handleRoleUpdate(member, GroupMemberRole.MEMBER)}
+                                      >
+                                        <Icon name="arrow-downward" size={14} color="#fff" />
+                                        <Text style={styles.actionButtonText}>{t('group.memberManagement.demoteToMember')}</Text>
+                                      </TouchableOpacity>
+                                    )}
+                                  </>
+                                )}
+                                <TouchableOpacity
+                                  style={[styles.actionButton, styles.removeButton]}
+                                  onPress={() => handleRemoveMember(member)}
+                                >
+                                  <Icon name="delete-forever" size={14} color="#fff" />
+                                  <Text style={styles.actionButtonText}>{t('common.remove')}</Text>
+                                </TouchableOpacity>
+                              </View>
+                            );
+                          })()}
+                        </View>
                       </View>
-                    </View>
-                  ))}
-                </ScrollView>
-              ) : (
-                <View style={styles.emptyStateContainer}>
-                  <Icon name="people-outline" size={64} color="#CCCCCC" />
-                  <Text style={styles.emptyStateText}>{t('group.memberManagement.noMembersFound')}</Text>
-                </View>
-              )}
-            </View>
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <View style={styles.emptyStateContainer}>
+                    <Icon name="people-outline" size={64} color="#CCCCCC" />
+                    <Text style={styles.emptyStateText}>{t('group.memberManagement.noMembersFound')}</Text>
+                  </View>
+                )}
+              </View>
+            )}
             
             {/* Close Button */}
-            <TouchableOpacity 
-              style={styles.modalFooterButton}
-              onPress={() => setShowMemberModal(false)}
-            >
-              <Text style={styles.modalFooterButtonText}>{t('group.memberManagement.close')}</Text>
-            </TouchableOpacity>
+            {!loading && memberData && (
+              <TouchableOpacity 
+                style={styles.modalFooterButton}
+                onPress={() => setShowMemberModal(false)}
+              >
+                <Text style={styles.modalFooterButtonText}>{t('group.memberManagement.close')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
@@ -755,13 +950,17 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
           
           <View style={styles.separator} />
           
-          <TouchableOpacity style={styles.managementItem} onPress={handleManageMembers}>
-            <Icon name="people" size={24} color="#4A90E2" />
-            <Text style={styles.managementText}>{t('group.memberManagement.manageMembers')}</Text>
+          <TouchableOpacity 
+            style={[styles.managementItem, loading && styles.disabledManagementItem]} 
+            onPress={handleManageMembers}
+            disabled={loading}
+          >
+            <Icon name="people" size={24} color={loading ? "#CCCCCC" : "#4A90E2"} />
+            <Text style={[styles.managementText, loading && styles.disabledManagementText]}>
+              {t('group.memberManagement.manageMembers')}
+            </Text>
             <Icon name="chevron-right" size={24} color="#CCCCCC" />
           </TouchableOpacity>
-          
-
         </View>
 
         {/* Members List */}
@@ -770,40 +969,78 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
             <Text style={styles.membersTitle}>
               {t('group.memberManagement.listMembers')} ( {memberData?.total_members_count || 0} )
             </Text>
-            <TouchableOpacity onPress={handleManageMembers}>
+            <TouchableOpacity onPress={handleManageMembers} disabled={loading}>
               <Icon name="chevron-right" size={24} color="#CCCCCC" />
             </TouchableOpacity>
           </View>
           
-          <FlatList
-            data={displayedMembers}
-            renderItem={renderMember}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={styles.memberSeparator} />}
-          />
-          
-          {!showAllMembers && members.length > 2 && (
-            <TouchableOpacity 
-              style={styles.viewAllButton}
-              onPress={() => setShowAllMembers(true)}
-            >
-              <Text style={styles.viewAllText}>{t('group.memberManagement.viewAllMembers')}</Text>
-              <Icon name="expand-more" size={20} color="#4A90E2" />
-            </TouchableOpacity>
-          )}
-          
-          {showAllMembers && (
-            <TouchableOpacity 
-              style={styles.viewAllButton}
-              onPress={() => setShowAllMembers(false)}
-            >
-              <Text style={styles.viewAllText}>{t('group.memberManagement.collapse')}</Text>
-              <Icon name="expand-less" size={20} color="#4A90E2" />
-            </TouchableOpacity>
+          {loading ? (
+            <View style={styles.membersLoadingContainer}>
+              <ActivityIndicator size="small" color="#4A90E2" />
+              <Text style={styles.membersLoadingText}>{t('common.loading')}...</Text>
+            </View>
+          ) : (
+            <>
+              <FlatList
+                data={displayedMembers}
+                renderItem={renderMember}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+                ItemSeparatorComponent={() => <View style={styles.memberSeparator} />}
+              />
+              
+              {!showAllMembers && members.length > 2 && (
+                <TouchableOpacity 
+                  style={styles.viewAllButton}
+                  onPress={() => setShowAllMembers(true)}
+                >
+                  <Text style={styles.viewAllText}>{t('group.memberManagement.viewAllMembers')}</Text>
+                  <Icon name="expand-more" size={20} color="#4A90E2" />
+                </TouchableOpacity>
+              )}
+              
+              {showAllMembers && (
+                <TouchableOpacity 
+                  style={styles.viewAllButton}
+                  onPress={() => setShowAllMembers(false)}
+                >
+                  <Text style={styles.viewAllText}>{t('group.memberManagement.collapse')}</Text>
+                  <Icon name="expand-less" size={20} color="#4A90E2" />
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
       </ScrollView>
+
+      {/* Custom Modals */}
+      {confirmModalData && (
+        <CustomConfirmModal
+          visible={showConfirmModal}
+          title={confirmModalData.title}
+          message={confirmModalData.message}
+          confirmText={confirmModalData.confirmText}
+          cancelText={confirmModalData.cancelText}
+          onConfirm={confirmModalData.onConfirm}
+          onCancel={() => {
+            setShowConfirmModal(false);
+            setConfirmModalData(null);
+          }}
+          type={confirmModalData.type}
+          iconName={confirmModalData.iconName}
+        />
+      )}
+
+      {successModalData && (
+        <CustomSuccessModal
+          visible={showSuccessModal}
+          title={successModalData.title}
+          message={successModalData.message}
+          buttonText={successModalData.buttonText}
+          onConfirm={successModalData.onConfirm}
+          iconName={successModalData.iconName}
+        />
+      )}
     </View>
   );
 };
@@ -1328,6 +1565,36 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     ...typography.medium,
+  },
+  modalLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalLoadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666666',
+    ...typography.regular,
+  },
+  disabledManagementItem: {
+    opacity: 0.6,
+  },
+  disabledManagementText: {
+    color: '#CCCCCC',
+  },
+  membersLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  membersLoadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666666',
+    ...typography.regular,
   },
 });
 

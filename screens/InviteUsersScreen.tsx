@@ -2,17 +2,17 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Modal,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -332,9 +332,7 @@ const InviteUsersScreen = () => {
         <Text style={styles.invitedTime}>
           {t('group.invitation.invitedAt')}: {formatRequestedDate(item.invited_at)}
         </Text>
-        <Text style={styles.invitedRole}>
-          {t('group.invitation.assignedRole')}: {item.assigned_role}
-        </Text>
+      
       </View>
     </View>
   );

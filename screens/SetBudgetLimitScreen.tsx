@@ -19,6 +19,7 @@ import Calendar from 'react-native-calendars/src/calendar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
+import CustomErrorModal from '../components/CustomErrorModal';
 import { typography } from '../constants/typography';
 import { useNavigationService } from '../navigation/NavigationService';
 import { Budget, budgetService } from '../services/budgetService';
@@ -111,6 +112,13 @@ const BudgetLimitScreen = () => {
   const [modalTitle, setModalTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   
+  // CustomErrorModal state
+  const [showCustomErrorModal, setShowCustomErrorModal] = useState(false);
+  const [customErrorData, setCustomErrorData] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
+  
   // Edit mode specific state
   const [isUpdateAmount, setIsUpdateAmount] = useState(false);
   const [originalAmount, setOriginalAmount] = useState('');
@@ -124,9 +132,15 @@ const BudgetLimitScreen = () => {
 
   // Helper function to calculate end date based on period type
   const calculateEndDateFromPeriod = (periodType: string, startDate: Date) => {
-    // Không tự động tính ngày kết thúc nữa
-    // Người dùng sẽ chọn thủ công
-    setEndDate(null);
+    if (periodType === 'NONE') {
+      // For NONE period type, set a default end date
+      const defaultEndDate = new Date(startDate);
+      defaultEndDate.setDate(startDate.getDate() + 1);
+      setEndDate(defaultEndDate);
+    } else {
+      // For other period types, let user choose manually
+      setEndDate(null);
+    }
   };
 
   // Load initial categories for new budget
@@ -141,16 +155,30 @@ const BudgetLimitScreen = () => {
         }
       };
       loadInitialCategories();
-      // Không tự động set endDate nữa
-      setEndDate(null);
+      
+      // For NONE period type, set a default end date
+      if (periodType === 'NONE') {
+        const defaultEndDate = new Date(startDate);
+        defaultEndDate.setDate(startDate.getDate() + 1);
+        setEndDate(defaultEndDate);
+      } else {
+        setEndDate(null);
+      }
     }
-  }, [isEditMode]);
+  }, [isEditMode, periodType, startDate]);
 
   // Recalculate end date when startDate or periodType changes for new budgets
   useEffect(() => {
     if (!isEditMode && startDate) {
-      // Không tự động set endDate nữa
-      setEndDate(null);
+      if (periodType === 'NONE') {
+        // For NONE period type, set a default end date
+        const defaultEndDate = new Date(startDate);
+        defaultEndDate.setDate(startDate.getDate() + 1);
+        setEndDate(defaultEndDate);
+      } else {
+        // For other period types, clear endDate to let user choose
+        setEndDate(null);
+      }
     }
   }, [startDate, periodType, isEditMode]);
 
@@ -275,6 +303,12 @@ const BudgetLimitScreen = () => {
           const endDateValue = new Date(budgetDetail.end_date);
           setEndDate(endDateValue);
           setOriginalEndDate(endDateValue); // Lưu endDate ban đầu
+        } else if (budgetDetail.period_type === 'NONE') {
+          // For NONE period type, set a default end date if none exists
+          const defaultEndDate = new Date(budgetDetail.start_date);
+          defaultEndDate.setDate(defaultEndDate.getDate() + 1);
+          setEndDate(defaultEndDate);
+          setOriginalEndDate(defaultEndDate);
         }
         
         // Set categories if available
@@ -359,8 +393,16 @@ const BudgetLimitScreen = () => {
   const handleRepeatSelect = (frequency: string) => {
     setPeriodType(frequency);
     setShowRepeatModal(false);
-    // Không tự động tính endDate nữa
-    setEndDate(null);
+    
+    // For NONE period type, set a default end date if none exists
+    if (frequency === 'NONE' && !endDate) {
+      const defaultEndDate = new Date(startDate);
+      defaultEndDate.setDate(startDate.getDate() + 1);
+      setEndDate(defaultEndDate);
+    } else if (frequency !== 'NONE') {
+      // For other period types, clear endDate to let user choose
+      setEndDate(null);
+    }
   };
 
   const getPeriodLabel = (value: string) => {
@@ -399,19 +441,20 @@ const BudgetLimitScreen = () => {
 
   const handleEndDateSelect = (day: { dateString: string }) => {
     const selectedDate = new Date(day.dateString);
-    // Nếu không lặp lại: chỉ cần endDate > startDate
-    if (periodType === 'NONE') {
-      if (selectedDate <= startDate) {
-        showValidationError(t('budget.setBudgetLimit.validation.endDateBeforeStart'));
-        return;
-      }
-    } else {
-      // Có lặp lại: endDate phải cách startDate ít nhất 1 chu kỳ
+    // Validate endDate > startDate for all period types
+    if (selectedDate <= startDate) {
+      showValidationError(t('budget.setBudgetLimit.validation.endDateBeforeStart'));
+      return;
+    }
+    
+    // For period types other than NONE, validate minimum period requirement
+    if (periodType !== 'NONE') {
       if (!validateEndDateForPeriod(selectedDate, startDate, periodType)) {
         showValidationError(getInvalidPeriodMessage(periodType));
         return;
       }
     }
+    
     setEndDate(selectedDate);
     setShowEndDateModal(false);
   };
@@ -462,8 +505,20 @@ const BudgetLimitScreen = () => {
     if (endDate && (endDate <= startDate)) {
       setEndDate(null);
     } else {
-      setEndDate(new Date());
+      // For NONE period type, we need to ensure endDate is set
+      if (periodType === 'NONE' && !endDate) {
+        // Set a default end date (start date + 1 day) for NONE period type
+        const defaultEndDate = new Date(startDate);
+        defaultEndDate.setDate(startDate.getDate() + 1);
+        setEndDate(defaultEndDate);
+      } else {
+        setEndDate(new Date());
+      }
     }
+  };
+
+  const clearEndDate = () => {
+    setEndDate(null);
   };
 
   const renderDatePickerModal = (
@@ -526,6 +581,13 @@ const BudgetLimitScreen = () => {
       showValidationError(t('budget.setBudgetLimit.validation.endDateBeforeStart'));
       return;
     }
+    
+    // Validate end date is required when period type is NONE
+    if (periodType === 'NONE' && !endDate) {
+      showValidationError(t('budget.setBudgetLimit.validation.endDateRequiredForNone'));
+      return;
+    }
+    
     if (!limitName.trim()) {
       showValidationError(t('budget.setBudgetLimit.validation.budgetNameRequired'));
       return;
@@ -687,7 +749,28 @@ const BudgetLimitScreen = () => {
       console.error('❌ Error:', err);
       console.error('❌ Error type:', typeof err);
       console.error('❌ Error message:', err instanceof Error ? err.message : 'Unknown error');
+      
+      // Log the full error object structure for debugging
+      console.error('❌ Full error object:', JSON.stringify(err, null, 2));
+      console.error('❌ Error keys:', err && typeof err === 'object' ? Object.keys(err) : 'Not an object');
       console.error('🔄 ===== PERFORM SAVE END =====');
+      
+      // Check for specific 400 error with "Budget name already exists" message
+      // The error message comes directly from the Error object thrown by apiService
+      if (err instanceof Error) {
+        const errorMessage = err.message.toLowerCase();
+        if (errorMessage.includes('budget name already exists')) {
+          console.log('🎯 Detected specific 400 error: Budget name already exists');
+          setCustomErrorData({
+            title: t('common.error'),
+            message: t('budget.setBudgetLimit.error.budgetNameExists') || 'Budget name already exists. Please choose a different name.'
+          });
+          setShowCustomErrorModal(true);
+          return;
+        }
+      }
+      
+      // Default error handling
       showErrorMessage(isEditMode ? t('budget.setBudgetLimit.error.update') : t('budget.setBudgetLimit.error.create'));
     } finally {
       setIsSaving(false);
@@ -866,10 +949,7 @@ const BudgetLimitScreen = () => {
               </TouchableOpacity>
 
               {/* End Date */}
-              <TouchableOpacity
-                style={styles.item}
-                onPress={() => setShowEndDateModal(true)}
-              >
+              <View style={styles.item}>
                 <Icon name="calendar-end" size={24} color="#555" />
                 <View style={styles.dateContainer}>
                   <Text style={styles.label}>
@@ -878,7 +958,21 @@ const BudgetLimitScreen = () => {
                       : t('budget.setBudgetLimit.unknownEndDate')}
                   </Text>
                 </View>
-              </TouchableOpacity>
+                {endDate && (
+                  <TouchableOpacity
+                    style={styles.clearButton}
+                    onPress={clearEndDate}
+                  >
+                    <Icon name="close" size={20} color="#888" />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.datePickerButton}
+                  onPress={() => setShowEndDateModal(true)}
+                >
+                  <Icon name="calendar" size={20} color="#555" />
+                </TouchableOpacity>
+              </View>
 
               {/* Custom Date Picker Modals */}
               {renderDatePickerModal(
@@ -1016,13 +1110,25 @@ const BudgetLimitScreen = () => {
              // For amount changes: save with is_update_amount = true
              performSave(true);
            } else if (changeType === 'date') {
-             // For date changes: stay on screen (don't save)
-             console.log('📅 Date change cancelled - staying on screen');
+             // For date changes: save with is_update_amount = false
+             performSave(false);
            }
          }}
-         type="warning"
-         iconName="warning"
        />
+
+       {/* CustomErrorModal for specific 400 errors */}
+       {customErrorData && (
+         <CustomErrorModal
+           visible={showCustomErrorModal}
+           title={customErrorData.title}
+           message={customErrorData.message}
+           onDismiss={() => {
+             setShowCustomErrorModal(false);
+             setCustomErrorData(null);
+           }}
+           type="error"
+         />
+       )}
      </KeyboardAvoidingView>
    );
  };
@@ -1339,6 +1445,13 @@ const styles = StyleSheet.create({
     flex: 1,
     // marginLeft: 12, // bỏ marginLeft để thẳng hàng với các trường khác
     justifyContent: 'center',
+  },
+  clearButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  datePickerButton: {
+    padding: 8,
   },
   helperText: {
     fontSize: 12,

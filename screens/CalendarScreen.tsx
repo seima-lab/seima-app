@@ -228,6 +228,7 @@ const CalendarScreen = () => {
     const currentMonthString = today.toISOString()?.substring(0, 7) || `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     
     const [currentMonth, setCurrentMonth] = useState(currentMonthString);
+    const [headerMonth, setHeaderMonth] = useState(currentMonthString);
     const [overviewData, setOverviewData] = useState<TransactionOverviewResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -551,16 +552,19 @@ const CalendarScreen = () => {
 
         const handleMonthSelect = (monthIndex: number) => {
             setSelectedMonth(monthIndex);
+            // Don't update currentMonth and headerMonth immediately - wait for confirm
         };
 
         const handleYearChange = (increment: number) => {
-            setSelectedYear(prev => prev + increment);
+            const newYear = selectedYear + increment;
+            setSelectedYear(newYear);
+            // Don't update currentMonth and headerMonth immediately - wait for confirm
         };
 
         const handleYearSelect = (year: number) => {
             setSelectedYear(year);
             setShowYearPicker(false);
-            // Optional: Add haptic feedback here if needed
+            // Don't update currentMonth and headerMonth immediately - wait for confirm
         };
 
         const handleToggleYearPicker = () => {
@@ -568,14 +572,20 @@ const CalendarScreen = () => {
         };
 
         const handleConfirm = () => {
+            // Update currentMonth and headerMonth based on selected values when confirm is pressed
             const newMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
             setCurrentMonth(newMonth);
+            setHeaderMonth(newMonth);
             setShowMonthPicker(false);
         };
 
         const handleCancel = () => {
+            // Reset to original values and update currentMonth and headerMonth
             setSelectedYear(currentYearValue);
             setSelectedMonth(currentMonthIndex);
+            const originalMonth = `${currentYearValue}-${String(currentMonthIndex + 1).padStart(2, '0')}`;
+            setCurrentMonth(originalMonth);
+            setHeaderMonth(originalMonth);
             setShowMonthPicker(false);
         };
 
@@ -767,14 +777,17 @@ const CalendarScreen = () => {
     };
 
     // Custom header renderer for Calendar
-    const renderCalendarHeader = (date: any) => {
+    const renderCalendarHeader = () => {
+        console.log('🔍 renderCalendarHeader called with headerMonth:', headerMonth);
+        console.log('🔍 formatted display:', formatMonthDisplay(headerMonth));
+        
         return (
             <TouchableOpacity 
                 style={styles.calendarHeader}
                 onPress={handleOpenMonthPicker}
             >
                 <Text style={styles.calendarHeaderText}>
-                    {formatMonthDisplay(date.dateString?.substring(0, 7) || '')}
+                    {formatMonthDisplay(headerMonth)}
                 </Text>
                 <Icon name="chevron-down" size={16} color="#007AFF" style={styles.calendarHeaderIcon} />
             </TouchableOpacity>
@@ -992,11 +1005,15 @@ const CalendarScreen = () => {
                                 <Text style={styles.loadingText}>{t('common.loading')}</Text>
                             </View>
                         ) : (
-                            <Calendar
-                                current={currentMonth + '-01'}
+                            <>
+                                {console.log('🔍 Calendar rendering with currentMonth:', currentMonth)}
+                                <Calendar
+                                    key={currentMonth}
+                                    current={currentMonth + '-01'}
                                 onMonthChange={(month: DateData) => {
                                     const newMonth = month.dateString?.substring(0, 7) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
                                     setCurrentMonth(newMonth);
+                                    setHeaderMonth(newMonth);
                                     // loadTransactionOverview will be called by useEffect when currentMonth changes
                                 }}
                                 markingType={'custom'}
@@ -1024,6 +1041,7 @@ const CalendarScreen = () => {
                                 }}
                                 style={styles.calendar}
                             />
+                            </>
                         )}
                     </View>
 

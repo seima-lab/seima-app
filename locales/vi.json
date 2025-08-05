@@ -197,7 +197,7 @@
     "loadingPendingGroups": "Đang tải nhóm chờ duyệt...",
     "pendingApproval": "Chờ phê duyệt",
     "approveGroup": "Phê duyệt nhóm",
-    "rejectGroup": "Từ chối nhóm",
+    "rejectGroup": "Có",
     "rejectGroupSuccess": "Đã từ chối nhóm thành công",
     "groupApproval": "Phê duyệt nhóm",
     "approveGroupConfirm": "Bạn có chắc chắn muốn phê duyệt nhóm này?",
@@ -1041,6 +1041,7 @@
       "autoCalculated": "Tự động tính theo chu kỳ",
       "validation": {
         "endDateBeforeStart": "Ngày kết thúc phải lớn hơn ngày bắt đầu!",
+        "endDateRequiredForNone": "Ngày kết thúc là bắt buộc khi chọn loại chu kỳ Không lặp lại!",
         "budgetNameRequired": "Vui lòng nhập tên hạn mức!",
         "amountRequired": "Vui lòng nhập số tiền hợp lệ!",
         "categoryRequired": "Vui lòng chọn ít nhất 1 thể loại!",
@@ -1058,11 +1059,12 @@
       "error": {
         "create": "Tạo hạn mức thất bại!",
         "update": "Cập nhật hạn mức thất bại!",
-        "loadData": "Không thể tải dữ liệu hạn mức!"
+        "loadData": "Không thể tải dữ liệu hạn mức!",
+        "budgetNameExists": "Tên hạn mức đã tồn tại. Vui lòng chọn tên khác."
       },
       "confirmAmountChange": {
-        "title": "SỬA CHU KỲ/ SỐ TIỀN/ NGÀY THÁNG TRONG BUDGET",
-        "message": "Trước khi lưu: confirm :Bạn có muốn sửa cả những kỳ hạn mức trước đó không?",
+        "title": "Xác nhận",
+        "message": "Bạn có muốn sửa cả những kỳ hạn mức trước đó không?",
         "yes": "Có",
         "no": "Không"
       }

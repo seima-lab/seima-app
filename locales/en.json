@@ -132,7 +132,7 @@
     "continueAnyway": "Continue anyway",
     "pendingGroupsTitle": "Pending Groups",
     "pendingApproval": "Pending Approval",
-    "rejectGroup": "Reject Group",
+    "rejectGroup": "Yes",
     "rejectGroupSuccess": "Group rejected successfully",
     "emptyState": {
       "title": "No groups yet",
@@ -957,6 +957,7 @@
       "autoCalculated": "Auto-calculated by period",
       "validation": {
         "endDateBeforeStart": "End date must be greater than start date!",
+        "endDateRequiredForNone": "End date is required when period type is None!",
         "budgetNameRequired": "Please enter budget name!",
         "amountRequired": "Please enter a valid amount!",
         "categoryRequired": "Please select at least 1 category!",
@@ -974,11 +975,12 @@
       "error": {
         "create": "Failed to create budget!",
         "update": "Failed to update budget!",
-        "loadData": "Cannot load budget data!"
+        "loadData": "Cannot load budget data!",
+        "budgetNameExists": "Budget name already exists. Please choose a different name."
       },
       "confirmAmountChange": {
-        "title": "EDIT PERIOD / AMOUNT / DATES IN BUDGET",
-        "message": "Before saving: confirm: Do you want to modify all previous period limits?",
+        "title": "Confirm",
+        "message": "Do you want to edit previous limit periods as well?",
         "yes": "Yes",
         "no": "No"
       }

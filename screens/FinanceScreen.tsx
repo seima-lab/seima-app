@@ -2,15 +2,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Circle, Svg } from 'react-native-svg';
@@ -922,6 +922,14 @@ const FinanceScreen = React.memo(() => {
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
+  const formatAmountDisplay = (amount: number): string => {
+    const formattedAmount = (amount || 0).toLocaleString('vi-VN');
+    if (formattedAmount.length > 7) {
+      return formattedAmount.substring(0, 7) + '...';
+    }
+    return formattedAmount;
+  };
+
   // Sửa lại getIconAndColor để lấy icon từ category_id
   const getIconAndColor = (item: any) => {
     const type = (item.transaction_type || '').toLowerCase() === 'income' ? 'income' : 'expense';
@@ -935,6 +943,31 @@ const FinanceScreen = React.memo(() => {
       type,
     };
   };
+
+  // Handle transaction press to navigate to edit mode
+  const handleTransactionPress = useCallback((transaction: any) => {
+    console.log('🔄 Navigating to edit transaction:', transaction);
+    
+    // Get category name for the transaction
+    const categoryObj = transaction.category_id ? categoriesMap[transaction.category_id] : undefined;
+    const categoryName = categoryObj?.category_name || transaction.category_name || transaction.categoryName || 'Không rõ';
+    
+    // Navigate to AddExpenseScreen in edit mode
+    navigation.navigate('AddExpenseScreen', {
+      editMode: true,
+      transactionData: {
+        id: transaction.transaction_id?.toString() || transaction.id?.toString() || `transaction-${Math.random()}`,
+        amount: (transaction.amount || 0).toString(),
+        note: transaction.description || transaction.note || '',
+        date: transaction.transaction_date,
+        category: categoryName,
+        categoryId: transaction.category_id,
+        type: (transaction.transaction_type || 'expense').toLowerCase(),
+        icon: transaction.category_icon_url || '',
+        iconColor: getIconColor(transaction.category_icon_url || '', (transaction.transaction_type || 'expense').toLowerCase())
+      }
+    });
+  }, [navigation, categoriesMap]);
 
   // Progressive loading - không block UI hoàn toàn
   const showFullLoading = loading && !userProfile;
@@ -1232,7 +1265,12 @@ const FinanceScreen = React.memo(() => {
                  const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
                  const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || 'Không rõ';
                  return (
-                   <View key={item.transaction_id?.toString() || item.id?.toString() || index.toString()} style={styles.historyItem}>
+                   <TouchableOpacity 
+                     key={item.transaction_id?.toString() || item.id?.toString() || index.toString()} 
+                     style={styles.historyItem}
+                     onPress={() => handleTransactionPress(item)}
+                     activeOpacity={0.6}
+                   >
                      <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
                        <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
                      </View>
@@ -1243,10 +1281,13 @@ const FinanceScreen = React.memo(() => {
                        ) : null}
                        <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
                      </View>
-                     <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]}>
-                       {type === 'income' ? '+' : '-'}{(item.amount || 0).toLocaleString('vi-VN')} đ
-                     </Text>
-                   </View>
+                     <View style={styles.historyAmountContainer}>
+                       <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]} numberOfLines={1}>
+                         {type === 'income' ? '+' : '-'}{formatAmountDisplay(item.amount || 0)} đ
+                       </Text>
+                       <Icon name="chevron-right" size={20} color="#999" />
+                     </View>
+                   </TouchableOpacity>
                  );
                })}
              </ScrollView>
@@ -1816,8 +1857,12 @@ legendValue: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    borderRadius: 8,
+    marginHorizontal: 4,
+    marginVertical: 2,
   },
   historyIcon: {
     width: 36,
@@ -1851,7 +1896,16 @@ legendValue: {
     ...typography.semibold,
     minWidth: 80,
     textAlign: 'right',
+    flexShrink: 1,
   },
+  historyAmountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    minWidth: 100,
+    flexShrink: 1,
+  },
+
   transactionHistoryContainer: {
     height: 320,
     backgroundColor: '#f8f9fa',

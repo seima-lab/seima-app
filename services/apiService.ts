@@ -77,13 +77,23 @@ export class ApiService {
       clearTimeout(timeoutId);
 
       const result: ApiResponse<T> = await response.json();
+      console.log(`📥 Raw API result:`, JSON.stringify(result, null, 2));
+      console.log(`📥 Result type:`, typeof result);
+      console.log(`📥 Result keys:`, Object.keys(result));
+      console.log(`📥 HTTP Status:`, response.status);
+      console.log(`📥 Response OK:`, response.ok);
+      console.log(`📥 Result status_code:`, result.status_code);
 
-      if (response.ok) {
+      // Check both HTTP status and API status_code
+      if (response.ok && result.status_code < 400) {
         console.log(`✅ API Success: ${url}`, result);
         return result;
       } else {
         console.error(`❌ API Error: ${url}`, result);
-        throw new Error(result.message || 'API request failed');
+        // Preserve the original error message from the API
+        const errorMessage = result.message || result.error || 'API request failed';
+        console.log(`🎯 Throwing error with message:`, errorMessage);
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
       console.error(`🔴 API Request Error:`, error);
