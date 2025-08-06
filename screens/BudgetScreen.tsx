@@ -3,15 +3,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -294,8 +294,26 @@ const BudgetScreen = () => {
       case 'YEARLY':
         return t('budget.setBudgetLimit.yearly');
       default:
-        return t('budget.setBudgetLimit.monthly');
+        return t('budget.setBudgetLimit.noPeriod');
     }
+  };
+
+  // Helper function to format large numbers
+  const formatLargeNumber = (amount: number): string => {
+    const isNegative = amount < 0;
+    const absAmount = Math.abs(amount);
+    
+    let formattedAmount: string;
+    
+    if (absAmount >= 10000000) { // 10 million or more
+      formattedAmount = `${Math.floor(absAmount / 1000000)}M`;
+    } else if (absAmount >= 10000) { // 10 thousand or more
+      formattedAmount = `${Math.floor(absAmount / 1000)}K`;
+    } else {
+      formattedAmount = absAmount.toLocaleString();
+    }
+    
+    return isNegative ? `-${formattedAmount}` : formattedAmount;
   };
 
   // Helper function to check if budget is expired
@@ -356,23 +374,29 @@ const BudgetScreen = () => {
               <Text style={styles.periodTypeText}>{getPeriodTypeLabel(budget.period_type)}</Text>
             </View>
             <Text style={styles.budgetItemAmount}>
-              {(budget.overall_amount_limit ?? 0).toLocaleString()} {t('currency')}
+              {formatLargeNumber(budget.overall_amount_limit ?? 0)} {t('currency')}
             </Text>
           </View>
         </View>
         
         <View style={styles.progressBarContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${Math.min(percentage, 100)}%` }]} />
+            <View style={[
+              styles.progressFill, 
+              { 
+                width: `${Math.min(percentage, 100)}%`,
+                backgroundColor: (budget.budget_remaining_amount ?? 0) <= 0 ? '#F44336' : '#2196F3'
+              }
+            ]} />
           </View>
         </View>
         
         <View style={styles.budgetItemFooter}>
           <Text style={styles.budgetItemRemaining}>
-            {t('budget.remaining')}: {(budget.budget_remaining_amount ?? 0).toLocaleString()} {t('currency')}
+            {t('budget.remaining')}: {formatLargeNumber(budget.budget_remaining_amount ?? 0)} {t('currency')}
           </Text>
           <Text style={styles.budgetItemSpent}>
-            {t('budget.spent')}: {(spent ?? 0).toLocaleString()} {t('currency')}
+            {t('budget.spent')}: {formatLargeNumber(spent ?? 0)} {t('currency')}
           </Text>
         </View>
       </View>

@@ -121,7 +121,32 @@
       },
       "budgetWarning": "💡 Bạn đã vượt 95% hạn mức cho '{{category}}' khi mới đến ngày {{day}} – hãy cân nhắc giảm đơn hàng hoặc tăng ngân sách nếu cần thiết.",
       "realTimeData": "Dữ liệu trực tiếp từ server",
-      "fallbackData": "Đang sử dụng dữ liệu dự phòng"
+      "fallbackData": "Đang sử dụng dữ liệu dự phòng",
+      "modalTitle": "Sức Khỏe Tài Chính",
+      "calculationMethod": "Phương pháp tính toán",
+      "calculationDescription": "Điểm sức khỏe tài chính được tính dựa trên 3 tiêu chí chính: tỷ lệ tiết kiệm, tuân thủ ngân sách và tăng trưởng tài sản. Mỗi tiêu chí có trọng số khác nhau để đánh giá tổng quan tình hình tài chính của bạn.",
+      "components": "Các thành phần",
+      "savingsRate": "Tỷ lệ tiết kiệm",
+      "budgetCompliance": "Tuân thủ budget",
+      "assetGrowth": "Tăng trưởng tài sản",
+      "example": "Ví dụ",
+      "exampleText": "Nếu bạn có thu nhập 10 triệu, chi tiêu 6 triệu, và tài sản tăng 500k so với tháng trước, điểm sức khỏe tài chính sẽ được tính dựa trên tỷ lệ tiết kiệm 40%, tuân thủ ngân sách và mức tăng trưởng tài sản.",
+      "scoreRanges": "Dải điểm",
+      "scoreRanges": {
+        "poor": "Tệ",
+        "needsImprovement": "Trung bình",
+        "fair": "Khá",
+        "excellent": "Tốt"
+      },
+      "scoreLabel": "Điểm của bạn",
+      "rankLabel": "Xếp hạng",
+      "understood": "Đã hiểu",
+      "messages": {
+        "poor": "Tệ - Cần hành động ngay lập tức",
+        "needsImprovement": "Cần cải thiện - tập trung vào chi tiêu",
+        "fair": "Khá - cần điều chỉnh nhỏ",
+        "excellent": "Xuất sắc - hãy duy trì!"
+      }
     }
   },
   "wallet": {
@@ -193,13 +218,11 @@
     "initialBalance": "Số dư ban đầu",
     "currentBalance": "Số dư hiện tại",
     "filter": {
-      "30days": "30 ngày gần nhất",
+      "allTime": "Toàn bộ thời gian",
+      "thisDay": "Hôm nay",
+      "thisWeek": "Tuần này",
       "thisMonth": "Tháng này",
-      "lastMonth": "Tháng trước",
-      "thisQuarter": "Quý này",
-      "lastQuarter": "Quý trước",
       "thisYear": "Năm nay",
-      "lastYear": "Năm trước",
       "custom": "Tùy chọn",
       "selectTimeRange": "Chọn khoảng thời gian",
       "selectDateRange": "Chọn khoảng ngày",
@@ -1060,6 +1083,7 @@
       "weekly": "Hàng tuần",
       "monthly": "Hàng tháng",
       "yearly": "Hàng năm",
+      "noPeriod": "Không lặp lại",
       "startDate": "Ngày bắt đầu",
       "endDate": "Ngày kết thúc",
       "selectStartDate": "Chọn ngày bắt đầu",

@@ -96,7 +96,7 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
   const [totalExpense, setTotalExpense] = useState<number>(0);
   
   // Filter state
-  const [selectedFilter, setSelectedFilter] = useState<string>('30days');
+  const [selectedFilter, setSelectedFilter] = useState<string>('allTime');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showCustomDateModal, setShowCustomDateModal] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
@@ -164,70 +164,45 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     switch (filterType) {
-      case '30days':
-        const thirtyDaysAgo = new Date(today);
-        thirtyDaysAgo.setDate(today.getDate() - 30);
+      case 'allTime':
+        // Return a very old date to get all transactions
         return {
-          startDate: thirtyDaysAgo.toISOString().split('T')[0],
+          startDate: '2000-01-01',
           endDate: today.toISOString().split('T')[0]
         };
-      
+      case 'thisDay':
+        return {
+          startDate: today.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        };
+      case 'thisWeek':
+        const startOfWeek = new Date(today);
+        const dayOfWeek = today.getDay();
+        startOfWeek.setDate(today.getDate() - dayOfWeek);
+        return {
+          startDate: startOfWeek.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        };
       case 'thisMonth':
         const firstDayThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         return {
           startDate: firstDayThisMonth.toISOString().split('T')[0],
           endDate: today.toISOString().split('T')[0]
         };
-      
-      case 'lastMonth':
-        const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-        return {
-          startDate: firstDayLastMonth.toISOString().split('T')[0],
-          endDate: lastDayLastMonth.toISOString().split('T')[0]
-        };
-      
-      case 'thisQuarter':
-        const currentQuarter = Math.floor(today.getMonth() / 3);
-        const firstDayThisQuarter = new Date(today.getFullYear(), currentQuarter * 3, 1);
-        return {
-          startDate: firstDayThisQuarter.toISOString().split('T')[0],
-          endDate: today.toISOString().split('T')[0]
-        };
-      
-      case 'lastQuarter':
-        const lastQuarter = Math.floor(today.getMonth() / 3) - 1;
-        const firstDayLastQuarter = new Date(today.getFullYear(), lastQuarter * 3, 1);
-        const lastDayLastQuarter = new Date(today.getFullYear(), (lastQuarter + 1) * 3, 0);
-        return {
-          startDate: firstDayLastQuarter.toISOString().split('T')[0],
-          endDate: lastDayLastQuarter.toISOString().split('T')[0]
-        };
-      
       case 'thisYear':
         const firstDayThisYear = new Date(today.getFullYear(), 0, 1);
         return {
           startDate: firstDayThisYear.toISOString().split('T')[0],
           endDate: today.toISOString().split('T')[0]
         };
-      
-      case 'lastYear':
-        const firstDayLastYear = new Date(today.getFullYear() - 1, 0, 1);
-        const lastDayLastYear = new Date(today.getFullYear() - 1, 11, 31);
-        return {
-          startDate: firstDayLastYear.toISOString().split('T')[0],
-          endDate: lastDayLastYear.toISOString().split('T')[0]
-        };
-      
       case 'custom':
         return {
           startDate: startDate,
           endDate: endDate
         };
-      
       default:
         return {
-          startDate: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          startDate: '2000-01-01',
           endDate: today.toISOString().split('T')[0]
         };
     }
@@ -235,15 +210,13 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
 
   const getFilterLabel = (filterType: string) => {
     switch (filterType) {
-      case '30days': return t('wallet.filter.30days');
+      case 'allTime': return t('wallet.filter.allTime');
+      case 'thisDay': return t('wallet.filter.thisDay');
+      case 'thisWeek': return t('wallet.filter.thisWeek');
       case 'thisMonth': return t('wallet.filter.thisMonth');
-      case 'lastMonth': return t('wallet.filter.lastMonth');
-      case 'thisQuarter': return t('wallet.filter.thisQuarter');
-      case 'lastQuarter': return t('wallet.filter.lastQuarter');
       case 'thisYear': return t('wallet.filter.thisYear');
-      case 'lastYear': return t('wallet.filter.lastYear');
       case 'custom': return t('wallet.filter.custom');
-      default: return t('wallet.filter.30days');
+      default: return t('wallet.filter.allTime');
     }
   };
 
@@ -260,10 +233,23 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
       const dateRange = getDateRange(selectedFilter);
       console.log('🔄 Loading transactions for wallet:', walletId, 'with date range:', dateRange);
       
-      const response: any = await transactionService.getWalletTransactionHistory(
+      // Prepare parameters for API call
+      const params: any = {
         walletId,
-        dateRange.startDate,
-        dateRange.endDate
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate
+      };
+      
+      // Add type parameter for allTime filter
+      if (selectedFilter === 'allTime') {
+        params.type = 'all';
+      }
+      
+      const response: any = await transactionService.getWalletTransactionHistory(
+        params.walletId,
+        params.startDate,
+        params.endDate,
+        params.type
       );
       
       console.log('✅ Wallet transactions loaded:', response);
@@ -279,12 +265,12 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
              dayTransactions.forEach((transaction: any) => {
                // Convert to the expected format
                const convertedTransaction = {
-                 transaction_id: transaction.transaction_id || Math.random(),
+                 transaction_id: transaction.transactionId || transaction.transaction_id || Math.random(),
                  user_id: transaction.user_id || 0,
                  wallet_id: transaction.wallet_id || walletId,
                  category_id: transaction.category_id,
                  group_id: transaction.group_id,
-                 transaction_type: transaction.transaction_type || 'EXPENSE',
+                 transaction_type: transaction.transactionType || transaction.transaction_type || 'EXPENSE',
                  amount: transaction.amount,
                  currency_code: transaction.currency_code || 'VND',
                  transaction_date: transaction.transaction_date,
@@ -439,8 +425,8 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
   };
 
   const renderTransactionItem = ({ item }: { item: any }) => {
-    // Determine if it's income based on amount (positive = income, negative = expense)
-    const isIncome = item.amount > 0;
+    // Determine if it's income based on transaction_type instead of amount sign
+    const isIncome = item.transaction_type === 'INCOME';
     const categoryInfo = getCategoryInfo(item.category_id);
     
     // Use iconUtils to map icon and color properly
@@ -529,12 +515,6 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity 
-              style={styles.filterButton}
-              onPress={() => setShowFilterModal(true)}
-            >
-              <Icon name="filter-list" size={rf(20)} color="#333" />
-            </TouchableOpacity>
             <TouchableOpacity onPress={onRefresh} disabled={loading || refreshing}>
               <Icon 
                 name="refresh" 
@@ -545,20 +525,24 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
           </View>
         </View>
 
-        {/* Filter Indicator */}
-        <View style={[styles.filterIndicator, { 
+        {/* Filter Label - Positioned between header and summary */}
+        <View style={[styles.filterLabelContainer, { 
           marginHorizontal: rp(16), 
-          marginBottom: rp(8),
-          paddingHorizontal: rp(12),
-          paddingVertical: rp(8)
+          marginTop: rp(12),
+          marginBottom: rp(6)
         }]}>
-          <Icon name="schedule" size={rf(16)} color="#1e90ff" />
-          <Text style={[styles.filterIndicatorText, typography.medium]}>
-            {selectedFilter === 'custom' 
-              ? `${formatDateToDisplay(startDate)} - ${formatDateToDisplay(endDate)}`
-              : getFilterLabel(selectedFilter)
-            }
-          </Text>
+          <TouchableOpacity 
+            style={styles.filterLabelButton}
+            onPress={() => setShowFilterModal(true)}
+          >
+            <Text style={[styles.filterLabelText, typography.medium]}>
+              {selectedFilter === 'custom' 
+                ? `${formatDateToDisplay(startDate)} - ${formatDateToDisplay(endDate)}`
+                : getFilterLabel(selectedFilter)
+              }
+            </Text>
+            <Icon name="keyboard-arrow-right" size={rf(20)} color="#1e90ff" />
+          </TouchableOpacity>
         </View>
 
         {/* Summary Card */}
@@ -676,17 +660,15 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
                 </TouchableOpacity>
               </View>
               
-              <View style={styles.filterOptions}>
-                                 {[
-                   { key: '30days', label: t('wallet.filter.30days') },
-                   { key: 'thisMonth', label: t('wallet.filter.thisMonth') },
-                   { key: 'lastMonth', label: t('wallet.filter.lastMonth') },
-                   { key: 'thisQuarter', label: t('wallet.filter.thisQuarter') },
-                   { key: 'lastQuarter', label: t('wallet.filter.lastQuarter') },
-                   { key: 'thisYear', label: t('wallet.filter.thisYear') },
-                   { key: 'lastYear', label: t('wallet.filter.lastYear') },
-                   { key: 'custom', label: t('wallet.filter.custom') }
-                 ].map((option) => (
+                              <View style={styles.filterOptions}>
+                  {[
+                    { key: 'allTime', label: t('wallet.filter.allTime') },
+                    { key: 'thisDay', label: t('wallet.filter.thisDay') },
+                    { key: 'thisWeek', label: t('wallet.filter.thisWeek') },
+                    { key: 'thisMonth', label: t('wallet.filter.thisMonth') },
+                    { key: 'thisYear', label: t('wallet.filter.thisYear') },
+                    { key: 'custom', label: t('wallet.filter.custom') }
+                  ].map((option) => (
                   <TouchableOpacity
                     key={option.key}
                     style={[
@@ -892,6 +874,25 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     backgroundColor: '#f0f0f0',
+  },
+  filterLabelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#f8f9fa',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  filterLabelText: {
+    fontSize: 15,
+    color: '#1e90ff',
+    ...typography.medium,
+  },
+  filterLabelContainer: {
+    alignItems: 'center',
   },
   summaryCard: {
     backgroundColor: '#fff',
@@ -1103,17 +1104,7 @@ const styles = StyleSheet.create({
     color: '#1e90ff',
     ...typography.medium,
   },
-  filterIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f8ff',
-    borderRadius: 8,
-    gap: 8,
-  },
-     filterIndicatorText: {
-     fontSize: 14,
-     color: '#1e90ff',
-   },
+
    // Custom date modal styles
    customDateContainer: {
      paddingHorizontal: 20,
