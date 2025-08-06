@@ -1,6 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
@@ -47,6 +49,7 @@ interface Message {
     timestamp: Date;
     suggestedWallets?: SuggestedWallet[];
     suggestedBudgets?: SuggestedBudget[];
+    suggestDisabled?: boolean; // New prop for disabling suggestions
 }
 
 // Typing indicator component with 3 bouncing dots
@@ -126,9 +129,10 @@ const Avatar = ({ isUser, avatarUrl }: { isUser: boolean; avatarUrl?: string | n
 };
 
 // Suggested Wallets component
-const SuggestedWallets = ({ wallets, onWalletSelect }: { 
+const SuggestedWallets = ({ wallets, onWalletSelect, disabled = false }: { 
     wallets: SuggestedWallet[], 
-    onWalletSelect: (wallet: SuggestedWallet) => void 
+    onWalletSelect: (wallet: SuggestedWallet) => void,
+    disabled?: boolean
 }) => {
     // Early return if no wallets or empty array
     if (!wallets || wallets.length === 0) {
@@ -136,7 +140,7 @@ const SuggestedWallets = ({ wallets, onWalletSelect }: {
         return null;
     }
 
-    console.log('💼 Rendering suggested wallets:', wallets.length, 'wallets');
+    console.log('💼 Rendering suggested wallets:', wallets.length, 'wallets', 'disabled:', disabled);
 
     return (
         <View style={styles.suggestedWalletsContainer}>
@@ -145,8 +149,9 @@ const SuggestedWallets = ({ wallets, onWalletSelect }: {
                 {wallets.map((wallet) => (
                     <TouchableOpacity
                         key={wallet.id}
-                        style={styles.suggestedWalletButton}
-                        onPress={() => onWalletSelect(wallet)}
+                        style={[styles.suggestedWalletButton, disabled && { opacity: 0.5 }]}
+                        onPress={() => !disabled && onWalletSelect(wallet)}
+                        disabled={disabled}
                     >
                         <View style={styles.suggestedWalletContent}>
                             <Icon name="account-balance-wallet" size={16} color="#1e90ff" />
@@ -167,9 +172,10 @@ const SuggestedWallets = ({ wallets, onWalletSelect }: {
 };
 
 // Suggested Budgets component
-const SuggestedBudgets = ({ budgets, onBudgetSelect }: { 
+const SuggestedBudgets = ({ budgets, onBudgetSelect, disabled = false }: { 
     budgets: SuggestedBudget[], 
-    onBudgetSelect: (budget: SuggestedBudget) => void 
+    onBudgetSelect: (budget: SuggestedBudget) => void,
+    disabled?: boolean
 }) => {
     // Early return if no budgets or empty array
     if (!budgets || budgets.length === 0) {
@@ -177,7 +183,7 @@ const SuggestedBudgets = ({ budgets, onBudgetSelect }: {
         return null;
     }
 
-    console.log('💰 Rendering suggested budgets:', budgets.length, 'budgets');
+    console.log('💰 Rendering suggested budgets:', budgets.length, 'budgets', 'disabled:', disabled);
 
     return (
         <View style={styles.suggestedBudgetsContainer}>
@@ -186,14 +192,25 @@ const SuggestedBudgets = ({ budgets, onBudgetSelect }: {
                 {budgets.map((budget) => (
                     <TouchableOpacity
                         key={budget.id}
-                        style={styles.suggestedBudgetButton}
-                        onPress={() => onBudgetSelect(budget)}
+                        style={[styles.suggestedBudgetButton, disabled && { opacity: 0.5 }]}
+                        onPress={() => !disabled && onBudgetSelect(budget)}
+                        disabled={disabled}
                     >
                         <View style={styles.suggestedBudgetContent}>
                             <Icon name="account-balance" size={16} color="#28a745" />
                             <Text style={styles.suggestedBudgetName} numberOfLines={1}>
                                 {budget.budget_name}
                             </Text>
+                            {budget.overall_amount_limit !== undefined && (
+                                <Text style={styles.suggestedBudgetLimit}>
+                                    Hạn mức: {budget.overall_amount_limit.toLocaleString('vi-VN')} {budget.currency || 'đ'}
+                                </Text>
+                            )}
+                            {budget.budget_remaining_amount !== undefined && (
+                                <Text style={styles.suggestedBudgetRemaining}>
+                                    Còn lại: {budget.budget_remaining_amount.toLocaleString('vi-VN')} {budget.currency || 'đ'}
+                                </Text>
+                            )}
                         </View>
                     </TouchableOpacity>
                 ))}
@@ -431,6 +448,7 @@ const ChatAIScreen = () => {
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
     const navigation = useNavigationService();
+    const route = useRoute();
     const scrollViewRef = useRef<ScrollView>(null);
     const textInputRef = useRef<TextInput>(null);
     
@@ -445,6 +463,14 @@ const ChatAIScreen = () => {
     const [isVoiceLoading, setIsVoiceLoading] = useState(false);
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     
+    // Input blocking states for suggested wallets
+    const [isInputBlocked, setIsInputBlocked] = useState(false);
+    const [blockTimer, setBlockTimer] = useState<NodeJS.Timeout | null>(null);
+    const [remainingBlockTime, setRemainingBlockTime] = useState(0);
+    
+    // Persist suggested items state across navigation
+    const [currentSuggestedWallets, setCurrentSuggestedWallets] = useState<SuggestedWallet[]>([]);
+    const [currentSuggestedBudgets, setCurrentSuggestedBudgets] = useState<SuggestedBudget[]>([]);
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(0);
@@ -578,8 +604,160 @@ const ChatAIScreen = () => {
             keyboardDidHideListener?.remove();
         };
     }, []);
+    
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (blockTimer) {
+                clearInterval(blockTimer);
+            }
+        };
+    }, [blockTimer]);
 
+    // Persist and restore input blocking state across navigation
+    useFocusEffect(
+        useCallback(() => {
+            console.log('🔄 ChatAIScreen focused - checking for persisted state');
+            
+            // Restore state from route params if available
+            const params = route.params as any;
+            if (params?.isInputBlocked) {
+                console.log('🔒 Restoring blocked input state from navigation params');
+                setIsInputBlocked(true);
+                setRemainingBlockTime(params.remainingBlockTime || 0);
+                
+                // If there's remaining time, restart the timer
+                if (params.remainingBlockTime && params.remainingBlockTime > 0) {
+                    const timer = setInterval(() => {
+                        setRemainingBlockTime(prev => {
+                            if (prev <= 1) {
+                                clearInterval(timer);
+                                setIsInputBlocked(false);
+                                setBlockTimer(null);
+                                                                        console.log('🔓 Input unblocked after timer completion (1 minute 30 seconds)');
+                                return 0;
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
+                    setBlockTimer(timer);
+                }
+            }
+            
+            // Restore suggested items from route params
+            if (params?.currentSuggestedWallets) {
+                console.log('💼 Restoring suggested wallets from navigation params');
+                setCurrentSuggestedWallets(params.currentSuggestedWallets);
+            }
+            
+            if (params?.currentSuggestedBudgets) {
+                console.log('💰 Restoring suggested budgets from navigation params');
+                setCurrentSuggestedBudgets(params.currentSuggestedBudgets);
+            }
+        }, [route.params])
+    );
 
+    // Persist state when component unmounts
+    useEffect(() => {
+        return () => {
+            console.log('🔄 ChatAIScreen unmounting - persisting state to AsyncStorage');
+            
+            // Persist state to AsyncStorage for restoration
+            const persistState = async () => {
+                try {
+                    const stateToPersist = {
+                        isInputBlocked,
+                        remainingBlockTime,
+                        currentSuggestedWallets,
+                        currentSuggestedBudgets,
+                        timestamp: Date.now()
+                    };
+                    
+                    await AsyncStorage.setItem('ChatAI_PersistedState', JSON.stringify(stateToPersist));
+                    console.log('💾 State persisted to AsyncStorage');
+                } catch (error) {
+                    console.error('❌ Failed to persist state:', error);
+                }
+            };
+            
+            persistState();
+        };
+    }, [isInputBlocked, remainingBlockTime, currentSuggestedWallets, currentSuggestedBudgets]);
+
+    // Restore state from AsyncStorage on mount
+    useEffect(() => {
+        const restoreState = async () => {
+            try {
+                const persistedState = await AsyncStorage.getItem('ChatAI_PersistedState');
+                if (persistedState) {
+                    const state = JSON.parse(persistedState);
+                    const timeDiff = Date.now() - state.timestamp;
+                    
+                    // Only restore if state is less than 5 minutes old
+                    if (timeDiff < 5 * 60 * 1000) {
+                        console.log('🔄 Restoring state from AsyncStorage');
+                        
+                        if (state.isInputBlocked && state.remainingBlockTime > 0) {
+                            setIsInputBlocked(true);
+                            setRemainingBlockTime(state.remainingBlockTime);
+                            
+                            // Restart timer if there's remaining time
+                            const timer = setInterval(() => {
+                                setRemainingBlockTime(prev => {
+                                    if (prev <= 1) {
+                                        clearInterval(timer);
+                                        setIsInputBlocked(false);
+                                        setBlockTimer(null);
+                                        setCurrentSuggestedBudgets([]); // Clear suggested budgets when timer expires
+                                        // Disable suggestions in the last AI message
+                                        setMessages(prev => {
+                                            // Tìm message cuối cùng có suggest
+                                            const lastIdx = [...prev].reverse().findIndex(m => (m.suggestedWallets && m.suggestedWallets.length > 0) || (m.suggestedBudgets && m.suggestedBudgets.length > 0));
+                                            if (lastIdx !== -1) {
+                                                const realIdx = prev.length - 1 - lastIdx;
+                                                const updated = [...prev];
+                                                updated[realIdx] = { ...updated[realIdx], suggestDisabled: true };
+                                                return updated;
+                                            }
+                                            return prev;
+                                        });
+                                        console.log('🔓 Input unblocked after 1 minute 30 seconds, suggestions disabled');
+                                        return 0;
+                                    }
+                                    return prev - 1;
+                                });
+                            }, 1000);
+                            setBlockTimer(timer);
+                        }
+                        
+                        // If suggestions were active when blocked, add them as a new AI message
+                        if (state.currentSuggestedWallets?.length > 0 || state.currentSuggestedBudgets?.length > 0) {
+                            const restoredAIMessage: Message = {
+                                id: `restored_suggestions_${Date.now()}`, // Unique ID
+                                text: state.currentSuggestedWallets?.length > 0 ? 'Vui lòng chọn một ví từ danh sách gợi ý bên dưới:' : 'Vui lòng chọn một ngân sách từ danh sách gợi ý bên dưới:',
+                                isUser: false,
+                                timestamp: new Date(), // Use current time for restored message
+                                suggestedWallets: state.currentSuggestedWallets,
+                                suggestedBudgets: state.currentSuggestedBudgets,
+                            };
+                            // Append this message to the existing messages
+                            setMessages(prev => [...prev, restoredAIMessage]);
+                            setShouldScrollToBottom(true);
+                            console.log('🤖 Added restored AI message with suggestions.');
+                        }
+                    } else {
+                        // Clear old persisted state
+                        await AsyncStorage.removeItem('ChatAI_PersistedState');
+                        console.log('🗑️ Cleared old persisted state');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Failed to restore state:', error);
+            }
+        };
+        
+        restoreState();
+    }, []);
 
     const handleSendMessage = async (messageText?: string) => {
         const textToSend = messageText || inputText.trim();
@@ -624,8 +802,8 @@ const ChatAIScreen = () => {
                 // Support both 'suggested_wallets' and 'suggest_wallet' (for API compatibility)
                 const suggestedWallets = aiResponse.suggested_wallets || (aiResponse as any).suggest_wallet || undefined;
                 
-                // Support suggested budgets
-                const suggestedBudgets = aiResponse.list_suggested_budgets || undefined;
+                // Support suggested budgets - handle alternative field names for API compatibility
+                const suggestedBudgets = aiResponse.list_suggested_budgets || (aiResponse as any).suggest_budget || (aiResponse as any).suggested_budgets || undefined;
                 
                 console.log('✅ AI response received:', aiResponse);
                 console.log('📝 AI response structure:', {
@@ -634,10 +812,53 @@ const ChatAIScreen = () => {
                     hasSuggestedWallets: !!aiResponse.suggested_wallets || !!(aiResponse as any).suggest_wallet,
                     suggestedWalletsCount: aiResponse.suggested_wallets?.length || (aiResponse as any).suggest_wallet?.length,
                     suggestedWallets,
-                    hasSuggestedBudgets: !!aiResponse.list_suggested_budgets,
-                    suggestedBudgetsCount: aiResponse.list_suggested_budgets?.length,
+                    hasSuggestedBudgets: !!aiResponse.list_suggested_budgets || !!(aiResponse as any).suggest_budget || !!(aiResponse as any).suggested_budgets,
+                    suggestedBudgetsCount: aiResponse.list_suggested_budgets?.length || (aiResponse as any).suggest_budget?.length || (aiResponse as any).suggested_budgets?.length,
                     suggestedBudgets,
                 });
+                
+                        // Check if suggested wallets are present and block input for 1 minute 30 seconds
+        if (suggestedWallets && suggestedWallets.length > 0) {
+            console.log('🔒 Blocking input due to suggested wallets');
+            setIsInputBlocked(true);
+            setRemainingBlockTime(90); // 90 seconds (1 minute 30 seconds)
+                    setCurrentSuggestedWallets(suggestedWallets);
+                    
+                    // Start countdown timer
+                    const timer = setInterval(() => {
+                        setRemainingBlockTime(prev => {
+                            if (prev <= 1) {
+                                clearInterval(timer);
+                                setIsInputBlocked(false);
+                                setBlockTimer(null);
+                                setCurrentSuggestedWallets([]); // Clear suggested wallets when timer expires
+                                setCurrentSuggestedBudgets([]); // Clear suggested budgets when timer expires
+                                // Disable suggestions in the last AI message
+                                setMessages(prev => {
+                                    // Tìm message cuối cùng có suggest
+                                    const lastIdx = [...prev].reverse().findIndex(m => (m.suggestedWallets && m.suggestedWallets.length > 0) || (m.suggestedBudgets && m.suggestedBudgets.length > 0));
+                                    if (lastIdx !== -1) {
+                                        const realIdx = prev.length - 1 - lastIdx;
+                                        const updated = [...prev];
+                                        updated[realIdx] = { ...updated[realIdx], suggestDisabled: true };
+                                        return updated;
+                                    }
+                                    return prev;
+                                });
+                                console.log('🔓 Input unblocked after 1 minute 30 seconds, suggestions disabled');
+                                return 0;
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
+                    
+                    setBlockTimer(timer);
+                }
+                
+                // Update current suggested budgets
+                if (suggestedBudgets && suggestedBudgets.length > 0) {
+                    setCurrentSuggestedBudgets(suggestedBudgets);
+                }
                 
                 const aiMessage: Message = {
                     id: (Date.now() + 1).toString(),
@@ -693,12 +914,40 @@ const ChatAIScreen = () => {
     };
 
     const handleWalletSelect = (wallet: SuggestedWallet) => {
+        // Unblock input when wallet is selected
+        if (isInputBlocked) {
+            console.log('🔓 Unblocking input due to wallet selection');
+            setIsInputBlocked(false);
+            setRemainingBlockTime(0);
+            setCurrentSuggestedWallets([]); // Clear suggested wallets when one is selected
+            setCurrentSuggestedBudgets([]); // Clear suggested budgets when wallet is selected
+            if (blockTimer) {
+                clearInterval(blockTimer);
+                setBlockTimer(null);
+            }
+        }
+        
         const walletMessage = wallet.name;
         handleSendMessage(walletMessage);
     };
 
     const handleBudgetSelect = (budget: SuggestedBudget) => {
-        const budgetMessage = budget.budget_name;
+        let budgetMessage = budget.budget_name;
+        
+        // Add budget limit information if available
+        if (budget.overall_amount_limit !== undefined) {
+            budgetMessage += ` (Hạn mức: ${budget.overall_amount_limit.toLocaleString('vi-VN')} ${budget.currency || 'đ'})`;
+        }
+        
+        // Add remaining amount if available
+        if (budget.budget_remaining_amount !== undefined) {
+            budgetMessage += ` (Còn lại: ${budget.budget_remaining_amount.toLocaleString('vi-VN')} ${budget.currency || 'đ'})`;
+        }
+        
+        // Clear current suggested budgets when one is selected
+        setCurrentSuggestedBudgets([]);
+        setCurrentSuggestedWallets([]); // Clear suggested wallets when budget is selected
+        
         handleSendMessage(budgetMessage);
     };
 
@@ -895,6 +1144,7 @@ const ChatAIScreen = () => {
                     <SuggestedWallets 
                         wallets={message.suggestedWallets} 
                         onWalletSelect={handleWalletSelect}
+                        disabled={!!message.suggestDisabled}
                     />
                 )}
                 
@@ -903,6 +1153,7 @@ const ChatAIScreen = () => {
                     <SuggestedBudgets 
                         budgets={message.suggestedBudgets} 
                         onBudgetSelect={handleBudgetSelect}
+                        disabled={!!message.suggestDisabled}
                     />
                 )}
                 <Text style={[
@@ -1052,37 +1303,48 @@ const ChatAIScreen = () => {
                                 <View style={styles.textInputContainer}>
                                     <TextInput
                                         ref={inputRef}
-                                        style={styles.textInput}
+                                        style={[
+                                            styles.textInput,
+                                            isInputBlocked && styles.blockedInput
+                                        ]}
                                         value={inputText}
                                         onChangeText={setInputText}
-                                        placeholder="Tin nhắn..."
+                                        placeholder={isInputBlocked ? `Vui lòng chọn ví gợi ý (${remainingBlockTime}s)` : "Tin nhắn..."}
                                         placeholderTextColor="#8e9aaf"
                                         multiline
                                         maxLength={1000}
+                                        editable={!isInputBlocked}
                                         onFocus={() => {
                                             // Set flag to scroll to bottom when input is focused
                                             setShouldScrollToBottom(true);
                                         }}
                                     />
+                                    {isInputBlocked && (
+                                        <View style={styles.blockedOverlay}>
+                                            <Text style={styles.blockedText}>
+                                                Vui lòng chọn ví gợi ý ({remainingBlockTime}s)
+                                            </Text>
+                                        </View>
+                                    )}
                                 </View>
                                 
                                 <TouchableOpacity 
                                     style={[
                                         styles.sendButton, 
-                                        (!inputText.trim() || isLoading) && styles.disabledButton
+                                        (!inputText.trim() || isLoading || isInputBlocked) && styles.disabledButton
                                     ]}
                                     onPress={() => handleSendMessage()}
-                                    disabled={!inputText.trim() || isLoading}
+                                    disabled={!inputText.trim() || isLoading || isInputBlocked}
                                     activeOpacity={0.8}
                                 >
                                     <LinearGradient
-                                        colors={inputText.trim() && !isLoading ? ['#1e90ff', '#0066cc'] : ['#cbd5e0', '#a0aec0']}
+                                        colors={inputText.trim() && !isLoading && !isInputBlocked ? ['#1e90ff', '#0066cc'] : ['#cbd5e0', '#a0aec0']}
                                         style={styles.sendButtonGradient}
                                     >
                                         <Icon 
                                             name="send" 
                                             size={18} 
-                                            color={inputText.trim() && !isLoading ? "#FFFFFF" : "#718096"} 
+                                            color={inputText.trim() && !isLoading && !isInputBlocked ? "#FFFFFF" : "#718096"} 
                                         />
                                     </LinearGradient>
                                 </TouchableOpacity>
@@ -1430,6 +1692,20 @@ const styles = StyleSheet.create({
         marginLeft: 6,
         flex: 1,
     },
+    suggestedBudgetLimit: {
+        color: '#666',
+        fontSize: 11,
+        marginTop: 2,
+        width: '100%',
+        textAlign: 'center',
+    },
+    suggestedBudgetRemaining: {
+        color: '#28a745',
+        fontSize: 11,
+        marginTop: 2,
+        width: '100%',
+        textAlign: 'center',
+    },
     inputContainer: {
         paddingHorizontal: 16,
         paddingTop: 4,
@@ -1481,6 +1757,27 @@ const styles = StyleSheet.create({
         maxHeight: 100,
         // Ensure consistent text input behavior
         includeFontPadding: false,
+    },
+    blockedInput: {
+        backgroundColor: '#f1f5f9',
+        color: '#94a3b8',
+    },
+    blockedOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(241, 245, 249, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 20,
+    },
+    blockedText: {
+        fontSize: 12,
+        color: '#64748b',
+        fontWeight: '500',
+        textAlign: 'center',
     },
     inputButton: {
         width: 40,

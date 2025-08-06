@@ -986,7 +986,9 @@
       "error": {
         "create": "Failed to create budget!",
         "update": "Failed to update budget!",
-        "loadData": "Cannot load budget data!"
+        "loadData": "Cannot load budget data!",
+        "budgetNameExists": "Budget name already exists!",
+        "maxBudgetsReached": "You cannot have more than 5 budgets. Please delete some existing budgets before creating a new one."
       },
       "confirmAmountChange": {
         "title": "Confirm",

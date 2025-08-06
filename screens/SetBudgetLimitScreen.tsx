@@ -768,6 +768,17 @@ const BudgetLimitScreen = () => {
           setShowCustomErrorModal(true);
           return;
         }
+        
+        // Check for specific 400 error with "The user cannot have more than 5 budgets" message
+        if (errorMessage.includes('cannot have more than 5 budgets')) {
+          console.log('🎯 Detected specific 400 error: User cannot have more than 5 budgets');
+          setCustomErrorData({
+            title: t('common.error'),
+            message: t('budget.setBudgetLimit.error.maxBudgetsReached') || 'The user cannot have more than 5 budgets. Please delete some existing budgets before creating a new one.'
+          });
+          setShowCustomErrorModal(true);
+          return;
+        }
       }
       
       // Default error handling

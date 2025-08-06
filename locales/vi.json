@@ -1093,7 +1093,8 @@
         "create": "Tạo hạn mức thất bại!",
         "update": "Cập nhật hạn mức thất bại!",
         "loadData": "Không thể tải dữ liệu hạn mức!",
-        "budgetNameExists": "Tên hạn mức đã tồn tại. Vui lòng chọn tên khác."
+        "budgetNameExists": "Tên hạn mức đã tồn tại. Vui lòng chọn tên khác.",
+        "maxBudgetsReached": "Bạn không thể có quá 5 ngân sách. Vui lòng xóa một số ngân sách hiện có trước khi tạo mới."
       },
       "confirmAmountChange": {
         "title": "Xác nhận",
