@@ -41,6 +41,7 @@ export interface CreateWalletRequest {
   bank_name?: string; // optional
   icon_url?: string; // optional
   currency_code?: string; // optional
+  initial_balance?: number; // optional
 }
 
 // Response interface matching the backend WalletResponse

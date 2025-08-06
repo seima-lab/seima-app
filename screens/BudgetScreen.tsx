@@ -3,20 +3,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomErrorModal from '../components/CustomErrorModal';
 import { typography } from '../constants/typography';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
@@ -172,6 +173,8 @@ const BudgetScreen = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Fetch budgets from API
   useFocusEffect(
@@ -208,13 +211,23 @@ const BudgetScreen = () => {
           
           setBudgets(activeBudgets);
           console.log('✅ Budgets fetched:', activeBudgets.length, 'items');
-        } catch (error) {
+        } catch (error: any) {
           console.error('❌ Error fetching budgets:', error);
           console.error('❌ Error details:', {
             message: error instanceof Error ? error.message : 'Unknown error',
             stack: error instanceof Error ? error.stack : 'No stack trace',
             name: error instanceof Error ? error.name : 'Unknown error type'
           });
+          
+          // Handle specific API errors
+          if (error.message && error.message.includes('cannot have more than 5 budgets')) {
+            setErrorMessage('Bạn không thể tạo quá 5 budgets. Vui lòng xóa một số budget cũ trước khi tạo mới.');
+            setIsErrorModalVisible(true);
+          } else {
+            setErrorMessage('Có lỗi xảy ra khi tải danh sách budget. Vui lòng thử lại.');
+            setIsErrorModalVisible(true);
+          }
+          
           setBudgets([]);
         } finally {
           setIsLoading(false);
@@ -475,6 +488,15 @@ const BudgetScreen = () => {
         visible={isWhatIsBudgetModalVisible}
         onClose={() => setIsWhatIsBudgetModalVisible(false)}
         onCreateBudget={handleAddBudget}
+      />
+
+      {/* Error Modal */}
+      <CustomErrorModal
+        visible={isErrorModalVisible}
+        title="Lỗi"
+        message={errorMessage}
+        onDismiss={() => setIsErrorModalVisible(false)}
+        type="error"
       />
     </View>
   );

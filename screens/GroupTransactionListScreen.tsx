@@ -46,6 +46,19 @@ const formatMoney = (amount: number): string => {
   return amount.toLocaleString('vi-VN') + '₫';
 };
 
+// Check if date is today
+const isToday = (dateString: string): boolean => {
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const transactionDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    return transactionDate.getTime() === today.getTime();
+  } catch (error) {
+    return false;
+  }
+};
+
 // Format date helper function - display formatted date and time
 const formatTransactionDate = (dateString: string, language: string): string => {
   try {
@@ -74,16 +87,26 @@ const formatTransactionDate = (dateString: string, language: string): string => 
     // Format date based on when the transaction occurred
     if (transactionDate.getTime() === today.getTime()) {
       // Today - show only time
-      return `Hôm nay ${timeString}`;
+      return timeString;
     } else if (transactionDate.getTime() === yesterday.getTime()) {
       // Yesterday - show "Hôm qua" + time
       return `Hôm qua ${timeString}`;
     } else {
-      // Other days - show full date + time
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}/${month}/${year} ${timeString}`;
+      // Check if it's within the last 7 days
+      const daysDiff = Math.floor((today.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff <= 7) {
+        // Within last 7 days - show day name + time
+        const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+        const dayName = dayNames[date.getDay()];
+        return `${dayName} ${timeString}`;
+      } else {
+        // Older than 7 days - show full date + time
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year} ${timeString}`;
+      }
     }
     
   } catch (error) {
@@ -435,20 +458,57 @@ const GroupTransactionListScreen: React.FC = () => {
     });
   };
 
+  // Group transactions by date
+  const groupTransactionsByDate = (transactionList: GroupTransactionResponse[]) => {
+    const grouped: { [key: string]: GroupTransactionResponse[] } = {};
+    
+    transactionList.forEach(transaction => {
+      const date = new Date(transaction.transaction_date);
+      const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(transaction);
+    });
+    
+    // Sort transactions within each date group by time (newest first)
+    Object.keys(grouped).forEach(dateKey => {
+      grouped[dateKey].sort((a, b) => {
+        const timeA = new Date(a.transaction_date).getTime();
+        const timeB = new Date(b.transaction_date).getTime();
+        return timeB - timeA; // Newest first
+      });
+    });
+    
+    return grouped;
+  };
+
+  // Get sorted date keys (newest first)
+  const getSortedDateKeys = (groupedTransactions: { [key: string]: GroupTransactionResponse[] }) => {
+    const dateKeys = Object.keys(groupedTransactions);
+    return dateKeys.sort((a, b) => {
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      return dateB.getTime() - dateA.getTime(); // Newest first
+    });
+  };
+
   // Filter transactions based on current filter state
   const getFilteredTransactions = () => {
-    if (!showOnlyMyTransactions || !currentUserId) {
-      return transactions; // Show all transactions
+    let filteredTransactions = transactions;
+    
+    if (showOnlyMyTransactions && currentUserId) {
+      // Show only current user's transactions
+      filteredTransactions = transactions.filter(t => t.user_id === currentUserId);
+      console.log('🔍 Filtered to my transactions:', {
+        totalTransactions: transactions.length,
+        myTransactions: filteredTransactions.length,
+        currentUserId: currentUserId
+      });
     }
     
-    // Show only current user's transactions
-    const myTransactions = transactions.filter(t => t.user_id === currentUserId);
-    console.log('🔍 Filtered to my transactions:', {
-      totalTransactions: transactions.length,
-      myTransactions: myTransactions.length,
-      currentUserId: currentUserId
-    });
-    return myTransactions;
+    return filteredTransactions;
   };
 
   // Swipeable Transaction Item Component with delete functionality
@@ -501,9 +561,19 @@ const GroupTransactionListScreen: React.FC = () => {
                   {isIncome ? t('groupTransaction.income') : t('groupTransaction.expense')}
                 </Text>
               </View>
-              <Text style={styles.transactionDate}>
-                {formatTransactionDate(item.transaction_date, language)}
-              </Text>
+              <View style={styles.transactionDateContainer}>
+                {isToday(item.transaction_date) && (
+                  <View style={styles.todayIndicator}>
+                    <Text style={styles.todayIndicatorText}>Hôm nay</Text>
+                  </View>
+                )}
+                <Text style={[
+                  styles.transactionDate,
+                  isToday(item.transaction_date) && styles.todayDate
+                ]}>
+                  {formatTransactionDate(item.transaction_date, language)}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -578,10 +648,7 @@ const GroupTransactionListScreen: React.FC = () => {
             ]}
           >
             <TouchableOpacity 
-              style={[
-                styles.transactionItem,
-                styles.transactionItemEditable
-              ]}
+              style={styles.transactionItem}
               onPress={() => handleTransactionPress(item)}
               activeOpacity={0.7}
             >
@@ -622,9 +689,19 @@ const GroupTransactionListScreen: React.FC = () => {
                       {isIncome ? t('groupTransaction.income') : t('groupTransaction.expense')}
                     </Text>
                   </View>
-                  <Text style={styles.transactionDate}>
-                    {formatTransactionDate(item.transaction_date, language)}
-                  </Text>
+                  <View style={styles.transactionDateContainer}>
+                    {isToday(item.transaction_date) && (
+                      <View style={styles.todayIndicator}>
+                        <Text style={styles.todayIndicatorText}>Hôm nay</Text>
+                      </View>
+                    )}
+                    <Text style={[
+                      styles.transactionDate,
+                      isToday(item.transaction_date) && styles.todayDate
+                    ]}>
+                      {formatTransactionDate(item.transaction_date, language)}
+                    </Text>
+                  </View>
                 </View>
               </View>
               {/* Edit arrow for own transactions */}
@@ -636,8 +713,26 @@ const GroupTransactionListScreen: React.FC = () => {
     );
   };
 
-  const renderTransaction = ({ item }: { item: GroupTransactionResponse }) => {
-    return <SwipeableTransactionItem item={item} />;
+  const renderDateGroup = ({ item: dateKey }: { item: string }) => {
+    const transactionsForDate = groupedTransactions[dateKey];
+    
+    return (
+      <View style={styles.dateGroupContainer}>
+        {/* Date Header */}
+        <View style={styles.dateHeader}>
+          <Text style={styles.dateHeaderText}>{formatDateHeader(dateKey)}</Text>
+          <Text style={styles.dateHeaderCount}>{transactionsForDate.length} giao dịch</Text>
+        </View>
+        
+        {/* Transactions for this date */}
+        {transactionsForDate.map((transaction, index) => (
+          <View key={transaction.transaction_id?.toString() || `transaction-${Math.random()}`}>
+            <SwipeableTransactionItem item={transaction} />
+            {index < transactionsForDate.length - 1 && <View style={styles.transactionSeparator} />}
+          </View>
+        ))}
+      </View>
+    );
   };
 
   const renderFooter = () => {
@@ -662,7 +757,33 @@ const GroupTransactionListScreen: React.FC = () => {
   );
 
   // Use all transactions for the group
-  const groupTransactions = getFilteredTransactions();
+  const filteredTransactions = getFilteredTransactions();
+  const groupedTransactions = groupTransactionsByDate(filteredTransactions);
+  const sortedDateKeys = getSortedDateKeys(groupedTransactions);
+
+  // Format date for header display
+  const formatDateHeader = (dateKey: string): string => {
+    const date = new Date(dateKey);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const todayKey = today.toISOString().split('T')[0];
+    const yesterdayKey = yesterday.toISOString().split('T')[0];
+    
+    if (dateKey === todayKey) {
+      return 'Hôm nay';
+    } else if (dateKey === yesterdayKey) {
+      return 'Hôm qua';
+    } else {
+      const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+      const dayName = dayNames[date.getDay()];
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${dayName}, ${day}/${month}/${year}`;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -714,15 +835,15 @@ const GroupTransactionListScreen: React.FC = () => {
             <View style={styles.filterIndicator}>
               <Icon name="person" size={16} color="#4A90E2" />
               <Text style={styles.filterIndicatorText}>
-                Chỉ hiển thị giao dịch của tôi ({getFilteredTransactions().length} giao dịch)
+                Chỉ hiển thị giao dịch của tôi ({filteredTransactions.length} giao dịch)
               </Text>
             </View>
           )}
           
           <FlatList
-            data={groupTransactions}
-            renderItem={renderTransaction}
-            keyExtractor={(item) => item.transaction_id?.toString() || `transaction-${Math.random()}`}
+            data={sortedDateKeys}
+            renderItem={renderDateGroup}
+            keyExtractor={(dateKey) => dateKey}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -734,9 +855,8 @@ const GroupTransactionListScreen: React.FC = () => {
             onEndReachedThreshold={0.5}
             ListFooterComponent={renderFooter}
             ListEmptyComponent={renderEmptyState}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={transactions.length === 0 ? styles.emptyListContainer : undefined}
+            contentContainerStyle={filteredTransactions.length === 0 ? styles.emptyListContainer : undefined}
           />
         </>
       )}
@@ -814,12 +934,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: '#FFFFFF',
   },
-  transactionItemEditable: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    marginVertical: 4,
-  },
+
   transactionUserAvatar: {
     width: 44,
     height: 44,
@@ -902,12 +1017,57 @@ const styles = StyleSheet.create({
     color: '#999',
     ...typography.regular,
   },
-  separator: {
+  transactionDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  todayIndicator: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  todayIndicatorText: {
+    fontSize: 9,
+    color: '#FFFFFF',
+    ...typography.medium,
+  },
+  todayDate: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  dateGroupContainer: {
+    marginBottom: 12,
+  },
+  dateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#F8F9FA',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
+    marginBottom: 8,
+  },
+  dateHeaderText: {
+    fontSize: 16,
+    color: '#495057',
+    ...typography.medium,
+  },
+  dateHeaderCount: {
+    fontSize: 12,
+    color: '#6C757D',
+    ...typography.regular,
+  },
+  transactionSeparator: {
     height: 1,
     backgroundColor: '#F0F0F0',
     marginLeft: 56,
-    marginVertical: 4,
+    marginRight: 16,
   },
+
   footerLoader: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -1008,8 +1168,7 @@ const styles = StyleSheet.create({
   // Swipeable styles
   swipeableContainer: {
     position: 'relative',
-    marginBottom: 16,
-    borderRadius: 16,
+    borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#FF3B30',
   },
@@ -1038,7 +1197,7 @@ const styles = StyleSheet.create({
   },
   animatedTransactionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 8,
   },
 });
 

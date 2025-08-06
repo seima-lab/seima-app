@@ -202,6 +202,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
       bankName: wallet.bank_name || '',
       isDefault: wallet.is_default,
       excludeFromTotal: wallet.exclude_from_total || false,
+      initialBalance: wallet.initial_balance?.toString() || '0',
     };
     
     console.log('📝 Edit wallet data:', walletData);
@@ -433,7 +434,9 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                         console.log('📱 Navigating to wallet transaction history:', wallet.id, wallet.wallet_name);
                         navigation.navigate('WalletTransactionHistory', {
                           walletId: wallet.id,
-                          walletName: wallet.wallet_name
+                          walletName: wallet.wallet_name,
+                          currentBalance: wallet.current_balance,
+                          initialBalance: wallet.initial_balance || 0
                         });
                       }}
                       activeOpacity={0.7}

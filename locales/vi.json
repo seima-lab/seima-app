@@ -79,6 +79,15 @@
     "expense1": "Tiền Chi",
     "transactionHistoryToday": "Lịch sử thu chi hôm nay",
     "noTransactionHistory": "Không có lịch sử thu chi hôm nay",
+    "loading": "Đang tải...",
+    "unknown": "Không xác định",
+    "hiddenBalance": "********",
+    "financialStatus": {
+      "poor": "Tình trạng tài chính kém",
+      "needsImprovement": "Tình trạng tài chính cần cải thiện",
+      "fair": "Tình trạng tài chính khá tốt",
+      "excellent": "Tình trạng tài chính xuất sắc"
+    },
     "periods": {
       "thisDay": "Hôm nay",
       "thisWeek": "Tuần này",
@@ -180,7 +189,29 @@
     "expense": "Chi tiêu",
     "net": "Thu nhập ròng",
     "noTransactions": "Không tìm thấy giao dịch",
-    "noTransactionsMessage": "Ví này chưa có giao dịch nào."
+    "noTransactionsMessage": "Ví này chưa có giao dịch nào.",
+    "initialBalance": "Số dư ban đầu",
+    "currentBalance": "Số dư hiện tại",
+    "filter": {
+      "30days": "30 ngày gần nhất",
+      "thisMonth": "Tháng này",
+      "lastMonth": "Tháng trước",
+      "thisQuarter": "Quý này",
+      "lastQuarter": "Quý trước",
+      "thisYear": "Năm nay",
+      "lastYear": "Năm trước",
+      "custom": "Tùy chọn",
+      "selectTimeRange": "Chọn khoảng thời gian",
+      "selectDateRange": "Chọn khoảng ngày",
+      "selectStartDate": "Chọn ngày bắt đầu",
+      "selectEndDate": "Chọn ngày kết thúc",
+      "fromDate": "Từ ngày",
+      "toDate": "Đến ngày",
+      "error": {
+        "selectBothDates": "Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc",
+        "startDateAfterEndDate": "Ngày bắt đầu không được sau ngày kết thúc"
+      }
+    }
   },
   "group": {
     "invitation": {
@@ -553,7 +584,9 @@
     "addExpense": "Thêm chi tiêu",
     "addIncome": "Thêm thu nhập",
     "validation": "Xác thực",
-    "noNote": "Không có ghi chú"
+    "noNote": "Không có ghi chú",
+    "unknown": "Không rõ",
+    "unknownUser": "Người dùng không xác định"
   },
 
   "changePasswordBtn": "Đổi mật khẩu",

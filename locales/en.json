@@ -72,6 +72,15 @@
     "transactionHistoryToday": "Transaction History Today",
     "noTransactionHistory": "No transactions history today",
     "difference": "Difference",
+    "loading": "Loading...",
+    "unknown": "Unknown",
+    "hiddenBalance": "********",
+    "financialStatus": {
+      "poor": "Poor financial status",
+      "needsImprovement": "Financial status needs improvement",
+      "fair": "Fair financial status",
+      "excellent": "Excellent financial status"
+    },
     "periods": {
       "thisDay": "This Day",
       "thisWeek": "This Week", 
@@ -462,7 +471,9 @@
     "addExpense": "Add Expense",
     "addIncome": "Add Income",
     "validation": "Validation",
-    "noNote": "No note"
+    "noNote": "No note",
+    "unknown": "Unknown",
+    "unknownUser": "Unknown User"
   },
 
   "changePasswordBtn": "Change Password",
@@ -975,8 +986,7 @@
       "error": {
         "create": "Failed to create budget!",
         "update": "Failed to update budget!",
-        "loadData": "Cannot load budget data!",
-        "budgetNameExists": "Budget name already exists. Please choose a different name."
+        "loadData": "Cannot load budget data!"
       },
       "confirmAmountChange": {
         "title": "Confirm",
@@ -1088,7 +1098,29 @@
     "expense": "Expense",
     "net": "Net",
     "noTransactions": "No transactions found",
-    "noTransactionsMessage": "This wallet doesn't have any transactions yet."
+    "noTransactionsMessage": "This wallet doesn't have any transactions yet.",
+    "initialBalance": "Initial Balance",
+    "currentBalance": "Current Balance",
+    "filter": {
+      "30days": "Last 30 days",
+      "thisMonth": "This month",
+      "lastMonth": "Last month",
+      "thisQuarter": "This quarter",
+      "lastQuarter": "Last quarter",
+      "thisYear": "This year",
+      "lastYear": "Last year",
+      "custom": "Custom",
+      "selectTimeRange": "Select time range",
+      "selectDateRange": "Select date range",
+      "selectStartDate": "Select start date",
+      "selectEndDate": "Select end date",
+      "fromDate": "From date",
+      "toDate": "To date",
+      "error": {
+        "selectBothDates": "Please select both start and end dates",
+        "startDateAfterEndDate": "Start date cannot be after end date"
+      }
+    }
   },
 
   "transaction": {

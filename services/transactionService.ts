@@ -135,6 +135,26 @@ export interface PaginatedGroupTransactionsResponse {
   empty: boolean;
 }
 
+export interface WalletTransactionItem {
+  category_id: number;
+  category_name: string;
+  category_icon_url: string;
+  amount: number;
+  balance: number;
+  transaction_date: string;
+}
+
+export interface WalletTransactionHistoryResponse {
+  summary: {
+    total_income: number;
+    total_expense: number;
+    current_balance: number;
+  };
+  report_by_wallet: {
+    [date: string]: WalletTransactionItem[];
+  };
+}
+
 export class TransactionService {
   
   /**
@@ -423,6 +443,48 @@ export class TransactionService {
       }
     } catch (error) {
       console.error('❌ Error fetching group transaction history:', error);
+      throw error;
+    }
+  }
+
+  async getWalletTransactionHistory(
+    walletId: number,
+    startDate: string,
+    endDate: string,
+    page: number = 0,
+    size: number = 1000
+  ): Promise<WalletTransactionHistoryResponse> {
+    try {
+      console.log('🔄 Fetching wallet transaction history:', { walletId, startDate, endDate });
+      
+      const response = await apiService.get(
+        `${TRANSACTION_ENDPOINTS.TRANSACTION_WALLET_HISTORY(walletId.toString())}?startDate=${startDate}&endDate=${endDate}`
+      );
+      
+      console.log('🟢 Wallet transaction history response:', response);
+      
+      if (response.data && typeof response.data === 'object') {
+        const { summary, report_by_wallet } = response.data as any;
+        
+        console.log('✅ Parsed response data:', { summary, report_by_wallet });
+        
+        return {
+          summary: {
+            total_income: summary?.total_income || 0,
+            total_expense: summary?.total_expense || 0,
+            current_balance: summary?.current_balance || 0
+          },
+          report_by_wallet: report_by_wallet || {}
+        };
+      } else {
+        console.error('❌ Unexpected response structure:', response);
+        return {
+          summary: { total_income: 0, total_expense: 0, current_balance: 0 },
+          report_by_wallet: {}
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching wallet transaction history:', error);
       throw error;
     }
   }

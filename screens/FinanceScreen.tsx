@@ -132,7 +132,7 @@ const SimplePieChart: React.FC<{
     return (
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
         <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#999', fontSize: 14 }}>{t('reports.noData') || 'No data'}</Text>
+          <Text style={{ color: '#999', fontSize: 14 }}>{t('reports.noData')}</Text>
         </View>
       </View>
     );
@@ -267,10 +267,10 @@ const FinanceScreen = React.memo(() => {
 
   // 1. Thêm state và options cho dropdown filter
   const PERIOD_OPTIONS = [
-    { label: t('finance.periods.thisDay') || 'Hôm nay', value: 'today' },
-    { label: t('finance.periods.thisWeek') || 'Tuần này', value: 'week' },
-    { label: t('finance.periods.thisMonth') || 'Tháng này', value: 'month' },
-    { label: t('finance.periods.thisYear') || 'Năm nay', value: 'year' },
+    { label: t('finance.periods.thisDay'), value: 'today' },
+    { label: t('finance.periods.thisWeek'), value: 'week' },
+    { label: t('finance.periods.thisMonth'), value: 'month' },
+    { label: t('finance.periods.thisYear'), value: 'year' },
   ];
   const [selectedPeriodValue, setSelectedPeriodValue] = useState('month'); // Default: tháng này
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -561,11 +561,11 @@ const FinanceScreen = React.memo(() => {
       return [];
     }
     return [
-      { category: 'Leisure', percentage: 54.55, color: '#FFA726' },
-      { category: 'Self-development', percentage: 25.25, color: '#EF5350' },
-      { category: 'Clothing', percentage: 18.74, color: '#26A69A' },
-      { category: 'Food', percentage: 0.76, color: '#AB47BC' },
-      { category: 'Undefined', percentage: 0.7, color: '#42A5F5' },
+      { category: t('categoryNames.entertainment'), percentage: 54.55, color: '#FFA726' },
+      { category: t('categoryNames.education'), percentage: 25.25, color: '#EF5350' },
+      { category: t('categoryNames.clothes'), percentage: 18.74, color: '#26A69A' },
+      { category: t('categoryNames.food'), percentage: 0.76, color: '#AB47BC' },
+      { category: t('common.unknown'), percentage: 0.7, color: '#42A5F5' },
     ];
   }, [reportData]);
 
@@ -641,7 +641,7 @@ const FinanceScreen = React.memo(() => {
 
   // Memoized formatted balance - back to using real wallet data only
   const formattedBalance = useMemo(() => {
-    return isBalanceVisible ? `${financeData.totalBalance.toLocaleString('vi-VN')} ${t('currency')}` : '********';
+    return isBalanceVisible ? `${financeData.totalBalance.toLocaleString('vi-VN')} ${t('currency')}` : t('finance.hiddenBalance');
   }, [isBalanceVisible, financeData.totalBalance, t]);
 
   // Memoized dynamic balance font size - back to using real wallet data only
@@ -766,11 +766,11 @@ const FinanceScreen = React.memo(() => {
 
   // Helper function to get health status message based on score ranges
   const getHealthStatusMessage = (score: number) => {
-    if (score >= 0 && score <= 20) return 'Tình trạng tài chính kém';
-    if (score >= 21 && score <= 40) return 'Tình trạng tài chính cần cải thiện';
-    if (score >= 41 && score <= 75) return 'Tình trạng tài chính khá tốt';
-    if (score >= 76 && score <= 100) return 'Tình trạng tài chính xuất sắc';
-    return 'Không xác định';
+    if (score >= 0 && score <= 20) return t('finance.financialStatus.poor');
+    if (score >= 21 && score <= 40) return t('finance.financialStatus.needsImprovement');
+    if (score >= 41 && score <= 75) return t('finance.financialStatus.fair');
+    if (score >= 76 && score <= 100) return t('finance.financialStatus.excellent');
+    return t('finance.unknown');
   };
 
   const getHealthStatus = (score: number) => {
@@ -923,9 +923,22 @@ const FinanceScreen = React.memo(() => {
   };
 
   const formatAmountDisplay = (amount: number): string => {
-    const formattedAmount = (amount || 0).toLocaleString('vi-VN');
-    if (formattedAmount.length > 7) {
-      return formattedAmount.substring(0, 7) + '...';
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '0';
+    }
+    const formattedAmount = amount.toLocaleString('vi-VN');
+    // Count only digits, not total characters
+    const digitCount = formattedAmount.replace(/\D/g, '').length;
+    if (digitCount > 7) {
+      // If digit count > 7, truncate to show 7 digits
+      let count = 0;
+      let result = '';
+      for (let i = 0; i < formattedAmount.length; i++) {
+        if (/\d/.test(formattedAmount[i])) count++;
+        result += formattedAmount[i];
+        if (count === 7) break;
+      }
+      return result + '...';
     }
     return formattedAmount;
   };
@@ -950,7 +963,7 @@ const FinanceScreen = React.memo(() => {
     
     // Get category name for the transaction
     const categoryObj = transaction.category_id ? categoriesMap[transaction.category_id] : undefined;
-    const categoryName = categoryObj?.category_name || transaction.category_name || transaction.categoryName || 'Không rõ';
+    const categoryName = categoryObj?.category_name || transaction.category_name || transaction.categoryName || t('common.unknown');
     
     // Navigate to AddExpenseScreen in edit mode
     navigation.navigate('AddExpenseScreen', {
@@ -1019,7 +1032,7 @@ const FinanceScreen = React.memo(() => {
             <View>
               <Text style={styles.greeting}>{t('finance.hello')}</Text>
               <Text style={styles.userName}>
-                {userProfile?.user_full_name || 'Unknown User'}
+                {userProfile?.user_full_name || t('common.unknownUser')}
               </Text>
             </View>
           </View>
@@ -1138,7 +1151,7 @@ const FinanceScreen = React.memo(() => {
                 {chartData.isLoading ? (
                   <View style={styles.chartLoadingContainer}>
                     <ActivityIndicator size="small" color="#1e90ff" />
-                    <Text style={styles.chartLoadingText}>Đang tải...</Text>
+                    <Text style={styles.chartLoadingText}>{t('finance.loading')}</Text>
                   </View>
                 ) : (
                   <>
@@ -1247,7 +1260,7 @@ const FinanceScreen = React.memo(() => {
              </View>
            </View>
          ) : transactionHistory.length === 0 ? (
-           <Text style={styles.historyEmpty}>{t('finance.noTransactionHistory') || 'Không có thu chi trong ngày hôm nay.'}</Text>
+           <Text style={styles.historyEmpty}>{t('finance.noTransactionHistory')}</Text>
          ) : (
            <View style={styles.transactionHistoryContainer}>
              <ScrollView 
@@ -1263,7 +1276,7 @@ const FinanceScreen = React.memo(() => {
                {transactionHistory.map((item, index) => {
                  const { iconName, iconColor, type } = getIconAndColor(item);
                  const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
-                 const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || 'Không rõ';
+                 const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || t('common.unknown');
                  return (
                    <TouchableOpacity 
                      key={item.transaction_id?.toString() || item.id?.toString() || index.toString()} 

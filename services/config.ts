@@ -74,8 +74,8 @@ export const USER_ENDPOINTS = {
 
 // Transaction endpoints
 export const TRANSACTION_ENDPOINTS = {
-  TRANSACTION_BUDGET_HISTORY: (id: string) => `${ApiConfig.API_PREFIX}/transactions/view-history-transactions-by-budget/${id}`,
-  
+TRANSACTION_BUDGET_HISTORY: (id: string) => `${ApiConfig.API_PREFIX}/transactions/view-history-transactions-by-budget/${id}`,  
+  TRANSACTION_WALLET_HISTORY: (id: string) => `${ApiConfig.API_PREFIX}/transactions/view-report-transactions-by-wallet/${id}`,
   VIEW_REPORT_BY_CATEGORY: (id: string, type: string, startDate?: string, endDate?: string, groupId?: number) => {
     let url = `${ApiConfig.API_PREFIX}/transactions/view-report/category/${id}?type=${type}`;
     if (startDate) url += `&startDate=${startDate}`;
