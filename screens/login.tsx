@@ -1,4 +1,5 @@
 import messaging from '@react-native-firebase/messaging';
+import { statusCodes } from '@react-native-google-signin/google-signin';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -133,6 +134,50 @@ export default function LoginScreen() {
     setToast(prev => ({ ...prev, visible: false }));
   };
 
+  // Helper function to detect if Google Sign-In was cancelled by user
+  const isGoogleSignInCancelled = (error: any): boolean => {
+    if (!error) return false;
+
+    // Check error code first
+    if (error.code) {
+      // Check for known cancellation codes
+      if (error.code === statusCodes.SIGN_IN_CANCELLED || 
+          error.code === 'SIGN_IN_CANCELLED' ||
+          error.code === statusCodes.IN_PROGRESS ||
+          error.code === 'IN_PROGRESS' ||
+          error.code === 'getTokens' ||
+          error.code === '12501') { // Android cancellation code
+        return true;
+      }
+    }
+
+    // Check error message
+    if (error.message) {
+      const message = error.message.toLowerCase();
+      if (message.includes('cancelled') ||
+          message.includes('canceled') ||
+          message.includes('user cancelled') ||
+          message.includes('user canceled') ||
+          message.includes('getTokens requires a user to be signed in') ||
+          message.includes('sign in was cancelled') ||
+          message.includes('the user cancelled the sign-in flow')) {
+        return true;
+      }
+    }
+
+    // Check if it's a string error
+    if (typeof error === 'string') {
+      const errorStr = error.toLowerCase();
+      if (errorStr.includes('cancelled') ||
+          errorStr.includes('canceled') ||
+          errorStr.includes('getTokens requires a user to be signed in')) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   const handleEmailLogin = async () => {
     // Validate form using pure function
     const validation = validateLoginForm(email, password);
@@ -200,7 +245,8 @@ export default function LoginScreen() {
       
       // Add null check for result
       if (!result) {
-        throw new Error('Google Sign-In returned no result');
+        console.log('🟡 Google Sign-In returned no result (likely user cancelled)');
+        return; // Don't show error for null result (user cancelled)
       }
       
       if (result.success && result.backendData) {
@@ -220,10 +266,24 @@ export default function LoginScreen() {
           await login(result.backendData.user_infomation);
         }
       } else {
+        // Check if it's a user cancellation
+        const isUserCancellation = result.userCancelled || isGoogleSignInCancelled(result.error);
+        if (isUserCancellation) {
+          console.log('🟡 User cancelled Google Sign-In');
+          return; // Don't show error toast for user cancellation
+        }
+        
         console.log('🔴 Google Sign-In failed:', result.error);
         showToast(result.error || t('login.loginFailed'), 'error');
       }
-    } catch (err) {
+    } catch (err: any) {
+      // Check if it's a user cancellation error
+      const isUserCancellation = isGoogleSignInCancelled(err);
+      if (isUserCancellation) {
+        console.log('🟡 User cancelled Google Sign-In (caught in try-catch)');
+        return; // Don't show error toast for user cancellation
+      }
+      
       console.log('🔴 LoginScreen - Google Sign-In error:', err);
       showToast(t('login.loginFailed'), 'error');
     } finally {

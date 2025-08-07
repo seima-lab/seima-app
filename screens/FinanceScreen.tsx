@@ -2,18 +2,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Circle, Svg } from 'react-native-svg';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -119,107 +118,7 @@ const getPercent = (value: number, total: number) => {
   return `${((value / total) * 100).toFixed(1)}%`;
 };
 
-// --- Pie chart giống ReportScreen ---
-
-// Pie chart component giống ReportScreen
-const SimplePieChart: React.FC<{
-  data: any[];
-  size?: number;
-  categoryType: 'expense' | 'income';
-}> = ({ data, size = 140, categoryType }) => {
-  const { t } = useTranslation();
-  if (!data || data.length === 0) {
-    return (
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#999', fontSize: 14 }}>{t('reports.noData')}</Text>
-        </View>
-      </View>
-    );
-  }
-  // Chuẩn hóa dữ liệu
-  const chartData = data.map((item: any, idx: number) => {
-    const categoryName = item.category_name || item.categoryName || `Category ${idx + 1}`;
-    const percentage = item.percentage || 0;
-    const amount = item.amount || 0;
-    // Lấy màu từ iconUtils
-    const icon = item.category_icon_url || '';
-    const color = getIconColor(icon, categoryType);
-    return { categoryName, percentage, color, amount };
-  }).sort((a, b) => b.percentage - a.percentage);
-  // SVG Donut Chart
-  const radius = size * 0.4;
-  const strokeWidth = size * 0.18;
-  const circumference = 2 * Math.PI * radius;
-  let cumulativePercentage = 0;
-  // Hàm format tiền
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount).replace('₫', 'đ');
-  };
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', width: size * 1.7 }}>
-      <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="#f0f0f0"
-            strokeWidth={strokeWidth}
-            fill="transparent"
-          />
-          {chartData.map((item, index) => {
-            if (item.percentage <= 0) return null;
-            const segmentLength = (item.percentage / 100) * circumference;
-            const rotationAngle = (cumulativePercentage / 100) * 360;
-            cumulativePercentage += item.percentage;
-            return (
-              <Circle
-                key={index}
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                stroke={item.color}
-                strokeWidth={strokeWidth}
-                strokeDasharray={`${segmentLength} ${circumference}`}
-                strokeLinecap="butt"
-                fill="transparent"
-                transform={`rotate(${rotationAngle - 90}, ${size / 2}, ${size / 2})`}
-              />
-            );
-          })}
-        </Svg>
-        {/* Center Icon */}
-        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
-          <IconMC
-            name={categoryType === 'expense' ? 'trending-down' : 'trending-up'}
-            size={size * 0.15}
-            color={categoryType === 'expense' ? '#FF3B30' : '#34C759'}
-          />
-        </View>
-      </View>
-      {/* Legend mới: Tên | Số tiền | % */}
-      {/* Legend revert: chỉ hiện màu, tên, phần trăm */}
-      <View style={{ marginLeft: 60, justifyContent: 'center'}}>
-        {chartData
-          .filter(item => item.percentage > 0)
-          .slice(0, 6)
-          .map((item, index) => (
-            <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: item.color, marginRight: 8 }} />
-              <Text style={{ fontSize: 14, color: '#333' }} numberOfLines={1} ellipsizeMode="tail">{item.categoryName}</Text>
-              <Text style={{ fontSize: 14, fontWeight: '600', marginLeft: 8, minWidth: 50, textAlign: 'right' }}>{item.percentage.toFixed(1)}%</Text>
-            </View>
-        ))}
-      </View>
-    </View>
-  );
-};
+// SimplePieChart removed - not used anymore
 
 const FinanceScreen = React.memo(() => {
   const { t } = useTranslation();
@@ -265,21 +164,25 @@ const FinanceScreen = React.memo(() => {
   const [lastTransactionFetch, setLastTransactionFetch] = useState(0);
   const TRANSACTION_CACHE_DURATION = 60000; // 1 phút
 
-  // 1. Thêm state và options cho dropdown filter
-  const PERIOD_OPTIONS = [
+  // 1. Memoized period options
+  const PERIOD_OPTIONS = useMemo(() => [
     { label: t('finance.periods.thisDay'), value: 'today' },
     { label: t('finance.periods.thisWeek'), value: 'week' },
     { label: t('finance.periods.thisMonth'), value: 'month' },
     { label: t('finance.periods.thisYear'), value: 'year' },
-  ];
+  ], [t]);
+  
   const [selectedPeriodValue, setSelectedPeriodValue] = useState('month'); // Default: tháng này
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Hàm lấy object option theo value
-  const getPeriodOption = (value: string) => PERIOD_OPTIONS.find(opt => opt.value === value) || PERIOD_OPTIONS[2];
+  // Memoized function lấy object option theo value
+  const getPeriodOption = useCallback((value: string) => 
+    PERIOD_OPTIONS.find(opt => opt.value === value) || PERIOD_OPTIONS[2], 
+    [PERIOD_OPTIONS]
+  );
 
-  // Hàm tính toán khoảng thời gian theo filter
-  const getPeriodRange = (periodValue: string) => {
+  // Memoized function tính toán khoảng thời gian theo filter
+  const getPeriodRange = useCallback((periodValue: string) => {
     const now = new Date();
     let startDate: Date, endDate: Date;
     switch (periodValue) {
@@ -308,7 +211,7 @@ const FinanceScreen = React.memo(() => {
         endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     }
     return { startDate, endDate };
-  };
+  }, []);
 
   const handleSelectPeriod = (option: {label: string, value: string}) => {
     setSelectedPeriodValue(option.value);
@@ -429,12 +332,17 @@ const FinanceScreen = React.memo(() => {
     }
   }, [isAuthenticated, selectedPeriodValue, lastFetchTime]);
 
-  // Load data khi mount
-  useEffect(() => {
+  // Memoized load data function với stable dependencies
+  const memoizedLoadAllData = useCallback(() => {
     loadAllData();
   }, [isAuthenticated]);
 
-  // Refresh khi có transaction mới
+  // Load data khi mount
+  useEffect(() => {
+    memoizedLoadAllData();
+  }, [memoizedLoadAllData]);
+
+  // Refresh khi có transaction mới - only depend on trigger value
   useEffect(() => {
     if (transactionRefreshTrigger > 0) {
       console.log('🔄 Transaction updated - refreshing data');
@@ -442,41 +350,42 @@ const FinanceScreen = React.memo(() => {
     }
   }, [transactionRefreshTrigger]);
 
-  // Refresh khi focus với debounce
-  useFocusEffect(
-    useCallback(() => {
-      if (isAuthenticated) {
-        const now = Date.now();
-        // Force refresh khi quay lại từ NotificationsScreen
-        console.log('🔄 FinanceScreen focused, refreshing data...');
-        
-        // Load main data first, then transaction history with a small delay
-        // This prevents overwhelming the API and reduces perceived delay
-        loadAllData(true).then(() => {
-          // Add a small delay to prevent API overload
-          setTimeout(() => {
-            console.log('🔄 FinanceScreen focused, refreshing transaction history...');
-            loadTransactionHistory(true);
-          }, 200); // Increased delay to 200ms for better performance
-        }).catch((error) => {
-          console.error('🔴 Error loading main data:', error);
-          // Still try to load transaction history even if main data fails
-          setTimeout(() => {
-            console.log('🔄 FinanceScreen focused, refreshing transaction history...');
-            loadTransactionHistory(true);
-          }, 200);
-        });
-      }
-    }, [isAuthenticated])
-  );
+  // Memoized focus effect callback
+  const focusEffectCallback = useCallback(() => {
+    if (isAuthenticated) {
+      console.log('🔄 FinanceScreen focused, refreshing data...');
+      
+      // Load main data first, then transaction history with a small delay
+      loadAllData(true).then(() => {
+        setTimeout(() => {
+          console.log('🔄 FinanceScreen focused, refreshing transaction history...');
+          loadTransactionHistory(true);
+        }, 200);
+      }).catch((error) => {
+        console.error('🔴 Error loading main data:', error);
+        setTimeout(() => {
+          console.log('🔄 FinanceScreen focused, refreshing transaction history...');
+          loadTransactionHistory(true);
+        }, 200);
+      });
+    }
+  }, [isAuthenticated]);
 
-  // Chỉ load chart data khi period thay đổi
-  useEffect(() => {
+  // Refresh khi focus với debounce
+  useFocusEffect(focusEffectCallback);
+
+  // Memoized chart data loading callback
+  const memoizedLoadChartData = useCallback(() => {
     if (isAuthenticated && selectedPeriodValue) {
       const { startDate, endDate } = getPeriodRange(selectedPeriodValue);
       loadChartData(startDate, endDate);
     }
-  }, [selectedPeriodValue]);
+  }, [isAuthenticated, selectedPeriodValue]);
+
+  // Chỉ load chart data khi period thay đổi
+  useEffect(() => {
+    memoizedLoadChartData();
+  }, [memoizedLoadChartData]);
 
   // Removed individual loadUserProfile - now handled in loadAllData
 
@@ -554,20 +463,7 @@ const FinanceScreen = React.memo(() => {
 
   // Removed individual loadHealthStatus - now handled in loadAllData
 
-  // Memoized expense data - chỉ sử dụng khi cần thiết
-  const expenseData: ExpenseData[] = useMemo(() => {
-    // Chỉ tạo mock data khi không có real data
-    if (reportData && Object.keys(reportData).length > 0) {
-      return [];
-    }
-    return [
-      { category: t('categoryNames.entertainment'), percentage: 54.55, color: '#FFA726' },
-      { category: t('categoryNames.education'), percentage: 25.25, color: '#EF5350' },
-      { category: t('categoryNames.clothes'), percentage: 18.74, color: '#26A69A' },
-      { category: t('categoryNames.food'), percentage: 0.76, color: '#AB47BC' },
-      { category: t('common.unknown'), percentage: 0.7, color: '#42A5F5' },
-    ];
-  }, [reportData]);
+  // Memoized expense data - removed since not used
 
   // Optimized ScrollView props
   const scrollViewProps = useMemo(() => ({
@@ -591,20 +487,250 @@ const FinanceScreen = React.memo(() => {
     windowSize: 10, // Performance optimization
   }), []);
 
-  // Memoized Icon Button Component
-  const IconButton = React.memo(({ icon, label, isActive = false, iconColor = 'white' }: ButtonProps) => (
-    <TouchableOpacity style={[styles.iconButton, isActive && styles.activeIconButton]}>
-      <View style={styles.iconContainer}>
-        {icon && typeof icon === 'string' && icon.startsWith('M') ? (
-          <Icon name={icon} size={24} color={iconColor} />
-        ) : (
-          <Text style={[styles.iconText, { color: iconColor }]}>{icon || ''}</Text>
-        )}
-      </View>
-    </TouchableOpacity>
+  // Memoized Health Status Section Component
+  const HealthStatusSection = React.memo(() => (
+    <View style={styles.section}>
+      {healthStatusLoading ? (
+        <View style={styles.healthLoadingContainer}>
+          <ActivityIndicator size="small" color="#1e90ff" />
+          <Text style={styles.healthLoadingText}>{t('common.loading')}...</Text>
+        </View>
+      ) : (
+        <>
+          <Text style={styles.sectionTitle}>
+            ❤️ {t('finance.health.title')}: {apiHealthStatus?.score || 75}/100 ⓘ
+          </Text>
+          
+          {/* Health Status Bar - using real API data */}
+          <View style={styles.healthBarContainer}>
+            <View style={styles.healthBar}>
+              <View style={[
+                styles.healthBarFill,
+                {
+                  width: `${Math.max(0, Math.min(100, apiHealthStatus?.score || 75))}%`,
+                  backgroundColor: getHealthStatusColor(apiHealthStatus?.score || 75)
+                }
+              ]} />
+            </View>
+            <Text style={[styles.healthStatusText, { 
+              color: getHealthStatusColor(apiHealthStatus?.score || 75) 
+            }]}>
+              {getHealthStatusMessage(apiHealthStatus?.score || 75)}
+            </Text>
+          </View>
+        </>
+      )}
+    </View>
   ));
 
-  IconButton.displayName = 'IconButton';
+  HealthStatusSection.displayName = 'HealthStatusSection';
+
+  // Memoized Income and Expense Section Component
+  const IncomeExpenseSection = React.memo(() => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t('finance.incomeAndExpenses')}</Text>
+        <View style={{ position: 'relative' }}>
+          <TouchableOpacity
+            style={styles.newDropdownButton}
+            onPress={() => setIsDropdownOpen((open) => !open)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.newDropdownButtonText}>{getPeriodOption(selectedPeriodValue).label}</Text>
+            <Icon name={isDropdownOpen ? 'expand-less' : 'expand-more'} size={20} color="#333" />
+          </TouchableOpacity>
+          {isDropdownOpen && (
+            <View style={styles.newDropdownMenu}>
+              {PERIOD_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.newDropdownOption,
+                    selectedPeriodValue === option.value && styles.newDropdownOptionSelected,
+                  ]}
+                  onPress={() => handleSelectPeriod(option)}
+                >
+                  <Text style={[
+                    styles.newDropdownOptionText,
+                    selectedPeriodValue === option.value && styles.newDropdownOptionTextSelected,
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+      {/* Bar Chart */}
+      <View style={styles.barChartContainer}>
+        {chartData.isLoading ? (
+          <View style={styles.chartLoadingContainer}>
+            <ActivityIndicator size="small" color="#1e90ff" />
+            <Text style={styles.chartLoadingText}>{t('finance.loading')}</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.barChart}>
+              <View style={[
+                styles.incomeBar,
+                { 
+                  height: chartData.income > 0 ? Math.max(rp(20), (chartData.income / Math.max(chartData.income, chartData.expenses)) * rp(100)) : rp(20)
+                }
+              ]}>
+                <Text style={styles.barLabel}>{t('finance.income')}</Text>
+              </View>
+              <View style={[
+                styles.expenseBar,
+                { 
+                  height: chartData.expenses > 0 ? Math.max(rp(20), (chartData.expenses / Math.max(chartData.income, chartData.expenses)) * rp(100)) : rp(20)
+                }
+              ]}>
+                <Text style={styles.barLabel}>{t('finance.expense')}</Text>
+              </View>
+            </View>
+            <View style={styles.amountsList}>
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>{t('finance.income1')}</Text>
+                <Text style={[styles.percentAmount, { color: '#4CAF50' }]}>
+                  {getPercent(chartData.income, chartData.income + chartData.expenses)}
+                </Text>
+              </View>
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>{t('finance.expense1')}</Text>
+                <Text style={[styles.percentAmount, { color: '#E91E63' }]}>
+                  {getPercent(chartData.expenses, chartData.income + chartData.expenses)}
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
+      </View>
+    </View>
+  ));
+
+  IncomeExpenseSection.displayName = 'IncomeExpenseSection';
+
+  // Memoized Action Buttons Section Component
+  const ActionButtonsSection = React.memo(() => (
+    <View style={styles.actionButtons}>
+      <View style={styles.actionButtonWrapper}>
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={handleNavigateToCalendar}
+        >
+          <Icon name="calendar-month" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.buttonTitle}>{t('navigation.calendar')}</Text>
+      </View>
+      <View style={styles.actionButtonWrapper}>
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={handleNavigateToChatAI}
+        >
+          <Icon2 name="robot" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.buttonTitle}>{t('navigation.chatAI')}</Text>
+      </View>
+      <View style={styles.actionButtonWrapper}>
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={handleNavigateToGroupManagement}
+        >
+          <Icon name="group" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.buttonTitle}>{t('navigation.groups')}</Text>
+      </View>
+      <View style={styles.actionButtonWrapper}>
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={handleNavigateToBudget}
+        >
+          <Icon2 name="bullseye" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.buttonTitle}>{t('navigation.budget')}</Text>
+      </View>
+    </View>
+  ));
+
+  ActionButtonsSection.displayName = 'ActionButtonsSection';
+
+  // Memoized Transaction History Section Component
+  const TransactionHistorySection = React.memo(() => (
+    <>
+      <Text style={styles.historyTitle}>{t('finance.transactionHistoryToday')}</Text>
+      {transactionHistoryLoading ? (
+        <View style={styles.transactionHistoryContainer}>
+          <View style={styles.skeletonTransactionItem}>
+            <View style={styles.skeletonTransactionIcon} />
+            <View style={styles.skeletonTransactionInfo}>
+              <View style={styles.skeletonTransactionCategory} />
+              <View style={styles.skeletonTransactionDesc} />
+              <View style={styles.skeletonTransactionDate} />
+            </View>
+            <View style={styles.skeletonTransactionAmount} />
+          </View>
+          <View style={styles.skeletonTransactionItem}>
+            <View style={styles.skeletonTransactionIcon} />
+            <View style={styles.skeletonTransactionInfo}>
+              <View style={styles.skeletonTransactionCategory} />
+              <View style={styles.skeletonTransactionDesc} />
+              <View style={styles.skeletonTransactionDate} />
+            </View>
+            <View style={styles.skeletonTransactionAmount} />
+          </View>
+        </View>
+      ) : transactionHistory.length === 0 ? (
+        <Text style={styles.historyEmpty}>{t('finance.noTransactionHistory')}</Text>
+      ) : (
+        <View style={styles.transactionHistoryContainer}>
+          <ScrollView 
+            style={styles.transactionHistoryFlatList}
+            contentContainerStyle={styles.transactionHistoryContent}
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={true}
+            scrollEnabled={true}
+            bounces={false}
+            alwaysBounceVertical={false}
+            removeClippedSubviews={true}
+          >
+            {transactionHistory.map((item, index) => {
+              const { iconName, iconColor, type } = getIconAndColor(item);
+              const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
+              const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || t('common.unknown');
+              return (
+                <TouchableOpacity 
+                  key={item.transaction_id?.toString() || item.id?.toString() || index.toString()} 
+                  style={styles.historyItem}
+                  onPress={() => handleTransactionPress(item)}
+                  activeOpacity={0.6}
+                >
+                  <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
+                    <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
+                  </View>
+                  <View style={styles.historyInfo}>
+                    <Text style={styles.historyCategory} numberOfLines={1}>{categoryName}</Text>
+                    {item.description ? (
+                      <Text style={styles.historyDesc} numberOfLines={1}>{item.description}</Text>
+                    ) : null}
+                    <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
+                  </View>
+                  <View style={styles.historyAmountContainer}>
+                    <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]} numberOfLines={1}>
+                      {type === 'income' ? '+' : '-'}{formatAmountDisplay(item.amount || 0)} đ
+                    </Text>
+                    <Icon name="chevron-right" size={20} color="#999" />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+    </>
+  ));
+
+  TransactionHistorySection.displayName = 'TransactionHistorySection';
 
   // Memoized Notification Icon Component
   const NotificationIcon = React.memo(() => (
@@ -817,46 +943,48 @@ const FinanceScreen = React.memo(() => {
   const [lastCategoriesFetch, setLastCategoriesFetch] = useState(0);
   const CATEGORIES_CACHE_DURATION = 300000; // 5 phút
 
-  useEffect(() => {
-    const loadCategories = async () => {
-      if (!userProfile?.user_id) {
-        setCategoriesMap({});
-        setCategoriesLoading(false);
-        return;
-      }
+  // Memoized categories loading
+  const memoizedLoadCategories = useCallback(async () => {
+    if (!userProfile?.user_id) {
+      setCategoriesMap({});
+      setCategoriesLoading(false);
+      return;
+    }
 
-      const now = Date.now();
-      if (now - lastCategoriesFetch < CATEGORIES_CACHE_DURATION && Object.keys(categoriesCache).length > 0) {
-        console.log('📦 Using cached categories');
-        setCategoriesMap(categoriesCache);
-        setCategoriesLoading(false);
-        return;
-      }
+    const now = Date.now();
+    if (now - lastCategoriesFetch < CATEGORIES_CACHE_DURATION && Object.keys(categoriesCache).length > 0) {
+      console.log('📦 Using cached categories');
+      setCategoriesMap(categoriesCache);
+      setCategoriesLoading(false);
+      return;
+    }
 
-      setCategoriesLoading(true);
-      try {
-        console.log('🟡 Loading categories...');
-        const categoryService = CategoryService.getInstance();
-        const [incomeCats, expenseCats] = await Promise.all([
-          categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
-          categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0),
-        ]);
-        const allCats = [...incomeCats, ...expenseCats];
-        const map: { [id: number]: CategoryResponse } = {};
-        allCats.forEach(cat => { map[cat.category_id] = cat; });
-        
-        setCategoriesMap(map);
-        setCategoriesCache(map);
-        setLastCategoriesFetch(now);
-      } catch (err) {
-        console.error('🔴 Failed to load categories:', err);
-        setCategoriesMap({});
-      } finally {
-        setCategoriesLoading(false);
-      }
-    };
-    loadCategories();
+    setCategoriesLoading(true);
+    try {
+      console.log('🟡 Loading categories...');
+      const categoryService = CategoryService.getInstance();
+      const [incomeCats, expenseCats] = await Promise.all([
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
+        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0),
+      ]);
+      const allCats = [...incomeCats, ...expenseCats];
+      const map: { [id: number]: CategoryResponse } = {};
+      allCats.forEach(cat => { map[cat.category_id] = cat; });
+      
+      setCategoriesMap(map);
+      setCategoriesCache(map);
+      setLastCategoriesFetch(now);
+    } catch (err) {
+      console.error('🔴 Failed to load categories:', err);
+      setCategoriesMap({});
+    } finally {
+      setCategoriesLoading(false);
+    }
   }, [userProfile?.user_id, lastCategoriesFetch, categoriesCache]);
+
+  useEffect(() => {
+    memoizedLoadCategories();
+  }, [memoizedLoadCategories]);
 
   // Helper: Lấy ngày hôm nay (YYYY-MM-DD) theo giờ local
   const getTodayString = () => {
@@ -903,10 +1031,15 @@ const FinanceScreen = React.memo(() => {
     }
   }, []);
 
-  // Gọi khi mount hoặc có giao dịch mới
-  useEffect(() => {
+  // Memoized transaction history loading
+  const memoizedLoadTransactionHistory = useCallback(() => {
     loadTransactionHistory();
   }, []);
+
+  // Gọi khi mount
+  useEffect(() => {
+    memoizedLoadTransactionHistory();
+  }, [memoizedLoadTransactionHistory]);
 
   // Refresh transaction history when transactionRefreshTrigger changes
   useEffect(() => {
@@ -916,13 +1049,13 @@ const FinanceScreen = React.memo(() => {
     }
   }, [transactionRefreshTrigger]);
 
-  // Helper format ngày -> giờ:phút AM/PM
-  const formatDate = (dateStr: string) => {
+  // Memoized helper functions
+  const formatDate = useCallback((dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-  };
+  }, []);
 
-  const formatAmountDisplay = (amount: number): string => {
+  const formatAmountDisplay = useCallback((amount: number): string => {
     if (amount === null || amount === undefined || isNaN(amount)) {
       return '0';
     }
@@ -941,10 +1074,10 @@ const FinanceScreen = React.memo(() => {
       return result + '...';
     }
     return formattedAmount;
-  };
+  }, []);
 
-  // Sửa lại getIconAndColor để lấy icon từ category_id
-  const getIconAndColor = (item: any) => {
+  // Memoized getIconAndColor để lấy icon từ category_id
+  const getIconAndColor = useCallback((item: any) => {
     const type = (item.transaction_type || '').toLowerCase() === 'income' ? 'income' : 'expense';
     const categoryId = item.category_id;
     const category = categoryId ? categoriesMap[categoryId] : undefined;
@@ -955,7 +1088,7 @@ const FinanceScreen = React.memo(() => {
       iconColor,
       type,
     };
-  };
+  }, [categoriesMap]);
 
   // Handle transaction press to navigate to edit mode
   const handleTransactionPress = useCallback((transaction: any) => {
@@ -1071,241 +1204,12 @@ const FinanceScreen = React.memo(() => {
 
       {/* Removed the healthStatusSection from here */}
 
-             <ScrollView {...scrollViewProps}>
-         <View style={styles.bodyContainer}>
-          
-          {/* Financial Health Status Section - now using real API data */}
-          <View style={styles.section}>
-            {healthStatusLoading ? (
-              <View style={styles.healthLoadingContainer}>
-                <ActivityIndicator size="small" color="#1e90ff" />
-                <Text style={styles.healthLoadingText}>{t('common.loading')}...</Text>
-              </View>
-            ) : (
-              <>
-                <Text style={styles.sectionTitle}>
-                  ❤️ {t('finance.health.title')}: {apiHealthStatus?.score || 75}/100 ⓘ
-                </Text>
-                
-                {/* Health Status Bar - using real API data */}
-                <View style={styles.healthBarContainer}>
-                  <View style={styles.healthBar}>
-                    <View style={[
-                      styles.healthBarFill,
-                      {
-                        width: `${Math.max(0, Math.min(100, apiHealthStatus?.score || 75))}%`,
-                        backgroundColor: getHealthStatusColor(apiHealthStatus?.score || 75)
-                      }
-                    ]} />
-                  </View>
-                  <Text style={[styles.healthStatusText, { 
-                    color: getHealthStatusColor(apiHealthStatus?.score || 75) 
-                  }]}>
-                    {getHealthStatusMessage(apiHealthStatus?.score || 75)}
-                  </Text>
-                </View>
-
-          
-              </>
-            )}
-          </View>
-
-          {/* Income and Expenses Section */}
-          <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('finance.incomeAndExpenses')}</Text>
-                <View style={{ position: 'relative' }}>
-                  <TouchableOpacity
-                    style={styles.newDropdownButton}
-                    onPress={() => setIsDropdownOpen((open) => !open)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.newDropdownButtonText}>{getPeriodOption(selectedPeriodValue).label}</Text>
-                    <Icon name={isDropdownOpen ? 'expand-less' : 'expand-more'} size={20} color="#333" />
-                  </TouchableOpacity>
-                  {isDropdownOpen && (
-                    <View style={styles.newDropdownMenu}>
-                      {PERIOD_OPTIONS.map((option) => (
-                        <TouchableOpacity
-                          key={option.value}
-                          style={[
-                            styles.newDropdownOption,
-                            selectedPeriodValue === option.value && styles.newDropdownOptionSelected,
-                          ]}
-                          onPress={() => handleSelectPeriod(option)}
-                        >
-                          <Text style={[
-                            styles.newDropdownOptionText,
-                            selectedPeriodValue === option.value && styles.newDropdownOptionTextSelected,
-                          ]}>
-                            {option.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              </View>
-              {/* Bar Chart - back to using real data, not mock */}
-              <View style={styles.barChartContainer}>
-                {chartData.isLoading ? (
-                  <View style={styles.chartLoadingContainer}>
-                    <ActivityIndicator size="small" color="#1e90ff" />
-                    <Text style={styles.chartLoadingText}>{t('finance.loading')}</Text>
-                  </View>
-                ) : (
-                  <>
-                    <View style={styles.barChart}>
-                      <View style={[
-                        styles.incomeBar,
-                        { 
-                          height: chartData.income > 0 ? Math.max(rp(20), (chartData.income / Math.max(chartData.income, chartData.expenses)) * rp(100)) : rp(20)
-                        }
-                      ]}>
-                        <Text style={styles.barLabel}>{t('finance.income')}</Text>
-                      </View>
-                      <View style={[
-                        styles.expenseBar,
-                        { 
-                          height: chartData.expenses > 0 ? Math.max(rp(20), (chartData.expenses / Math.max(chartData.income, chartData.expenses)) * rp(100)) : rp(20)
-                        }
-                      ]}>
-                        <Text style={styles.barLabel}>{t('finance.expense')}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.amountsList}>
-                      <View style={styles.amountRow}>
-                        <Text style={styles.amountLabel}>{t('finance.income1')}</Text>
-                        <Text style={[styles.percentAmount, { color: '#4CAF50' }]}>
-                          {getPercent(chartData.income, chartData.income + chartData.expenses)}
-                        </Text>
-                      </View>
-                      <View style={styles.amountRow}>
-                        <Text style={styles.amountLabel}>{t('finance.expense1')}</Text>
-                        <Text style={[styles.percentAmount, { color: '#E91E63' }]}>
-                          {getPercent(chartData.expenses, chartData.income + chartData.expenses)}
-                        </Text>
-                      </View>
-                    </View>
-                  </>
-                )}
-              </View>
-              
-              {/* Removed View Details Button */}
-            </View>
-
-          {/* Removed old Financial Health Section */}
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <View style={styles.actionButtonWrapper}>
-              <TouchableOpacity 
-                style={styles.iconButton}
-                onPress={handleNavigateToCalendar}
-              >
-                <Icon name="calendar-month" size={24} color="white" />
-              </TouchableOpacity>
-              <Text style={styles.buttonTitle}>{t('navigation.calendar')}</Text>
-            </View>
-            <View style={styles.actionButtonWrapper}>
-              <TouchableOpacity 
-                style={styles.iconButton}
-                onPress={handleNavigateToChatAI}
-              >
-                <Icon2 name="robot" size={24} color="white" />
-              </TouchableOpacity>
-              <Text style={styles.buttonTitle}>{t('navigation.chatAI')}</Text>
-            </View>
-            <View style={styles.actionButtonWrapper}>
-              <TouchableOpacity 
-                style={styles.iconButton}
-                onPress={handleNavigateToGroupManagement}
-              >
-                <Icon name="group" size={24} color="white" />
-              </TouchableOpacity>
-              <Text style={styles.buttonTitle}>{t('navigation.groups')}</Text>
-            </View>
-            <View style={styles.actionButtonWrapper}>
-              <TouchableOpacity 
-                style={styles.iconButton}
-                onPress={handleNavigateToBudget}
-              >
-                <Icon2 name="bullseye" size={24} color="white" />
-              </TouchableOpacity>
-              <Text style={styles.buttonTitle}>{t('navigation.budget')}</Text>
-            </View>
-          </View>
-
-          {/* Transaction History Card */}
-         <Text style={styles.historyTitle}>{t('finance.transactionHistoryToday')}</Text>
-         {transactionHistoryLoading ? (
-           <View style={styles.transactionHistoryContainer}>
-             <View style={styles.skeletonTransactionItem}>
-               <View style={styles.skeletonTransactionIcon} />
-               <View style={styles.skeletonTransactionInfo}>
-                 <View style={styles.skeletonTransactionCategory} />
-                 <View style={styles.skeletonTransactionDesc} />
-                 <View style={styles.skeletonTransactionDate} />
-               </View>
-               <View style={styles.skeletonTransactionAmount} />
-             </View>
-             <View style={styles.skeletonTransactionItem}>
-               <View style={styles.skeletonTransactionIcon} />
-               <View style={styles.skeletonTransactionInfo}>
-                 <View style={styles.skeletonTransactionCategory} />
-                 <View style={styles.skeletonTransactionDesc} />
-                 <View style={styles.skeletonTransactionDate} />
-               </View>
-               <View style={styles.skeletonTransactionAmount} />
-             </View>
-           </View>
-         ) : transactionHistory.length === 0 ? (
-           <Text style={styles.historyEmpty}>{t('finance.noTransactionHistory')}</Text>
-         ) : (
-           <View style={styles.transactionHistoryContainer}>
-             <ScrollView 
-               style={styles.transactionHistoryFlatList}
-               contentContainerStyle={styles.transactionHistoryContent}
-               showsVerticalScrollIndicator={true}
-               nestedScrollEnabled={true}
-               scrollEnabled={true}
-               bounces={false}
-               alwaysBounceVertical={false}
-               removeClippedSubviews={true}
-             >
-               {transactionHistory.map((item, index) => {
-                 const { iconName, iconColor, type } = getIconAndColor(item);
-                 const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
-                 const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || t('common.unknown');
-                 return (
-                   <TouchableOpacity 
-                     key={item.transaction_id?.toString() || item.id?.toString() || index.toString()} 
-                     style={styles.historyItem}
-                     onPress={() => handleTransactionPress(item)}
-                     activeOpacity={0.6}
-                   >
-                     <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
-                       <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
-                     </View>
-                     <View style={styles.historyInfo}>
-                       <Text style={styles.historyCategory} numberOfLines={1}>{categoryName}</Text>
-                       {item.description ? (
-                         <Text style={styles.historyDesc} numberOfLines={1}>{item.description}</Text>
-                       ) : null}
-                       <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
-                     </View>
-                     <View style={styles.historyAmountContainer}>
-                       <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]} numberOfLines={1}>
-                         {type === 'income' ? '+' : '-'}{formatAmountDisplay(item.amount || 0)} đ
-                       </Text>
-                       <Icon name="chevron-right" size={20} color="#999" />
-                     </View>
-                   </TouchableOpacity>
-                 );
-               })}
-             </ScrollView>
-           </View>
-         )}
+      <ScrollView {...scrollViewProps}>
+        <View style={styles.bodyContainer}>
+          <HealthStatusSection />
+          <IncomeExpenseSection />
+          <ActionButtonsSection />
+          <TransactionHistorySection />
         </View>
       </ScrollView>
     </View>
