@@ -298,56 +298,22 @@ const BudgetScreen = () => {
     }
   };
 
-  // Helper function to format large numbers for Vietnamese currency (no rounding)
-  const formatLargeNumber = (amount: number, includeCurrency: boolean = true): string => {
+  // Helper function to format large numbers
+  const formatLargeNumber = (amount: number): string => {
     const isNegative = amount < 0;
     const absAmount = Math.abs(amount);
     
     let formattedAmount: string;
-    let hasUnit = false;
     
-    if (absAmount >= 1000000000) { // 1 tỷ or more
-      const billions = absAmount / 1000000000;
-      if (billions === Math.floor(billions)) {
-        formattedAmount = `${Math.floor(billions)}tỷ`;
-      } else {
-        // Show exact decimal without rounding, max 3 decimal places
-        const exactBillions = Math.floor(billions * 1000) / 1000;
-        formattedAmount = `${exactBillions}tỷ`;
-      }
-      hasUnit = true;
-    } else if (absAmount >= 1000000) { // 1 triệu or more
-      const millions = absAmount / 1000000;
-      if (millions === Math.floor(millions)) {
-        formattedAmount = `${Math.floor(millions)}tr`;
-      } else {
-        // Show exact decimal without rounding, max 3 decimal places
-        const exactMillions = Math.floor(millions * 1000) / 1000;
-        formattedAmount = `${exactMillions}tr`;
-      }
-      hasUnit = true;
-    } else if (absAmount >= 10000) { // 10 nghìn or more
-      const thousands = absAmount / 1000;
-      if (thousands === Math.floor(thousands)) {
-        formattedAmount = `${Math.floor(thousands)}k`;
-      } else {
-        // Show exact decimal without rounding, max 2 decimal places
-        const exactThousands = Math.floor(thousands * 100) / 100;
-        formattedAmount = `${exactThousands}k`;
-      }
-      hasUnit = true;
+    if (absAmount >= 10000000) { // 10 million or more
+      formattedAmount = `${Math.floor(absAmount / 1000000)}M`;
+    } else if (absAmount >= 10000) { // 10 thousand or more
+      formattedAmount = `${Math.floor(absAmount / 1000)}K`;
     } else {
-      formattedAmount = absAmount.toLocaleString('vi-VN');
+      formattedAmount = absAmount.toLocaleString();
     }
     
-    const result = isNegative ? `-${formattedAmount}` : formattedAmount;
-    
-    // Only add currency symbol for small amounts or when explicitly requested
-    if (includeCurrency && !hasUnit) {
-      return `${result}₫`;
-    }
-    
-    return result;
+    return isNegative ? `-${formattedAmount}` : formattedAmount;
   };
 
   // Helper function to check if budget is expired
@@ -408,7 +374,7 @@ const BudgetScreen = () => {
               <Text style={styles.periodTypeText}>{getPeriodTypeLabel(budget.period_type)}</Text>
             </View>
             <Text style={styles.budgetItemAmount}>
-              {formatLargeNumber(budget.overall_amount_limit ?? 0)}
+              {formatLargeNumber(budget.overall_amount_limit ?? 0)} {t('currency')}
             </Text>
           </View>
         </View>
@@ -427,10 +393,10 @@ const BudgetScreen = () => {
         
         <View style={styles.budgetItemFooter}>
           <Text style={styles.budgetItemRemaining}>
-            {t('budget.remaining')}: {formatLargeNumber(budget.budget_remaining_amount ?? 0)}
+            {t('budget.remaining')}: {formatLargeNumber(budget.budget_remaining_amount ?? 0)} {t('currency')}
           </Text>
           <Text style={styles.budgetItemSpent}>
-            {t('budget.spent')}: {formatLargeNumber(spent ?? 0)}
+            {t('budget.spent')}: {formatLargeNumber(spent ?? 0)} {t('currency')}
           </Text>
         </View>
       </View>

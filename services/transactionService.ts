@@ -451,15 +451,21 @@ export class TransactionService {
     walletId: number,
     startDate: string,
     endDate: string,
+    type?: string,
     page: number = 0,
     size: number = 1000
   ): Promise<WalletTransactionHistoryResponse> {
     try {
-      console.log('🔄 Fetching wallet transaction history:', { walletId, startDate, endDate });
+      console.log('🔄 Fetching wallet transaction history:', { walletId, startDate, endDate, type });
       
-      const response = await apiService.get(
-        `${TRANSACTION_ENDPOINTS.TRANSACTION_WALLET_HISTORY(walletId.toString())}?startDate=${startDate}&endDate=${endDate}`
-      );
+      // Build URL with optional type parameter
+      let url = `${TRANSACTION_ENDPOINTS.TRANSACTION_WALLET_HISTORY(walletId.toString())}?startDate=${startDate}&endDate=${endDate}`;
+      if (type) {
+        url += `&type=${type}`;
+        console.log('✅ Added type parameter to URL:', type);
+      }
+      
+      const response = await apiService.get(url);
       
       console.log('🟢 Wallet transaction history response:', response);
       

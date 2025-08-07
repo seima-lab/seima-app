@@ -975,7 +975,14 @@ export default function ReportScreen() {
           {/* View Report by Category */}
           <TouchableOpacity
             style={styles.viewReportButton}
-            onPress={() => navigation.navigate('ViewCategoryReportScreen', { type: 'expense' })}
+            onPress={() => {
+              // Only pass groupId if we're in group context
+              const params: any = { type: 'expense' };
+              if (groupId) {
+                params.groupId = groupId;
+              }
+              navigation.navigate('ViewCategoryReportScreen', params);
+            }}
           >
             <Text style={styles.viewReportText}>{t('reports.viewReportByCategory')}</Text>
           </TouchableOpacity>

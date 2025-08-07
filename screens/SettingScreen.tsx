@@ -2,7 +2,7 @@ import { typography } from '@/constants/typography';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react'; // Added missing import for React
 import { useTranslation } from 'react-i18next';
-import { Alert, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LogoutModal from '../components/LogoutModal';
@@ -58,7 +58,15 @@ const SettingScreen = () => {
       setLoading(true);
       console.log('🟡 Loading user profile...', forceRefresh ? '(Force Refresh)' : '');
       
-      const profile = await userService.getCurrentUserProfile(forceRefresh);
+      // Add timeout for API call (15 seconds)
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Request timeout after 15 seconds'));
+        }, 15000);
+      });
+      
+      const profilePromise = userService.getCurrentUserProfile(forceRefresh);
+      const profile = await Promise.race([profilePromise, timeoutPromise]) as UserProfile;
       console.log('🟢 User profile loaded:', profile);
       
       if (isMountedRef.current) {
@@ -137,7 +145,7 @@ const SettingScreen = () => {
     }
     
     // Fallback to unknown avatar
-    return require('../assets/images/Unknown.jpg');
+    return require('../assets/images/maleavatar.png');
   }, [userProfile]);
 
   // Memoized callback functions for better performance
@@ -163,8 +171,11 @@ const SettingScreen = () => {
     if (tab === 'Setting') return;
   }, [navigation]);
 
+  // Check if user profile has essential data
+  const hasEssentialData = userProfile?.user_full_name && userProfile?.user_email;
+  
   // Progressive loading - không block UI hoàn toàn
-  const showFullLoading = loading && !userProfile;
+  const showFullLoading = loading && (!userProfile || !hasEssentialData);
 
   // Skeleton Loading Component
   const SkeletonLoader = React.memo(() => (
@@ -197,6 +208,37 @@ const SettingScreen = () => {
   ));
 
   SkeletonLoader.displayName = 'SkeletonLoader';
+
+  // Field Loading Component cho individual fields với animation
+  const FieldLoader = React.memo(({ width = 100, height = 18 }: { width?: number; height?: number }) => {
+    const opacity = useRef(new Animated.Value(0.3)).current;
+
+    useEffect(() => {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+      
+      return () => animation.stop();
+    }, [opacity]);
+
+    return (
+      <Animated.View style={[styles.fieldLoader, { width, height, opacity }]} />
+    );
+  });
+  
+  FieldLoader.displayName = 'FieldLoader';
 
   // Show full loading only when no user profile
   if (showFullLoading) {
@@ -250,28 +292,53 @@ const SettingScreen = () => {
           source={getAvatarSource()}
           style={styles.avatar} 
         />
-        <Text style={styles.name}>
-          {userProfile?.user_full_name || 'Unknown User'}
-        </Text>
+        {userProfile?.user_full_name ? (
+          <Text style={styles.name}>{userProfile.user_full_name}</Text>
+        ) : (
+          loading ? <FieldLoader width={200} height={30} /> : <Text style={styles.name}>Unknown User</Text>
+        )}
         <View style={styles.infoBlock}>
           {userProfile?.user_dob && (
             <Text style={styles.infoText}>
               {t('dateOfBirth')}: {new Date(userProfile.user_dob).toLocaleDateString()}
             </Text>
           )}
-          <Text style={styles.infoText}>
-            {t('email')}: {userProfile?.user_email || 'No email'}
-          </Text>
-          {userProfile?.user_phone_number && (
+          {userProfile?.user_email ? (
+            <Text style={styles.infoText}>
+              {t('email')}: {userProfile.user_email}
+            </Text>
+          ) : (
+            loading ? (
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoText}>{t('email')}: </Text>
+                <FieldLoader width={150} height={18} />
+              </View>
+            ) : (
+              <Text style={styles.infoText}>
+                {t('email')}: No email
+              </Text>
+            )
+          )}
+          {userProfile?.user_phone_number ? (
             <Text style={styles.infoText}>
               {t('phone')}: {userProfile.user_phone_number}
             </Text>
-          )}
-          {userProfile?.user_gender !== null && userProfile?.user_gender !== undefined && (
+          ) : loading ? (
+            <View style={styles.infoTextContainer}>
+              <Text style={styles.infoText}>{t('phone')}: </Text>
+              <FieldLoader width={120} height={18} />
+            </View>
+          ) : null}
+          {userProfile?.user_gender !== null && userProfile?.user_gender !== undefined ? (
             <Text style={styles.infoText}>
               {t('gender')}: {userProfile.user_gender ? t('male') : t('female')}
             </Text>
-          )}
+          ) : loading && userProfile ? (
+            <View style={styles.infoTextContainer}>
+              <Text style={styles.infoText}>{t('gender')}: </Text>
+              <FieldLoader width={80} height={18} />
+            </View>
+          ) : null}
         </View>
         <TouchableOpacity style={styles.updateBtn} onPress={handleUpdateProfile}>
           <Text style={styles.updateBtnText}>{t('updateProfile')}</Text>
@@ -476,6 +543,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     borderRadius: 8,
     marginRight: 8,
+  },
+  
+  // Field loader styles
+  fieldLoader: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    opacity: 0.7,
+  },
+  infoTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
 });
 

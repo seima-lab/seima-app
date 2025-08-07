@@ -112,6 +112,27 @@ const getDynamicBalanceFontSize = (balance: number): number => {
   return baseFontSize; // Giữ nguyên kích thước gốc
 };
 
+// Hàm tính toán font size động cho tên người dùng
+const getDynamicUserNameFontSize = (userName: string): number => {
+  const nameLength = userName.length;
+  
+  // Base font size
+  const baseFontSize = rf(18);
+  
+  // Giảm font size dựa trên độ dài tên
+  if (nameLength > 25) {
+    return baseFontSize * 0.6; // Giảm 40% cho tên rất dài
+  } else if (nameLength > 20) {
+    return baseFontSize * 0.7; // Giảm 30%
+  } else if (nameLength > 15) {
+    return baseFontSize * 0.8; // Giảm 20%
+  } else if (nameLength > 12) {
+    return baseFontSize * 0.9; // Giảm 10%
+  }
+  
+  return baseFontSize; // Giữ nguyên kích thước gốc
+};
+
 // Helper function tính phần trăm an toàn
 const getPercent = (value: number, total: number) => {
   if (!total || isNaN(value)) return '0%';
@@ -225,7 +246,17 @@ const FinanceScreen = React.memo(() => {
   const [lastFetchTime, setLastFetchTime] = useState(0);
   const CACHE_DURATION = 30000; // 30 giây
 
-  // Load tất cả data song song với cache
+  // API timeout wrapper with longer timeout
+  const withTimeout = (promise: Promise<any>, timeoutMs: number = 30000): Promise<any> => {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`API timeout after ${timeoutMs}ms`)), timeoutMs);
+      })
+    ]);
+  };
+
+  // Load tất cả data song song với cache và timeout
   const loadAllData = useCallback(async (forceRefresh: boolean = false) => {
     if (!isAuthenticated) {
       setLoading(false);
@@ -242,27 +273,49 @@ const FinanceScreen = React.memo(() => {
     try {
       setLoading(true);
       setWalletLoading(true);
-      console.log('🟡 Loading all data in parallel...');
+      console.log('🟡 Loading all data in parallel with 30s timeout...');
       
-      // Gọi tất cả API song song
-      const [profile, walletsData, chartResponse, notificationResponse, healthData] = await Promise.all([
-        userService.getCurrentUserProfile(forceRefresh),
-        walletService.getAllWallets(),
-        (async () => {
+      // Gọi tất cả API song song với timeout 30s (tăng từ default)
+      const results = await Promise.allSettled([
+        withTimeout(userService.getCurrentUserProfile(forceRefresh), 30000),
+        withTimeout(walletService.getAllWallets(), 30000),
+        withTimeout((async () => {
           const { startDate, endDate } = getPeriodRange(selectedPeriodValue);
           const startDateStr = toLocalDateString(startDate);
           const endDateStr = toLocalDateString(endDate);
           return transactionService.viewTransactionReport(undefined, startDateStr, endDateStr);
-        })(),
-        getUnreadCount(),
-        statusService.getHealthStatus()
+        })(), 30000),
+        withTimeout(getUnreadCount(), 15000),
+        withTimeout(statusService.getHealthStatus(), 15000)
       ]);
+
+      // Extract results with fallbacks
+      const profile = results[0].status === 'fulfilled' ? results[0].value : null;
+      const walletsData = results[1].status === 'fulfilled' ? results[1].value : [];
+      const chartResponse = results[2].status === 'fulfilled' ? results[2].value : null;
+      const notificationResponse = results[3].status === 'fulfilled' ? results[3].value : 0;
+      const healthData = results[4].status === 'fulfilled' ? results[4].value : null;
+
+      // Log any failures
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const apiNames = ['userProfile', 'wallets', 'chartData', 'notifications', 'healthStatus'];
+          console.warn(`⚠️ ${apiNames[index]} API failed:`, result.reason?.message || result.reason);
+        }
+      });
 
       console.log('🟢 All data loaded successfully');
       
-      // Set states
-      setUserProfile(profile);
-      setWallets(walletsData);
+      // Set states với safety checks
+      if (profile) {
+        setUserProfile(profile);
+        console.log('✅ User profile loaded:', profile.user_full_name || 'Unknown');
+      } else {
+        console.warn('⚠️ User profile failed to load, keeping existing or using fallback');
+        // Không update userProfile nếu API fail, giữ nguyên giá trị cũ
+      }
+      
+      setWallets(walletsData || []);
       
       // Calculate total balance
       const totalBalance = walletsData.reduce((total: number, wallet: WalletResponse) => {
@@ -279,39 +332,63 @@ const FinanceScreen = React.memo(() => {
         difference: 0
       });
 
-      // Process chart data
-      const summary = (chartResponse as any).summary || chartResponse.summary;
-      const income = summary?.total_income || summary?.totalIncome || 0;
-      const expenses = summary?.total_expense || summary?.totalExpense || 0;
-      const difference = income - expenses;
-      
-      setChartData({
-        income,
-        expenses,
-        difference,
-        isLoading: false
-      });
-      
-      setReportData(chartResponse);
-
-      // Process notification count
-      let count = 0;
-      const responseAny = notificationResponse as any;
-      if (responseAny?.data?.count !== undefined) {
-        count = responseAny.data.count;
-      } else if (responseAny?.count !== undefined) {
-        count = responseAny.count;
-      } else if (typeof responseAny?.data === 'number') {
-        count = responseAny.data;
-      } else if (typeof responseAny === 'number') {
-        count = responseAny;
-      } else if (responseAny?.data?.data?.count !== undefined) {
-        count = responseAny.data.data.count;
+      // Process chart data với safety checks
+      if (chartResponse) {
+        const summary = (chartResponse as any)?.summary || chartResponse?.summary || {};
+        const income = summary?.total_income || summary?.totalIncome || 0;
+        const expenses = summary?.total_expense || summary?.totalExpense || 0;
+        const difference = income - expenses;
+        
+        setChartData({
+          income,
+          expenses,
+          difference,
+          isLoading: false
+        });
+        
+        setReportData(chartResponse);
+        console.log('✅ Chart data loaded:', { income, expenses, difference });
+      } else {
+        console.warn('⚠️ Chart data failed to load, using fallback values');
+        setChartData({
+          income: 0,
+          expenses: 0,
+          difference: 0,
+          isLoading: false
+        });
+        setReportData(null);
       }
-      setNotificationCount(count);
 
-      // Set health status
-      setApiHealthStatus(healthData);
+      // Process notification count với safety checks
+      let count = 0;
+      try {
+        const responseAny = notificationResponse as any;
+        if (typeof notificationResponse === 'number') {
+          count = notificationResponse;
+        } else if (responseAny?.data?.count !== undefined) {
+          count = responseAny.data.count;
+        } else if (responseAny?.count !== undefined) {
+          count = responseAny.count;
+        } else if (typeof responseAny?.data === 'number') {
+          count = responseAny.data;
+        } else if (responseAny?.data?.data?.count !== undefined) {
+          count = responseAny.data.data.count;
+        }
+        console.log('✅ Notification count loaded:', count);
+      } catch (error) {
+        console.warn('⚠️ Failed to parse notification count:', error);
+        count = 0;
+      }
+      setNotificationCount(Math.max(0, count || 0));
+
+      // Set health status với fallback
+      if (healthData) {
+        setApiHealthStatus(healthData);
+        console.log('✅ Health status loaded:', healthData.score || 'Unknown');
+      } else {
+        console.warn('⚠️ Health status failed to load, using fallback');
+        setApiHealthStatus({ score: 75, status: 'unknown' } as any);
+      }
       
       // Update cache
       setDataCache({
@@ -413,7 +490,7 @@ const FinanceScreen = React.memo(() => {
   const toLocalDateString = (date: Date) =>
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-  // Optimized chart data loading - chỉ gọi khi period thay đổi
+  // Optimized chart data loading với timeout và fallback
   const loadChartData = useCallback(async (startDate?: Date, endDate?: Date) => {
     if (!isAuthenticated) {
       return;
@@ -421,7 +498,7 @@ const FinanceScreen = React.memo(() => {
 
     try {
       setChartData(prev => ({ ...prev, isLoading: true }));
-      console.log('📊 Loading chart data for period change...');
+      console.log('📊 Loading chart data for period change with 25s timeout...');
       
       let _startDate = startDate, _endDate = endDate;
       if (!_startDate || !_endDate) {
@@ -433,31 +510,46 @@ const FinanceScreen = React.memo(() => {
       const startDateStr = toLocalDateString(_startDate);
       const endDateStr = toLocalDateString(_endDate);
       
-      const reportResponse = await transactionService.viewTransactionReport(
-        undefined,
-        startDateStr,
-        endDateStr
+      const reportResponse = await withTimeout(
+        transactionService.viewTransactionReport(undefined, startDateStr, endDateStr),
+        25000 // 25s timeout cho chart data
       );
       
-      const summary = (reportResponse as any).summary || reportResponse.summary;
-      const income = summary?.total_income || summary?.totalIncome || 0;
-      const expenses = summary?.total_expense || summary?.totalExpense || 0;
-      const difference = income - expenses;
-      
-      setChartData({
-        income,
-        expenses,
-        difference,
-        isLoading: false
-      });
-      
-      setReportData(reportResponse);
+      if (reportResponse) {
+        const summary = (reportResponse as any)?.summary || reportResponse?.summary || {};
+        const income = summary?.total_income || summary?.totalIncome || 0;
+        const expenses = summary?.total_expense || summary?.totalExpense || 0;
+        const difference = income - expenses;
+        
+        setChartData({
+          income,
+          expenses,
+          difference,
+          isLoading: false
+        });
+        
+        setReportData(reportResponse);
+        console.log('✅ Chart data period update:', { income, expenses, difference });
+      } else {
+        throw new Error('Empty chart response');
+      }
       
     } catch (error: any) {
-      console.error('🔴 Failed to load chart data:', error);
-      setChartData(prev => ({ ...prev, isLoading: false }));
+      console.error('🔴 Failed to load chart data:', error?.message || error);
+      // Fallback to previous values hoặc 0 values
+      setChartData(prev => ({
+        income: prev.income || 0,
+        expenses: prev.expenses || 0,
+        difference: prev.difference || 0,
+        isLoading: false
+      }));
+      
+      // Không set reportData null để giữ data cũ nếu có
+      if (!reportData) {
+        setReportData(null);
+      }
     }
-  }, [isAuthenticated, selectedPeriodValue]);
+  }, [isAuthenticated, selectedPeriodValue, reportData]);
 
   // Removed individual loadNotificationCount - now handled in loadAllData
 
@@ -775,6 +867,12 @@ const FinanceScreen = React.memo(() => {
     return getDynamicBalanceFontSize(financeData.totalBalance);
   }, [financeData.totalBalance]);
 
+  // Memoized dynamic user name font size
+  const dynamicUserNameFontSize = useMemo(() => {
+    const userName = userProfile?.user_full_name || t('common.unknownUser');
+    return getDynamicUserNameFontSize(userName);
+  }, [userProfile?.user_full_name, t]);
+
   // Memoized callback functions for better performance
   const handleRefreshProfile = useCallback(() => {
     loadAllData(true); // Force refresh all data
@@ -943,7 +1041,7 @@ const FinanceScreen = React.memo(() => {
   const [lastCategoriesFetch, setLastCategoriesFetch] = useState(0);
   const CATEGORIES_CACHE_DURATION = 300000; // 5 phút
 
-  // Memoized categories loading
+  // Memoized categories loading với timeout
   const memoizedLoadCategories = useCallback(async () => {
       if (!userProfile?.user_id) {
         setCategoriesMap({});
@@ -961,22 +1059,39 @@ const FinanceScreen = React.memo(() => {
 
       setCategoriesLoading(true);
       try {
-        console.log('🟡 Loading categories...');
+        console.log('🟡 Loading categories with 15s timeout...');
         const categoryService = CategoryService.getInstance();
         const [incomeCats, expenseCats] = await Promise.all([
-          categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
-          categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0),
+          withTimeout(
+            categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
+            15000 // 15s timeout cho categories
+          ),
+          withTimeout(
+            categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0),
+            15000 // 15s timeout cho categories
+          ),
         ]);
-        const allCats = [...incomeCats, ...expenseCats];
+        const allCats = [...(incomeCats || []), ...(expenseCats || [])];
         const map: { [id: number]: CategoryResponse } = {};
-        allCats.forEach(cat => { map[cat.category_id] = cat; });
+        allCats.forEach(cat => { 
+          if (cat && cat.category_id) {
+            map[cat.category_id] = cat; 
+          }
+        });
         
         setCategoriesMap(map);
         setCategoriesCache(map);
         setLastCategoriesFetch(now);
-      } catch (err) {
-        console.error('🔴 Failed to load categories:', err);
-        setCategoriesMap({});
+        console.log('✅ Categories loaded:', Object.keys(map).length, 'categories');
+      } catch (err: any) {
+        console.error('🔴 Failed to load categories:', err?.message || err);
+        // Giữ cache cũ nếu có
+        if (Object.keys(categoriesCache).length > 0) {
+          console.log('📦 Using old cached categories due to API failure');
+          setCategoriesMap(categoriesCache);
+        } else {
+          setCategoriesMap({});
+        }
       } finally {
         setCategoriesLoading(false);
       }
@@ -1007,8 +1122,12 @@ const FinanceScreen = React.memo(() => {
 
     setTransactionHistoryLoading(true);
     try {
-      console.log('🟡 Loading transaction history...');
-      const apiResponse: any = await viewHistoryTransactions({ page: 0, size: 30 }); // Giảm từ 50 xuống 30
+      console.log('🟡 Loading transaction history with 20s timeout...');
+      const apiResponse: any = await withTimeout(
+        viewHistoryTransactions({ page: 0, size: 30 }),
+        20000 // 20s timeout cho transaction history
+      );
+      
       const all: any[] = (apiResponse?.data?.content && Array.isArray(apiResponse.data.content)) ? apiResponse.data.content : [];
 
       const today = getTodayString();
@@ -1023,13 +1142,20 @@ const FinanceScreen = React.memo(() => {
       setTransactionHistory(filtered);
       setTransactionCache(filtered);
       setLastTransactionFetch(now);
-    } catch (err) {
-      console.error('🔴 Failed to load transaction history:', err);
-      setTransactionHistory([]);
+      console.log('✅ Transaction history loaded:', filtered.length, 'transactions today');
+    } catch (err: any) {
+      console.error('🔴 Failed to load transaction history:', err?.message || err);
+      // Giữ cache cũ nếu có, không clear hết
+      if (transactionCache.length === 0) {
+        setTransactionHistory([]);
+      } else {
+        console.log('📦 Using old cached transaction history due to API failure');
+        setTransactionHistory(transactionCache);
+      }
     } finally {
       setTransactionHistoryLoading(false);
     }
-  }, []);
+  }, [transactionCache]);
 
   // Memoized transaction history loading
   const memoizedLoadTransactionHistory = useCallback(() => {
@@ -1115,9 +1241,11 @@ const FinanceScreen = React.memo(() => {
     });
   }, [navigation, categoriesMap]);
 
-  // Progressive loading - không block UI hoàn toàn
-  const showFullLoading = loading && !userProfile;
+  // Better loading state management
+  const hasEssentialData = userProfile?.user_full_name && userProfile?.user_email;
+  const showFullLoading = loading && (!userProfile || !hasEssentialData);
   const showPartialLoading = (walletLoading || categoriesLoading) && userProfile;
+  const isUserDataLoading = loading && !hasEssentialData;
 
   // Skeleton Loading Component
   const SkeletonLoader = React.memo(() => (
@@ -1164,9 +1292,13 @@ const FinanceScreen = React.memo(() => {
             </View>
             <View>
               <Text style={styles.greeting}>{t('finance.hello')}</Text>
-              <Text style={styles.userName}>
-                {userProfile?.user_full_name || t('common.unknownUser')}
-              </Text>
+              {isUserDataLoading ? (
+                <View style={styles.userNameSkeleton} />
+              ) : (
+                <Text style={[styles.userName, { fontSize: dynamicUserNameFontSize }]}>
+                  {userProfile?.user_full_name || t('common.unknownUser')}
+                </Text>
+              )}
             </View>
           </View>
           <View style={styles.headerIcons}>
@@ -1185,17 +1317,21 @@ const FinanceScreen = React.memo(() => {
         <View style={styles.balanceSection}>
           <Text style={styles.balanceLabel}>{t('finance.totalBalance')}</Text>
           <View style={styles.balanceRow}>
-            <Text style={[styles.balanceAmount, { 
-              minWidth: 200,
-              fontSize: dynamicBalanceFontSize
-            }]}>
-              {formattedBalance}
-            </Text>
-            <TouchableOpacity onPress={handleToggleBalance}>
+            {walletLoading && financeData.totalBalance === 0 ? (
+              <View style={styles.balanceSkeleton} />
+            ) : (
+              <Text style={[styles.balanceAmount, { 
+                minWidth: 200,
+                fontSize: dynamicBalanceFontSize
+              }]}>
+                {formattedBalance}
+              </Text>
+            )}
+            <TouchableOpacity onPress={handleToggleBalance} disabled={walletLoading}>
               <Icon 
                 name={isBalanceVisible ? "visibility" : "visibility-off"} 
                 size={24} 
-                color="white" 
+                color={walletLoading ? "rgba(255,255,255,0.5)" : "white"} 
               />
             </TouchableOpacity>
           </View>
@@ -1266,6 +1402,8 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: rf(18),
     ...typography.semibold,
+    maxWidth: rp(180), // Giới hạn chiều rộng để tránh tràn
+    flexShrink: 1, // Cho phép shrink khi cần
   },
   headerIcons: {  
     flexDirection: 'row',
@@ -1872,6 +2010,7 @@ legendValue: {
     height: rf(18),
     backgroundColor: 'rgba(255,255,255,0.3)',
     borderRadius: rp(4),
+    maxWidth: rp(200), // Thêm maxWidth để handle tên dài
   },
   skeletonBalance: {
     alignItems: 'flex-start',
@@ -1933,6 +2072,21 @@ legendValue: {
     height: rf(15),
     backgroundColor: '#f0f0f0',
     borderRadius: rp(2),
+  },
+  // Header skeleton styles
+  userNameSkeleton: {
+    width: rp(120),
+    height: rf(18),
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: rp(4),
+    marginTop: rp(2),
+  },
+  balanceSkeleton: {
+    width: rp(180),
+    height: rf(32),
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: rp(6),
+    marginRight: rp(15),
   },
 });
 

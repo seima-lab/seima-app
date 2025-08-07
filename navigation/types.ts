@@ -192,7 +192,10 @@ export type RootStackParamList = {
     customStartDate?: Date;
     customEndDate?: Date;
   };
-  ViewCategoryReportScreen: { type: 'expense' | 'income' };
+  ViewCategoryReportScreen: { 
+    type: 'expense' | 'income';
+    groupId?: number; // Add groupId parameter for group context
+  };
   ReportScreen: { 
     groupId?: number; 
     groupName?: string; 

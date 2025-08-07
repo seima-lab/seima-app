@@ -199,7 +199,7 @@ const SuggestedBudgets = ({ budgets, onBudgetSelect, disabled = false }: {
                         <View style={styles.suggestedBudgetContent}>
                             <Icon name="account-balance" size={16} color="#28a745" />
                             <Text style={styles.suggestedBudgetName} numberOfLines={1}>
-                                {budget.budget_name}
+                                {budget.name}
                             </Text>
                             {budget.overall_amount_limit !== undefined && (
                                 <Text style={styles.suggestedBudgetLimit}>
@@ -803,7 +803,7 @@ const ChatAIScreen = () => {
                 const suggestedWallets = aiResponse.suggested_wallets || (aiResponse as any).suggest_wallet || undefined;
                 
                 // Support suggested budgets - handle alternative field names for API compatibility
-                const suggestedBudgets = aiResponse.list_suggested_budgets || (aiResponse as any).suggest_budget || (aiResponse as any).suggested_budgets || undefined;
+                const suggestedBudgets = aiResponse.suggested_budgets || (aiResponse as any).suggest_budget || (aiResponse as any).list_suggested_budgets || undefined;
                 
                 console.log('✅ AI response received:', aiResponse);
                 console.log('📝 AI response structure:', {
@@ -812,8 +812,8 @@ const ChatAIScreen = () => {
                     hasSuggestedWallets: !!aiResponse.suggested_wallets || !!(aiResponse as any).suggest_wallet,
                     suggestedWalletsCount: aiResponse.suggested_wallets?.length || (aiResponse as any).suggest_wallet?.length,
                     suggestedWallets,
-                    hasSuggestedBudgets: !!aiResponse.list_suggested_budgets || !!(aiResponse as any).suggest_budget || !!(aiResponse as any).suggested_budgets,
-                    suggestedBudgetsCount: aiResponse.list_suggested_budgets?.length || (aiResponse as any).suggest_budget?.length || (aiResponse as any).suggested_budgets?.length,
+                    hasSuggestedBudgets: !!aiResponse.suggested_budgets || !!(aiResponse as any).suggest_budget || !!(aiResponse as any).list_suggested_budgets,
+                    suggestedBudgetsCount: aiResponse.suggested_budgets?.length || (aiResponse as any).suggest_budget?.length || (aiResponse as any).list_suggested_budgets?.length,
                     suggestedBudgets,
                 });
                 
@@ -932,7 +932,7 @@ const ChatAIScreen = () => {
     };
 
     const handleBudgetSelect = (budget: SuggestedBudget) => {
-        let budgetMessage = budget.budget_name;
+        let budgetMessage = budget.name;
         
         // Add budget limit information if available
         if (budget.overall_amount_limit !== undefined) {

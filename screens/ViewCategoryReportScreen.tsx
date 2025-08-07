@@ -21,7 +21,7 @@ export default function ViewCategoryReportScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, any>>();
-  const { type: initialType } = route.params || { type: 'expense' };
+  const { type: initialType, groupId } = route.params || { type: 'expense' };
   
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>(initialType);
   const [categories, setCategories] = useState<LocalCategory[]>([]);
@@ -38,17 +38,33 @@ export default function ViewCategoryReportScreen() {
     setError(null);
     try {
       const categoryType = activeTab === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME;
-      const groupId = 0;
+      // Use groupId from route params, fallback to 0 for user context
+      const targetGroupId = groupId || 0;
+      
+      console.log('🔄 Loading categories for ViewCategoryReportScreen:', {
+        categoryType,
+        targetGroupId,
+        fromGroupContext: !!groupId
+      });
+      
       const apiCategories = await categoryService.getAllCategoriesByTypeAndUser(
         categoryType,
-        groupId
+        targetGroupId
       );
       const localCategories = apiCategories.map(apiCategory => 
         categoryService.convertToLocalCategory(apiCategory)
       );
       setCategories(localCategories);
       setHasInitiallyLoaded(true);
+      
+      console.log('✅ Categories loaded:', {
+        categoryType,
+        targetGroupId,
+        categoriesCount: localCategories.length,
+        categories: localCategories.map(cat => ({ key: cat.key, label: cat.label, category_id: cat.category_id }))
+      });
     } catch (err: any) {
+      console.error('❌ Failed to load categories:', err);
       setError(err.message || 'Failed to load categories');
       const categoryType = activeTab === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME;
       const defaultCategories = categoryService.getDefaultCategories(categoryType);
@@ -77,10 +93,15 @@ export default function ViewCategoryReportScreen() {
       <TouchableOpacity
         style={styles.categoryItem}
         onPress={() => {
-          navigation.navigate('CategoryReportDetailScreen', {
+          // Only pass groupId if we're in group context
+          const params: any = {
             category_id: item.category_id || item.key,
             category_name: item.label
-          });
+          };
+          if (groupId) {
+            params.groupId = groupId;
+          }
+          navigation.navigate('CategoryReportDetailScreen', params);
         }}
       >
         <View style={styles.categoryContent}>

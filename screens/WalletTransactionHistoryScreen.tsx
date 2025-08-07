@@ -3,17 +3,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  Modal,
-  RefreshControl,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    Modal,
+    RefreshControl,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -158,53 +158,125 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
     }
   }, []);
 
-  // Helper functions for date calculations
-  const getDateRange = (filterType: string) => {
+  // Helper function to get current date string in Vietnam timezone (UTC+7)
+  const getVietnamDateString = () => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Sử dụng Intl.DateTimeFormat để lấy date string chính xác
+    const intlFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const vietnamDateString = intlFormatter.format(now);
+    
+    console.log('🇻🇳 Vietnam date string calculation:', {
+      deviceTime: now.toISOString(),
+      deviceLocal: now.toString(),
+      vietnamResult: vietnamDateString,
+      timezone: 'Asia/Ho_Chi_Minh (UTC+7)'
+    });
+    
+    return vietnamDateString;
+  };
+
+  // Helper function để tạo Date object từ YYYY-MM-DD string (for backward compatibility)
+  const createDateFromString = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    // Tạo Date ở UTC để tránh timezone conversion
+    return new Date(Date.UTC(year, month - 1, day));
+  };
+
+  // Helper function to get current date in Vietnam timezone (UTC+7) - DEPRECATED
+  const getVietnamDate = () => {
+    const vietnamDateString = getVietnamDateString();
+    return createDateFromString(vietnamDateString);
+  };
+
+  // Helper functions for date calculations (Vietnam timezone)
+  const getDateRange = (filterType: string) => {
+    const todayString = getVietnamDateString(); // Dùng trực tiếp string để tránh timezone issues
     
     switch (filterType) {
       case 'allTime':
         // Return a very old date to get all transactions
-        return {
+        const allTimeRange = {
           startDate: '2000-01-01',
-          endDate: today.toISOString().split('T')[0]
+          endDate: todayString
         };
+        console.log('📅 All Time filter (VN timezone):', allTimeRange);
+        return allTimeRange;
+        
       case 'thisDay':
-        return {
-          startDate: today.toISOString().split('T')[0],
-          endDate: today.toISOString().split('T')[0]
+        const thisDayRange = {
+          startDate: todayString,
+          endDate: todayString
         };
+        console.log('📅 This Day filter (VN timezone):', thisDayRange);
+        return thisDayRange;
+        
       case 'thisWeek':
+        // Tạo Date object chỉ để tính toán, không dùng để lấy date string
+        const today = createDateFromString(todayString);
         const startOfWeek = new Date(today);
-        const dayOfWeek = today.getDay();
-        startOfWeek.setDate(today.getDate() - dayOfWeek);
-        return {
+        // Tính từ thứ 2 (Monday = 1, Sunday = 0)
+        const dayOfWeek = today.getUTCDay(); // Dùng UTC methods để tránh timezone issues
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 6 days back to Monday
+        startOfWeek.setUTCDate(today.getUTCDate() - daysToMonday);
+        const thisWeekRange = {
           startDate: startOfWeek.toISOString().split('T')[0],
-          endDate: today.toISOString().split('T')[0]
+          endDate: todayString
         };
+        console.log('📅 This Week filter (VN timezone):', {
+          ...thisWeekRange,
+          dayOfWeek: ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][dayOfWeek],
+          daysToMonday
+        });
+        return thisWeekRange;
+        
       case 'thisMonth':
-        const firstDayThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        return {
+        const todayForMonth = createDateFromString(todayString);
+        const firstDayThisMonth = new Date(Date.UTC(todayForMonth.getUTCFullYear(), todayForMonth.getUTCMonth(), 1));
+        const thisMonthRange = {
           startDate: firstDayThisMonth.toISOString().split('T')[0],
-          endDate: today.toISOString().split('T')[0]
+          endDate: todayString
         };
+        console.log('📅 This Month filter (VN timezone):', {
+          ...thisMonthRange,
+          month: todayForMonth.getUTCMonth() + 1,
+          year: todayForMonth.getUTCFullYear()
+        });
+        return thisMonthRange;
+        
       case 'thisYear':
-        const firstDayThisYear = new Date(today.getFullYear(), 0, 1);
-        return {
+        const todayForYear = createDateFromString(todayString);
+        const firstDayThisYear = new Date(Date.UTC(todayForYear.getUTCFullYear(), 0, 1));
+        const thisYearRange = {
           startDate: firstDayThisYear.toISOString().split('T')[0],
-          endDate: today.toISOString().split('T')[0]
+          endDate: todayString
         };
+        console.log('📅 This Year filter (VN timezone):', {
+          ...thisYearRange,
+          year: todayForYear.getUTCFullYear()
+        });
+        return thisYearRange;
+        
       case 'custom':
-        return {
+        const customRange = {
           startDate: startDate,
           endDate: endDate
         };
+        console.log('📅 Custom filter:', customRange);
+        return customRange;
+        
       default:
-        return {
+        const defaultRange = {
           startDate: '2000-01-01',
-          endDate: today.toISOString().split('T')[0]
+          endDate: todayString
         };
+        console.log('📅 Default filter (VN timezone):', defaultRange);
+        return defaultRange;
     }
   };
 
@@ -231,7 +303,11 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
       setError(null);
 
       const dateRange = getDateRange(selectedFilter);
-      console.log('🔄 Loading transactions for wallet:', walletId, 'with date range:', dateRange);
+      console.log('🔄 Loading transactions for wallet:', walletId, 'with Vietnam timezone date range:', {
+        filter: selectedFilter,
+        dateRange: dateRange,
+        timezone: 'Asia/Ho_Chi_Minh (UTC+7)'
+      });
       
       // Prepare parameters for API call
       const params: any = {
@@ -241,15 +317,25 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
       };
       
       // Add type parameter for allTime filter
+      let typeParam: string | undefined = undefined;
       if (selectedFilter === 'allTime') {
-        params.type = 'all';
+        typeParam = 'all';
+        console.log('🔄 Using allTime filter with type=all parameter');
       }
+      
+      console.log('📋 API call parameters:', {
+        walletId: params.walletId,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        type: typeParam,
+        selectedFilter
+      });
       
       const response: any = await transactionService.getWalletTransactionHistory(
         params.walletId,
         params.startDate,
         params.endDate,
-        params.type
+        typeParam
       );
       
       console.log('✅ Wallet transactions loaded:', response);
@@ -311,10 +397,25 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
     loadCategories();
     loadTransactions();
     
-    // Test icon mapping trong development
+    // Test timezone calculation và icon mapping trong development
     if (__DEV__) {
       setTimeout(() => {
         testIconMapping();
+        
+        // Test timezone calculation
+        console.log('🧪 Testing timezone calculation at component mount...');
+        const vietnamDateString = getVietnamDateString();
+        console.log('🧪 Component mount - Vietnam date result:', vietnamDateString);
+        
+        // So sánh với date hiện tại theo nhiều cách khác
+        const now = new Date();
+        console.log('🧪 Comparison at mount:', {
+          deviceUTC: now.toISOString(),
+          deviceLocal: now.toLocaleDateString('vi-VN'),
+          vietnamCalculatedString: vietnamDateString,
+          manual_UTC_Plus_7: new Date(now.getTime() + 7*60*60*1000).toISOString().split('T')[0],
+          expectedResult: '2025-08-07'
+        });
       }, 1000);
     }
   }, [loadCategories, loadTransactions]);
