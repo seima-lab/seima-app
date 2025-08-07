@@ -1,10 +1,7 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+// React imports
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+
+// React Native imports
 import {
   ActivityIndicator,
   Alert,
@@ -12,30 +9,46 @@ import {
   Modal,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { RootStackParamList } from '../navigation/types';
 
+// Third-party component imports
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+// Local imports
 import CustomErrorModal from '../components/CustomErrorModal';
 import CustomSuccessModal from '../components/CustomSuccessModal';
 import CustomToast from '../components/CustomToast';
 import { useAuth } from '../contexts/AuthContext';
-import '../i18n';
-import { categoryService, CategoryService, CategoryType, LocalCategory } from '../services/categoryService';
-import { ocrService, TransactionOcrResponse } from '../services/ocrService';
-import { secureApiService } from '../services/secureApiService';
-import { CreateTransactionRequest, transactionService, TransactionType } from '../services/transactionService';
-import { WalletResponse, walletService } from '../services/walletService';
-
-// Import centralized icon color utility
-import { typography } from '@/constants/typography';
+import { RootStackParamList } from '../navigation/types';
+import { LocalCategory } from '../services/categoryService';
+import { TransactionOcrResponse } from '../services/ocrService';
 import { getIconColor } from '../utils/iconUtils';
+import OptimizedSaveButton from './components/OptimizedSaveButton';
+
+// Custom hooks
+import { useDataLoading } from './hooks/useDataLoading';
+import { useDebounceInput } from './hooks/useDebounceInput';
+import { useFormValidation } from './hooks/useFormValidation';
+import { useImagePicker } from './hooks/useImagePicker';
+import { useModalStates } from './hooks/useModalStates';
+import { useTransactionSave } from './hooks/useTransactionSave';
+
+// Constants
+import { addExpenseStyles as styles } from './AddExpenseScreen.styles';
+
+// i18n
+import '../i18n';
 export default function AddExpenseScreen() {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -52,31 +65,109 @@ export default function AddExpenseScreen() {
   const groupContextName = routeParams?.groupName;
   
   // State
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>(
     isEditMode && transactionData?.type ? transactionData.type : 'expense'
   );
-  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
-  
-  // Cache state để tránh gọi API không cần thiết
-  const [dataCache, setDataCache] = useState<{[key: string]: any}>({});
-  const [lastFetchTime, setLastFetchTime] = useState(0);
-  const CACHE_DURATION = 30000; // 30 giây
-  
-  // Prevent multiple concurrent API calls
-  const isLoadingRef = useRef(false);
-  const isMountedRef = useRef(true);
-  
-  // Hàm format số tiền từ OCR hoặc số nguyên
-  const formatAmountFromNumber = useCallback((value: number): string => {
-    if (value <= 0) return '';
-    return value.toLocaleString('vi-VN');
-  }, []);
+
+  // State declarations first
+  const [selectedWallet, setSelectedWallet] = useState<number | null>(
+    fromGroupOverview ? 0 : null // Set to 0 for group transactions
+  );
+
+  // Custom hooks
+  const {
+    isLoading,
+    hasInitiallyLoaded,
+    wallets,
+    expenseCategories,
+    incomeCategories,
+    selectedCategory,
+    setSelectedCategory,
+    setWallets,
+    loadData,
+    refreshData,
+    cleanup,
+  } = useDataLoading({
+    fromGroupOverview,
+    groupContextId,
+    groupContextName,
+    isEditMode,
+    transactionData,
+    activeTab,
+    fromGroupTransactionList,
+    setSelectedWallet,
+  });
+
+  // Form validation hook (declare before usage)
+  const {
+    formatAmountInput,
+    getNumericAmountFromInput,
+    formatAmountFromNumber,
+  } = useFormValidation({
+    amount: '', // Not used for validation in hook
+    note: '',
+    selectedCategory: '',
+    selectedWallet: null,
+    fromGroupOverview: false,
+    getNumericAmount: () => 0,
+  });
+
+  const onOCRResult = useCallback((result: TransactionOcrResponse) => {
+    if (result.total_amount) {
+      console.log('💰 Setting amount:', result.total_amount);
+      setAmount(formatAmountFromNumber(result.total_amount));
+    }
+    
+    if (result.transaction_date) {
+      console.log('📅 Setting date:', result.transaction_date);
+      const parsedDate = new Date(result.transaction_date);
+      if (!isNaN(parsedDate.getTime())) {
+        const localDate = new Date(
+          parsedDate.getFullYear(),
+          parsedDate.getMonth(),
+          parsedDate.getDate()
+        );
+        setDate(localDate);
+        console.log('✅ Date set successfully (local):', localDate);
+      }
+    }
+    
+    if (result.description_invoice) {
+      console.log('📝 Setting note:', result.description_invoice);
+      setNote(result.description_invoice);
+    }
+  }, [formatAmountFromNumber]);
+
+  const {
+    selectedImage,
+    isScanning,
+    showImageOptions,
+    setShowImageOptions,
+    takePhoto,
+    pickFromGallery,
+    pickFromGalleryWithCrop,
+    removeImage,
+  } = useImagePicker({
+    activeTab,
+    onOCRResult,
+  });
 
   // Form data - pre-fill if in edit mode
-  const [amount, setAmount] = useState(isEditMode && transactionData?.amount ? formatAmountFromNumber(transactionData.amount) : '');
+  const initialAmount = isEditMode && transactionData?.amount ? formatAmountFromNumber(transactionData.amount) : '';
   const [note, setNote] = useState(isEditMode && transactionData?.note ? transactionData.note : '');
+
+  // Debounced amount input for better performance
+  const {
+    value: amount,
+    debouncedValue: debouncedAmount,
+    handleChange: handleAmountChange,
+    setValue: setAmount,
+  } = useDebounceInput({
+    initialValue: initialAmount,
+    delay: 300,
+    formatValue: formatAmountInput,
+  });
+  
   const [date, setDate] = useState(() => {
     if (isEditMode && transactionData?.date) {
       const parsedDate = new Date(transactionData.date);
@@ -89,38 +180,189 @@ export default function AddExpenseScreen() {
     }
     return new Date();
   });
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedWallet, setSelectedWallet] = useState<number | null>(
-    fromGroupOverview ? 0 : null // Set to 0 for group transactions
-  );
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
-  // Data
-  const [wallets, setWallets] = useState<WalletResponse[]>([]);
-  const [expenseCategories, setExpenseCategories] = useState<LocalCategory[]>([]);
-  const [incomeCategories, setIncomeCategories] = useState<LocalCategory[]>([]);
-  
-  // UI state
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showWalletPicker, setShowWalletPicker] = useState(false);
-  const [showImageOptions, setShowImageOptions] = useState(false);
-  const [showCreateWalletModal, setShowCreateWalletModal] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  
-  // Toast state
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'error' | 'success' | 'warning' | 'info'>('error');
+  // Modal states hook
+  const {
+    errorModal,
+    showErrorModal,
+    hideErrorModal,
+    successModal,
+    showSuccessModal,
+    hideSuccessModal,
+    toast,
+    showToast,
+    hideToast,
+    showDatePicker,
+    openDatePicker,
+    closeDatePicker,
+    showWalletPicker,
+    openWalletPicker,
+    closeWalletPicker,
+    showCreateWalletModal,
+    openCreateWalletModal,
+    closeCreateWalletModal,
+  } = useModalStates();
 
-  // State cho modal lỗi
-  const [errorModalVisible, setErrorModalVisible] = useState(false);
-  const [errorModalTitle, setErrorModalTitle] = useState('');
-  const [errorModalMessage, setErrorModalMessage] = useState('');
-  // State cho modal thành công
-  const [successModalVisible, setSuccessModalVisible] = useState(false);
-  const [successModalTitle, setSuccessModalTitle] = useState('');
-  const [successModalMessage, setSuccessModalMessage] = useState('');
-  const [onSuccessModalConfirm, setOnSuccessModalConfirm] = useState<(() => void) | null>(null);
+  // Custom validation function that uses current form state
+  const validateForm = useCallback(() => {
+    console.log('🔍 Validating form with:', {
+      debouncedAmount,
+      amount,
+      note,
+      selectedCategory,
+      selectedWallet,
+      fromGroupOverview
+    });
+
+    // Check amount
+    if (!debouncedAmount.trim()) {
+      console.log('❌ Amount is empty:', debouncedAmount);
+      return {
+        isValid: false,
+        error: {
+          title: t('common.error'),
+          message: t('common.pleaseEnterAmount'),
+        },
+      };
+    }
+    
+    const amountValue = getNumericAmountFromInput(debouncedAmount);
+    if (amountValue <= 0) {
+      console.log('❌ Amount is zero or negative:', amountValue);
+      return {
+        isValid: false,
+        error: {
+          title: t('common.error'),
+          message: t('common.pleaseEnterValidAmount'),
+        },
+      };
+    }
+    
+    // Check if amount exceeds 15 digits
+    const digitsOnly = debouncedAmount.replace(/[^\d]/g, '');
+    if (digitsOnly.length > 15) {
+      return {
+        isValid: false,
+        error: {
+          title: t('common.error'),
+          message: t('common.amountExceed15Digits'),
+        },
+      };
+    }
+    
+    // Check if amount is too large for JavaScript number precision
+    if (amountValue > Number.MAX_SAFE_INTEGER) {
+      return {
+        isValid: false,
+        error: {
+          title: t('common.error'),
+          message: t('common.amountTooLarge'),
+        },
+      };
+    }
+    
+    // Validate note (optional but with constraints if provided)
+    if (note.trim().length > 500) {
+      return {
+        isValid: false,
+        error: {
+          title: t('common.error'),
+          message: t('common.noteExceed500Chars'),
+        },
+      };
+    }
+    
+    // Check for potentially malicious content in note
+    const suspiciousPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /on\w+\s*=/i,
+      /<iframe/i,
+      /<object/i,
+      /<embed/i
+    ];
+    
+    if (suspiciousPatterns.some(pattern => pattern.test(note))) {
+      return {
+        isValid: false,
+        error: {
+          title: t('common.error'),
+          message: t('common.noteInvalidChars'),
+        },
+      };
+    }
+    
+    if (!selectedCategory) {
+      console.log('❌ No category selected:', selectedCategory);
+      return {
+        isValid: false,
+        error: {
+          title: t('common.error'),
+          message: t('common.pleaseSelectCategory'),
+        },
+      };
+    }
+    
+    // Only validate wallet selection if not from group overview
+    if (!fromGroupOverview && !selectedWallet) {
+      console.log('❌ No wallet selected:', selectedWallet);
+      return {
+        isValid: false,
+        error: {
+          title: t('common.error'),
+          message: t('common.pleaseSelectWallet'),
+        },
+      };
+    }
+    
+    console.log('✅ Form validation passed');
+    return { isValid: true };
+  }, [debouncedAmount, amount, note, selectedCategory, selectedWallet, fromGroupOverview, getNumericAmountFromInput, t]);
+
+  // Transaction save hook với optimistic updates
+  const {
+    isSaving,
+    saveTransaction,
+    copyTransaction,
+  } = useTransactionSave({
+    isEditMode,
+    activeTab,
+    fromGroupOverview,
+    fromGroupTransactionList,
+    groupContextId,
+    groupContextName,
+    transactionData,
+    refreshTransactions,
+    onSaveSuccess: () => {
+      const message = isEditMode ? t('common.transactionUpdated') : t('common.transactionSaved');
+      showSuccessModal(t('common.success'), message, () => {
+        hideSuccessModal();
+        navigation.goBack();
+      });
+    },
+    onSaveError: (error: any) => {
+      if (error.message?.includes('Authentication failed') || 
+          error.message?.includes('Please login again') ||
+          error.message?.includes('User not authenticated')) {
+        showErrorModal(t('common.error'), t('common.pleaseLogin'), () => {
+          hideErrorModal();
+          if (fromGroupTransactionList && groupContextId && groupContextName) {
+            (navigation as any).reset({
+              index: 1,
+              routes: [
+                { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
+                { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
+              ],
+            });
+          } else {
+            navigation.goBack();
+          }
+        });
+      } else {
+        showErrorModal(t('common.error'), t('common.failedToSaveTransaction'));
+      }
+    },
+  });
 
   // Debug selectedCategory changes
   useEffect(() => {
@@ -149,25 +391,18 @@ export default function AddExpenseScreen() {
     loadData();
     
     // Cleanup on unmount
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [authLoading]);
+    return cleanup;
+  }, [authLoading, loadData, cleanup]);
 
-  // Refresh data when screen is focused với debounce
+  // Refresh data when screen is focused
   useFocusEffect(
     useCallback(() => {
       // Only refresh if we have initially loaded data (not on first mount)
       if (hasInitiallyLoaded) {
-        const now = Date.now();
-        if (now - lastFetchTime > CACHE_DURATION) {
           console.log('🔄 AddExpenseScreen focused - refreshing data');
           refreshData();
-        } else {
-          console.log('🔄 AddExpenseScreen focused - using cached data');
         }
-      }
-    }, [hasInitiallyLoaded, lastFetchTime])
+    }, [hasInitiallyLoaded, refreshData])
   );
 
   // Sau khi setExpenseCategories và setIncomeCategories, nếu chưa có selectedCategory thì chọn mặc định
@@ -180,341 +415,7 @@ export default function AddExpenseScreen() {
     }
   }, [expenseCategories, incomeCategories, activeTab]);
 
-  const loadData = useCallback(async (forceRefresh: boolean = false) => {
-    if (!isMountedRef.current) {
-      setIsLoading(false);
-      return;
-    }
 
-    // Prevent multiple concurrent calls
-    if (isLoadingRef.current && !forceRefresh) {
-      console.log('⏭️ Skipping data load - already loading');
-      return;
-    }
-
-    const now = Date.now();
-    if (!forceRefresh && now - lastFetchTime < CACHE_DURATION && Object.keys(dataCache).length > 0) {
-      console.log('📦 Using cached data, last fetch:', new Date(lastFetchTime));
-      setWallets(dataCache.wallets || []);
-      setExpenseCategories(dataCache.expenseCategories || []);
-      setIncomeCategories(dataCache.incomeCategories || []);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      console.log('🔄 Loading all data in parallel...');
-      
-      // Load wallets and user profile in parallel
-      const [walletsData, userProfile] = await Promise.all([
-        walletService.getAllWallets(),
-        secureApiService.getCurrentUserProfile() // Use /me API
-      ]);
-      
-      console.log('✅ Wallets loaded:', walletsData.length);
-      console.log('✅ User profile loaded:', userProfile);
-
-      // Determine userId and groupId based on context
-      let userId, groupId;
-      if (fromGroupOverview) {
-        // When called from GroupOverviewScreen, use userId=0 and current groupId
-        userId = 0;
-        groupId = groupContextId ? parseInt(groupContextId) : 0; // Convert to number
-      } else {
-        // When called from other screens, use real userId and groupId=0
-        userId = userProfile.user_id;
-        groupId = 0;
-      }
-      
-      console.log('🔄 Loading categories for both tabs');
-      console.log('🔍 AddExpenseScreen context:', {
-        fromGroupOverview: fromGroupOverview,
-        groupContextId: groupContextId,
-        groupContextIdType: typeof groupContextId,
-        groupContextName: groupContextName,
-        isEditMode: isEditMode,
-        willUseUserId: userId,
-        willUseGroupId: groupId,
-        willUseGroupIdType: typeof groupId,
-        realUserId: userProfile.user_id
-      });
-      
-      // Fetch categories separately for each tab with correct categoryType values
-      const [expenseCats, incomeCats] = await Promise.all([
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE,  groupId), // categoryType=1
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, groupId),  // categoryType=0
-      ]);
-
-      console.log('✅ Categories loaded:', {
-        expenseCount: expenseCats.length,
-        incomeCount: incomeCats.length,
-      });
-      
-      console.log('📊 Raw expense categories from API:', expenseCats.map(cat => ({
-        category_id: cat.category_id,
-        category_name: cat.category_name,
-        category_type: cat.category_type
-      })));
-      
-      console.log('📊 Raw income categories from API:', incomeCats.map(cat => ({
-        category_id: cat.category_id,
-        category_name: cat.category_name,
-        category_type: cat.category_type
-      })));
-
-      // IMPORTANT: Check if income categories are empty
-      if (incomeCats.length === 0) {
-        console.error('❌ INCOME CATEGORIES ARE EMPTY after API call with categoryType=0!');
-        console.error('Please check if backend has income categories with categoryType=0.');
-      }
-
-      // Convert to local format và sort theo id tăng dần
-      const categoryServiceInstance = CategoryService.getInstance();
-      const convertedExpenseCategories = expenseCats
-        .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
-        .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0));
-      
-      const convertedIncomeCategories = incomeCats
-        .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
-        .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0));
-
-      setWallets(walletsData);
-      setExpenseCategories(convertedExpenseCategories);
-      setIncomeCategories(convertedIncomeCategories);
-
-      console.log('🔄 Converted expense categories:', expenseCats.map(cat => {
-        const converted = categoryServiceInstance.convertToLocalCategory(cat);
-        return {
-          original_id: cat.category_id,
-          converted_key: converted.key,
-          converted_category_id: converted.category_id,
-          label: converted.label
-        };
-      }));
-
-      console.log('🔄 Converted income categories:', incomeCats.map(cat => {
-        const converted = categoryServiceInstance.convertToLocalCategory(cat);
-        return {
-          original_id: cat.category_id,
-          converted_key: converted.key,
-          converted_category_id: converted.category_id,
-          label: converted.label
-        };
-      }));
-
-      // Set default category based on current active tab or edit mode
-      if (isEditMode && transactionData?.category) {
-        // In edit mode, try to find and select the matching category
-        const allCategories = [...expenseCats, ...incomeCats];
-        
-        // First try to find by category_id if available (from group transaction list)
-        let matchingCategory = null;
-        if (transactionData.categoryId) {
-          matchingCategory = allCategories.find(cat => cat.category_id === transactionData.categoryId);
-          console.log('🔍 Looking for category by ID:', {
-            categoryId: transactionData.categoryId,
-            found: !!matchingCategory
-          });
-        }
-        
-        // If not found by ID, try by name
-        if (!matchingCategory) {
-          matchingCategory = allCategories.find(cat => cat.category_name === transactionData.category);
-          console.log('🔍 Looking for category by name:', {
-            categoryName: transactionData.category,
-            found: !!matchingCategory
-          });
-        }
-        
-        if (matchingCategory) {
-          const categoryKey = categoryServiceInstance.convertToLocalCategory(matchingCategory).key;
-          console.log('🔍 Setting edit mode category:', {
-            transactionCategory: transactionData.category,
-            transactionCategoryId: transactionData.categoryId,
-            matchingCategoryId: matchingCategory.category_id,
-            categoryKey: categoryKey,
-            fromGroupTransactionList: fromGroupTransactionList
-          });
-          setSelectedCategory(categoryKey);
-        } else {
-          console.log('⚠️ Could not find matching category for:', {
-            category: transactionData.category,
-            categoryId: transactionData.categoryId,
-            availableCategories: allCategories.map(cat => ({
-              id: cat.category_id,
-              name: cat.category_name
-            }))
-          });
-          // Fall back to default category selection
-          const categories = activeTab === 'expense' ? expenseCats : incomeCats;
-          if (categories.length > 0) {
-            const defaultCategoryKey = categoryServiceInstance.convertToLocalCategory(categories[0]).key;
-            setSelectedCategory(defaultCategoryKey);
-          }
-        }
-      } else {
-        // Normal mode - set default category based on current active tab
-        if (activeTab === 'expense' && expenseCats.length > 0) {
-          const defaultCategoryKey = categoryServiceInstance.convertToLocalCategory(expenseCats[0]).key;
-          console.log('🔍 Setting default expense category:', {
-            activeTab: activeTab,
-            defaultCategoryKey: defaultCategoryKey,
-            defaultCategory: expenseCats[0]
-          });
-          setSelectedCategory(defaultCategoryKey);
-        } else if (activeTab === 'income' && incomeCats.length > 0) {
-          const defaultCategoryKey = categoryServiceInstance.convertToLocalCategory(incomeCats[0]).key;
-          console.log('🔍 Setting default income category:', {
-            activeTab: activeTab,
-            defaultCategoryKey: defaultCategoryKey,
-            defaultCategory: incomeCats[0]
-          });
-          setSelectedCategory(defaultCategoryKey);
-        }
-      }
-
-      // Set default wallet selection
-      if (walletsData.length > 0) {
-        const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
-        setSelectedWallet(defaultWallet.id);
-        console.log('✅ Default wallet selected:', defaultWallet.wallet_name);
-      }
-
-      // Update cache
-      setDataCache({
-        wallets: walletsData,
-        expenseCategories: convertedExpenseCategories,
-        incomeCategories: convertedIncomeCategories
-      });
-      setLastFetchTime(now);
-
-      console.log('✅ All data loaded successfully');
-      setHasInitiallyLoaded(true);
-
-    } catch (error: any) {
-      console.error('Error loading data:', error);
-      
-      // Handle authentication errors specifically
-      if (error.message?.includes('Authentication failed') || 
-          error.message?.includes('Please login again') ||
-          error.message?.includes('User not authenticated')) {
-        Alert.alert(t('common.error'), t('common.pleaseLogin'), [
-          { text: t('common.ok'), onPress: () => navigation.goBack() }
-        ]);
-      } else {
-        Alert.alert(t('common.error'), t('common.failedToLoadData'));
-      }
-    } finally {
-      setIsLoading(false);
-      isLoadingRef.current = false;
-    }
-  }, [fromGroupOverview, groupContextId, groupContextName, isEditMode, transactionData, activeTab, fromGroupTransactionList, lastFetchTime, dataCache, t, navigation]);
-
-  const refreshCategories = async () => {
-    try {
-      console.log('🔄 Refreshing categories only...');
-      
-      // Get user profile
-      const userProfile = await secureApiService.getCurrentUserProfile();
-      
-      // Determine userId and groupId based on context
-      let userId, groupId;
-      if (fromGroupOverview) {
-        // When called from GroupOverviewScreen, use userId=0 and current groupId
-        userId = 0;
-        groupId = groupContextId ? parseInt(groupContextId) : 0; // Convert to number
-      } else {
-        // When called from other screens, use real userId and groupId=0
-        userId = userProfile.user_id;
-        groupId = 0;
-      }
-      
-      console.log('🔄 Refreshing categories for both tabs');
-      console.log('🔍 AddExpenseScreen context (refresh):', {
-        fromGroupOverview: fromGroupOverview,
-        groupContextId: groupContextId,
-        groupContextIdType: typeof groupContextId,
-        groupContextName: groupContextName,
-        willUseUserId: userId,
-        willUseGroupId: groupId,
-        willUseGroupIdType: typeof groupId,
-        realUserId: userProfile.user_id
-      });
-      
-      // Fetch categories separately for each tab with correct categoryType values
-      const [expenseCats, incomeCats] = await Promise.all([
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, groupId),
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME,  groupId),
-      ]);
-
-      console.log('✅ Categories refreshed:', {
-        expenseCount: expenseCats.length,
-        incomeCount: incomeCats.length,
-      });
-
-      // Convert to local format và sort theo id tăng dần
-      const categoryServiceInstance = CategoryService.getInstance();
-      setExpenseCategories(
-        expenseCats
-          .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
-          .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0))
-      );
-      setIncomeCategories(
-        incomeCats
-          .map(cat => categoryServiceInstance.convertToLocalCategory(cat))
-          .sort((a, b) => (a.category_id ?? 0) - (b.category_id ?? 0))
-      );
-
-      // Update selected category if current one is invalid
-      const currentCategories = activeTab === 'expense' ? expenseCats : incomeCats;
-      const isCurrentCategoryValid = currentCategories.some(cat => cat.category_id.toString() === selectedCategory);
-      
-      if (!isCurrentCategoryValid && currentCategories.length > 0) {
-        const newCategoryId = currentCategories[0].category_id.toString();
-        console.log('🔄 Updating selected category after refresh:', newCategoryId);
-        setSelectedCategory(newCategoryId);
-      }
-
-      console.log('✅ Categories refreshed successfully');
-
-    } catch (error: any) {
-      console.error('❌ Error refreshing categories:', error);
-    }
-  };
-
-  const refreshData = useCallback(async () => {
-    try {
-      console.log('🔄 Refreshing categories and wallets...');
-      
-      // Refresh wallets and categories in parallel
-      const [walletsData] = await Promise.all([
-        walletService.getAllWallets(),
-        refreshCategories(),
-      ]);
-      
-      console.log('✅ Wallets refreshed:', walletsData.length);
-      setWallets(walletsData);
-
-      // Update wallet selection if current one is invalid or if no wallet selected
-      // But don't reset if from group overview (keep it as 0)
-      if (!fromGroupOverview && (!selectedWallet || !walletsData.some(w => w.id === selectedWallet))) {
-        if (walletsData.length > 0) {
-          const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
-          setSelectedWallet(defaultWallet.id);
-          console.log('🔄 Updated selected wallet after refresh:', defaultWallet.wallet_name);
-        } else {
-          setSelectedWallet(null);
-          console.log('🔄 No wallets available after refresh');
-        }
-      }
-
-      console.log('✅ Data refreshed successfully');
-
-    } catch (error: any) {
-      console.error('❌ Error refreshing data:', error);
-    }
-  }, [fromGroupOverview, selectedWallet]);
 
   const handleTabChange = (tab: 'expense' | 'income') => {
     console.log('🔄 Tab change started:', {
@@ -738,462 +639,52 @@ export default function AddExpenseScreen() {
     }
   };
 
-  const takePhoto = async () => {
-    try {
-      console.log('📷 Starting camera capture...');
-      const hasPermission = await requestCameraPermission();
-      if (!hasPermission) {
-        console.log('❌ Camera permission denied');
+
+
+
+
+
+
+
+
+    // Optimized save handler với better UX
+  const handleSave = useCallback(async () => {
+    const validation = validateForm();
+    if (!validation.isValid) {
+      if (validation.error) {
+        showErrorModal(validation.error.title, validation.error.message);
+      }
         return;
       }
 
-      console.log('📷 Launching camera...');
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, // Allow taking full photo without cropping
-        quality: 0.8,
-        cameraType: ImagePicker.CameraType.back,
-      });
+    const amountValue = getNumericAmountFromInput(debouncedAmount);
 
-      console.log('📷 Camera result:', result);
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const imageUri = result.assets[0].uri;
-        console.log('✅ Photo taken successfully:', imageUri);
-        setSelectedImage(imageUri);
-        setShowImageOptions(false);
-        
-        // Auto-scan for expense tab without asking
-        if (activeTab === 'expense') {
-          console.log('🔄 Auto-scanning photo for expense...');
-          scanInvoice(imageUri);
-        } else {
-          console.log('ℹ️ Photo saved for income tab (no auto-scan)');
-        }
-      } else {
-        console.log('📷 Camera capture cancelled or failed');
-      }
-    } catch (error) {
-      console.error('❌ Error taking photo:', error);
-      Alert.alert(t('common.error'), t('common.failedToTakePhoto'));
-    }
-  };
-
-  const pickFromGallery = async () => {
-    try {
-      console.log('🖼️ Starting gallery picker...');
-      const hasPermission = await requestLibraryPermission();
-      if (!hasPermission) {
-        console.log('❌ Gallery permission denied');
-        return;
-      }
-
-      console.log('🖼️ Launching image library...');
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, // Allow selecting full image without cropping
-        quality: 0.8,
-        allowsMultipleSelection: false,
-        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
-        legacy: Platform.OS === 'android', // Use legacy picker on Android for better file access
-      });
-
-      console.log('🖼️ Gallery result:', result);
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const imageUri = result.assets[0].uri;
-        console.log('✅ Image selected successfully:', imageUri);
-        setSelectedImage(imageUri);
-        setShowImageOptions(false);
-        
-        // Auto-scan for expense tab without asking
-        if (activeTab === 'expense') {
-          console.log('🔄 Auto-scanning gallery image for expense...');
-          scanInvoice(imageUri);
-        } else {
-          console.log('ℹ️ Photo saved for income tab (no auto-scan)');
-        }
-      } else {
-        console.log('🖼️ Gallery selection cancelled or failed');
-      }
-    } catch (error) {
-      console.error('❌ Error picking image:', error);
-      Alert.alert(t('common.error'), t('common.failedToPickImage'));
-    }
-  };
-
-  const pickFromGalleryWithCrop = async () => {
-    try {
-      console.log('✂️ Starting gallery picker with crop...');
-      const hasPermission = await requestLibraryPermission();
-      if (!hasPermission) {
-        console.log('❌ Gallery permission denied for crop');
-        return;
-      }
-
-      console.log('✂️ Launching image library with crop editor...');
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true, // Allow editing/cropping
-        aspect: [4, 3],
-        quality: 0.8,
-        allowsMultipleSelection: false,
-        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
-      });
-
-      console.log('✂️ Gallery with crop result:', result);
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const imageUri = result.assets[0].uri;
-        console.log('✅ Cropped image selected successfully:', imageUri);
-        setSelectedImage(imageUri);
-        setShowImageOptions(false);
-        
-        // Auto-scan for expense tab without asking
-        if (activeTab === 'expense') {
-          console.log('🔄 Auto-scanning cropped image for expense...');
-          scanInvoice(imageUri);
-        } else {
-          console.log('ℹ️ Photo saved for income tab (no auto-scan)');
-        }
-    } else {
-        console.log('✂️ Gallery with crop cancelled or failed');
-      }
-    } catch (error) {
-      console.error('❌ Error picking image with crop:', error);
-      Alert.alert(t('common.error'), t('common.failedToPickImage'));
-    }
-  };
-
-  const scanInvoice = async (imageUri: string) => {
-    console.log('🤖 Starting OCR scan process...');
-    console.log('📸 Image URI:', imageUri);
-    setIsScanning(true);
-    try {
-      console.log('🔄 Scanning invoice for OCR...');
-      
-      // Convert image URI to File/Blob for web or create proper format for mobile
-      let file: File | Blob;
-      
-      if (Platform.OS === 'web') {
-        console.log('🌐 Platform: Web - Converting URI to blob...');
-        // For web, convert URI to blob
-        const response = await fetch(imageUri);
-        file = await response.blob();
-        console.log('✅ Blob created for web:', file.size, 'bytes');
-      } else {
-        console.log('📱 Platform: Mobile - Creating file object...');
-        // For mobile, create a file-like object
-        const filename = imageUri.split('/').pop() || 'receipt.jpg';
-        console.log('📝 Original filename:', filename);
-        
-        file = {
-          uri: imageUri,
-          type: 'image/jpeg',
-          name: filename,
-        } as any;
-        
-        console.log('✅ File object created for mobile:', {
-          uri: (file as any).uri,
-          type: (file as any).type,
-          name: (file as any).name
-        });
-      }
-      
-      console.log('🚀 Calling OCR service...');
-      const ocrResult: TransactionOcrResponse = await ocrService.scanInvoice(file);
-      console.log('📊 OCR Result received:', ocrResult);
-      
-      // Auto-fill form with OCR results
-      if (ocrResult.total_amount) {
-        console.log('💰 Setting amount:', ocrResult.total_amount);
-        setAmount(formatAmountFromNumber(ocrResult.total_amount));
-      } else {
-        console.log('⚠️ No amount found in OCR result');
-      }
-      
-      if (ocrResult.transaction_date) {
-        console.log('📅 Setting date:', ocrResult.transaction_date);
-        // Parse date properly to avoid timezone issues
-        const parsedDate = new Date(ocrResult.transaction_date);
-        if (!isNaN(parsedDate.getTime())) {
-          // Create a new date object in local timezone to preserve the date
-          const localDate = new Date(
-            parsedDate.getFullYear(),
-            parsedDate.getMonth(),
-            parsedDate.getDate()
-          );
-          setDate(localDate);
-          console.log('✅ Date set successfully (local):', localDate);
-        } else {
-          console.log('❌ Invalid date format:', ocrResult.transaction_date);
-        }
-      } else {
-        console.log('⚠️ No date found in OCR result');
-      }
-      
-      if (ocrResult.description_invoice) {
-        console.log('📝 Setting note:', ocrResult.description_invoice);
-        setNote(ocrResult.description_invoice);
-      } else {
-        console.log('⚠️ No description found in OCR result');
-      }
-      
-      // Update the receipt image URL from OCR response
-      if (ocrResult.receipt_image_url) {
-        console.log('🖼️ Updating image URL:', ocrResult.receipt_image_url);
-        setSelectedImage(ocrResult.receipt_image_url);
-      } else {
-        console.log('ℹ️ No receipt image URL in OCR result, keeping original');
-      }
-      
-      console.log('✅ Invoice scanned and form auto-filled successfully');
-      
-    } catch (error: any) {
-      console.error('❌ Failed to scan invoice:', error);
-      console.error('🔍 Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      setToastMessage(t('common.failedToExtractText'));
-      setToastType('error');
-      setShowToast(true);
-    } finally {
-      console.log('🏁 OCR scan process completed');
-      setIsScanning(false);
-    }
-  };
-
-  const removeImage = () => {
-    setSelectedImage(null);
-  };
-
-  const handleSave = async () => {
-    if (!validateForm()) return;
-
-    setIsSaving(true);
-    try {
-      console.log('🔄 Getting user profile for transaction...');
-      
-      // Get user profile to get real userId
-      const userProfile = await secureApiService.getCurrentUserProfile();
-      const userId = userProfile.user_id;
-      
-      console.log('✅ User ID for transaction:', userId);
-
-      const amountValue = getNumericAmount(amount);
-      const categoryId = parseInt(selectedCategory);
-
-      console.log('🔍 Form debug info:', {
-        selectedCategory: selectedCategory,
-        parsedCategoryId: categoryId,
-        activeTab: activeTab,
-        transactionType: activeTab === 'expense' ? TransactionType.EXPENSE : TransactionType.INCOME,
-        currentCategories: getCurrentCategories().map(cat => ({
-          key: cat.key,
-          label: cat.label,
-          category_id: cat.category_id
-        })),
-        selectedCategoryDetails: getCurrentCategories().find(cat => cat.key === selectedCategory)
-      });
-
-      // Format date with current Vietnam time in ISO format
-      const formatDateForAPI = (date: Date): string => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        
-        // Get current time (already in Vietnam timezone)
-        const now = new Date();
-        
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-        const milliseconds = String(now.getMilliseconds()).padStart(2, '0');
-        
-        // Format: 2025-07-20T08:04:33.11
-        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
-      };
-
-      const transactionData: CreateTransactionRequest = {
-        user_id: userId, // Use real userId from /me API
-        wallet_id: fromGroupOverview ? 0 : selectedWallet!, // Set wallet_id to 0 for group transactions
-        category_id: categoryId,
-        group_id: fromGroupOverview && groupContextId ? parseInt(groupContextId) : undefined, // Convert groupId to number
-
+    // Prepare form data
+    const formData = {
         amount: amountValue,
-        currency_code: 'VND',
-        transaction_date: formatDateForAPI(date),
-        description: note.trim() || undefined,
-        receipt_image_url: selectedImage || null,
-        payee_payer_name: undefined,
-      };
+      note,
+      date,
+      selectedCategory,
+      selectedWallet,
+      selectedImage,
+    };
 
-      console.log('🔄 Saving transaction:', transactionData);
-      console.log('🔍 Transaction context:', {
-        fromGroupOverview: fromGroupOverview,
-        groupContextId: groupContextId,
-        groupContextIdType: typeof groupContextId,
-        parsedGroupId: fromGroupOverview && groupContextId ? parseInt(groupContextId) : undefined,
-        finalGroupId: fromGroupOverview && groupContextId ? parseInt(groupContextId) : undefined,
-        isGroupTransaction: !!fromGroupOverview
-      });
-      console.log('📅 Date debugging:', {
-        originalDate: date,
-        localDateString: date.toLocaleDateString(),
-        isoString: date.toISOString(),
-        formattedForAPI: formatDateForAPI(date),
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-      });
+    // Use optimized save transaction hook
+    await saveTransaction(formData);
+  }, [
+    validateForm,
+    getNumericAmountFromInput,
+    debouncedAmount,
+    note,
+    date,
+    selectedCategory,
+    selectedWallet,
+    selectedImage,
+    saveTransaction,
+    showErrorModal,
+  ]);
 
-      if (isEditMode && routeParams?.transactionData?.id) {
-        // Update existing transaction
-        const transactionId = parseInt(routeParams.transactionData.id);
-        console.log('🔄 Updating existing transaction with ID:', transactionId);
-        await transactionService.updateTransaction(transactionId, transactionData);
-        // Trigger global refresh và quay lại ngay
-        refreshTransactions();
-        setIsSaving(false); // Đặt trước navigation.goBack()
-        setSuccessModalTitle(t('common.success'));
-        setSuccessModalMessage(t('common.transactionUpdated'));
-        setSuccessModalVisible(true);
-        setOnSuccessModalConfirm(() => () => {
-          setSuccessModalVisible(false);
-          navigation.goBack();
-        });
-      } else {
-        // Create new transaction
-        if (activeTab === 'expense') {
-          await transactionService.createExpense(transactionData);
-        } else {
-          await transactionService.createIncome(transactionData);
-        }
-        // Trigger global refresh và quay lại ngay
-        refreshTransactions();
-        setIsSaving(false); // Đặt trước navigation.goBack()
-        setSuccessModalTitle(t('common.success'));
-        setSuccessModalMessage(t('common.transactionSaved'));
-        setSuccessModalVisible(true);
-        setOnSuccessModalConfirm(() => () => {
-          setSuccessModalVisible(false);
-          navigation.goBack();
-        });
-      }
 
-    } catch (error: any) {
-      console.error('Error saving transaction:', error);
-      
-      // Handle authentication errors specifically  
-      if (error.message?.includes('Authentication failed') || 
-          error.message?.includes('Please login again') ||
-          error.message?.includes('User not authenticated')) {
-        setErrorModalTitle(t('common.error'));
-        setErrorModalMessage(t('common.pleaseLogin'));
-        setErrorModalVisible(true);
-        setOnSuccessModalConfirm(() => () => {
-          setErrorModalVisible(false);
-          if (fromGroupTransactionList && groupContextId && groupContextName) {
-            (navigation as any).reset({
-              index: 1,
-              routes: [
-                { name: 'GroupDetail', params: { groupId: groupContextId, groupName: groupContextName } },
-                { name: 'GroupTransactionList', params: { groupId: groupContextId, groupName: groupContextName } }
-              ],
-            });
-          } else if (fromGroupOverview && groupContextId && groupContextName) {
-            // For GroupOverview, just go back normally to avoid navigation stack issues
-            navigation.goBack();
-          } else {
-            // Normal navigation back
-            navigation.goBack();
-          }
-        });
-      } else {
-        setErrorModalTitle(t('common.error'));
-        setErrorModalMessage(t('common.failedToSaveTransaction'));
-        setErrorModalVisible(true);
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const validateForm = () => {
-    if (!amount.trim()) {
-      setErrorModalTitle(t('common.error'));
-      setErrorModalMessage(t('common.pleaseEnterAmount'));
-      setErrorModalVisible(true);
-      return false;
-    }
-    
-    const amountValue = getNumericAmount(amount);
-    if (amountValue <= 0) {
-      setErrorModalTitle(t('common.error'));
-      setErrorModalMessage(t('common.pleaseEnterValidAmount'));
-      setErrorModalVisible(true);
-      return false;
-    }
-    
-    // Check if amount exceeds 15 digits
-    const digitsOnly = amount.replace(/[^\d]/g, '');
-    if (digitsOnly.length > 15) {
-      setErrorModalTitle(t('common.error'));
-      setErrorModalMessage(t('common.amountExceed15Digits'));
-      setErrorModalVisible(true);
-      return false;
-    }
-    
-    // Check if amount is too large for JavaScript number precision
-    if (amountValue > Number.MAX_SAFE_INTEGER) {
-      setErrorModalTitle(t('common.error'));
-      setErrorModalMessage(t('common.amountTooLarge'));
-      setErrorModalVisible(true);
-      return false;
-    }
-    
-    // Validate note (optional but with constraints if provided)
-    if (note.trim().length > 500) {
-      setErrorModalTitle(t('common.error'));
-      setErrorModalMessage(t('common.noteExceed500Chars'));
-      setErrorModalVisible(true);
-      return false;
-    }
-    
-    // Check for potentially malicious content in note
-    const suspiciousPatterns = [
-      /<script/i,
-      /javascript:/i,
-      /on\w+\s*=/i,
-      /<iframe/i,
-      /<object/i,
-      /<embed/i
-    ];
-    
-    if (suspiciousPatterns.some(pattern => pattern.test(note))) {
-      setErrorModalTitle(t('common.error'));
-      setErrorModalMessage(t('common.noteInvalidChars'));
-      setErrorModalVisible(true);
-      return false;
-    }
-    
-    if (!selectedCategory) {
-      setErrorModalTitle(t('common.error'));
-      setErrorModalMessage(t('common.pleaseSelectCategory'));
-      setErrorModalVisible(true);
-      return false;
-    }
-    
-    // Only validate wallet selection if not from group overview
-    if (!fromGroupOverview && !selectedWallet) {
-      setErrorModalTitle(t('common.error'));
-      setErrorModalMessage(t('common.pleaseSelectWallet'));
-      setErrorModalVisible(true);
-      return false;
-    }
-    
-    return true;
-  };
 
   const formatDate = (date: Date) => {
     const currentLocale = i18n.language || 'en';
@@ -1205,9 +696,9 @@ export default function AddExpenseScreen() {
     });
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = useCallback((event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
-      setShowDatePicker(false);
+      closeDatePicker();
     }
     if (selectedDate) {
       // Ensure we use the selected date in local timezone
@@ -1223,9 +714,9 @@ export default function AddExpenseScreen() {
         localString: localDate.toLocaleDateString()
       });
     }
-  };
+  }, [closeDatePicker]);
 
-  const getCurrentCategories = useCallback(() => {
+  const getCurrentCategories = useMemo(() => {
     const categories = activeTab === 'expense' ? expenseCategories : incomeCategories;
     
     // Only add "Edit" item if not called from GroupOverviewScreen
@@ -1256,7 +747,7 @@ export default function AddExpenseScreen() {
     ];
   }, [activeTab, expenseCategories, incomeCategories, fromGroupOverview]);
 
-  const getSelectedWalletName = useCallback(() => {
+  const getSelectedWalletName = useMemo(() => {
     // For group transactions, show a special message
     if (fromGroupOverview && selectedWallet === 0) {
       return t('groupTransaction.groupWallet');
@@ -1269,50 +760,24 @@ export default function AddExpenseScreen() {
     return wallet ? wallet.wallet_name : t('wallet.addWallet');
   }, [fromGroupOverview, selectedWallet, wallets, t]);
 
-  const handleWalletPickerPress = () => {
+  const handleWalletPickerPress = useCallback(() => {
     if (wallets.length === 0) {
       // No wallets available, show create wallet modal
-      setShowCreateWalletModal(true);
+      openCreateWalletModal();
     } else {
       // Has wallets, show wallet picker
-      setShowWalletPicker(true);
+      openWalletPicker();
     }
-  };
+  }, [wallets.length, openCreateWalletModal, openWalletPicker]);
 
-  const handleCreateWallet = () => {
-    setShowCreateWalletModal(false);
+  const handleCreateWallet = useCallback(() => {
+    closeCreateWalletModal();
     (navigation as any).navigate('AddWalletScreen');
-  };
+  }, [navigation, closeCreateWalletModal]);
 
-  // Hàm format số tiền với dấu phẩy
-  const formatAmountInput = (text: string): string => {
-    // Loại bỏ tất cả ký tự không phải số
-    const numericValue = text.replace(/[^\d]/g, '');
-    
-    if (numericValue === '') return '';
-    
-    // Giới hạn tối đa 15 chữ số - chỉ lấy 15 chữ số đầu tiên
-    const limitedNumericValue = numericValue.slice(0, 15);
-    
-    // Chuyển thành số và format với dấu phẩy
-    const number = parseInt(limitedNumericValue, 10);
-    return number.toLocaleString('vi-VN');
-  };
 
-  // Hàm lấy giá trị số từ text đã format
-  const getNumericAmount = (formattedText: string): number => {
-    const numericValue = formattedText.replace(/[^\d]/g, '');
-    return numericValue ? parseInt(numericValue, 10) : 0;
-  };
 
-  // Thêm hàm copy transaction
-  const handleCopyTransaction = () => {
-    if (!isEditMode || !transactionData) return;
-    navigation.navigate('AddExpenseScreen', {
-      ...transactionData,
-      editMode: false, // chuyển sang chế độ add
-    });
-  };
+
 
 
   const renderCategoryItem = useCallback(({ item }: { item: LocalCategory }) => {
@@ -1361,8 +826,8 @@ export default function AddExpenseScreen() {
   // Progressive loading - không block UI hoàn toàn
   const showFullLoading = (authLoading || isLoading) && !hasInitiallyLoaded;
 
-  // Skeleton Loading Component
-  const SkeletonLoader = React.memo(() => (
+  // Skeleton Loading Component - memoized for better performance
+  const SkeletonLoader = useMemo(() => React.memo(() => (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         {/* Header Skeleton */}
@@ -1406,13 +871,13 @@ export default function AddExpenseScreen() {
         </View>
       </View>
     </SafeAreaView>
-  ));
+  )), []);
 
-  SkeletonLoader.displayName = 'SkeletonLoader';
+  const MemoizedSkeletonLoader = SkeletonLoader;
 
   // Show full loading only when no data has been loaded
   if (showFullLoading) {
-    return <SkeletonLoader />;
+    return <MemoizedSkeletonLoader />;
   }
 
   // Show scanning overlay when OCR is processing
@@ -1480,7 +945,7 @@ export default function AddExpenseScreen() {
             {isEditMode && (
               <TouchableOpacity
                 style={styles.cameraButton}
-                onPress={handleCopyTransaction}
+                onPress={copyTransaction}
               >
                 <Icon name="content-copy" size={24} color="#007aff" />
               </TouchableOpacity>
@@ -1505,7 +970,7 @@ export default function AddExpenseScreen() {
             <Text style={styles.label}>{t('date')}</Text>
               <TouchableOpacity 
             style={styles.input}
-            onPress={() => setShowDatePicker(true)}
+            onPress={openDatePicker}
           >
             <Text style={styles.dateText}>{formatDate(date)}</Text>
               </TouchableOpacity>
@@ -1524,7 +989,7 @@ export default function AddExpenseScreen() {
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {getSelectedWalletName()}
+              {getSelectedWalletName}
             </Text>
                 <Icon 
                   name="chevron-down" 
@@ -1546,11 +1011,7 @@ export default function AddExpenseScreen() {
               style={styles.amountInput}
                 placeholder="0"
                 value={amount}
-                onChangeText={(text) => {
-                  // Format with commas and limit to 15 digits
-                  const formattedText = formatAmountInput(text);
-                  setAmount(formattedText);
-                }}
+                onChangeText={handleAmountChange}
                 keyboardType="numeric"
                 maxLength={20} // Reduced for 15 digits with commas
               />
@@ -1603,7 +1064,7 @@ export default function AddExpenseScreen() {
         <Text style={styles.sectionTitle}>{t('category.title')}</Text>
         <View style={{ width: '100%', paddingHorizontal: 0 }}>
             <FlatList
-              data={getCurrentCategories()}
+              data={getCurrentCategories}
               renderItem={renderCategoryItem}
           keyExtractor={(item) => item.key}
           numColumns={4}
@@ -1612,6 +1073,14 @@ export default function AddExpenseScreen() {
               showsHorizontalScrollIndicator={false}
               showsVerticalScrollIndicator={false}
               style={{ width: '100%' }}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={8}
+              windowSize={5}
+              getItemLayout={(data, index) => ({
+                length: 80, // Approximate height of category item
+                offset: 80 * Math.floor(index / 4),
+                index,
+              })}
             />
         </View>
 
@@ -1620,22 +1089,17 @@ export default function AddExpenseScreen() {
       </ScrollView>
       {/* Đặt nút Save ra ngoài ScrollView, luôn cố định dưới cùng */}
       <View style={styles.fixedSaveButtonContainer}>
-        <TouchableOpacity 
-          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+        <OptimizedSaveButton
           onPress={handleSave}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-                <ActivityIndicator size="small" color="#fff" />
-            ) : (
-            <Text style={styles.saveButtonText}>
-              {isEditMode 
+          isLoading={isSaving}
+          title={isEditMode 
                 ? (activeTab === 'expense' ? t('common.editExpense') : t('common.editIncome'))
                 : (activeTab === 'expense' ? t('common.addExpense') : t('common.addIncome'))
               }
-            </Text>
-            )}
-          </TouchableOpacity>
+          style={styles.saveButton}
+          textStyle={styles.saveButtonText}
+          loadingColor="#fff"
+        />
       </View>
 
       {/* Date Picker */}
@@ -1644,11 +1108,11 @@ export default function AddExpenseScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <TouchableOpacity onPress={closeDatePicker}>
                   <Text style={styles.modalButton}>{t('cancel')}</Text>
                 </TouchableOpacity>
                 <Text style={styles.modalTitle}>{t('date')}</Text>
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <TouchableOpacity onPress={closeDatePicker}>
                   <Text style={styles.modalButton}>{t('done')}</Text>
                 </TouchableOpacity>
               </View>
@@ -1670,7 +1134,7 @@ export default function AddExpenseScreen() {
           <TouchableOpacity 
             style={styles.walletModalOverlay} 
             activeOpacity={1} 
-            onPress={() => setShowWalletPicker(false)}
+            onPress={closeWalletPicker}
           >
             <View style={styles.walletPickerContainer}>
               <Text style={styles.walletPickerTitle}>{t('common.selectWallet')}</Text>
@@ -1683,7 +1147,7 @@ export default function AddExpenseScreen() {
                   ]}
                   onPress={() => {
                     setSelectedWallet(wallet.id);
-                    setShowWalletPicker(false);
+                    closeWalletPicker();
                   }}
                 >
                   <Text
@@ -1768,7 +1232,7 @@ export default function AddExpenseScreen() {
             <View style={styles.createWalletButtons}>
               <TouchableOpacity
                 style={[styles.createWalletButton, styles.createWalletButtonCancel]}
-                onPress={() => setShowCreateWalletModal(false)}
+                onPress={closeCreateWalletModal}
               >
                 <Text style={styles.createWalletButtonTextCancel}>{t('common.no')}</Text>
               </TouchableOpacity>
@@ -1787,581 +1251,28 @@ export default function AddExpenseScreen() {
       
       {/* Custom Toast */}
       <CustomToast
-        visible={showToast}
-        message={toastMessage}
-        type={toastType}
-        onHide={() => setShowToast(false)}
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
         duration={4000}
       />
       <CustomErrorModal
-        visible={errorModalVisible}
-        title={errorModalTitle}
-        message={errorModalMessage}
-        onDismiss={() => {
-          setErrorModalVisible(false);
-          if (onSuccessModalConfirm) {
-            onSuccessModalConfirm();
-            setOnSuccessModalConfirm(null);
-          }
-        }}
+        visible={errorModal.visible}
+        title={errorModal.title}
+        message={errorModal.message}
+        onDismiss={hideErrorModal}
       />
       <CustomSuccessModal
-        visible={successModalVisible}
-        title={successModalTitle}
-        message={successModalMessage}
+        visible={successModal.visible}
+        title={successModal.title}
+        message={successModal.message}
         buttonText={t('common.ok')}
-        onConfirm={() => {
-          if (onSuccessModalConfirm) {
-            onSuccessModalConfirm();
-            setOnSuccessModalConfirm(null);
-          } else {
-            setSuccessModalVisible(false);
-          }
-        }}
+        onConfirm={hideSuccessModal}
       />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#fff', 
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#666',
-    ...typography.regular,
-    fontSize: 16,
-  },
-  subLoadingText: {
-    marginTop: 5,
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    ...typography.regular,
-   
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-    paddingBottom: 80, // Thêm padding bottom để tránh bị che bởi nút Save
-    width: '100%', // Đảm bảo width đúng
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  tabContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    marginLeft: 16,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  tabActive: {
-    backgroundColor: '#007aff',
-  },
-  tabText: {
-    color: '#666',
-    fontWeight: '500',
-  },
-  tabTextActive: {
-    color: '#fff',
-  },
-  editHeaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 16,
-  },
-  editHeaderTitle: {
-    fontSize: 18,
-    ...typography.semibold,
-    color: '#333',
-  },
-  row: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 16,
-  },
-  label: { 
-    width: 80,
-    fontSize: 16, 
-    color: '#333', 
-    ...typography.regular, 
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    position: 'relative', // Thêm position relative
-  },
-  inputText: {
-    fontSize: 16,
-    color: '#333',
-    flex: 1, // Cho phép text chiếm hết không gian có sẵn
-    marginRight: 24, // Để lại khoảng trống cho icon dropdown
-  },
-  dateText: {
-    fontSize: 16,
-    color: '#007aff',
-    ...typography.regular,
-  },
-  amountContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  amountInput: {
-    flex: 1,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
-    fontSize: 16,
-    minHeight: 44, // Đảm bảo chiều cao tối thiểu
-  },
-  currency: {
-    marginLeft: 8, 
-    color: '#666',
-    fontSize: 16,
-  },
-  noteContainer: {
-    flex: 1,
-  },
-  noteInput: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
-    fontSize: 16,
-    minHeight: 80,
-    maxHeight: 120,
-  },
-  characterCount: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'right',
-    marginTop: 4,
-  },
 
-  sectionTitle: {
-    fontSize: 16,
-    ...typography.regular,
-    color: '#333',
-    marginBottom: 12,
-    paddingHorizontal: 8, // Thêm padding horizontal cân bằng với categories
-    width: '100%', // Đảm bảo title chiếm toàn bộ chiều rộng
-  },
-  categoriesContainer: { 
-    paddingBottom: 20,
-    paddingHorizontal: 8, // Thêm padding horizontal cân bằng hai bên
-    width: '100%', // Đảm bảo container chiếm toàn bộ chiều rộng
-    // Đảm bảo categories có margin cân bằng hai bên
-  },
-  categoryItem: {
-    width: '25%', // Đảm bảo mỗi item chiếm đúng 1/4 chiều rộng
-    aspectRatio: 1, // Đảm bảo item có hình vuông
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 4, // Giảm padding hơn nữa
-   // Tăng margin để tạo khoảng cách cân bằng
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#eee',
-    backgroundColor: '#fff',
-  },
-  categoryItemSelected: {
-    borderColor: '#007aff',
-    backgroundColor: '#e6f2ff',
-  },
-  categoryText: { 
-    fontSize: 9, // Giảm font size hơn nữa
-    color: '#333', 
-    marginTop: 2, // Giảm margin top
-    textAlign: 'center',
-    lineHeight: 11, // Giảm line height
-    flexWrap: 'wrap',
-    paddingHorizontal: 2, // Thêm padding horizontal cho text
-  },
-  saveButton: {
-    backgroundColor: '#007aff',
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 0, // Bỏ margin top vì đã có padding trong container
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  saveButtonText: {
-    color: '#fff', 
-    fontSize: 16,
-    ...typography.semibold,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  modalTitle: {
-    fontSize: 18,
-    ...typography.semibold,
-  },
-  modalButton: {
-    fontSize: 16,
-    color: '#1e90ff',
-  },
-  walletModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  walletPickerContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    width: '100%',
-    maxWidth: 320,
-    maxHeight: 400,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  walletPickerTitle: {
-    fontSize: 18,
-    ...typography.semibold,
-    color: '#333',
-    textAlign: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  walletPickerItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  walletPickerItemSelected: {
-    backgroundColor: '#e6f2ff',
-  },
-  walletPickerItemText: {
-    fontSize: 16,
-    color: '#333',
-    flex: 1,
-  },
-  walletPickerItemTextSelected: {
-    color: '#1e90ff',
-    ...typography.semibold,
-  },
-  walletPickerDefault: {
-    fontSize: 12,
-    color: '#1e90ff',
-    backgroundColor: '#e6f2ff',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    ...typography.regular,
-  },
-  // Camera button styles
-  cameraButton: {
-    marginLeft: 12,
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-  },
-  // Image styles
-  imageContainer: {
-    position: 'relative',
-    flex: 1,
-  },
-  receiptImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#ff4444',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Image options modal styles
-  imageOptionsContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    width: '80%',
-    maxWidth: 320,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  imageOptionsTitle: {
-    fontSize: 18,
-    ...typography.semibold,
-    color: '#333',
-    textAlign: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  imageOptionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  imageOptionCancel: {
-    borderBottomWidth: 0,
-  },
-  imageOptionText: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 12,
-    flex: 1,
-  },
-  imageOptionCancelText: {
-    color: '#666',
-  },
-  // Create Wallet Modal styles
-  createWalletModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  createWalletContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    width: '80%',
-    maxWidth: 320,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-    padding: 20,
-  },
-  createWalletTitle: {
-    fontSize: 18,
-    ...typography.semibold,
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  createWalletMessage: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  createWalletButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  createWalletButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  createWalletButtonCancel: {
-    backgroundColor: '#f0f0f0',
-  },
-  createWalletButtonConfirm: {
-    backgroundColor: '#007aff',
-  },
-  createWalletButtonTextCancel: {
-    color: '#666',
-    fontSize: 16,
-    ...typography.regular,
-  },
-  createWalletButtonTextConfirm: {
-    color: '#fff',
-    fontSize: 16,
-    ...typography.regular,
-  },
-  // Group context styles
-  groupContextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8F4FD',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  groupContextText: {
-    fontSize: 14,
-    color: '#4A90E2',
-    ...typography.regular,
-    marginLeft: 6,
-  },
-  // Thêm style mới cho container cố định nút Save
-  fixedSaveButtonContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    // Đảm bảo nút Save luôn ở dưới cùng và không bị che
-  },
-  
-  // Skeleton Styles
-  skeletonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  skeletonBackButton: {
-    width: 24,
-    height: 24,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 12,
-  },
-  skeletonTabContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    marginLeft: 16,
-    height: 36,
-  },
-  skeletonTab: {
-    flex: 1,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 8,
-    margin: 2,
-  },
-  skeletonCameraButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 20,
-    marginLeft: 12,
-  },
-  skeletonFormContainer: {
-    marginBottom: 20,
-  },
-  skeletonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  skeletonLabel: {
-    width: 80,
-    height: 16,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 4,
-  },
-  skeletonInput: {
-    flex: 1,
-    height: 44,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    marginLeft: 12,
-  },
-  skeletonAmountInput: {
-    flex: 1,
-    height: 44,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    marginLeft: 12,
-  },
-  skeletonNoteInput: {
-    flex: 1,
-    height: 80,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    marginLeft: 12,
-  },
-  skeletonCategoriesContainer: {
-    marginTop: 20,
-  },
-  skeletonSectionTitle: {
-    width: 120,
-    height: 16,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 4,
-    marginBottom: 12,
-  },
-  skeletonCategoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  skeletonCategoryItem: {
-    width: '23%',
-    aspectRatio: 1,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-});
 

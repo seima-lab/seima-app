@@ -18,9 +18,22 @@ const MainTabScreen = React.memo(() => {
   const initialTabParam = (route.params as any)?.initialTab as TabType | undefined;
   const [activeTab, setActiveTab] = useState<TabType>(initialTabParam || getDefaultTab());
 
+  console.log('📱 [MainTabScreen] Initialized with:', {
+    initialTabParam,
+    activeTab,
+    routeParams: route.params
+  });
+
   // Lắng nghe param initialTab thay đổi để chuyển tab tương ứng
   useEffect(() => {
+    console.log('📱 [MainTabScreen] Tab change effect:', {
+      initialTabParam,
+      currentActiveTab: activeTab,
+      willChange: initialTabParam && initialTabParam !== activeTab
+    });
+    
     if (initialTabParam && initialTabParam !== activeTab) {
+      console.log('✅ [MainTabScreen] Switching to tab:', initialTabParam);
       setActiveTab(initialTabParam);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

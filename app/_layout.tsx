@@ -10,36 +10,36 @@ import { ActivityIndicator, LogBox, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import {
-    AddEditCategoryScreenWithNav,
-    AddExpenseScreenWithNav,
-    AddWalletScreenWithNav,
-    ApproveMembersScreenWithNav,
-    BudgetDetailScreenWithNav,
-    BudgetScreenWithNav,
-    CalendarScreenWithNav,
-    CategoryReportDetailScreenWithNav,
-    ChangePasswordScreenWithNav,
-    ChatAIScreenWithNav,
-    CreateGroupScreenWithNav,
-    EditCategoryScreenWithNav,
-    EditGroupScreenWithNav,
-    FinanceScreenWithNav,
-    GroupDetailTabScreenWithNav,
-    GroupManagementScreenWithNav,
-    GroupMembersScreenWithNav,
-    GroupSettingsScreenWithNav,
-    GroupTransactionListScreenWithNav,
-    InviteUsersScreenWithNav,
-    NotificationDetailScreenWithNav,
-    NotificationsScreenWithNav,
-    PendingGroupsScreenWithNav,
-    ReportDetailScreenWithNav,
-    ReportScreenWithNav,
-    SelectCategoryScreenWithNav,
-    SetBudgetLimitScreenWithNav,
-    StatusInviteMemberWithNav,
-    UpdateProfileScreenWithNav,
-    ViewCategoryReportScreenWithNav
+  AddEditCategoryScreenWithNav,
+  AddExpenseScreenWithNav,
+  AddWalletScreenWithNav,
+  ApproveMembersScreenWithNav,
+  BudgetDetailScreenWithNav,
+  BudgetScreenWithNav,
+  CalendarScreenWithNav,
+  CategoryReportDetailScreenWithNav,
+  ChangePasswordScreenWithNav,
+  ChatAIScreenWithNav,
+  CreateGroupScreenWithNav,
+  EditCategoryScreenWithNav,
+  EditGroupScreenWithNav,
+  FinanceScreenWithNav,
+  GroupDetailTabScreenWithNav,
+  GroupManagementScreenWithNav,
+  GroupMembersScreenWithNav,
+  GroupSettingsScreenWithNav,
+  GroupTransactionListScreenWithNav,
+  InviteUsersScreenWithNav,
+  NotificationDetailScreenWithNav,
+  NotificationsScreenWithNav,
+  PendingGroupsScreenWithNav,
+  ReportDetailScreenWithNav,
+  ReportScreenWithNav,
+  SelectCategoryScreenWithNav,
+  SetBudgetLimitScreenWithNav,
+  StatusInviteMemberWithNav,
+  UpdateProfileScreenWithNav,
+  ViewCategoryReportScreenWithNav
 } from '../components/ScreenWrappers';
 import TokenExpiryProvider from '../components/UserPresenceProvider';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
@@ -56,6 +56,12 @@ import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import SelectWalletScreen from '../screens/SelectWalletScreen';
 import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import BranchService from '../services/branchService';
+import { debugLog } from '../utils/notificationDebugUtils';
+import {
+  handleFirebaseMessageNavigation,
+  handleNotifeeEventNavigation,
+  setNavigationRef
+} from '../utils/notificationNavigationUtils';
 
 // Cấu hình Stack Navigator
 const Stack = createNativeStackNavigator();
@@ -144,6 +150,14 @@ function AuthNavigator() {
 function AppNavigator() {
   const { isLoading } = useLanguage();
 
+  // Set navigation ref when NavigationContainer is ready - MUST be called before any conditional returns
+  useEffect(() => {
+    if (navigationRef?.current) {
+      setNavigationRef(navigationRef.current);
+      console.log('✅ [AppNavigator] Navigation ref set for notification navigation');
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
@@ -153,11 +167,23 @@ function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer 
+      ref={navigationRef}
+      onReady={() => {
+        // Set navigation ref when container is ready
+        if (navigationRef?.current) {
+          setNavigationRef(navigationRef.current);
+          console.log('✅ [NavigationContainer] Ready - Navigation ref set for notification navigation');
+        }
+      }}
+    >
       <AuthNavigator />
     </NavigationContainer>
   );
 }
+
+// Global flag to prevent multiple handler setups
+let handlersInitialized = false;
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -166,6 +192,7 @@ export default function RootLayout() {
     RobotoMedium: require('../assets/fonts/Roboto-Medium.ttf'),
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+
 const requestPermission = async () => {
   const authStatus = await messaging().requestPermission();
   console.log('Notification Permission status:', authStatus);
@@ -176,7 +203,18 @@ const requestPermission = async () => {
     console.log('Notification permission not granted');
   }
 };
+
   useEffect(() => {
+    // Prevent multiple initialization
+    if (handlersInitialized) {
+      console.log('🚫 [RootLayout] Handlers already initialized, skipping...');
+      return;
+    }
+    let foregroundMessageUnsubscribe: (() => void) | null = null;
+    let backgroundMessageUnsubscribe: (() => void) | null = null;
+    let notifeeUnsubscribe: any = null;
+    let notifeeForegroundUnsubscribe: any = null;
+    
     async function setupNotification() {
       // Tạo notification channel cho Android
       await notifee.createChannel({
@@ -186,88 +224,151 @@ const requestPermission = async () => {
       // Xin quyền notification
       await notifee.requestPermission();
     }
-    setupNotification();
-    BranchService.init();
-    requestPermission();
-    messaging().getToken().then(token => {
-      console.log('FCM Token:', token);
-    });
-  messaging().getInitialNotification().then(remoteMessage => {
-    if(remoteMessage) {
-      console.log('Initial notification:', remoteMessage);
- 
-    }
-  });
-
-  messaging().onMessage(async remoteMessage => {
-    console.log('📩 [onMessage - Foreground]', JSON.stringify(remoteMessage));
-  
-    // Check the structure of the remoteMessage object
-    console.log('Notification:', remoteMessage.notification);  // Logs notification content
-  
-    await notifee.displayNotification({
-      title: remoteMessage.notification?.title || 'Default Title',  // fallback title
-      body: remoteMessage.notification?.body || 'Default Body',    // fallback body
-      android: { channelId: 'default', pressAction: { id: 'default' } },
-      data: remoteMessage.data,
-    });
-  });
-  
-  messaging().onNotificationOpenedApp(remoteMessage => {
-    console.log('Notification caused app to open from background state:', remoteMessage);
-  });
-  notifee.onBackgroundEvent(async ({ type, detail }) => {
-    switch (type) {
-      case EventType.PRESS:
-        // Xử lý sự kiện khi người dùng nhấn vào thông báo
-        console.log('LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO', detail);
-        break;
-      default:
-        console.log('Sự kiện nền khác:', type);
-        break;
-    }
-  });
-  messaging().setBackgroundMessageHandler(async remoteMessage => {
-    console.log('📩 [onBackgroundMessage]', JSON.stringify(remoteMessage));
     
-  });
-  //   requestPermission();
-  //   messaging()
-  //   .requestPermission()
-  //   .then(authStatus => {
-  //     console.log('Notification Permission status:', authStatus);
-  //   });
-
-  // // Get FCM token
-  // messaging()
-  //   .getToken()
-  //   .then(token => {
-  //     console.log('FCM Token:', token);
-  //     // Send this token to backend to register for push notifications
-  //   });
-
-  // Handle foreground message
-  // const unsubscribeMsg = messaging().onMessage(async remoteMessage => {
-  //   console.log('📩 [onMessage - Foreground]', JSON.stringify(remoteMessage));
-  //   await notifee.displayNotification({
-  //     title: remoteMessage.notification?.title,
-  //     body: remoteMessage.notification?.body,
-  //     android: { channelId: 'default', pressAction: { id: 'default' } },
-  //     data: remoteMessage.data,
-  //   });
-  // });
-
-  // // Handle background message
-  // messaging().setBackgroundMessageHandler(async remoteMessage => {
-  //   console.log('📩 [onBackgroundMessage]', JSON.stringify(remoteMessage));
-  // });
-    return () => {
-      BranchService.cleanup();
-      // unsubscribeMsg();
-    messaging().unsubscribeFromTopic('all');
-      // console.log('[Notification] Handlers unsubscribed');
+    const initializeNotifications = async () => {
+      await setupNotification();
+      BranchService.init();
+      await requestPermission();
+      
+      // Set navigation ref for notification navigation
+      if (navigationRef && navigationRef.current) {
+        setNavigationRef(navigationRef.current);
+        console.log('✅ [RootLayout] Navigation ref set for notification navigation');
+      }
+      
+      // Get FCM token
+      messaging().getToken().then(token => {
+        console.log('FCM Token:', token);
+      });
+      
+      // Setup message handlers
+      setupMessageHandlers();
     };
-  }, []); // Dependency array rỗng vì bạn chỉ muốn thực thi hàm này một lần khi component mount
+    
+    const setupMessageHandlers = () => {
+      debugLog('Setting up notification handlers');
+      console.log('🔧 [RootLayout] Setting up notification handlers...');
+      
+      // Handle initial notification (app opened from killed state)
+      messaging().getInitialNotification().then(remoteMessage => {
+        if(remoteMessage) {
+          console.log('📱 [InitialNotification] Handler ID:', Date.now(), 'App opened from notification:', remoteMessage);
+          // Handle navigation from initial notification
+          setTimeout(() => {
+            handleFirebaseMessageNavigation(remoteMessage);
+          }, 1000); // Delay to ensure navigation is ready
+        }
+      });
+
+      // Handle foreground messages
+      foregroundMessageUnsubscribe = messaging().onMessage(async remoteMessage => {
+        console.log('📩 [onMessage - Foreground] Handler ID:', Date.now(), JSON.stringify(remoteMessage));
+      
+        // Check the structure of the remoteMessage object
+        console.log('Notification:', remoteMessage.notification);  // Logs notification content
+      
+        console.log('📱 [Foreground] Showing popup for all notifications');
+        
+        try {
+          // Show local notification for ALL notifications (including group notifications)
+          await notifee.displayNotification({
+            title: remoteMessage.notification?.title || 'Default Title',  // fallback title
+            body: remoteMessage.notification?.body || 'Default Body',    // fallback body
+            android: { channelId: 'default', pressAction: { id: 'default' } },
+            data: remoteMessage.data,
+          });
+          console.log('✅ [Foreground] Local notification displayed successfully');
+        } catch (error) {
+          console.error('🔴 [Foreground] Error displaying local notification:', error);
+        }
+      });
+      
+      // Handle background to foreground via notification
+      backgroundMessageUnsubscribe = messaging().onNotificationOpenedApp(remoteMessage => {
+        console.log('📱 [NotificationOpenedApp] Handler ID:', Date.now(), 'Background to foreground via notification:', remoteMessage);
+        // Handle navigation when app is opened from background by notification
+        handleFirebaseMessageNavigation(remoteMessage);
+      });
+      
+      // Handle local notification events (BACKGROUND)
+      notifeeUnsubscribe = notifee.onBackgroundEvent(async ({ type, detail }) => {
+        switch (type) {
+          case EventType.PRESS:
+            console.log('📱 [NotifeeBackgroundEvent] Handler ID:', Date.now(), 'Local notification pressed:', detail);
+            // Handle navigation when local notification is pressed
+            if (detail?.notification) {
+              handleNotifeeEventNavigation(detail.notification);
+            }
+            break;
+          default:
+            console.log('📱 [NotifeeBackgroundEvent] Handler ID:', Date.now(), 'Other background event:', type);
+            break;
+        }
+      });
+      
+      // 🚨 CRITICAL: Handle local notification events (FOREGROUND)
+      notifeeForegroundUnsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+        switch (type) {
+          case EventType.PRESS:
+            console.log('📱 [NotifeeForegroundEvent] Handler ID:', Date.now(), 'FOREGROUND notification pressed:', detail);
+            // Handle navigation when local notification is pressed in foreground
+            if (detail?.notification) {
+              console.log('🎯 [ForegroundEvent] Triggering navigation for foreground notification tap');
+              handleNotifeeEventNavigation(detail.notification);
+            }
+            break;
+          default:
+            console.log('📱 [NotifeeForegroundEvent] Handler ID:', Date.now(), 'Other foreground event:', type);
+            break;
+        }
+      });
+      
+      
+      // Setup background message handler
+      messaging().setBackgroundMessageHandler(async remoteMessage => {
+        console.log('📩 [onBackgroundMessage] Handler ID:', Date.now(), JSON.stringify(remoteMessage));
+        // Background messages are handled automatically by Firebase
+      });
+      
+      console.log('✅ [RootLayout] Notification handlers setup complete');
+    };
+
+    // Initialize notifications
+    initializeNotifications();
+    
+    // Mark as initialized
+    handlersInitialized = true;
+    debugLog('Handlers marked as initialized - setup complete');
+    console.log('✅ [RootLayout] Handlers marked as initialized');
+    
+    // Cleanup function
+    return () => {
+      debugLog('Cleaning up notification handlers');
+      console.log('🧹 [RootLayout] Cleaning up notification handlers...');
+      
+      if (foregroundMessageUnsubscribe) {
+        foregroundMessageUnsubscribe();
+        debugLog('Foreground message handler unsubscribed');
+      }
+      if (backgroundMessageUnsubscribe) {
+        backgroundMessageUnsubscribe();
+        debugLog('Background message handler unsubscribed');
+      }
+      if (notifeeUnsubscribe) {
+        notifeeUnsubscribe();
+        debugLog('Notifee background handler unsubscribed');
+      }
+      if (notifeeForegroundUnsubscribe) {
+        notifeeForegroundUnsubscribe();
+        debugLog('Notifee foreground handler unsubscribed');
+      }
+      
+      // Reset flag to allow re-initialization if needed
+      handlersInitialized = false;
+      debugLog('Handlers flag reset - cleanup complete');
+      console.log('🧹 [RootLayout] Handlers flag reset');
+    };
+  }, []);
 
   if (!loaded) return null;
 

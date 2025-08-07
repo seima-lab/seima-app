@@ -16,7 +16,7 @@ export interface SuggestedWallet {
 
 export interface SuggestedBudget {
   id: number;
-  budget_name: string;
+  name: string;
   overall_amount_limit?: number;
   budget_remaining_amount?: number;
   currency?: string;
@@ -46,7 +46,7 @@ export interface ChatHistoryResponse {
 export interface AIChatResponse {
   message: string;
   suggested_wallets?: SuggestedWallet[];
-  list_suggested_budgets?: SuggestedBudget[];
+  suggested_budgets?: SuggestedBudget[];
   status_code: number;
   data?: any;
 }
@@ -56,7 +56,7 @@ interface ApiAIResponse {
   status_code: number;
   message: string;
   suggested_wallets?: SuggestedWallet[];
-  list_suggested_budgets?: SuggestedBudget[];
+  suggested_budgets?: SuggestedBudget[];
   data: {
     response: string;
     timestamp: string;
@@ -173,8 +173,8 @@ export class AIService {
         const suggestedBudgets = actualResponseData.list_suggested_budgets || actualResponseData.suggest_budget || actualResponseData.suggested_budgets;
         if (suggestedBudgets && Array.isArray(suggestedBudgets)) {
           // Giới hạn tối đa 5 phần tử
-          result.list_suggested_budgets = suggestedBudgets.slice(0, 5);
-          console.log('💰 Found suggested budgets:', result.list_suggested_budgets);
+          result.suggested_budgets = suggestedBudgets.slice(0, 5);
+          console.log('💰 Found suggested budgets:', result.suggested_budgets);
         }
 
         console.log('🤖 === AI SERVICE DEBUG END ===');

@@ -2,17 +2,18 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Alert,
-  Dimensions,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -348,6 +349,70 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   // Calculate balances
   const totalBalance = calculateTotalBalance();
   const totalAssets = calculateTotalAssets();
+
+  // Show error screen if there's an error and no wallets loaded
+  if (error && wallets.length === 0) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
+          {/* Header */}
+          <View style={[styles.header, { 
+            paddingHorizontal: rp(20), 
+            paddingVertical: rp(16),
+            paddingTop: rp(20)
+          }]}> 
+            <Text style={[styles.headerTitle, typography.semibold]}>{t('wallet.title')}</Text>
+            <TouchableOpacity onPress={() => loadWallets(true)} disabled={loading || refreshing}>
+              <Icon name="refresh" size={rf(24)} color={loading || refreshing ? "#ccc" : "#333"} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Error Content */}
+          <View style={styles.errorContent}>
+            <Icon name="error-outline" size={rf(48)} color="#ef4444" style={{ marginBottom: 16 }} />
+            <Text style={styles.errorTitle}>Có lỗi xảy ra</Text>
+            <Text style={styles.errorMessage}>{error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={() => loadWallets(false)}
+              disabled={loading}
+            >
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // Show loading screen on first load
+  if (loading && wallets.length === 0 && !error) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
+          {/* Header */}
+          <View style={[styles.header, { 
+            paddingHorizontal: rp(20), 
+            paddingVertical: rp(16),
+            paddingTop: rp(20)
+          }]}> 
+            <Text style={[styles.headerTitle, typography.semibold]}>{t('wallet.title')}</Text>
+            <TouchableOpacity onPress={() => loadWallets(true)} disabled={loading || refreshing}>
+              <Icon name="refresh" size={rf(24)} color={loading || refreshing ? "#ccc" : "#333"} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Loading Content */}
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 16 }} />
+            <Text style={styles.loadingText}>Đang tải ví...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -824,6 +889,46 @@ const styles = StyleSheet.create({
     color: '#1e90ff',
     fontWeight: 'bold',
     marginTop: 16,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  loadingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  errorContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ef4444',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  retryButton: {
+    backgroundColor: '#1e90ff',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
   },
   emptyContainer: {
     flex: 1,

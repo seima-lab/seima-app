@@ -1,17 +1,17 @@
-import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { NavigationProp, RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -20,20 +20,106 @@ import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { GroupMemberRole, groupService, UserJoinedGroupResponse } from '../services/groupService';
 
+type GroupManagementRouteProp = RouteProp<RootStackParamList, 'GroupManagement'>;
+
 const GroupManagementScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const route = useRoute<GroupManagementRouteProp>();
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const [groups, setGroups] = useState<UserJoinedGroupResponse[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Track if auto-navigation has been executed to prevent loops
+  const hasAutoNavigatedRef = useRef(false);
+  
+  // Extract params from route
+  const { autoNavigateToGroupId, groupName: paramGroupName } = route.params || {};
 
-  // Initial component logging
-  console.log('📱 [GroupManagementScreen] Component initialized');
+  // Initial component logging with more detail
+  console.log('📱 [GroupManagementScreen] Component initialized/re-rendered');
   console.log('🔐 [GroupManagementScreen] Auth status:', isAuthenticated);
   console.log('📊 [GroupManagementScreen] Current state:', {
     groupsCount: groups.length,
     loading,
   });
+  console.log('🎯 [GroupManagementScreen] Route params detail:', {
+    hasRouteParams: !!route.params,
+    autoNavigateToGroupId,
+    paramGroupName,
+    fullRouteParams: route.params
+  });
+  
+  if (autoNavigateToGroupId) {
+    console.log('🚨 [GroupManagementScreen] AUTO-NAVIGATE DETECTED:', {
+      groupId: autoNavigateToGroupId,
+      groupName: paramGroupName,
+      shouldTriggerNavigation: !hasAutoNavigatedRef.current,
+      hasAutoNavigated: hasAutoNavigatedRef.current
+    });
+  }
+
+  // Reset auto-navigation flag when autoNavigateToGroupId changes (new notification)
+  useEffect(() => {
+    if (autoNavigateToGroupId) {
+      console.log('🔄 [GroupManagementScreen] New autoNavigateToGroupId detected, resetting flag');
+      hasAutoNavigatedRef.current = false;
+    }
+  }, [autoNavigateToGroupId]);
+
+  // Auto-navigate to specific group if requested from notification
+  useEffect(() => {
+    console.log('🔍 [GroupManagementScreen] Auto-navigate check:', {
+      autoNavigateToGroupId,
+      groupsLength: groups.length,
+      isAuthenticated,
+      loading,
+      hasAutoNavigated: hasAutoNavigatedRef.current
+    });
+    
+    // 🚨 CRITICAL: Prevent auto-navigation loop!
+    if (autoNavigateToGroupId && isAuthenticated && !hasAutoNavigatedRef.current) {
+      console.log('🎯 [GroupManagementScreen] ✅ Auto-navigation requested for group (FIRST TIME):', autoNavigateToGroupId);
+      
+      if (groups.length > 0) {
+        // Find the group in loaded groups
+        const targetGroup = groups.find(group => group.group_id.toString() === autoNavigateToGroupId);
+        
+        if (targetGroup) {
+          console.log('✅ [GroupManagementScreen] Found target group in list, navigating:', targetGroup.group_name);
+          // Mark as navigated BEFORE navigation to prevent loops
+          hasAutoNavigatedRef.current = true;
+          
+          // Auto-navigate to the group detail
+          setTimeout(() => {
+            handleGroupPress(targetGroup);
+          }, 500); // Small delay to ensure screen is ready
+        } else {
+          console.log('⚠️ [GroupManagementScreen] Target group not found in list, loading directly');
+          // Mark as navigated BEFORE navigation to prevent loops
+          hasAutoNavigatedRef.current = true;
+          
+          // If group not found in list, try to load group detail directly
+          setTimeout(() => {
+            handleDirectGroupNavigation(autoNavigateToGroupId, paramGroupName);
+          }, 500); // Small delay to ensure screen is ready
+        }
+      } else if (!loading) {
+        // Groups finished loading but still empty, try direct navigation
+        console.log('⚠️ [GroupManagementScreen] No groups found, attempting direct navigation');
+        // Mark as navigated BEFORE navigation to prevent loops
+        hasAutoNavigatedRef.current = true;
+        
+        setTimeout(() => {
+          handleDirectGroupNavigation(autoNavigateToGroupId, paramGroupName);
+        }, 500);
+      } else {
+        console.log('⏳ [GroupManagementScreen] Groups still loading, waiting...');
+      }
+    } else if (autoNavigateToGroupId && hasAutoNavigatedRef.current) {
+      console.log('🚫 [GroupManagementScreen] Auto-navigation BLOCKED - already executed (preventing loop)');
+    }
+  }, [autoNavigateToGroupId, groups, isAuthenticated, loading]);
 
   // Load groups when screen comes into focus
   useFocusEffect(
@@ -239,12 +325,68 @@ const GroupManagementScreen = () => {
     navigation.navigate('CreateGroup');
   }, [navigation]);
 
+  const handleDirectGroupNavigation = useCallback(async (groupId: string, groupName?: string) => {
+    console.log('🎯 [GroupManagementScreen] Direct group navigation:', { groupId, groupName });
+    
+    try {
+      console.log('⏳ [GroupManagementScreen] Loading group detail directly...');
+      
+      const groupDetail = await groupService.getGroupDetail(parseInt(groupId));
+      console.log('✅ [GroupManagementScreen] Group detail loaded directly:', groupDetail);
+      
+      console.log('🧭 [GroupManagementScreen] Navigating to GroupDetail screen from notification');
+      
+      // Clear auto-navigation parameters before navigating
+      if (autoNavigateToGroupId) {
+        console.log('🧹 [GroupManagementScreen] Clearing auto-navigation parameters (direct navigation)');
+        navigation.setParams({
+          autoNavigateToGroupId: undefined,
+          groupName: undefined
+        });
+      }
+      
+      // Navigate to group detail screen with the loaded data
+      navigation.navigate('GroupDetail', { 
+        groupId: groupId, 
+        groupName: groupName || groupDetail.group_name,
+        groupData: groupDetail
+      });
+    } catch (error: any) {
+      console.error('🔴 [GroupManagementScreen] Failed to load group detail directly:', error);
+      
+      // Clear auto-navigation parameters even on error to prevent loops
+      if (autoNavigateToGroupId) {
+        console.log('🧹 [GroupManagementScreen] Clearing auto-navigation parameters (direct navigation error)');
+        navigation.setParams({
+          autoNavigateToGroupId: undefined,
+          groupName: undefined
+        });
+      }
+      
+      // Show error alert
+      Alert.alert(
+        t('common.error'),
+        error.message || t('group.errorLoadingDetail'),
+        [
+          {
+            text: t('common.ok'),
+            onPress: () => {
+              // Stay on GroupManagementScreen if direct navigation fails
+              console.log('🔄 [GroupManagementScreen] Staying on GroupManagement after direct navigation failure');
+            }
+          }
+        ]
+      );
+    }
+  }, [navigation, t, autoNavigateToGroupId]);
+
   const handleGroupPress = useCallback(async (group: UserJoinedGroupResponse) => {
     console.log('🎯 [GroupManagementScreen] Group pressed:', {
       groupId: group.group_id,
       groupName: group.group_name,
       userRole: group.user_role,
-      memberCount: group.total_members_count
+      memberCount: group.total_members_count,
+      isAutoNavigation: !!autoNavigateToGroupId
     });
     
     try {
@@ -255,6 +397,17 @@ const GroupManagementScreen = () => {
       console.log('✅ [GroupManagementScreen] Group detail loaded successfully:', groupDetail);
       
       console.log('🧭 [GroupManagementScreen] Navigating to GroupDetail screen with data');
+      
+      // If this is auto-navigation from notification, clear the parameters to prevent loops
+      if (autoNavigateToGroupId) {
+        console.log('🧹 [GroupManagementScreen] Clearing auto-navigation parameters to prevent loops');
+        // Update navigation params to remove auto-navigation data
+        navigation.setParams({
+          autoNavigateToGroupId: undefined,
+          groupName: undefined
+        });
+      }
+      
       // Navigate to group detail screen with the loaded data
       navigation.navigate('GroupDetail', { 
         groupId: group.group_id.toString(), 
@@ -277,6 +430,16 @@ const GroupManagementScreen = () => {
             text: t('group.continueAnyway'),
             onPress: () => {
               console.log('🧭 [GroupManagementScreen] Continuing with basic data after error');
+              
+              // Clear auto-navigation parameters even on error
+              if (autoNavigateToGroupId) {
+                console.log('🧹 [GroupManagementScreen] Clearing auto-navigation parameters (error case)');
+                navigation.setParams({
+                  autoNavigateToGroupId: undefined,
+                  groupName: undefined
+                });
+              }
+              
               navigation.navigate('GroupDetail', { 
                 groupId: group.group_id.toString(), 
                 groupName: group.group_name 
@@ -286,7 +449,7 @@ const GroupManagementScreen = () => {
         ]
       );
     }
-  }, [navigation, t]);
+  }, [navigation, t, autoNavigateToGroupId]);
 
   const renderGroupItem = useCallback(({ item }: { item: UserJoinedGroupResponse }) => {
     console.log('📋 [GroupManagementScreen] Rendering group item:', {
