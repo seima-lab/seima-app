@@ -940,7 +940,10 @@
     "reports": "Báo cáo",
     "other": "Khác",
     "confirmDeleteTransaction": "Bạn có chắc chắn muốn xóa giao dịch này?",
-    "transactionDeleted": "Đã xóa giao dịch thành công"
+    "transactionDeleted": "Đã xóa giao dịch thành công",
+    "selectMonth": "Chọn tháng",
+    "year": "Năm",
+    "month": "Tháng"
   },
 
   "months": {
@@ -1128,7 +1131,8 @@
       }
     },
     "detail": {
-     
+      "viewAllPeriods": "Xem tất cả chu kỳ",
+      "collapse": "Thu gọn",
       "periods": "Chu kỳ ngân sách",
     
       "deleteSuccessMessage": "Ngân sách đã được xóa thành công.",

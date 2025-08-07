@@ -352,23 +352,23 @@ const FinanceScreen = React.memo(() => {
 
   // Memoized focus effect callback
   const focusEffectCallback = useCallback(() => {
-    if (isAuthenticated) {
-      console.log('🔄 FinanceScreen focused, refreshing data...');
-      
-      // Load main data first, then transaction history with a small delay
-      loadAllData(true).then(() => {
-        setTimeout(() => {
-          console.log('🔄 FinanceScreen focused, refreshing transaction history...');
-          loadTransactionHistory(true);
+      if (isAuthenticated) {
+        console.log('🔄 FinanceScreen focused, refreshing data...');
+        
+        // Load main data first, then transaction history with a small delay
+        loadAllData(true).then(() => {
+          setTimeout(() => {
+            console.log('🔄 FinanceScreen focused, refreshing transaction history...');
+            loadTransactionHistory(true);
         }, 200);
-      }).catch((error) => {
-        console.error('🔴 Error loading main data:', error);
-        setTimeout(() => {
-          console.log('🔄 FinanceScreen focused, refreshing transaction history...');
-          loadTransactionHistory(true);
-        }, 200);
-      });
-    }
+        }).catch((error) => {
+          console.error('🔴 Error loading main data:', error);
+          setTimeout(() => {
+            console.log('🔄 FinanceScreen focused, refreshing transaction history...');
+            loadTransactionHistory(true);
+          }, 200);
+        });
+      }
   }, [isAuthenticated]);
 
   // Refresh khi focus với debounce
@@ -519,8 +519,8 @@ const FinanceScreen = React.memo(() => {
             </Text>
           </View>
         </>
-      )}
-    </View>
+        )}
+      </View>
   ));
 
   HealthStatusSection.displayName = 'HealthStatusSection';
@@ -538,7 +538,7 @@ const FinanceScreen = React.memo(() => {
           >
             <Text style={styles.newDropdownButtonText}>{getPeriodOption(selectedPeriodValue).label}</Text>
             <Icon name={isDropdownOpen ? 'expand-less' : 'expand-more'} size={20} color="#333" />
-          </TouchableOpacity>
+    </TouchableOpacity>
           {isDropdownOpen && (
             <View style={styles.newDropdownMenu}>
               {PERIOD_OPTIONS.map((option) => (
@@ -945,41 +945,41 @@ const FinanceScreen = React.memo(() => {
 
   // Memoized categories loading
   const memoizedLoadCategories = useCallback(async () => {
-    if (!userProfile?.user_id) {
-      setCategoriesMap({});
-      setCategoriesLoading(false);
-      return;
-    }
+      if (!userProfile?.user_id) {
+        setCategoriesMap({});
+        setCategoriesLoading(false);
+        return;
+      }
 
-    const now = Date.now();
-    if (now - lastCategoriesFetch < CATEGORIES_CACHE_DURATION && Object.keys(categoriesCache).length > 0) {
-      console.log('📦 Using cached categories');
-      setCategoriesMap(categoriesCache);
-      setCategoriesLoading(false);
-      return;
-    }
+      const now = Date.now();
+      if (now - lastCategoriesFetch < CATEGORIES_CACHE_DURATION && Object.keys(categoriesCache).length > 0) {
+        console.log('📦 Using cached categories');
+        setCategoriesMap(categoriesCache);
+        setCategoriesLoading(false);
+        return;
+      }
 
-    setCategoriesLoading(true);
-    try {
-      console.log('🟡 Loading categories...');
-      const categoryService = CategoryService.getInstance();
-      const [incomeCats, expenseCats] = await Promise.all([
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
-        categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0),
-      ]);
-      const allCats = [...incomeCats, ...expenseCats];
-      const map: { [id: number]: CategoryResponse } = {};
-      allCats.forEach(cat => { map[cat.category_id] = cat; });
-      
-      setCategoriesMap(map);
-      setCategoriesCache(map);
-      setLastCategoriesFetch(now);
-    } catch (err) {
-      console.error('🔴 Failed to load categories:', err);
-      setCategoriesMap({});
-    } finally {
-      setCategoriesLoading(false);
-    }
+      setCategoriesLoading(true);
+      try {
+        console.log('🟡 Loading categories...');
+        const categoryService = CategoryService.getInstance();
+        const [incomeCats, expenseCats] = await Promise.all([
+          categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
+          categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0),
+        ]);
+        const allCats = [...incomeCats, ...expenseCats];
+        const map: { [id: number]: CategoryResponse } = {};
+        allCats.forEach(cat => { map[cat.category_id] = cat; });
+        
+        setCategoriesMap(map);
+        setCategoriesCache(map);
+        setLastCategoriesFetch(now);
+      } catch (err) {
+        console.error('🔴 Failed to load categories:', err);
+        setCategoriesMap({});
+      } finally {
+        setCategoriesLoading(false);
+      }
   }, [userProfile?.user_id, lastCategoriesFetch, categoriesCache]);
 
   useEffect(() => {
@@ -1204,8 +1204,8 @@ const FinanceScreen = React.memo(() => {
 
       {/* Removed the healthStatusSection from here */}
 
-      <ScrollView {...scrollViewProps}>
-        <View style={styles.bodyContainer}>
+             <ScrollView {...scrollViewProps}>
+         <View style={styles.bodyContainer}>
           <HealthStatusSection />
           <IncomeExpenseSection />
           <ActionButtonsSection />

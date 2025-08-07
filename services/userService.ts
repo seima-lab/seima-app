@@ -76,6 +76,7 @@ export interface UserProfile {
   gender: 'male' | 'female' | '';
   phone_number: string;
   avatar_url: string | null;
+  is_log_by_google?: boolean; // true if user logged in via Google
   // Raw API fields for compatibility with SettingScreen
   user_id: number;
   user_full_name: string;
@@ -99,6 +100,7 @@ export const mapApiResponseToUserProfile = (data: any): UserProfile => {
       gender: data.user_gender === true ? 'male' : data.user_gender === false ? 'female' : '',
       phone_number: data.user_phone_number || '',
       avatar_url: data.user_avatar_url || null,
+      is_log_by_google: data.is_log_by_google || false,
       // Keep raw API fields for compatibility
       user_id: data.user_id,
       user_full_name: data.user_full_name || '',
@@ -119,6 +121,7 @@ export const mapApiResponseToUserProfile = (data: any): UserProfile => {
     gender: (data.userGender === true || data.user_gender === true) ? 'male' : (data.userGender === false || data.user_gender === false) ? 'female' : '',
     phone_number: data.userPhoneNumber || data.user_phone_number || '',
     avatar_url: data.userAvatarUrl || data.user_avatar_url || null,
+    is_log_by_google: data.isLogByGoogle || data.is_log_by_google || false,
     // Keep raw API fields
     user_id: data.userId || data.user_id || 0,
     user_full_name: data.userFullName || data.user_full_name || '',

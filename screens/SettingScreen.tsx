@@ -276,9 +276,12 @@ const SettingScreen = () => {
         <TouchableOpacity style={styles.updateBtn} onPress={handleUpdateProfile}>
           <Text style={styles.updateBtnText}>{t('updateProfile')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.changePasswordBtn} onPress={handleChangePassword}>
-          <Text style={styles.changePasswordBtnText}>{t('changePasswordBtn')}</Text>
-        </TouchableOpacity>
+        {/* Only show Change Password button if user is not logged in via Google */}
+        {!userProfile?.is_log_by_google && (
+          <TouchableOpacity style={styles.changePasswordBtn} onPress={handleChangePassword}>
+            <Text style={styles.changePasswordBtnText}>{t('changePasswordBtn')}</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Text style={styles.logoutBtnText}>{t('Logout')}</Text>
         </TouchableOpacity>

@@ -837,7 +837,10 @@
     "transactionsFor": "Transactions for",
     "noTransactionsThisMonth": "No transactions this month",
     "confirmDeleteTransaction": "Are you sure you want to delete this transaction?",
-    "transactionDeleted": "Transaction deleted successfully"
+    "transactionDeleted": "Transaction deleted successfully",
+    "selectMonth": "Select Month",
+    "year": "Year",
+    "month": "Month"
   },
 
   "months": {

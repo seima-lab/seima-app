@@ -2,18 +2,19 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
 import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
@@ -518,7 +519,7 @@ const BudgetDetailScreen = () => {
                     onPress={() => setShowAllPeriods(true)}
                   >
                     <Text style={styles.viewAllText}>{t('budget.detail.viewAllPeriods')}</Text>
-                   
+                    <MaterialIcon name="expand-more" size={20} color="#4A90E2" />
                   </TouchableOpacity>
                 )}
                 
@@ -528,7 +529,7 @@ const BudgetDetailScreen = () => {
                     onPress={() => setShowAllPeriods(false)}
                   >
                     <Text style={styles.viewAllText}>{t('budget.detail.collapse')}</Text>
-             
+                    <MaterialIcon name="expand-less" size={20} color="#4A90E2" />
                   </TouchableOpacity>
                 )}
               </View>
@@ -932,7 +933,7 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: 14,
-    color: '#1e90ff',
+    color: '#4A90E2',
     ...typography.medium,
     marginRight: 4,
   },
