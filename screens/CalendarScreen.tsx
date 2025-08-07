@@ -4,10 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     Alert,
-    Animated,
     FlatList,
-    Modal,
-    PanResponder,
     RefreshControl,
     SafeAreaView,
     ScrollView,
@@ -20,7 +17,8 @@ import {
 import { Calendar, DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import CustomConfirmModal from '../components/CustomConfirmModal';
+import MonthPickerModal from '../components/MonthPickerModal';
+import SwipeableTransactionItem from '../components/SwipeableTransactionItem';
 import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import '../i18n';
@@ -31,191 +29,17 @@ import {
     TransactionOverviewResponse,
     transactionService
 } from '../services/transactionService';
+import {
+    CALENDAR_THEME,
+    DayData,
+    formatDayHeader,
+    formatMoney,
+    formatMonthDisplay,
+    Transaction
+} from '../utils/calendarUtils';
 import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
-interface Transaction {
-    id: string;
-    date: string;
-    category: string;
-    amount: number;
-    type: 'income' | 'expense';
-    icon: string;
-    iconColor: string;
-    description?: string;
-}
-
-interface DayData {
-    income: number;
-    expense: number;
-    total: number;
-}
-
-// Format money helper function
-const formatMoney = (amount: number | undefined | null, maxLength?: number): string => {
-    if (amount === null || amount === undefined || isNaN(amount)) {
-        return '0đ';
-    }
-    const formatted = amount.toLocaleString('vi-VN'); // chỉ lấy phần số
-    if (maxLength && formatted.replace(/\D/g, '').length > maxLength) {
-        // Nếu số lượng ký tự số > maxLength, lấy 7 ký tự đầu (bao gồm dấu .), thêm ...
-        let count = 0;
-        let result = '';
-        for (let i = 0; i < formatted.length; i++) {
-            if (/\d/.test(formatted[i])) count++;
-            result += formatted[i];
-            if (count === maxLength) break;
-        }
-        return result + '...' + 'đ';
-    }
-    return formatted + 'đ';
-};
-
-// Swipeable Transaction Item Component
-const SwipeableTransactionItem = ({ 
-    transaction, 
-    onDelete,
-    onEdit
-}: { 
-    transaction: Transaction; 
-    onDelete: (id: string) => void;
-    onEdit: (transaction: Transaction) => void;
-}) => {
-    const { t } = useTranslation();
-    const translateX = new Animated.Value(0);
-    const rightActionOpacity = new Animated.Value(0);
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    
-    const panResponder = PanResponder.create({
-        onMoveShouldSetPanResponder: (evt, gestureState) => {
-            return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 50;
-        },
-        onPanResponderMove: (evt, gestureState) => {
-            if (gestureState.dx < 0) { // Only allow left swipe
-                const newTranslateX = Math.max(gestureState.dx, -100);
-                translateX.setValue(newTranslateX);
-                rightActionOpacity.setValue(Math.abs(newTranslateX) / 100);
-            }
-        },
-        onPanResponderRelease: (evt, gestureState) => {
-            if (gestureState.dx < -50) {
-                // Show delete button
-                Animated.parallel([
-                    Animated.timing(translateX, {
-                        toValue: -100,
-                        duration: 200,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(rightActionOpacity, {
-                        toValue: 1,
-                        duration: 200,
-                        useNativeDriver: true,
-                    })
-                ]).start();
-            } else {
-                // Reset position
-                resetPosition();
-            }
-        },
-    });
-
-    const resetPosition = () => {
-        Animated.parallel([
-            Animated.timing(translateX, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-            Animated.timing(rightActionOpacity, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true,
-            })
-        ]).start();
-    };
-
-    const handleDelete = () => {
-        setShowConfirmModal(true);
-    };
-
-    const handleConfirmDelete = () => {
-        setShowConfirmModal(false);
-        resetPosition();
-        onDelete(transaction.id);
-    };
-
-    const handleCancelDelete = () => {
-        setShowConfirmModal(false);
-        resetPosition();
-    };
-
-    return (
-        <>
-            <View style={styles.swipeableContainer}>
-                {/* Transaction Item */}
-                <Animated.View
-                    style={[
-                        styles.transactionItemSwipeable,
-                        { transform: [{ translateX }] }
-                    ]}
-                    {...panResponder.panHandlers}
-                >
-                    <TouchableOpacity 
-                        style={styles.transactionItem}
-                        onPress={() => onEdit(transaction)}
-                    >
-                        <View style={styles.transactionLeft}>
-                            <View style={[styles.transactionIcon, { backgroundColor: transaction.iconColor + '20' }]}>
-                                <Icon name={transaction.icon} size={20} color={transaction.iconColor} />
-                            </View>
-                            <View style={styles.transactionInfo}>
-                                <Text style={styles.transactionCategory}>{transaction.category}</Text>
-                                {transaction.description && (
-                                    <Text style={styles.transactionDescription}>{transaction.description}</Text>
-                                )}
-                            </View>
-                        </View>
-                        <Text style={[
-                            styles.transactionAmount,
-                            transaction.type === 'income' ? styles.incomeAmount : styles.expenseAmount
-                        ]}>
-                            {transaction.type === 'income' ? '+' : '-'}{formatMoney(transaction.amount)}
-                        </Text>
-                        <Icon name="chevron-right" size={20} color="#999" />
-                    </TouchableOpacity>
-                </Animated.View>
-                
-                {/* Delete Action - appears behind when swiped */}
-                <Animated.View 
-                    style={[
-                        styles.deleteAction,
-                        { opacity: rightActionOpacity }
-                    ]}
-                >
-                    <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={handleDelete}
-                    >
-                        <Icon name="delete" size={20} color="#FFFFFF" />
-                        <Text style={styles.deleteText}>{t('delete')}</Text>
-                    </TouchableOpacity>
-                </Animated.View>
-            </View>
-
-            {/* Custom Confirm Modal */}
-            <CustomConfirmModal
-                visible={showConfirmModal}
-                title={t('common.confirm')}
-                message={t('calendar.confirmDeleteTransaction')}
-                confirmText={t('delete')}
-                cancelText={t('cancel')}
-                onConfirm={handleConfirmDelete}
-                onCancel={handleCancelDelete}
-                type="danger"
-                iconName="delete"
-            />
-        </>
-    );
-};
+// Components imported from separate files
 
 const CalendarScreen = () => {
     const { t } = useTranslation();
@@ -346,8 +170,8 @@ const CalendarScreen = () => {
         }, [currentMonth])
     );
 
-    // Convert API data to local Transaction format using iconUtils
-    const convertToLocalTransaction = (item: TransactionItem, date: string): Transaction | null => {
+    // Memoized function to convert API data to local Transaction format
+    const convertToLocalTransaction = useCallback((item: TransactionItem, date: string): Transaction | null => {
         // Filter out inactive or invalid transaction types
         const validTypes = ['income', 'expense', 'INCOME', 'EXPENSE'];
         const transactionType = item.transaction_type?.toLowerCase();
@@ -391,10 +215,10 @@ const CalendarScreen = () => {
             iconColor: iconColor,
             description: item.description || item.category_name || 'No description'
         };
-    };
+    }, []);
 
-    // Get all transactions from API data
-    const getAllTransactions = (): Transaction[] => {
+    // Memoized function to get all transactions from API data
+    const getAllTransactions = useCallback((): Transaction[] => {
         console.log('🔄 Getting all transactions from overview data...');
         
         if (!overviewData || !overviewData.by_date || !Array.isArray(overviewData.by_date)) {
@@ -412,44 +236,44 @@ const CalendarScreen = () => {
             if (dailyTransaction && dailyTransaction.transactions && Array.isArray(dailyTransaction.transactions)) {
                 console.log(`📝 Found ${dailyTransaction.transactions.length} transactions for ${dailyTransaction.date}`);
                 
-                                        dailyTransaction.transactions.forEach((item: TransactionItem, transIndex: number) => {
-                            if (item) {
-                                totalTransactions++;
-                                
-                                // Debug: Log the raw transaction item to see if group_id exists
-                                console.log(`🔍 Raw transaction ${transIndex + 1}:`, {
-                                    transactionId: item.transaction_id,
-                                    categoryName: item.category_name,
-                                    amount: item.amount,
-                                    transactionType: item.transaction_type,
-                                    groupId: item.group_id,
-                                    hasGroupId: item.group_id !== undefined && item.group_id !== null
-                                });
-                                
-                                // Check if this is a group transaction
-                                if (item.group_id) {
-                                    filteredGroupTransactions++;
-                                    console.log(`🚫 Group transaction filtered:`, {
-                                        transactionId: item.transaction_id,
-                                        groupId: item.group_id,
-                                        categoryName: item.category_name
-                                    });
-                                }
-                                
-                                const convertedTransaction = convertToLocalTransaction(item, dailyTransaction.date);
-                                if (convertedTransaction) {
-                                    console.log(`💰 Transaction ${transIndex + 1}:`, {
-                                        id: convertedTransaction.id,
-                                        category: convertedTransaction.category,
-                                        amount: convertedTransaction.amount,
-                                        type: convertedTransaction.type,
-                                        icon: convertedTransaction.icon,
-                                        iconColor: convertedTransaction.iconColor
-                                    });
-                                    transactions.push(convertedTransaction);
-                                }
-                            }
+                dailyTransaction.transactions.forEach((item: TransactionItem, transIndex: number) => {
+                    if (item) {
+                        totalTransactions++;
+                        
+                        // Debug: Log the raw transaction item to see if group_id exists
+                        console.log(`🔍 Raw transaction ${transIndex + 1}:`, {
+                            transactionId: item.transaction_id,
+                            categoryName: item.category_name,
+                            amount: item.amount,
+                            transactionType: item.transaction_type,
+                            groupId: item.group_id,
+                            hasGroupId: item.group_id !== undefined && item.group_id !== null
                         });
+                        
+                        // Check if this is a group transaction
+                        if (item.group_id) {
+                            filteredGroupTransactions++;
+                            console.log(`🚫 Group transaction filtered:`, {
+                                transactionId: item.transaction_id,
+                                groupId: item.group_id,
+                                categoryName: item.category_name
+                            });
+                        }
+                        
+                        const convertedTransaction = convertToLocalTransaction(item, dailyTransaction.date);
+                        if (convertedTransaction) {
+                            console.log(`💰 Transaction ${transIndex + 1}:`, {
+                                id: convertedTransaction.id,
+                                category: convertedTransaction.category,
+                                amount: convertedTransaction.amount,
+                                type: convertedTransaction.type,
+                                icon: convertedTransaction.icon,
+                                iconColor: convertedTransaction.iconColor
+                            });
+                            transactions.push(convertedTransaction);
+                        }
+                    }
+                });
             } else {
                 console.log(`⚠️ No transactions found for ${dailyTransaction.date}`);
             }
@@ -462,12 +286,12 @@ const CalendarScreen = () => {
             displayedTransactions: transactions.length
         });
         return transactions;
-    };
+    }, [overviewData, convertToLocalTransaction]);
 
-    const transactions = useMemo(() => getAllTransactions(), [overviewData]);
+    const transactions = useMemo(() => getAllTransactions(), [getAllTransactions]);
 
-    // Calculate day data
-    const getDayData = (): { [key: string]: DayData } => {
+    // Memoized function to calculate day data
+    const getDayData = useCallback((): { [key: string]: DayData } => {
         console.log('📊 Calculating day data from transactions...');
         const dayData: { [key: string]: DayData } = {};
         
@@ -497,12 +321,12 @@ const CalendarScreen = () => {
         }
         
         return dayData;
-    };
+    }, [transactions]);
 
-    const dayData = useMemo(() => getDayData(), [transactions]);
+    const dayData = useMemo(() => getDayData(), [getDayData]);
 
-    // Get monthly totals
-    const getMonthlyTotals = () => {
+    // Memoized function to get monthly totals
+    const getMonthlyTotals = useCallback(() => {
         console.log('💰 Calculating monthly totals...');
         
         if (!overviewData || !overviewData.summary) {
@@ -522,264 +346,30 @@ const CalendarScreen = () => {
         
         console.log('📊 Monthly totals:', totals);
         return totals;
-    };
+    }, [overviewData]);
 
-    const monthlyTotals = getMonthlyTotals();
+    const monthlyTotals = useMemo(() => getMonthlyTotals(), [getMonthlyTotals]);
 
-    // Custom Month Picker Component
-    const MonthPickerModal = () => {
-        const [selectedYear, setSelectedYear] = useState(new Date(currentMonth + '-01').getFullYear());
-        const [selectedMonth, setSelectedMonth] = useState(new Date(currentMonth + '-01').getMonth());
-        const [showYearPicker, setShowYearPicker] = useState(false);
-        
-        const months = [
-            { value: 0, label: t('months.january') },
-            { value: 1, label: t('months.february') },
-            { value: 2, label: t('months.march') },
-            { value: 3, label: t('months.april') },
-            { value: 4, label: t('months.may') },
-            { value: 5, label: t('months.june') },
-            { value: 6, label: t('months.july') },
-            { value: 7, label: t('months.august') },
-            { value: 8, label: t('months.september') },
-            { value: 9, label: t('months.october') },
-            { value: 10, label: t('months.november') },
-            { value: 11, label: t('months.december') }
-        ];
-
-        const currentMonthIndex = new Date(currentMonth + '-01').getMonth();
-        const currentYearValue = new Date(currentMonth + '-01').getFullYear();
-
-        const handleMonthSelect = (monthIndex: number) => {
-            setSelectedMonth(monthIndex);
-            // Don't update currentMonth and headerMonth immediately - wait for confirm
-        };
-
-        const handleYearChange = (increment: number) => {
-            const newYear = selectedYear + increment;
-            setSelectedYear(newYear);
-            // Don't update currentMonth and headerMonth immediately - wait for confirm
-        };
-
-        const handleYearSelect = (year: number) => {
-            setSelectedYear(year);
-            setShowYearPicker(false);
-            // Don't update currentMonth and headerMonth immediately - wait for confirm
-        };
-
-        const handleToggleYearPicker = () => {
-            setShowYearPicker(!showYearPicker);
-        };
-
-        const handleConfirm = () => {
-            // Update currentMonth and headerMonth based on selected values when confirm is pressed
-            const newMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-            setCurrentMonth(newMonth);
-            setHeaderMonth(newMonth);
-            setShowMonthPicker(false);
-        };
-
-        const handleCancel = () => {
-            // Reset to original values and update currentMonth and headerMonth
-            setSelectedYear(currentYearValue);
-            setSelectedMonth(currentMonthIndex);
-            const originalMonth = `${currentYearValue}-${String(currentMonthIndex + 1).padStart(2, '0')}`;
-            setCurrentMonth(originalMonth);
-            setHeaderMonth(originalMonth);
-            setShowMonthPicker(false);
-        };
-
-        // Generate years for picker (from 2010 to 2030)
-        const years = Array.from({ length: 21 }, (_, i) => 2010 + i);
-
-        return (
-            <Modal visible={showMonthPicker} transparent animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        {/* Year Selection Header */}
-                        <View style={styles.yearSelectionContainer}>
-                            <TouchableOpacity 
-                                style={styles.yearArrowButton}
-                                onPress={() => handleYearChange(-1)}
-                            >
-                                <Icon name="chevron-left" size={20} color="#007AFF" />
-                            </TouchableOpacity>
-                            
-                            <TouchableOpacity 
-                                style={styles.yearDisplayContainer}
-                                onPress={handleToggleYearPicker}
-                            >
-                                <Text style={styles.yearDisplayText}>{selectedYear}</Text>
-                                <Icon 
-                                    name={showYearPicker ? "chevron-up" : "chevron-down"} 
-                                    size={16} 
-                                    color="#007AFF" 
-                                />
-                            </TouchableOpacity>
-                            
-                            <TouchableOpacity 
-                                style={styles.yearArrowButton}
-                                onPress={() => handleYearChange(1)}
-                            >
-                                <Icon name="chevron-right" size={20} color="#007AFF" />
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Year Picker Dropdown */}
-                        {showYearPicker && (
-                            <Animated.View 
-                                style={[
-                                    styles.yearPickerContainer,
-                                    { opacity: 1 }
-                                ]}
-                            >
-                                <ScrollView 
-                                    style={styles.yearPickerScroll}
-                                    showsVerticalScrollIndicator={false}
-                                    nestedScrollEnabled={true}
-                                    contentContainerStyle={{ paddingVertical: 4 }}
-                                >
-                                    {years.map((year) => (
-                                        <TouchableOpacity
-                                            key={year}
-                                            style={[
-                                                styles.yearPickerItem,
-                                                selectedYear === year && styles.selectedYearPickerItem
-                                            ]}
-                                            onPress={() => handleYearSelect(year)}
-                                        >
-                                            <Text style={[
-                                                styles.yearPickerItemText,
-                                                selectedYear === year && styles.selectedYearPickerItemText
-                                            ]}>
-                                                {year}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </Animated.View>
-                        )}
-
-                        {/* Month Grid */}
-                        <View style={styles.monthGrid}>
-                            {months.map((month, index) => (
-                                <TouchableOpacity
-                                    key={month.value}
-                                    style={[
-                                        styles.monthGridItem,
-                                        selectedMonth === month.value && styles.selectedMonthGridItem
-                                    ]}
-                                    onPress={() => handleMonthSelect(month.value)}
-                                >
-                                    <Text style={[
-                                        styles.monthGridItemText,
-                                        selectedMonth === month.value && styles.selectedMonthGridItemText
-                                    ]}>
-                                        {month.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        {/* Action Buttons */}
-                        <View style={styles.modalActionButtons}>
-                            <TouchableOpacity 
-                                style={styles.cancelButton}
-                                onPress={handleCancel}
-                            >
-                                <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={styles.okButton}
-                                onPress={handleConfirm}
-                            >
-                                <Text style={styles.okButtonText}>{t('ok')}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-        );
-    };
-
-    // Handle month picker
-    const handleOpenMonthPicker = () => {
+    // Memoized handlers for month picker
+    const handleOpenMonthPicker = useCallback(() => {
         setPickerDate(new Date(currentMonth + '-01'));
         setShowMonthPicker(true);
-    };
+    }, [currentMonth]);
 
-    const handleMonthPickerChange = (event: any, selectedDate?: Date) => {
+    const handleMonthPickerConfirm = useCallback((monthString: string) => {
+        setCurrentMonth(monthString);
+        setHeaderMonth(monthString);
         setShowMonthPicker(false);
-        if (selectedDate) {
-            const newMonth = selectedDate.toISOString()?.substring(0, 7) || `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
-            setCurrentMonth(newMonth);
-        }
-    };
+    }, []);
 
-    const formatMonthDisplay = (monthString: string) => {
-        if (!monthString || monthString.trim() === '') {
-            const today = new Date();
-            const month = today.getMonth();
-            const year = today.getFullYear();
-            return `${t(`months.${getMonthKey(month)}`)} ${year}`;
-        }
-        
-        try {
-            const date = new Date(monthString + '-01');
-            if (isNaN(date.getTime())) {
-                const today = new Date();
-                const month = today.getMonth();
-                const year = today.getFullYear();
-                return `${t(`months.${getMonthKey(month)}`)} ${year}`;
-            }
-            const month = date.getMonth();
-            const year = date.getFullYear();
-            return `${t(`months.${getMonthKey(month)}`)} ${year}`;
-        } catch (error) {
-            console.error('Error formatting month display:', error);
-            const today = new Date();
-            const month = today.getMonth();
-            const year = today.getFullYear();
-            return `${t(`months.${getMonthKey(month)}`)} ${year}`;
-        }
-    };
+    const handleMonthPickerCancel = useCallback(() => {
+        setShowMonthPicker(false);
+    }, []);
 
-    // Helper function to get month key for translation
-    const getMonthKey = (monthIndex: number): string => {
-        const monthKeys = [
-            'january', 'february', 'march', 'april', 'may', 'june',
-            'july', 'august', 'september', 'october', 'november', 'december'
-        ];
-        return monthKeys[monthIndex] || 'january';
-    };
-
-    // Helper function to format day header with proper localization
-    const formatDayHeader = (dateString: string): string => {
-        try {
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                return dateString;
-            }
-            
-            const day = date.getDate();
-            const month = date.getMonth();
-            const weekday = date.getDay();
-            
-            const weekdayNames = [
-                'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
-            ];
-            
-            return `${t(`weekdays.${weekdayNames[weekday]}`)}, ${day.toString().padStart(2, '0')}/${(month + 1).toString().padStart(2, '0')}`;
-        } catch (error) {
-            console.error('Error formatting day header:', error);
-            return dateString;
-        }
-    };
-
-    // Custom header renderer for Calendar
-    const renderCalendarHeader = () => {
+    // Memoized custom header renderer for Calendar
+    const renderCalendarHeader = useCallback(() => {
         console.log('🔍 renderCalendarHeader called with headerMonth:', headerMonth);
-        console.log('🔍 formatted display:', formatMonthDisplay(headerMonth));
+        console.log('🔍 formatted display:', formatMonthDisplay(headerMonth, t));
         
         return (
             <TouchableOpacity 
@@ -787,15 +377,15 @@ const CalendarScreen = () => {
                 onPress={handleOpenMonthPicker}
             >
                 <Text style={styles.calendarHeaderText}>
-                    {formatMonthDisplay(headerMonth)}
+                    {formatMonthDisplay(headerMonth, t)}
                 </Text>
                 <Icon name="chevron-down" size={16} color="#007AFF" style={styles.calendarHeaderIcon} />
             </TouchableOpacity>
         );
-    };
+    }, [headerMonth, handleOpenMonthPicker, t]);
 
-    // Group transactions by date for the entire month
-    const getGroupedTransactions = (): { [date: string]: Transaction[] } => {
+    // Memoized function to group transactions by date for the entire month
+    const getGroupedTransactions = useCallback((): { [date: string]: Transaction[] } => {
         if (!transactions || !Array.isArray(transactions)) {
             return {};
         }
@@ -819,12 +409,12 @@ const CalendarScreen = () => {
             });
         
         return sortedGrouped;
-    };
+    }, [transactions]);
 
-    const groupedTransactions = useMemo(() => getGroupedTransactions(), [transactions]);
+    const groupedTransactions = useMemo(() => getGroupedTransactions(), [getGroupedTransactions]);
 
-    // Handle delete transaction
-    const handleDeleteTransaction = async (transactionId: string) => {
+    // Memoized handle delete transaction
+    const handleDeleteTransaction = useCallback(async (transactionId: string) => {
         try {
             console.log('🔄 Deleting transaction:', transactionId);
             
@@ -844,10 +434,10 @@ const CalendarScreen = () => {
                 [{ text: 'OK' }]
             );
         }
-    };
+    }, [currentMonth]);
 
-    // Handle edit transaction
-    const handleEditTransaction = (transaction: Transaction) => {
+    // Memoized handle edit transaction
+    const handleEditTransaction = useCallback((transaction: Transaction) => {
         console.log('🔄 Navigating to edit transaction:', transaction);
         navigation.navigate('AddExpenseScreen' as any, {
             editMode: true,
@@ -862,10 +452,10 @@ const CalendarScreen = () => {
                 iconColor: transaction.iconColor
             }
         });
-    };
+    }, [navigation]);
 
-    // Create marked dates - simple marking for days with transactions
-    const getMarkedDates = () => {
+    // Memoized function to create marked dates - simple marking for days with transactions
+    const getMarkedDates = useCallback(() => {
         const marked: any = {};
         
         Object.keys(dayData).forEach(date => {
@@ -885,9 +475,9 @@ const CalendarScreen = () => {
         });
         
         return marked;
-    };
+    }, [dayData]);
 
-    const renderDayComponent = ({ date, state }: any) => {
+    const renderDayComponent = useCallback(({ date, state }: any) => {
         const dateStr = date.dateString;
         const data = dayData[dateStr];
 
@@ -910,32 +500,9 @@ const CalendarScreen = () => {
                 </View>
             </View>
         );
-    };
+    }, [dayData]);
 
-    const renderTransaction = (transaction: Transaction) => (
-        <TouchableOpacity key={transaction.id} style={styles.transactionItem}>
-            <View style={styles.transactionLeft}>
-                <View style={[styles.transactionIcon, { backgroundColor: transaction.iconColor + '20' }]}>
-                    <Icon name={transaction.icon} size={20} color={transaction.iconColor} />
-                </View>
-                <View style={styles.transactionInfo}>
-                    <Text style={styles.transactionCategory}>{transaction.category}</Text>
-                    {transaction.description && (
-                        <Text style={styles.transactionDescription}>{transaction.description}</Text>
-                    )}
-                </View>
-            </View>
-            <Text style={[
-                styles.transactionAmount,
-                transaction.type === 'income' ? styles.incomeAmount : styles.expenseAmount
-            ]}>
-                {transaction.type === 'income' ? '+' : '-'}{formatMoney(transaction.amount)}
-            </Text>
-            <Icon name="chevron-right" size={20} color="#999" />
-        </TouchableOpacity>
-    );
-
-    const renderDayGroup = (date: string, dayTransactions: Transaction[]) => {
+    const renderDayGroup = useCallback((date: string, dayTransactions: Transaction[]) => {
         const dayTotal = dayTransactions.reduce((total, transaction) => {
             return transaction.type === 'income' 
                 ? total + transaction.amount 
@@ -946,7 +513,7 @@ const CalendarScreen = () => {
             <View key={date} style={styles.dayGroup}>
                 <View style={styles.dayHeader}>
                     <Text style={styles.dayHeaderDate}>
-                        {formatDayHeader(date)}
+                        {formatDayHeader(date, t)}
                     </Text>
                     <Text style={[
                         styles.dayHeaderTotal,
@@ -959,13 +526,13 @@ const CalendarScreen = () => {
                     <SwipeableTransactionItem 
                         key={transaction.id} 
                         transaction={transaction} 
-                        onDelete={(id) => handleDeleteTransaction(id)}
+                        onDelete={handleDeleteTransaction}
                         onEdit={handleEditTransaction}
                     />
                 ))}
             </View>
         );
-    };
+    }, [handleDeleteTransaction, handleEditTransaction, t]);
 
     return (
         <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
@@ -1020,25 +587,7 @@ const CalendarScreen = () => {
                                 markedDates={getMarkedDates()}
                                 dayComponent={renderDayComponent}
                                 renderHeader={renderCalendarHeader}
-                                theme={{
-                                    backgroundColor: '#ffffff',
-                                    calendarBackground: '#ffffff',
-                                    textSectionTitleColor: '#b6c1cd',
-                                    selectedDayBackgroundColor: '#007AFF',
-                                    selectedDayTextColor: '#ffffff',
-                                    todayTextColor: '#007AFF',
-                                    dayTextColor: '#2d4150',
-                                    textDisabledColor: '#d9e1e8',
-                                    arrowColor: '#007AFF',
-                                    monthTextColor: '#333',
-                                    indicatorColor: '#007AFF',
-                                    textDayFontWeight: '400',
-                                    textMonthFontWeight: 'bold',
-                                    textDayHeaderFontWeight: '600',
-                                    textDayFontSize: 14,
-                                    textMonthFontSize: 18,
-                                    textDayHeaderFontSize: 12
-                                }}
+                                theme={CALENDAR_THEME}
                                 style={styles.calendar}
                             />
                             </>
@@ -1071,7 +620,7 @@ const CalendarScreen = () => {
                         {loading ? (
                             `${t('common.loading')} - ${currentMonth}...`
                         ) : (
-                            `${t('calendar.transactionsFor')} ${formatMonthDisplay(currentMonth)}`
+                            `${t('calendar.transactionsFor')} ${formatMonthDisplay(currentMonth, t)}`
                         )}
                     </Text>
 
@@ -1107,9 +656,12 @@ const CalendarScreen = () => {
             </View>
 
             {/* Month Picker Modal */}
-            {showMonthPicker && (
-                <MonthPickerModal />
-            )}
+            <MonthPickerModal
+                visible={showMonthPicker}
+                currentMonth={currentMonth}
+                onConfirm={handleMonthPickerConfirm}
+                onCancel={handleMonthPickerCancel}
+            />
         </SafeAreaView>
     );
 };
@@ -1359,42 +911,7 @@ const styles = StyleSheet.create({
         color: '#FF9500',
         ...typography.medium,
     },
-    swipeableContainer: {
-        position: 'relative',
-        backgroundColor: '#FFFFFF',
-        overflow: 'hidden',
-    },
-    deleteAction: {
-        position: 'absolute',
-        right: 0,
-        top: 0,
-        bottom: 0,
-        width: 100,
-        backgroundColor: '#FF3B30',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1,
-    },
-    deleteButton: {
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 15,
-        width: '100%',
-        height: '100%',
-    },
-    deleteText: {
-        fontSize: 12,
-        ...typography.semibold,
-        color: '#FFFFFF',
-        marginTop: 4,
-    },
-    transactionItemSwipeable: {
-        backgroundColor: '#FFFFFF',
-        zIndex: 2,
-        width: '100%',
-    },
+    // Swipeable styles moved to SwipeableTransactionItem component
     calendarHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1413,159 +930,7 @@ const styles = StyleSheet.create({
     calendarHeaderIcon: {
         marginLeft: 8,
     },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        width: '85%',
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 10,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    yearSelectionContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-        paddingHorizontal: 8,
-    },
-    yearArrowButton: {
-        padding: 8,
-        borderRadius: 20,
-        backgroundColor: '#F8F9FA',
-    },
-    yearDisplayContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F8F9FA',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 8,
-        minWidth: 100,
-        justifyContent: 'center',
-    },
-    yearDisplayText: {
-        fontSize: 18,
-        ...typography.semibold,
-        color: '#333',
-        marginRight: 8,
-    },
-    yearPickerContainer: {
-        maxHeight: 120,
-        backgroundColor: '#F8F9FA',
-        borderRadius: 8,
-        marginBottom: 8,
-        borderWidth: 1,
-        borderColor: '#E5E5E5',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3.84,
-        elevation: 3,
-    },
-    yearPickerScroll: {
-        maxHeight: 120,
-    },
-    yearPickerItem: {
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E5E5',
-    },
-    selectedYearPickerItem: {
-        backgroundColor: '#007AFF',
-    },
-    yearPickerItemText: {
-        fontSize: 16,
-        ...typography.medium,
-        color: '#333',
-        textAlign: 'center',
-    },
-    selectedYearPickerItemText: {
-        color: '#FFFFFF',
-        ...typography.semibold,
-    },
-    monthGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        marginBottom: 1,
-    },
-    monthGridItem: {
-        width: '30%',
-        aspectRatio: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#F8F9FA',
-        borderRadius: 8,
-        marginBottom: 8,
-        borderWidth: 1,
-        borderColor: 'transparent',
-    },
-    selectedMonthGridItem: {
-        backgroundColor: '#007AFF',
-        borderColor: '#007AFF',
-    },
-    monthGridItemText: {
-        fontSize: 14,
-        ...typography.medium,
-        color: '#333',
-        textAlign: 'center',
-    },
-    selectedMonthGridItemText: {
-        color: '#FFFFFF',
-        ...typography.semibold,
-    },
-    modalActionButtons: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 10,
-        marginTop: 0,
-    },
-    cancelButton: {
-        flex: 1,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#007AFF',
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-    },
-    cancelButtonText: {
-        fontSize: 16,
-        ...typography.medium,
-        color: '#007AFF',
-    },
-    okButton: {
-        flex: 1,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 8,
-        backgroundColor: '#007AFF',
-        alignItems: 'center',
-    },
-    okButtonText: {
-        fontSize: 16,
-        ...typography.medium,
-        color: '#FFFFFF',
-    },
+    // Month picker modal styles moved to MonthPickerModal component
 });
 
 export default CalendarScreen; 

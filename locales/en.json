@@ -1156,10 +1156,10 @@
 
   "logoutModal": {
     "goodbye": "Goodbye {{userName}}!",
-    "confirmMessage": "Are you sure you want to log out of your account? We'll miss you! 💙",
+    "confirmMessage": "Are you sure you want to log out of your account?",
     "stay": "Stay",
     "logout": "Logout",
-    "footer": "See you again soon! ✨"
+    "footer": "See you again soon!"
   },
 
   "tokenExpiryModal": {

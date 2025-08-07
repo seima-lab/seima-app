@@ -1,6 +1,50 @@
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 import { authService } from './authService';
+
+// Helper function to detect if Google Sign-In was cancelled by user
+const isGoogleSignInCancelled = (error: any): boolean => {
+  if (!error) return false;
+
+  // Check error code first
+  if (error.code) {
+    // Check for known cancellation codes
+    if (error.code === statusCodes.SIGN_IN_CANCELLED || 
+        error.code === 'SIGN_IN_CANCELLED' ||
+        error.code === statusCodes.IN_PROGRESS ||
+        error.code === 'IN_PROGRESS' ||
+        error.code === 'getTokens' ||
+        error.code === '12501') { // Android cancellation code
+      return true;
+    }
+  }
+
+  // Check error message
+  if (error.message) {
+    const message = error.message.toLowerCase();
+    if (message.includes('cancelled') ||
+        message.includes('canceled') ||
+        message.includes('user cancelled') ||
+        message.includes('user canceled') ||
+        message.includes('getTokens requires a user to be signed in') ||
+        message.includes('sign in was cancelled') ||
+        message.includes('the user cancelled the sign-in flow')) {
+      return true;
+    }
+  }
+
+  // Check if it's a string error
+  if (typeof error === 'string') {
+    const errorStr = error.toLowerCase();
+    if (errorStr.includes('cancelled') ||
+        errorStr.includes('canceled') ||
+        errorStr.includes('getTokens requires a user to be signed in')) {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 // Configure Google Sign-In
 export const configureGoogleSignIn = () => {
@@ -58,13 +102,26 @@ export const signInWithGoogle = async () => {
       email: backendResponse.user_infomation.email,
     };
   } catch (error: any) {
+    // Check if user cancelled the sign-in
+    const isUserCancellation = isGoogleSignInCancelled(error);
+    
+    if (isUserCancellation) {
+      console.log('🟡 Google Sign-In cancelled by user');
+      return {
+        success: false,
+        error: 'User cancelled Google Sign-In',
+        userCancelled: true,
+        isFirstLogin: false,
+      };
+    }
+    
     console.error('🔴 Google Sign-In Error:', error);
     console.error('🔴 Error code:', error.code);
     console.error('🔴 Error message:', error.message);
     console.error('🔴 Full error object:', JSON.stringify(error, null, 2));
     return {
       success: false,
-      error: error.message,
+      error: error.message || 'Google Sign-In failed',
       isFirstLogin: false,
     };
   }
