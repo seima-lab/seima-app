@@ -75,10 +75,37 @@ export const handleNotificationNavigation = async (data: NotificationData) => {
       senderUserName: senderUserName,
       typeMatch: type === 'group_notification',
       hasGroupId: !!groupId,
-      shouldNavigateToGroup: type === 'group_notification' && groupId
+      shouldNavigateToGroup: type === 'group_notification' && groupId,
+      isBudgetNotification: type === 'budget_notification'
     });
     
-    if (type === 'group_notification' && groupId) {
+    if (type === 'budget_notification') {
+      debugLog(`Budget notification detected, navigating to BudgetScreen`);
+      console.log('🎯 [NotificationNavigation] ✅ CONDITIONS MET - Budget notification detected, navigating to BudgetScreen');
+      
+      try {
+        console.log('🔄 [NotificationNavigation] Navigating to BudgetScreen');
+        navigationRef.navigate('BudgetScreen');
+        
+        debugLog('Successfully navigated to BudgetScreen');
+        console.log('✅ [NotificationNavigation] Navigation to BudgetScreen completed');
+        
+      } catch (budgetError) {
+        debugLog(`Budget navigation failed: ${budgetError}`);
+        console.error('🔴 [NotificationNavigation] Budget navigation failed, trying fallback');
+        
+        // Fallback to notifications screen
+        try {
+          navigationRef.navigate('Notifications');
+          debugLog('Fallback navigation to Notifications successful');
+          console.log('✅ [NotificationNavigation] Fallback to Notifications completed');
+        } catch (fallbackError) {
+          debugLog(`Budget fallback navigation also failed: ${fallbackError}`);
+          console.error('🔴 [NotificationNavigation] Budget fallback navigation also failed:', fallbackError);
+        }
+      }
+      
+    } else if (type === 'group_notification' && groupId) {
       debugLog(`Group notification detected, creating navigation stack for group: ${groupId}`);
       console.log('🎯 [NotificationNavigation] ✅ CONDITIONS MET - Group notification detected, creating navigation stack for group:', groupId);
       

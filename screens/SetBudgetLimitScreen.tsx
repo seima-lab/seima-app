@@ -1115,6 +1115,8 @@ const BudgetLimitScreen = () => {
          message={t('budget.setBudgetLimit.confirmAmountChange.message')}
          confirmText={t('budget.setBudgetLimit.confirmAmountChange.yes')}
          cancelText={t('budget.setBudgetLimit.confirmAmountChange.no')}
+         type="warning"
+         iconName="info"
          onConfirm={() => {
            console.log('✅ User confirmed change');
            setShowAmountConfirmModal(false);

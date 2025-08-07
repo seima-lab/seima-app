@@ -150,6 +150,14 @@ function AuthNavigator() {
 function AppNavigator() {
   const { isLoading } = useLanguage();
 
+  // Set navigation ref when NavigationContainer is ready - MUST be called before any conditional returns
+  useEffect(() => {
+    if (navigationRef?.current) {
+      setNavigationRef(navigationRef.current);
+      console.log('✅ [AppNavigator] Navigation ref set for notification navigation');
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
@@ -157,14 +165,6 @@ function AppNavigator() {
       </View>
     );
   }
-
-  // Set navigation ref when NavigationContainer is ready
-  useEffect(() => {
-    if (navigationRef?.current) {
-      setNavigationRef(navigationRef.current);
-      console.log('✅ [AppNavigator] Navigation ref set for notification navigation');
-    }
-  }, []);
 
   return (
     <NavigationContainer 
