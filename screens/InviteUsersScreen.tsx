@@ -2,17 +2,18 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -371,7 +372,11 @@ const InviteUsersScreen = () => {
       </View>
 
       {/* Content */}
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Email Input */}
         <View style={styles.inputContainer}>
           <TextInput
@@ -419,6 +424,7 @@ const InviteUsersScreen = () => {
               data={invitedMembers}
               keyExtractor={item => String(item.user_id)}
               renderItem={renderInvitedMember}
+              scrollEnabled={false}
               ListEmptyComponent={
                 <Text style={{ color: '#999' }}>
                   {t('group.invitation.noInvitedMembers')}
@@ -440,6 +446,7 @@ const InviteUsersScreen = () => {
               data={pendingMembers}
               keyExtractor={item => String(item.user_id)}
               renderItem={renderPendingMember}
+              scrollEnabled={false}
               ListEmptyComponent={
                 <Text style={{ color: '#999' }}>
                   {t('group.invitation.noPendingMembers')}
@@ -448,7 +455,7 @@ const InviteUsersScreen = () => {
             />
           )}
         </View>
-      </View>
+      </ScrollView>
 
       {/* Full Screen Loading Modal */}
       <Modal
@@ -533,6 +540,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   inputContainer: {
     marginBottom: 16,

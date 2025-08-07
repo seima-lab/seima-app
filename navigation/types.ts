@@ -20,7 +20,10 @@ export type RootStackParamList = {
   Calendar: undefined;
   ChangePassword: undefined;
   ChatAI: undefined;
-  GroupManagement: undefined;
+  GroupManagement: { 
+    autoNavigateToGroupId?: string; 
+    groupName?: string; 
+  } | undefined;
   CreateGroup: {
     mode?: 'create' | 'edit';
     groupData?: import('../services/groupService').GroupDetailResponse;

@@ -1,8 +1,6 @@
 // branchService.ts
 import { navigationRef } from '@/navigation/NavigationService';
-import { GroupMemberStatus } from '@/screens/StatusInviteMember';
 import branch, { BranchParams } from 'react-native-branch';
-import { groupService } from './groupService';
 
 type Unsubscribe = () => void;
 
@@ -62,15 +60,16 @@ class BranchService {
 
     console.log('[Branch] Deeplink payload:', { actionType, groupId, invitedUserId, inviterId });
 
-    if (groupId) {
+    // 🚨 NEW LOGIC: Navigate directly to PendingGroupsScreen instead of calling API
+    if (groupId || actionType) {
+      console.log('[Branch] Navigating to PendingGroupsScreen for deeplink');
+      
       try {
-        // Gọi API lấy status của user trong group
-        const res = await groupService.getMyGroupStatus(Number(groupId));
-        // Chuyển data về snake_case
-        navigationRef.navigate('StatusInviteMember', { status: res.status as GroupMemberStatus });
-        console.log('[Branch] getMyGroupStatus result:', res.status);
+        // Navigate directly to PendingGroupsScreen
+        navigationRef.navigate('PendingGroups');
+        console.log('[Branch] Successfully navigated to PendingGroupsScreen');
       } catch (err) {
-        console.error('[Branch] getMyGroupStatus error:', err);
+        console.error('[Branch] Navigation error:', err);
       }
     }
 

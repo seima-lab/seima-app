@@ -2,15 +2,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -142,6 +142,8 @@ const getPercent = (value: number, total: number) => {
 // SimplePieChart removed - not used anymore
 
 const FinanceScreen = React.memo(() => {
+  console.log('💰 [FinanceScreen] Component rendered/re-rendered');
+  
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigationService();
@@ -308,7 +310,7 @@ const FinanceScreen = React.memo(() => {
       
       // Set states với safety checks
       if (profile) {
-        setUserProfile(profile);
+      setUserProfile(profile);
         console.log('✅ User profile loaded:', profile.user_full_name || 'Unknown');
       } else {
         console.warn('⚠️ User profile failed to load, keeping existing or using fallback');
@@ -335,18 +337,18 @@ const FinanceScreen = React.memo(() => {
       // Process chart data với safety checks
       if (chartResponse) {
         const summary = (chartResponse as any)?.summary || chartResponse?.summary || {};
-        const income = summary?.total_income || summary?.totalIncome || 0;
-        const expenses = summary?.total_expense || summary?.totalExpense || 0;
-        const difference = income - expenses;
-        
-        setChartData({
-          income,
-          expenses,
-          difference,
-          isLoading: false
-        });
-        
-        setReportData(chartResponse);
+      const income = summary?.total_income || summary?.totalIncome || 0;
+      const expenses = summary?.total_expense || summary?.totalExpense || 0;
+      const difference = income - expenses;
+      
+      setChartData({
+        income,
+        expenses,
+        difference,
+        isLoading: false
+      });
+      
+      setReportData(chartResponse);
         console.log('✅ Chart data loaded:', { income, expenses, difference });
       } else {
         console.warn('⚠️ Chart data failed to load, using fallback values');
@@ -362,18 +364,18 @@ const FinanceScreen = React.memo(() => {
       // Process notification count với safety checks
       let count = 0;
       try {
-        const responseAny = notificationResponse as any;
+      const responseAny = notificationResponse as any;
         if (typeof notificationResponse === 'number') {
           count = notificationResponse;
         } else if (responseAny?.data?.count !== undefined) {
-          count = responseAny.data.count;
-        } else if (responseAny?.count !== undefined) {
-          count = responseAny.count;
-        } else if (typeof responseAny?.data === 'number') {
-          count = responseAny.data;
-        } else if (responseAny?.data?.data?.count !== undefined) {
-          count = responseAny.data.data.count;
-        }
+        count = responseAny.data.count;
+      } else if (responseAny?.count !== undefined) {
+        count = responseAny.count;
+      } else if (typeof responseAny?.data === 'number') {
+        count = responseAny.data;
+      } else if (responseAny?.data?.data?.count !== undefined) {
+        count = responseAny.data.data.count;
+      }
         console.log('✅ Notification count loaded:', count);
       } catch (error) {
         console.warn('⚠️ Failed to parse notification count:', error);
@@ -383,7 +385,7 @@ const FinanceScreen = React.memo(() => {
 
       // Set health status với fallback
       if (healthData) {
-        setApiHealthStatus(healthData);
+      setApiHealthStatus(healthData);
         console.log('✅ Health status loaded:', healthData.score || 'Unknown');
       } else {
         console.warn('⚠️ Health status failed to load, using fallback');
@@ -517,18 +519,18 @@ const FinanceScreen = React.memo(() => {
       
       if (reportResponse) {
         const summary = (reportResponse as any)?.summary || reportResponse?.summary || {};
-        const income = summary?.total_income || summary?.totalIncome || 0;
-        const expenses = summary?.total_expense || summary?.totalExpense || 0;
-        const difference = income - expenses;
-        
-        setChartData({
-          income,
-          expenses,
-          difference,
-          isLoading: false
-        });
-        
-        setReportData(reportResponse);
+      const income = summary?.total_income || summary?.totalIncome || 0;
+      const expenses = summary?.total_expense || summary?.totalExpense || 0;
+      const difference = income - expenses;
+      
+      setChartData({
+        income,
+        expenses,
+        difference,
+        isLoading: false
+      });
+      
+      setReportData(reportResponse);
         console.log('✅ Chart data period update:', { income, expenses, difference });
       } else {
         throw new Error('Empty chart response');
@@ -1063,11 +1065,11 @@ const FinanceScreen = React.memo(() => {
         const categoryService = CategoryService.getInstance();
         const [incomeCats, expenseCats] = await Promise.all([
           withTimeout(
-            categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
+          categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
             15000 // 15s timeout cho categories
           ),
           withTimeout(
-            categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0),
+          categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0),
             15000 // 15s timeout cho categories
           ),
         ]);
@@ -1090,7 +1092,7 @@ const FinanceScreen = React.memo(() => {
           console.log('📦 Using old cached categories due to API failure');
           setCategoriesMap(categoriesCache);
         } else {
-          setCategoriesMap({});
+        setCategoriesMap({});
         }
       } finally {
         setCategoriesLoading(false);
@@ -1147,7 +1149,7 @@ const FinanceScreen = React.memo(() => {
       console.error('🔴 Failed to load transaction history:', err?.message || err);
       // Giữ cache cũ nếu có, không clear hết
       if (transactionCache.length === 0) {
-        setTransactionHistory([]);
+      setTransactionHistory([]);
       } else {
         console.log('📦 Using old cached transaction history due to API failure');
         setTransactionHistory(transactionCache);
@@ -1296,8 +1298,8 @@ const FinanceScreen = React.memo(() => {
                 <View style={styles.userNameSkeleton} />
               ) : (
                 <Text style={[styles.userName, { fontSize: dynamicUserNameFontSize }]}>
-                  {userProfile?.user_full_name || t('common.unknownUser')}
-                </Text>
+                {userProfile?.user_full_name || t('common.unknownUser')}
+              </Text>
               )}
             </View>
           </View>
@@ -1320,12 +1322,12 @@ const FinanceScreen = React.memo(() => {
             {walletLoading && financeData.totalBalance === 0 ? (
               <View style={styles.balanceSkeleton} />
             ) : (
-              <Text style={[styles.balanceAmount, { 
-                minWidth: 200,
-                fontSize: dynamicBalanceFontSize
-              }]}>
-                {formattedBalance}
-              </Text>
+            <Text style={[styles.balanceAmount, { 
+              minWidth: 200,
+              fontSize: dynamicBalanceFontSize
+            }]}>
+              {formattedBalance}
+            </Text>
             )}
             <TouchableOpacity onPress={handleToggleBalance} disabled={walletLoading}>
               <Icon 

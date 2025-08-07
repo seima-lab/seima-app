@@ -2,16 +2,16 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
@@ -44,6 +44,29 @@ const BudgetDetailScreen = () => {
   
   // Calculate displayed periods like GroupMembersScreen
   const displayedPeriods = showAllPeriods ? budgetPeriods : budgetPeriods.slice(0, 2);
+
+  // Helper function to remove duplicate periods with same dates
+  const removeDuplicatePeriods = (specialPeriod: any, finalPeriods: any[], context: string = '') => {
+    const logPrefix = context ? `(${context})` : '';
+    
+    // Check duplicate: Nếu period thứ 2 trùng start/end date với specialPeriod thì loại bỏ
+    if (finalPeriods.length > 0) {
+      const secondPeriod = finalPeriods[0]; // Period đầu tiên trong finalPeriods (sẽ là thứ 2 sau khi thêm specialPeriod)
+      const isDuplicate = secondPeriod.start_date === specialPeriod.start_date && 
+                         secondPeriod.end_date === specialPeriod.end_date;
+      
+      if (isDuplicate) {
+        console.log(`🔍 Found duplicate period with same dates ${logPrefix}:`, {
+          specialPeriod: { start: specialPeriod.start_date, end: specialPeriod.end_date },
+          duplicatePeriod: { start: secondPeriod.start_date, end: secondPeriod.end_date }
+        });
+        console.log(`🗑️ Removing duplicate period from finalPeriods ${logPrefix}`);
+        return finalPeriods.slice(1); // Loại bỏ period trùng lặp
+      }
+    }
+    
+    return finalPeriods; // Không có duplicate
+  };
 
   useEffect(() => {
     console.log('🔍 BudgetDetailScreen - useEffect triggered');
@@ -300,29 +323,6 @@ const BudgetDetailScreen = () => {
       console.error('❌ Error formatting date:', error);
       return 'Invalid Date';
     }
-  };
-
-  // Helper function to remove duplicate periods with same dates
-  const removeDuplicatePeriods = (specialPeriod: any, finalPeriods: any[], context: string = '') => {
-    const logPrefix = context ? `(${context})` : '';
-    
-    // Check duplicate: Nếu period thứ 2 trùng start/end date với specialPeriod thì loại bỏ
-    if (finalPeriods.length > 0) {
-      const secondPeriod = finalPeriods[0]; // Period đầu tiên trong finalPeriods (sẽ là thứ 2 sau khi thêm specialPeriod)
-      const isDuplicate = secondPeriod.start_date === specialPeriod.start_date && 
-                         secondPeriod.end_date === specialPeriod.end_date;
-      
-      if (isDuplicate) {
-        console.log(`🔍 Found duplicate period with same dates ${logPrefix}:`, {
-          specialPeriod: { start: specialPeriod.start_date, end: specialPeriod.end_date },
-          duplicatePeriod: { start: secondPeriod.start_date, end: secondPeriod.end_date }
-        });
-        console.log(`🗑️ Removing duplicate period from finalPeriods ${logPrefix}`);
-        return finalPeriods.slice(1); // Loại bỏ period trùng lặp
-      }
-    }
-    
-    return finalPeriods; // Không có duplicate
   };
 
   // Budget Period Item Component
