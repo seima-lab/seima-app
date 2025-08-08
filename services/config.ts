@@ -18,7 +18,7 @@ export class ApiConfig {
   public static readonly API_PREFIX = `/api/${ApiConfig.API_VERSION}`;
   
   // Timeout configuration
-  public static readonly DEFAULT_TIMEOUT = parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '10000');
+  public static readonly DEFAULT_TIMEOUT = parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000');
   
   // Environment detection
   public static readonly IS_DEV = __DEV__;

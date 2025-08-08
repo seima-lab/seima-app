@@ -2,15 +2,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -249,7 +249,7 @@ const FinanceScreen = React.memo(() => {
   const CACHE_DURATION = 30000; // 30 giây
 
   // API timeout wrapper with longer timeout
-  const withTimeout = (promise: Promise<any>, timeoutMs: number = 30000): Promise<any> => {
+  const withTimeout = (promise: Promise<any>, timeoutMs: number = 60000): Promise<any> => {
     return Promise.race([
       promise,
       new Promise((_, reject) => {
@@ -275,20 +275,20 @@ const FinanceScreen = React.memo(() => {
     try {
       setLoading(true);
       setWalletLoading(true);
-      console.log('🟡 Loading all data in parallel with 30s timeout...');
+      console.log('🟡 Loading all data in parallel with 60s timeout...');
       
-      // Gọi tất cả API song song với timeout 30s (tăng từ default)
+      // Gọi tất cả API song song với timeout 60s (tăng từ 30s)
       const results = await Promise.allSettled([
-        withTimeout(userService.getCurrentUserProfile(forceRefresh), 30000),
-        withTimeout(walletService.getAllWallets(), 30000),
+        withTimeout(userService.getCurrentUserProfile(forceRefresh), 60000),
+        withTimeout(walletService.getAllWallets(), 60000),
         withTimeout((async () => {
           const { startDate, endDate } = getPeriodRange(selectedPeriodValue);
           const startDateStr = toLocalDateString(startDate);
           const endDateStr = toLocalDateString(endDate);
           return transactionService.viewTransactionReport(undefined, startDateStr, endDateStr);
-        })(), 30000),
-        withTimeout(getUnreadCount(), 15000),
-        withTimeout(statusService.getHealthStatus(), 15000)
+        })(), 60000),
+        withTimeout(getUnreadCount(), 30000),
+        withTimeout(statusService.getHealthStatus(), 30000)
       ]);
 
       // Extract results with fallbacks
@@ -500,7 +500,7 @@ const FinanceScreen = React.memo(() => {
 
     try {
       setChartData(prev => ({ ...prev, isLoading: true }));
-      console.log('📊 Loading chart data for period change with 25s timeout...');
+      console.log('📊 Loading chart data for period change with 45s timeout...');
       
       let _startDate = startDate, _endDate = endDate;
       if (!_startDate || !_endDate) {
@@ -514,7 +514,7 @@ const FinanceScreen = React.memo(() => {
       
       const reportResponse = await withTimeout(
         transactionService.viewTransactionReport(undefined, startDateStr, endDateStr),
-        25000 // 25s timeout cho chart data
+        45000 // 45s timeout cho chart data
       );
       
       if (reportResponse) {
@@ -1061,16 +1061,16 @@ const FinanceScreen = React.memo(() => {
 
       setCategoriesLoading(true);
       try {
-        console.log('🟡 Loading categories with 15s timeout...');
+        console.log('🟡 Loading categories with 30s timeout...');
         const categoryService = CategoryService.getInstance();
         const [incomeCats, expenseCats] = await Promise.all([
           withTimeout(
           categoryService.getAllCategoriesByTypeAndUser(CategoryType.INCOME, 0),
-            15000 // 15s timeout cho categories
+            30000 // 30s timeout cho categories
           ),
           withTimeout(
           categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0),
-            15000 // 15s timeout cho categories
+            30000 // 30s timeout cho categories
           ),
         ]);
         const allCats = [...(incomeCats || []), ...(expenseCats || [])];
@@ -1124,10 +1124,10 @@ const FinanceScreen = React.memo(() => {
 
     setTransactionHistoryLoading(true);
     try {
-      console.log('🟡 Loading transaction history with 20s timeout...');
+      console.log('🟡 Loading transaction history with 40s timeout...');
       const apiResponse: any = await withTimeout(
         viewHistoryTransactions({ page: 0, size: 30 }),
-        20000 // 20s timeout cho transaction history
+        40000 // 40s timeout cho transaction history
       );
       
       const all: any[] = (apiResponse?.data?.content && Array.isArray(apiResponse.data.content)) ? apiResponse.data.content : [];

@@ -58,11 +58,11 @@ const SettingScreen = () => {
       setLoading(true);
       console.log('🟡 Loading user profile...', forceRefresh ? '(Force Refresh)' : '');
       
-      // Add timeout for API call (15 seconds)
+      // Add timeout for API call (45 seconds)
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
-          reject(new Error('Request timeout after 15 seconds'));
-        }, 15000);
+          reject(new Error('Request timeout after 45 seconds'));
+        }, 45000);
       });
       
       const profilePromise = userService.getCurrentUserProfile(forceRefresh);
