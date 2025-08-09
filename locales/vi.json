@@ -167,6 +167,8 @@
     "addWalletTitle": "Thêm ví",
     "editWalletTitle": "Chỉnh sửa ví",
     "balance": "Số dư",
+    "initialBalance": "Số dư ban đầu",
+    "initialBalanceNote": "Lưu ý: Số dư ban đầu này có thể ảnh hưởng tới số dư hiện tại (current balance)",
     "noWalletsFound": "Không tìm thấy ví",
     "addFirstWallet": "Thêm ví đầu tiên để bắt đầu",
     "maxWalletLimit": "Bạn chỉ được tạo 5 ví",
@@ -196,6 +198,7 @@
     "excludeDescription": "Bỏ qua ví này, không bao gồm trong báo cáo và tổng số dư",
     "placeholders": {
       "enterBalance": "Nhập số dư",
+      "enterInitialBalance": "Nhập số dư ban đầu",
       "enterWalletName": "Nhập tên ví",
       "enterBankName": "Nhập tên ngân hàng",
       "enterEWalletName": "Nhập tên ví điện tử",
@@ -1137,6 +1140,12 @@
         "message": "Bạn có muốn sửa cả những kỳ hạn mức trước đó không?",
         "yes": "Có",
         "no": "Không"
+      },
+      "confirmFieldsChange": {
+        "title": "Cập nhật ngân sách",
+        "message": "Thông báo bạn có muốn cập nhật không? Cập nhật này sẽ thay đổi toàn bộ các period cũ.",
+        "yes": "Cập nhật",
+        "no": "Huỷ"
       }
     },
     "detail": {

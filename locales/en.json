@@ -1031,6 +1031,12 @@
         "message": "Do you want to edit previous limit periods as well?",
         "yes": "Yes",
         "no": "No"
+      },
+      "confirmFieldsChange": {
+        "title": "Update Budget",
+        "message": "Do you want to update? This update will change all previous periods.",
+        "yes": "Update",
+        "no": "Cancel"
       }
     },
     "detail": {
@@ -1082,6 +1088,8 @@
     "addWalletTitle": "Add Wallet",
     "editWalletTitle": "Edit Wallet",
     "balance": "Balance",
+    "initialBalance": "Initial Balance",
+    "initialBalanceNote": "Note: Initial balance may affect current balance",
     "noWalletsFound": "No wallets found",
     "addFirstWallet": "Add your first wallet to get started",
     "title": "My Wallet",
@@ -1123,6 +1131,7 @@
     },
     "placeholders": {
       "enterBalance": "Enter balance",
+      "enterInitialBalance": "Enter initial balance",
       "enterWalletName": "Enter wallet name",
       "enterBankName": "Enter bank name",
       "enterEWalletName": "Enter e-wallet name",

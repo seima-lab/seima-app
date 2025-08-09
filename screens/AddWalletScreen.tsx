@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -298,12 +298,17 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
           {/* Balance Field */}
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, typography.semibold]}>
-              {t('wallet.balance')} <Text style={styles.required}>*</Text>
+              {editMode ? t('wallet.initialBalance') : t('wallet.balance')} <Text style={styles.required}>*</Text>
             </Text>
+            {editMode && (
+              <Text style={styles.noteText}>
+                {t('wallet.initialBalanceNote')}
+              </Text>
+            )}
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.textInput}
-                placeholder={t('wallet.placeholders.enterBalance')}
+                placeholder={editMode ? t('wallet.placeholders.enterInitialBalance') : t('wallet.placeholders.enterBalance')}
                 value={balance}
                 onChangeText={(text) => setBalance(formatBalanceInput(text))}
                 keyboardType="numeric"
@@ -481,6 +486,14 @@ const styles = StyleSheet.create({
   },
   required: {
     color: '#ff4757',
+  },
+  noteText: {
+    fontSize: 14,
+    color: '#f59e0b',
+    marginBottom: 8,
+    marginTop: 4,
+    lineHeight: 20,
+    fontStyle: 'italic',
   },
   inputContainer: {
     flexDirection: 'row',

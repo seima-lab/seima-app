@@ -2,18 +2,18 @@ import { useRoute } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Calendar from 'react-native-calendars/src/calendar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -124,9 +124,14 @@ const BudgetLimitScreen = () => {
   const [originalAmount, setOriginalAmount] = useState('');
   const [originalStartDate, setOriginalStartDate] = useState<Date | null>(null);
   const [originalEndDate, setOriginalEndDate] = useState<Date | null>(null);
+  const [originalSelectedCategories, setOriginalSelectedCategories] = useState<CategoryResponse[]>([]);
+  const [originalSelectedWalletIds, setOriginalSelectedWalletIds] = useState<number[]>([]);
+  const [originalLimitName, setOriginalLimitName] = useState('');
+  const [originalPeriodType, setOriginalPeriodType] = useState('');
   const [showAmountConfirmModal, setShowAmountConfirmModal] = useState(false);
+  const [showFieldsConfirmModal, setShowFieldsConfirmModal] = useState(false);
   const [pendingSaveRequest, setPendingSaveRequest] = useState<any>(null);
-  const [changeType, setChangeType] = useState<'amount' | 'date' | null>(null);
+  const [changeType, setChangeType] = useState<'amount' | 'fields' | null>(null);
   
   const insets = useSafeAreaInsets();
 
@@ -289,11 +294,18 @@ const BudgetLimitScreen = () => {
       
       // Fill form with budget data
       if (budgetDetail) {
-        setLimitName(budgetDetail.budget_name || '');
+        const budgetName = budgetDetail.budget_name || '';
+        const periodTypeValue = budgetDetail.period_type || 'NONE';
         const originalAmountValue = budgetDetail.overall_amount_limit?.toString() || '';
+        
+        setLimitName(budgetName);
         setAmount(formatCurrency(originalAmountValue));
-        setOriginalAmount(originalAmountValue); // Lưu amount ban đầu
-        setPeriodType(budgetDetail.period_type || 'NONE');
+        setPeriodType(periodTypeValue);
+        
+        // Lưu giá trị ban đầu cho comparison
+        setOriginalAmount(originalAmountValue);
+        setOriginalLimitName(budgetName);
+        setOriginalPeriodType(periodTypeValue);
         
         // Set dates
         if (budgetDetail.start_date) {
@@ -333,6 +345,7 @@ const BudgetLimitScreen = () => {
           if (walletIds.length > 0) {
             console.log('🔄 Setting selectedWalletIds with:', walletIds);
             setSelectedWalletIds(walletIds);
+            setOriginalSelectedWalletIds(walletIds); // Lưu wallet IDs ban đầu
           } else {
             console.log('⚠️ No valid wallet IDs found in wallet list');
           }
@@ -340,7 +353,9 @@ const BudgetLimitScreen = () => {
           console.log('⚠️ No wallets found in budget detail, using all wallets as fallback');
           // Fallback: if no wallet info in budget, select all available wallets
           if (wallets.length > 0) {
-            setSelectedWalletIds(wallets.map(w => w.id));
+            const allWalletIds = wallets.map(w => w.id);
+            setSelectedWalletIds(allWalletIds);
+            setOriginalSelectedWalletIds(allWalletIds); // Lưu wallet IDs ban đầu
           }
         }
         
@@ -369,6 +384,7 @@ const BudgetLimitScreen = () => {
           const categories = deduplicateCategories(convertedCategories);
           console.log('🔄 Setting selectedCategories with:', categories.length, 'items');
           setSelectedCategories(categories);
+          setOriginalSelectedCategories(categories); // Lưu categories ban đầu
         } else {
           console.log('⚠️ No categories found in budget detail');
           console.log('🔍 Checking route params budgetData...');
@@ -383,6 +399,7 @@ const BudgetLimitScreen = () => {
             const deduplicatedCategories = deduplicateCategories(budgetData.category_list);
             console.log('🔄 Setting selectedCategories from route params:', deduplicatedCategories.length, 'items');
             setSelectedCategories(deduplicatedCategories);
+            setOriginalSelectedCategories(deduplicatedCategories); // Lưu categories ban đầu từ route params
           } else {
             console.log('❌ No categories found in both API and route params');
           }
@@ -638,12 +655,11 @@ const BudgetLimitScreen = () => {
       return;
     }
     
-    // Check if amount, startDate, or endDate changed in edit mode
+    // Check if any fields changed in edit mode
     if (isEditMode) {
       let hasChanges = false;
-      let changeType: 'amount' | 'date' | null = null;
       let amountChanged = false;
-      let dateChanged = false;
+      let otherFieldsChanged = false;
       
       // Check amount changes
       if (originalAmount) {
@@ -662,6 +678,20 @@ const BudgetLimitScreen = () => {
         }
       }
       
+      // Check budget name changes
+      if (originalLimitName && limitName.trim() !== originalLimitName.trim()) {
+        console.log('🔍 Budget name changed:', { current: limitName.trim(), original: originalLimitName.trim() });
+        hasChanges = true;
+        otherFieldsChanged = true;
+      }
+      
+      // Check period type changes
+      if (originalPeriodType && periodType !== originalPeriodType) {
+        console.log('🔍 Period type changed:', { current: periodType, original: originalPeriodType });
+        hasChanges = true;
+        otherFieldsChanged = true;
+      }
+      
       // Check startDate changes
       if (originalStartDate) {
         const currentStartDate = startDate.toISOString().split('T')[0];
@@ -675,7 +705,7 @@ const BudgetLimitScreen = () => {
         
         if (currentStartDate !== originalStartDateStr) {
           hasChanges = true;
-          dateChanged = true;
+          otherFieldsChanged = true;
         }
       }
       
@@ -692,32 +722,73 @@ const BudgetLimitScreen = () => {
         
         if (currentEndDate !== originalEndDateStr) {
           hasChanges = true;
-          dateChanged = true;
+          otherFieldsChanged = true;
         }
       } else if (originalEndDate && !endDate) {
         // Original had endDate but current doesn't
         hasChanges = true;
-        dateChanged = true;
+        otherFieldsChanged = true;
       } else if (!originalEndDate && endDate) {
         // Original didn't have endDate but current does
         hasChanges = true;
-        dateChanged = true;
+        otherFieldsChanged = true;
+      }
+      
+      // Check categories changes
+      if (originalSelectedCategories.length > 0) {
+        const currentCategoryIds = selectedCategories.map(cat => cat.category_id).sort();
+        const originalCategoryIds = originalSelectedCategories.map(cat => cat.category_id).sort();
+        const categoriesChanged = JSON.stringify(currentCategoryIds) !== JSON.stringify(originalCategoryIds);
+        
+        console.log('🔍 Categories comparison:', {
+          currentCount: currentCategoryIds.length,
+          originalCount: originalCategoryIds.length,
+          currentIds: currentCategoryIds,
+          originalIds: originalCategoryIds,
+          changed: categoriesChanged
+        });
+        
+        if (categoriesChanged) {
+          hasChanges = true;
+          otherFieldsChanged = true;
+        }
+      }
+      
+      // Check wallets changes
+      if (originalSelectedWalletIds.length > 0) {
+        const currentWalletIds = [...selectedWalletIds].sort();
+        const originalWalletIds = [...originalSelectedWalletIds].sort();
+        const walletsChanged = JSON.stringify(currentWalletIds) !== JSON.stringify(originalWalletIds);
+        
+        console.log('🔍 Wallets comparison:', {
+          currentCount: currentWalletIds.length,
+          originalCount: originalWalletIds.length,
+          currentIds: currentWalletIds,
+          originalIds: originalWalletIds,
+          changed: walletsChanged
+        });
+        
+        if (walletsChanged) {
+          hasChanges = true;
+          otherFieldsChanged = true;
+        }
       }
       
       if (hasChanges) {
-        // Determine change type: if amount changed, prioritize amount logic
-        if (amountChanged) {
-          changeType = 'amount';
-        } else if (dateChanged) {
-          changeType = 'date';
+        // Determine change type
+        if (amountChanged && !otherFieldsChanged) {
+          // Only amount changed - show existing amount modal
+          console.log('💰 Only amount changed, showing amount confirmation modal');
+          setChangeType('amount');
+          setShowAmountConfirmModal(true);
+          return;
+        } else if (otherFieldsChanged) {
+          // Other fields changed (with or without amount) - show fields modal
+          console.log('🔧 Other fields changed, showing fields confirmation modal');
+          setChangeType('fields');
+          setShowFieldsConfirmModal(true);
+          return;
         }
-        
-        // Amount, startDate, or endDate changed, show confirmation modal
-        console.log('💰 Changes detected, showing confirmation modal');
-        console.log('🔍 Change type:', changeType, 'Amount changed:', amountChanged, 'Date changed:', dateChanged);
-        setChangeType(changeType);
-        setShowAmountConfirmModal(true);
-        return;
       }
     }
     
@@ -1156,17 +1227,35 @@ const BudgetLimitScreen = () => {
            setChangeType(null);
            performSave(false); // is_update_amount = false
          }}
-         onCancel={() => {
-           console.log('❌ User cancelled change');
-           setShowAmountConfirmModal(false);
+                 onCancel={() => {
+          console.log('❌ User cancelled amount change - save with is_update_amount = true');
+          setShowAmountConfirmModal(false);
+          setChangeType(null);
+          // For amount-only changes: save with is_update_amount = true
+          performSave(true);
+        }}
+       />
+
+       {/* Fields Change Confirmation Modal */}
+       <CustomConfirmModal
+         visible={showFieldsConfirmModal}
+         title={t('budget.setBudgetLimit.confirmFieldsChange.title')}
+         message={t('budget.setBudgetLimit.confirmFieldsChange.message')}
+         confirmText={t('budget.setBudgetLimit.confirmFieldsChange.yes')}
+         cancelText={t('budget.setBudgetLimit.confirmFieldsChange.no')}
+         type="warning"
+         iconName="warning"
+         onConfirm={() => {
+           console.log('✅ User confirmed fields change');
+           setShowFieldsConfirmModal(false);
            setChangeType(null);
-           if (changeType === 'amount') {
-             // For amount changes: save with is_update_amount = true
-             performSave(true);
-           } else if (changeType === 'date') {
-             // For date changes: save with is_update_amount = false
-             performSave(false);
-           }
+           performSave(false); // is_update_amount = false (will change all periods)
+         }}
+         onCancel={() => {
+           console.log('❌ User cancelled fields change');
+           setShowFieldsConfirmModal(false);
+           setChangeType(null);
+           // Don't save anything if user cancels
          }}
        />
 
