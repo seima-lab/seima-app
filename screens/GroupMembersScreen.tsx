@@ -146,7 +146,7 @@ const SwipeableRow: React.FC<SwipeableRowProps> = ({ member, onRemove, isGroupLe
       >
         <TouchableOpacity style={styles.swipeRemoveButton} onPress={handleRemove}>
           <Icon name="delete" size={20} color="#FFFFFF" />
-          <Text style={styles.swipeRemoveButtonText}>{t('memberManagement.remove')}</Text>
+          <Text style={styles.swipeRemoveButtonText}>{t('group.memberManagement.remove')}</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -456,7 +456,7 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
 
   const handleRemoveMember = async (member: DisplayMember) => {
     setConfirmModalData({
-      title: t('group.memberManagement.removeMember'),
+      title: t('group.memberManagement.remove'),
       message: t('group.memberManagement.confirmRemove', { name: member.name }),
       confirmText: t('common.remove'),
       cancelText: t('common.cancel'),

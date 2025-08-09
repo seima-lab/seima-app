@@ -265,10 +265,12 @@ const BudgetLimitScreen = () => {
   useEffect(() => {
     walletService.getAllWallets().then((data) => {
       setWallets(data);
-      // Nếu chưa chọn ví nào thì mặc định chọn tất cả
-      setSelectedWalletIds((prev) => (prev.length === 0 ? data.map(w => w.id) : prev));
+      // Chỉ auto-select all khi KHÔNG phải edit mode
+      if (!isEditMode) {
+        setSelectedWalletIds((prev) => (prev.length === 0 ? data.map(w => w.id) : prev));
+      }
     });
-  }, []);
+  }, [isEditMode]);
 
   const loadBudgetData = async () => {
     console.log('🔄 loadBudgetData called with budgetId:', budgetId);
@@ -309,6 +311,37 @@ const BudgetLimitScreen = () => {
           defaultEndDate.setDate(defaultEndDate.getDate() + 1);
           setEndDate(defaultEndDate);
           setOriginalEndDate(defaultEndDate);
+        }
+        
+        // Set wallets if available
+        console.log('🔍 Checking wallets in budgetDetail...');
+        console.log('🔍 budgetDetail.wallet_list:', (budgetDetail as any).wallet_list);
+        console.log('🔍 budgetDetail keys:', Object.keys(budgetDetail));
+        
+        // Check for wallet information in various possible field names
+        const walletList = (budgetDetail as any).wallet_list || 
+                          (budgetDetail as any).wallets || 
+                          (budgetDetail as any).walletList;
+                          
+        if (walletList && Array.isArray(walletList) && walletList.length > 0) {
+          console.log('💰 Wallets found in budget detail:', walletList);
+          // Extract wallet IDs from the wallet list
+          const walletIds = walletList.map((wallet: any) => 
+            wallet.wallet_id || wallet.id || wallet.walletId
+          ).filter((id: any) => id !== undefined && id !== null);
+          
+          if (walletIds.length > 0) {
+            console.log('🔄 Setting selectedWalletIds with:', walletIds);
+            setSelectedWalletIds(walletIds);
+          } else {
+            console.log('⚠️ No valid wallet IDs found in wallet list');
+          }
+        } else {
+          console.log('⚠️ No wallets found in budget detail, using all wallets as fallback');
+          // Fallback: if no wallet info in budget, select all available wallets
+          if (wallets.length > 0) {
+            setSelectedWalletIds(wallets.map(w => w.id));
+          }
         }
         
         // Set categories if available

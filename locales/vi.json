@@ -65,7 +65,16 @@
   "pleaseEnterCategoryName": "Vui lòng nhập tên danh mục",
   "addCategorySuccess": "Thêm danh mục thành công",
   "editCategorySuccess": "Cập nhật danh mục thành công",
-  
+  "chatAIScreen": {
+    "pleaseSelectWallet": "Vui lòng chọn ví gợi ý",
+    "messagePlaceholder": "Tin nhắn...",
+    "loadMoreHint": "Kéo lên để xem tin nhắn cũ hơn",
+    "headerSubtitle": "Trợ lý tài chính thông minh",
+    "welcomeTitle": "Seima AI Assistant",
+      "welcomeSubtitle": "Tôi sẵn sàng giúp bạn quản lý tài chính một cách thông minh! Hãy chia sẻ thông tin chi tiêu hoặc đặt câu hỏi về ngân sách."
+  },
+
+
   "finance": {
     "hello": "Xin chào!",
     "totalBalance": "Tổng số dư",
@@ -385,7 +394,7 @@
       "totalMembersCount": "Tổng cộng: {{count}} thành viên",
       "noMembersFound": "Không tìm thấy thành viên nào",
       "close": "Đóng",
-      "removeMember": "Xóa thành viên",
+      "remove": "Xóa thành viên",
       "confirmRemove": "Bạn có chắc muốn xóa {{name}} khỏi nhóm?",
       "removeSuccess": "Đã xóa {{name}} khỏi nhóm",
       "removeFailed": "Không thể xóa thành viên",
@@ -394,7 +403,7 @@
       "makeMember": "Xuống Member",
       "promoteToAdmin": "Thăng chức Admin",
       "demoteToMember": "Hạ chức Member",
-      "remove": "Xóa",
+     
       "confirmRoleChange": "Xác nhận thay đổi vai trò",
       "changeRoleFrom": "Bạn có chắc muốn thay đổi vai trò của {{name}} từ {{oldRole}} thành {{newRole}}?",
       "confirm": "Xác nhận",
@@ -1167,7 +1176,8 @@
         "noTransactionsMessage": "Không tìm thấy giao dịch nào trong khoảng thời gian này.",
         "total": "Tổng",
         "totalTransactions": "Tổng giao dịch"
-    }
+    },
+    "loading": "Đang tải..."
   },
   "transaction": {
     "edit": "Chỉnh sửa ",
@@ -1205,9 +1215,16 @@
  
 
   "voiceRecording": {
+    "recordVoice": "Ghi âm giọng nói",
+    "pleaseKeepNetworkStable": "Vui lòng giữ kết nối mạng ổn định",
+    "recognizingVoice": "Đang nhận dạng giọng nói...",
+    "mayTakeUpTo": "Có thể mất tới 90 giây",
+    "recording": "Đang ghi âm...",
+    "pressToStart": "Ấn để bắt đầu ghi âm",
+    "shortRecordingTip": "Ghi âm ngắn (dưới 2 phút) để tốc độ xử lý nhanh hơn",
     "title": "Ghi âm giọng nói",
     "startRecording": "Bấm để bắt đầu ghi âm",
-    "recording": "Đang ghi âm... Bấm để dừng",
+    
     "processing": "Đang xử lý giọng nói...",
     "processingNote": "Quá trình này có thể mất vài giây",
     "recognitionResult": "Kết quả nhận diện:",

@@ -2,18 +2,18 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -407,7 +407,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
           {/* Loading Content */}
           <View style={styles.loadingContent}>
             <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 16 }} />
-            <Text style={styles.loadingText}>Đang tải ví...</Text>
+            <Text style={styles.loadingText}>{t('wallet.loading')}</Text>
           </View>
         </SafeAreaView>
       </View>

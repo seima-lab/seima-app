@@ -52,6 +52,7 @@ export interface Budget {
   created_at: string;
   status: string;
   category_list?: Category[]; // Optional categories
+  wallet_list?: any[]; // Optional wallets
 }
 
 // Budget Period Response interface
@@ -212,11 +213,13 @@ export class BudgetService {
           budget_remaining_amount: response.data.budget_remaining_amount || response.data.budgetRemainingAmount,
           created_at: response.data.created_at || response.data.createdAt,
           status: response.data.status || response.data.status,
-          category_list: response.data.category_list || response.data.categories || response.data.categoryList || []
+          category_list: response.data.category_list || response.data.categories || response.data.categoryList || [],
+          wallet_list: response.data.wallet_list || response.data.wallets || response.data.walletList || []
         };
         
         console.log('🔄 Converted budget detail:', budgetDetail);
         console.log('🔄 Categories in converted data:', budgetDetail.category_list);
+        console.log('🔄 Wallets in converted data:', budgetDetail.wallet_list);
         
         return budgetDetail;
       }

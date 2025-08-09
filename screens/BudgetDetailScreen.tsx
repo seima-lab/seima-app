@@ -2,16 +2,16 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
@@ -471,7 +471,13 @@ const BudgetDetailScreen = () => {
         >
           <Icon name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('budget.detail.title')}</Text>
+        <Text 
+          style={styles.headerTitle}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {budget?.budget_name || t('budget.detail.title')}
+        </Text>
         <View style={styles.headerActions}>
           <TouchableOpacity 
             style={styles.moreButton}
@@ -738,6 +744,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
     ...typography.semibold,
   },
   moreButton: {

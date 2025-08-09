@@ -58,7 +58,14 @@
   "addCategorySuccess": "Category added successfully",
   "editCategorySuccess": "Category updated successfully",
   "alreadyExists": "Category name already exists. Please choose another name.",
-  
+  "chatAIScreen": {
+      "headerSubtitle": "Smart financial assistant",
+    "welcomeTitle": "Seima AI Assistant",
+    "welcomeSubtitle": "I'm ready to help you manage your finances smartly! Share your spending information or ask about your budget.",
+    "loadMoreHint": "Pull up to see older messages",
+    "pleaseSelectWallet": "Please select wallet",
+    "messagePlaceholder": "Message..."
+  },
   "finance": {
     "hello": "Hello!",
     "totalBalance": "Total Balance",
@@ -285,7 +292,7 @@
       "totalMembersCount": "Total: {{count}} members",
       "noMembersFound": "No members found",
       "close": "Close",
-      "removeMember": "Remove Member",
+   
       "confirmRemove": "Are you sure you want to remove {{name}} from the group?",
       "removeSuccess": "{{name}} has been removed from the group",
       "removeFailed": "Unable to remove member",
@@ -1149,9 +1156,9 @@
         "selectBothDates": "Please select both start and end dates",
         "startDateAfterEndDate": "Start date cannot be after end date"
       }
-    }
+    },
+    "loading": "Loading..."
   },
-
   "transaction": {
     "edit": "Edit budget",
     "delete": "Delete budget"
@@ -1232,9 +1239,15 @@
   },
 
   "voiceRecording": {
+    "recordVoice": "Record Voice",
+    "pleaseKeepNetworkStable": "Please keep network stable",
+    "recognizingVoice": "Recognizing voice...",
+    "mayTakeUpTo": "May take up to 90 seconds",
+    "recording": "Recording...",
+    "pressToStart": "Tap to start recording",
     "title": "Voice Recording",
     "startRecording": "Tap to start recording",
-    "recording": "Recording... Tap to stop",
+    "shortRecordingTip": "Record a short audio (under 2 minutes) for faster processing",
     "processing": "Processing voice...",
     "processingNote": "This process may take a few seconds",
     "recognitionResult": "Recognition result:",

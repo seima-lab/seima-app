@@ -1,5 +1,6 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   FlatList,
@@ -18,6 +19,7 @@ import { deduplicateCategories, getIconColor, getIconForCategory } from '../util
 const SelectCategoryScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const { categoryType, onSelectCategories, selectedCategories: initialSelected = [], selectAllDefault = false } = (route as any).params;
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<CategoryResponse[]>([]);
@@ -76,8 +78,7 @@ const SelectCategoryScreen = () => {
       // Use system categories with userId and groupId as 0
       const loadedCategories = await categoryService.getAllCategoriesByTypeAndUser(
         categoryType === 'expense' ? CategoryType.EXPENSE : CategoryType.INCOME,
-        0,
-        1
+        0
       );
       
       setCategories(loadedCategories);
@@ -164,10 +165,10 @@ const SelectCategoryScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Đang tải danh mục...</Text>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       </View>
     );
-  }
+  } 
 
   if (error) {
     return (

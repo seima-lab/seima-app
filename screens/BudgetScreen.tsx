@@ -3,15 +3,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -293,6 +293,8 @@ const BudgetScreen = () => {
         return t('budget.setBudgetLimit.monthly');
       case 'YEARLY':
         return t('budget.setBudgetLimit.yearly');
+      case 'DAILY':
+        return t('budget.setBudgetLimit.daily');
       default:
         return t('budget.setBudgetLimit.noPeriod');
     }

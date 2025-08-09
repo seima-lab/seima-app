@@ -472,7 +472,7 @@ const UpdateProfile = () => {
                   source={
                     avatarUri 
                       ? { uri: avatarUri }
-                      : require('../assets/images/Unknown.jpg')
+                      : require('../assets/images/maleavatar.png')
                   }
                   style={styles.avatar}
                 />

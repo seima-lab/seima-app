@@ -299,9 +299,22 @@ export class ApiService {
       config.signal = controller.signal;
 
       console.log(`🌐 Transcription Request: POST ${url} (timeout: ${timeout}ms)`);
+      console.log(`📋 Request headers:`, defaultHeaders);
+      console.log(`📦 FormData fields:`, formData);
 
       const response = await fetch(url, config);
       clearTimeout(timeoutId);
+
+      console.log(`📥 Response status: ${response.status} (${response.statusText})`);
+      console.log(`📥 Response headers:`, Object.fromEntries(response.headers.entries()));
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await response.text();
+        console.error(`❌ Non-JSON response (${contentType}):`, textResponse);
+        throw new Error(`Server trả về lỗi: ${response.status} - ${textResponse.substring(0, 200)}`);
+      }
 
       const result: ApiResponse<T> = await response.json();
 

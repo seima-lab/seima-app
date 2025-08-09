@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -221,6 +222,8 @@ const SuggestedBudgets = ({ budgets, onBudgetSelect, disabled = false }: {
 
 // Welcome message component
 const WelcomeMessage = () => {
+    const { t } = useTranslation();
+    
     return (
         <View style={styles.welcomeContainer}>
             <LinearGradient
@@ -229,10 +232,9 @@ const WelcomeMessage = () => {
             >
                 <Icon2 name="robot" size={32} color="#FFFFFF" />
             </LinearGradient>
-            <Text style={styles.welcomeTitle}>Seima AI Assistant</Text>
+            <Text style={styles.welcomeTitle}>{t('chatAIScreen.welcomeTitle')}</Text>
             <Text style={styles.welcomeSubtitle}>
-                Tôi sẵn sàng giúp bạn quản lý tài chính một cách thông minh! 
-                Hãy chia sẻ thông tin chi tiêu hoặc đặt câu hỏi về ngân sách.
+                {t('chatAIScreen.welcomeSubtitle')}
             </Text>
         </View>
     );
@@ -280,6 +282,7 @@ const VoiceRecorderModal = ({
     isLoading,
     onStartRecord,
     onStopRecord,
+    onCleanup,
 }: {
     visible: boolean;
     onClose: () => void;
@@ -287,15 +290,40 @@ const VoiceRecorderModal = ({
     isLoading: boolean;
     onStartRecord: () => Promise<void>;
     onStopRecord: () => Promise<void>;
+    onCleanup: () => void;
 }) => {
     const { t } = useTranslation();
     const [isRecording, setIsRecording] = useState(false);
     const [hasAudioPermission, setHasAudioPermission] = useState<boolean | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false); // Để tránh double press
+    const lastPressTime = useRef(0); // Debouncing
 
-    // Reset state khi đóng modal
+    // Reset state và dừng ghi âm khi đóng modal
     useEffect(() => {
         if (!visible) {
+            console.log('📴 Modal is closing, cleaning up recording state...');
+            
+            // IMMEDIATELY update UI state
+            const wasRecording = isRecording;
             setIsRecording(false);
+            setIsProcessing(false);
+            
+            if (wasRecording && !isProcessing) {
+                // Dừng ghi âm nếu đang ghi khi đóng modal
+                console.log('🛑 Stopping recording due to modal close...');
+                setIsProcessing(true);
+                onStopRecord().catch(console.error).finally(() => {
+                    setIsProcessing(false);
+                });
+            }
+            
+            // Clean up listeners immediately
+            try {
+                console.log('🧹 Cleaning up recording listeners on modal close');
+                onCleanup();
+            } catch (err) {
+                console.log('⚠️ Error cleaning up listeners:', err);
+            }
         }
     }, [visible]);
 
@@ -315,59 +343,90 @@ const VoiceRecorderModal = ({
         }
     }, [visible]);
 
-    const handlePressIn = async () => {
-        if (Platform.OS === 'android' && !hasAudioPermission) {
-            try {
-                const permissions = await PermissionsAndroid.requestMultiple([
-                    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-                    PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-                    PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-                ]);
-                
-                const audioGranted = permissions[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED;
-                const writeGranted = permissions[PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE] === PermissionsAndroid.RESULTS.GRANTED;
-                const readGranted = permissions[PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE] === PermissionsAndroid.RESULTS.GRANTED;
-                
-                if (audioGranted) {
-                    setHasAudioPermission(true);
-                    console.log('✅ Audio permission granted');
-                    
-                    if (writeGranted && readGranted) {
-                        console.log('✅ Storage permissions granted');
-                    } else {
-                        console.log('⚠️ Some storage permissions not granted:', { writeGranted, readGranted });
-                    }
-                    
-                    Alert.alert(t('voiceRecording.permissionGranted'), t('voiceRecording.permissionGrantedMessage'));
-                    return;
-                } else {
-                    setHasAudioPermission(false);
-                    Alert.alert(t('voiceRecording.permissionDenied'), t('voiceRecording.permissionDeniedMessage'));
-                    return;
-                }
-            } catch (err) {
-                setHasAudioPermission(false);
-                Alert.alert(t('voiceRecording.permissionError'), t('voiceRecording.permissionErrorMessage'));
-                return;
-            }
+    const handleRecordPress = async () => {
+        const now = Date.now();
+        
+        // Debouncing: Tránh double press trong vòng 500ms
+        if (now - lastPressTime.current < 500) {
+            console.log('⚠️ Button pressed too quickly, ignoring');
+            return;
+        }
+        lastPressTime.current = now;
+        
+        // Tránh xử lý nếu đang trong quá trình processing
+        if (isProcessing) {
+            console.log('⚠️ Already processing, ignoring press');
+            return;
         }
         
+        setIsProcessing(true);
+        
         try {
+            // Nếu đang ghi âm, dừng ghi âm
+            if (isRecording) {
+                console.log('🛑 User requested to stop recording...');
+                setIsRecording(false); // Update UI state IMMEDIATELY
+                console.log('🎯 UI state updated to stopped');
+                
+                try {
+                    await onStopRecord();
+                    console.log('✅ Recording stopped successfully');
+                } catch (stopErr) {
+                    console.error('❌ Error stopping recording:', stopErr);
+                    // Even if stop fails, keep UI in stopped state
+                }
+                return;
+            }
+
+            // Nếu chưa ghi âm, kiểm tra quyền và bắt đầu ghi âm
+            if (Platform.OS === 'android' && !hasAudioPermission) {
+                try {
+                    const permissions = await PermissionsAndroid.requestMultiple([
+                        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+                        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+                        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+                    ]);
+                    
+                    const audioGranted = permissions[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED;
+                    const writeGranted = permissions[PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE] === PermissionsAndroid.RESULTS.GRANTED;
+                    const readGranted = permissions[PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE] === PermissionsAndroid.RESULTS.GRANTED;
+                    
+                    if (audioGranted) {
+                        setHasAudioPermission(true);
+                        console.log('✅ Audio permission granted');
+                        
+                        if (writeGranted && readGranted) {
+                            console.log('✅ Storage permissions granted');
+                        } else {
+                            console.log('⚠️ Some storage permissions not granted:', { writeGranted, readGranted });
+                        }
+                        
+                        Alert.alert(t('voiceRecording.permissionGranted'), t('voiceRecording.permissionGrantedMessage'));
+                        return;
+                    } else {
+                        setHasAudioPermission(false);
+                        Alert.alert(t('voiceRecording.permissionDenied'), t('voiceRecording.permissionDeniedMessage'));
+                        return;
+                    }
+                } catch (err) {
+                    setHasAudioPermission(false);
+                    Alert.alert(t('voiceRecording.permissionError'), t('voiceRecording.permissionErrorMessage'));
+                    return;
+                }
+            }
+            
+            // Bắt đầu ghi âm
+            console.log('🎤 Starting recording...');
             await onStartRecord();
             setIsRecording(true);
+            console.log('✅ Recording started successfully');
+            
         } catch (err) {
+            console.error('❌ Error in handleRecordPress:', err);
             setIsRecording(false);
-        }
-    };
-
-    const handlePressOut = async () => {
-        if (isRecording) {
-            try {
-                await onStopRecord();
-                setIsRecording(false);
-            } catch (err) {
-                setIsRecording(false);
-            }
+            Alert.alert('Lỗi', 'Có lỗi xảy ra khi thao tác với ghi âm. Vui lòng thử lại.');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -378,12 +437,32 @@ const VoiceRecorderModal = ({
                     {/* Header */}
                     <View style={styles.voiceModalHeader}>
                         <View style={styles.voiceModalHandle} />
-                        <Text style={styles.voiceModalTitle}>Ghi âm giọng nói</Text>
+                        <Text style={styles.voiceModalTitle}>{t('voiceRecording.recordVoice')}</Text>
                         <TouchableOpacity
                             style={styles.voiceModalCloseButton}
-                            onPress={onClose}
+                            onPress={() => {
+                                if (isRecording && !isProcessing) {
+                                    // Update UI state immediately, then stop recording
+                                    setIsRecording(false);
+                                    setIsProcessing(true);
+                                    console.log('🚪 User closing modal while recording, stopping...');
+                                    
+                                    // Clean up immediately
+                                    onCleanup();
+                                    
+                                    onStopRecord().catch(console.error).finally(() => {
+                                        setIsProcessing(false);
+                                        onClose();
+                                    });
+                                } else {
+                                    // Clean up even if not recording
+                                    onCleanup();
+                                    onClose();
+                                }
+                            }}
+                            disabled={isProcessing}
                         >
-                            <Icon name="close" size={20} color="#666" />
+                            <Icon name="close" size={20} color={isProcessing ? "#ccc" : "#666"} />
                         </TouchableOpacity>
                     </View>
 
@@ -393,10 +472,13 @@ const VoiceRecorderModal = ({
                             <View style={styles.voiceLoadingContainer}>
                                 <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 16 }} />
                                 <Text style={styles.voiceLoadingText}>
-                                    Đang xử lý giọng nói...{'\n'}
+                                    {t('voiceRecording.recognizingVoice')}{'\n'}
                                     <Text style={styles.voiceLoadingSubtext}>
-                                        Vui lòng chờ trong giây lát
+                                        {t('voiceRecording.pleaseKeepNetworkStable')}
                                     </Text>
+                                </Text>
+                                <Text style={[styles.voiceLoadingSubtext, { marginTop: 8, fontSize: 12 }]}>
+                                    ⏱️ {t('voiceRecording.mayTakeUpTo')}
                                 </Text>
                             </View>
                         ) : (
@@ -405,11 +487,12 @@ const VoiceRecorderModal = ({
                                 <TouchableOpacity
                                     style={[
                                         styles.voiceRecordButton,
-                                        isRecording && styles.voiceRecordButtonRecording
+                                        isRecording && styles.voiceRecordButtonRecording,
+                                        (isLoading || isProcessing) && { opacity: 0.6 }
                                     ]}
-                                    onPressIn={handlePressIn}
-                                    onPressOut={handlePressOut}
-                                    disabled={isLoading}
+                                    onPress={handleRecordPress}
+                                    disabled={isLoading || isProcessing}
+                                    activeOpacity={0.8}
                                 >
                                     <LinearGradient
                                         colors={isRecording ? ['#ff4d4f', '#ff7875'] : ['#1e90ff', '#0066cc']}
@@ -425,14 +508,21 @@ const VoiceRecorderModal = ({
 
                                 {/* Instructions */}
                                 <Text style={styles.voiceInstructionText}>
-                                    {isRecording ? 'Đang ghi âm... Nhả ra để dừng' : 'Giữ để ghi âm, nhả ra để dừng'}
+                                    {isRecording ? t('voiceRecording.recording') : t('voiceRecording.pressToStart')}
                                 </Text>
+                                
+                                {/* Tip for better experience */}
+                                {!isRecording && (
+                                    <Text style={[styles.voiceInstructionText, { fontSize: 12, color: '#666', marginTop: 8 }]}>
+                                        💡 {t('voiceRecording.shortRecordingTip')}
+                                    </Text>
+                                )}
 
                                 {/* Recording indicator */}
                                 {isRecording && (
                                     <View style={styles.voiceRecordingIndicator}>
                                         <View style={styles.voiceRecordingDot} />
-                                        <Text style={styles.voiceRecordingText}>Đang ghi âm</Text>
+                                        <Text style={styles.voiceRecordingText}>{t('voiceRecording.recording')}</Text>
                                     </View>
                                 )}
                             </>
@@ -505,7 +595,7 @@ const ChatAIScreen = () => {
     const meteringEnabled = true; // Enable audio metering
     
     // Create AudioRecorderPlayer instance
-    const audioRecorderPlayer = new AudioRecorderPlayer();
+    const audioRecorderPlayer = useRef(new AudioRecorderPlayer()).current;
 
     // Load chat history from API
     const loadChatHistory = async () => {
@@ -602,6 +692,15 @@ const ChatAIScreen = () => {
         return () => {
             keyboardDidShowListener?.remove();
             keyboardDidHideListener?.remove();
+            
+            // Cleanup audio recorder on unmount
+            try {
+                console.log('🧹 Cleaning up audio recorder on component unmount');
+                audioRecorderPlayer.stopRecorder().catch(() => {});
+                audioRecorderPlayer.removeRecordBackListener();
+            } catch (err) {
+                console.log('⚠️ Error cleaning up audio recorder:', err);
+            }
         };
     }, []);
     
@@ -954,9 +1053,17 @@ const ChatAIScreen = () => {
     // Hàm bắt đầu ghi âm với cấu hình audio tối ưu
     const handleStartRecord = async () => {
         try {
+            // Clean up any existing recording state first
+            console.log('🧹 Cleaning up existing listeners before starting');
+            audioRecorderPlayer.removeRecordBackListener();
+
             // Set up recording progress listener
+            console.log('🎤 Setting up recording progress listener');
             audioRecorderPlayer.addRecordBackListener((e: RecordBackType) => {
-                console.log('Recording progress:', e.currentPosition, e.currentMetering);
+                // Only log if actually recording to avoid spam
+                if (e.currentPosition > 0) {
+                    console.log('Recording progress:', e.currentPosition, e.currentMetering);
+                }
             });
 
             // Use proper audio configuration for better compatibility
@@ -965,18 +1072,33 @@ const ChatAIScreen = () => {
                 audioSet,
                 meteringEnabled
             );
-            console.log('Start record, file path:', result);
+            console.log('✅ Start record successful, file path:', result);
         } catch (err) {
-            console.log('Error startRecorder:', err);
-            Alert.alert(t('voiceRecording.recordError'));
+            console.error('❌ Error startRecorder:', err);
+            audioRecorderPlayer.removeRecordBackListener();
+            throw err; // Re-throw để caller có thể handle
         }
     };
     // Hàm dừng ghi âm và gửi lên API
     const handleStopRecord = async () => {
         setIsVoiceLoading(true);
+        
         try {
-            let result = await audioRecorderPlayer.stopRecorder();
+            console.log('🛑 Stopping recording...');
+            
+            // Remove listener IMMEDIATELY to stop progress updates
             audioRecorderPlayer.removeRecordBackListener();
+            console.log('🧹 Recording progress listener removed');
+            
+            let result = await audioRecorderPlayer.stopRecorder();
+            console.log('🛑 Recording stopped, result:', result);
+            
+            // Handle case where stopRecorder returns status instead of file path
+            if (result === "Already stopped" || !result || result.length < 10) {
+                console.log('⚠️ Recording was already stopped or invalid path returned:', result);
+                Alert.alert('Thông báo', 'Ghi âm đã dừng hoặc chưa được bắt đầu.');
+                return;
+            }
             
             // Chuẩn hóa lại đường dẫn (loại bớt dấu / dư thừa)
             if (result && result.startsWith('file:////')) {
@@ -992,11 +1114,52 @@ const ChatAIScreen = () => {
                 Alert.alert(t('voiceRecording.fileError'), t('voiceRecording.fileNotFound'));
                 return;
             }
+            
             const info = await FileSystem.getInfoAsync(result);
             console.log('File info:', info);
             if (!info.exists) {
                 Alert.alert(t('voiceRecording.fileError'), t('voiceRecording.fileNotExist'));
                 return;
+            }
+
+            // Kiểm tra file có dữ liệu không (tối thiểu 1KB, tối đa 10MB)
+            if (info.size && info.size < 1024) {
+                Alert.alert('Lỗi', 'File ghi âm quá ngắn hoặc không hợp lệ. Vui lòng thử lại.');
+                return;
+            }
+            
+            // Giảm limit file size xuống 10MB để tránh lỗi server
+            if (info.size && info.size > 10 * 1024 * 1024) { // 10MB limit  
+                Alert.alert(
+                    'File quá lớn', 
+                    `File ghi âm: ${(info.size / 1024 / 1024).toFixed(1)}MB\n\nGiới hạn tối đa: 10MB\n\nVui lòng ghi âm ngắn hơn (dưới 2 phút).`,
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
+            console.log(`📁 File info: size=${(info.size / 1024).toFixed(1)}KB`);
+
+            // Cảnh báo nếu file khá lớn (> 5MB)
+            if (info.size && info.size > 5 * 1024 * 1024) {
+                console.warn(`⚠️ Large file detected: ${(info.size / 1024 / 1024).toFixed(1)}MB`);
+                
+                // Show confirmation for large files
+                const shouldContinue = await new Promise<boolean>((resolve) => {
+                    Alert.alert(
+                        'File khá lớn',
+                        `File ghi âm: ${(info.size / 1024 / 1024).toFixed(1)}MB\n\nQuá trình nhận dạng có thể mất lâu hơn và tiêu tốn nhiều dữ liệu.\n\nBạn có muốn tiếp tục?`,
+                        [
+                            { text: 'Hủy', style: 'cancel', onPress: () => resolve(false) },
+                            { text: 'Tiếp tục', style: 'default', onPress: () => resolve(true) }
+                        ]
+                    );
+                });
+                
+                if (!shouldContinue) {
+                    console.log('🚫 User cancelled large file upload');
+                    return;
+                }
             }
 
             // Upload với định dạng AAC cho tương thích tốt hơn
@@ -1008,30 +1171,160 @@ const ChatAIScreen = () => {
             } as any);
             
             console.log('🎤 Bắt đầu gửi audio lên server...');
-            const text = await TranscriptionService.uploadAudio(formData);
-            console.log('✅ Nhận diện thành công:', text);
             
-            // Tự động gửi tin nhắn sau khi nhận diện thành công
-            if (text && text.trim()) {
-                handleVoiceResult(text.trim());
+            // Test network và server accessibility
+            try {
+                console.log('🌐 Checking network connectivity...');
+                
+                // Check basic network
+                const controller1 = new AbortController();
+                const timeoutId1 = setTimeout(() => controller1.abort(), 5000);
+                
+                try {
+                    await fetch('https://www.google.com', {
+                        method: 'HEAD',
+                        signal: controller1.signal
+                    });
+                    clearTimeout(timeoutId1);
+                    console.log('✅ Network connectivity check passed');
+                } catch (fetchErr) {
+                    clearTimeout(timeoutId1);
+                    throw fetchErr;
+                }
+                
+                // Test server accessibility
+                console.log('🏠 Checking server accessibility...');
+                const serverUrl = 'https://seima-server-byb7bmgea3fea4ej.southeastasia-01.azurewebsites.net';
+                const controller2 = new AbortController();
+                const timeoutId2 = setTimeout(() => controller2.abort(), 10000);
+                
+                try {
+                    const serverResponse = await fetch(serverUrl, {
+                        method: 'HEAD',
+                        signal: controller2.signal
+                    });
+                    clearTimeout(timeoutId2);
+                    console.log(`✅ Server accessible: ${serverResponse.status}`);
+                } catch (serverErr) {
+                    clearTimeout(timeoutId2);
+                    console.warn('⚠️ Server không truy cập được:', serverErr);
+                    Alert.alert(
+                        'Server không khả dụng', 
+                        'Không thể kết nối đến server Seima. Vui lòng thử lại sau.',
+                        [{ text: 'OK' }]
+                    );
+                    return;
+                }
+                
+            } catch (networkErr) {
+                console.warn('⚠️ Network connectivity check failed:', networkErr);
+                Alert.alert(
+                    'Không có kết nối mạng',
+                    'Vui lòng kiểm tra kết nối Wi-Fi hoặc dữ liệu di động và thử lại.',
+                    [{ text: 'OK' }]
+                );
+                return;
             }
+            
+            // Retry logic for network issues
+            const maxRetries = 2;
+            let lastError;
+            
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    console.log(`🔄 Attempt ${attempt}/${maxRetries} to upload audio...`);
+                    
+                    const text = await TranscriptionService.uploadAudio(formData);
+                    console.log('✅ Nhận diện thành công:', text);
+                    
+                    // Tự động gửi tin nhắn sau khi nhận diện thành công
+                    if (text && text.trim()) {
+                        handleVoiceResult(text.trim());
+                        return; // Success, exit the retry loop
+                    } else {
+                        Alert.alert('Thông báo', 'Không thể nhận dạng nội dung giọng nói. Vui lòng thử lại.');
+                        return;
+                    }
+                } catch (uploadError: any) {
+                    lastError = uploadError;
+                    console.error(`❌ Upload attempt ${attempt} failed:`, uploadError);
+                    
+                    if (attempt < maxRetries) {
+                        // Wait before retry (exponential backoff)
+                        const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s...
+                        console.log(`⏳ Waiting ${delay}ms before retry...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+            
+            // If all retries failed, throw the last error
+            throw lastError;
         } catch (err: any) {
             console.error('❌ Lỗi nhận diện giọng nói:', err);
             
-            // Xử lý các loại lỗi khác nhau
-            let errorMessage = t('voiceRecording.recognitionErrorMessage');
+            // CRITICAL: Clean up listeners on error để tránh memory leak
+            try {
+                audioRecorderPlayer.removeRecordBackListener();
+                console.log('🧹 Listeners cleaned up after error');
+            } catch (cleanupErr) {
+                console.error('⚠️ Error during cleanup:', cleanupErr);
+            }
+            
+            // Xử lý các loại lỗi khác nhau với thông báo cụ thể
+            let errorTitle = 'Lỗi nhận dạng giọng nói';
+            let errorMessage = 'Có lỗi xảy ra khi nhận dạng giọng nói. Vui lòng thử lại.';
             
             if (err.name === 'AbortError' || err.message?.includes('timeout')) {
-                errorMessage = t('voiceRecording.timeoutError');
-            } else if (err.message?.includes('network')) {
-                errorMessage = t('voiceRecording.networkError');
+                errorTitle = 'Hết thời gian chờ';
+                errorMessage = 'Quá trình nhận dạng giọng nói mất quá nhiều thời gian. Vui lòng kiểm tra kết nối mạng và thử lại.';
+            } else if (err.message?.includes('Network request failed') || err.message?.includes('network')) {
+                errorTitle = 'Lỗi kết nối mạng';
+                errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra:\n• Kết nối Wi-Fi/4G\n• Thử lại sau vài giây\n• Ghi âm ngắn hơn';
+            } else if (err.message?.includes('IllegalStateException')) {
+                errorTitle = 'Lỗi trạng thái ghi âm';
+                errorMessage = 'Có lỗi với trạng thái ghi âm. Vui lòng đóng modal và thử lại.';
+            } else if (err.message?.includes('File too large') || err.message?.includes('file size')) {
+                errorTitle = 'File quá lớn';
+                errorMessage = 'File ghi âm quá lớn. Vui lòng ghi âm ngắn hơn (dưới 50MB).';
+            } else if (err.message?.includes('Unauthorized') || err.message?.includes('401')) {
+                errorTitle = 'Lỗi xác thực';
+                errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+            } else if (err.message?.includes('Server error') || err.message?.includes('500')) {
+                errorTitle = 'Lỗi server';
+                errorMessage = 'Server đang gặp sự cố. Vui lòng thử lại sau vài phút.';
             } else if (err.message) {
+                // Giữ nguyên message từ server nếu có
                 errorMessage = err.message;
             }
             
-            Alert.alert(t('voiceRecording.recognitionError'), errorMessage);
+            Alert.alert(
+                errorTitle,
+                errorMessage,
+                [
+                    { text: 'Đóng', style: 'default' },
+                    { 
+                        text: 'Thử lại', 
+                        style: 'default',
+                        onPress: () => {
+                            // Restart the recording process
+                            setShowVoiceModal(false);
+                            setTimeout(() => setShowVoiceModal(true), 500);
+                        }
+                    }
+                ]
+            );
+            throw err; // Re-throw để caller có thể handle
         } finally {
             setIsVoiceLoading(false);
+            
+            // Double-check cleanup trong finally block
+            try {
+                audioRecorderPlayer.removeRecordBackListener();
+                console.log('🧹 Final cleanup completed');
+            } catch (finalCleanupErr) {
+                console.log('⚠️ Final cleanup already done or error:', finalCleanupErr);
+            }
         }
     };
 
@@ -1202,7 +1495,7 @@ const ChatAIScreen = () => {
                         </View>
                         <View style={styles.headerTextContainer}>
                             <Text style={styles.headerTitle}>Seima AI</Text>
-                            <Text style={styles.headerSubtitle}>Trợ lý tài chính thông minh</Text>
+                            <Text style={styles.headerSubtitle}>{t('chatAIScreen.headerSubtitle')}</Text>
                         </View>
                     </View>
                 </LinearGradient>
@@ -1244,7 +1537,7 @@ const ChatAIScreen = () => {
                         {isLoadingHistory ? (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 16 }} />
-                                <Text style={styles.loadingText}>Đang tải lịch sử chat...</Text>
+                                <Text style={styles.loadingText}>{t('loading')}</Text>
                             </View>
                         ) : (showWelcome && messages.length === 0) ? (
                             <WelcomeMessage />
@@ -1254,7 +1547,7 @@ const ChatAIScreen = () => {
                         {isLoadingMore && (
                             <View style={styles.loadingMoreContainer}>
                                 <ActivityIndicator size="small" color="#1e90ff" style={{ marginBottom: 8 }} />
-                                <Text style={styles.loadingMoreText}>Đang tải thêm tin nhắn...</Text>
+                                <Text style={styles.loadingMoreText}>{t('loading')}</Text>
                             </View>
                         )}
                         
@@ -1308,8 +1601,8 @@ const ChatAIScreen = () => {
                                             isInputBlocked && styles.blockedInput
                                         ]}
                                         value={inputText}
-                                        onChangeText={setInputText}
-                                        placeholder={isInputBlocked ? `Vui lòng chọn ví gợi ý (${remainingBlockTime}s)` : "Tin nhắn..."}
+                                            onChangeText={setInputText}
+                                            placeholder={isInputBlocked ?  t('chatAIScreen.pleaseSelectWallet') + ` (${remainingBlockTime}s)` : t('chatAIScreen.messagePlaceholder')}
                                         placeholderTextColor="#8e9aaf"
                                         multiline
                                         maxLength={1000}
@@ -1322,7 +1615,7 @@ const ChatAIScreen = () => {
                                     {isInputBlocked && (
                                         <View style={styles.blockedOverlay}>
                                             <Text style={styles.blockedText}>
-                                                Vui lòng chọn ví gợi ý ({remainingBlockTime}s)
+                                                {t('chatAIScreen.pleaseSelectWallet')} ({remainingBlockTime}s)
                                             </Text>
                                         </View>
                                     )}
@@ -1362,6 +1655,14 @@ const ChatAIScreen = () => {
                     isLoading={isVoiceLoading}
                     onStartRecord={handleStartRecord}
                     onStopRecord={handleStopRecord}
+                    onCleanup={() => {
+                        try {
+                            console.log('🧹 Cleanup callback called from modal');
+                            audioRecorderPlayer.removeRecordBackListener();
+                        } catch (err) {
+                            console.log('⚠️ Error in cleanup callback:', err);
+                        }
+                    }}
                 />
             </LinearGradient>
         </KeyboardAvoidingView>
