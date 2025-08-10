@@ -274,7 +274,16 @@ const RoleBadge: React.FC<RoleBadgeProps> = ({ role, size = 'small' }) => {
 
 const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
+  
+  // 🔍 DEBUG AuthContext
+  console.log('🔍 DEBUG AuthContext in GroupMembersScreen:', {
+    user: user,
+    isAuthenticated: isAuthenticated,
+    isLoading: isLoading,
+    userId: user?.id,
+    userEmail: user?.email
+  });
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [showAllMembers, setShowAllMembers] = useState(false);
@@ -288,6 +297,8 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
   // Modal states
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showProcessingModal, setShowProcessingModal] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('');
   const [confirmModalData, setConfirmModalData] = useState<{
     title: string;
     message: string;
@@ -324,6 +335,16 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
         totalMembersCount: response.total_members_count
       });
       
+      // Debug current user role specifically
+      console.log('🔍 DEBUG Current User Role Details:', {
+        responseCurrentUserRole: response.current_user_role,
+        typeOfCurrentUserRole: typeof response.current_user_role,
+        isCurrentUserRoleNull: response.current_user_role === null,
+        isCurrentUserRoleUndefined: response.current_user_role === undefined,
+        currentUserId: user?.id,
+        currentUser: user
+      });
+      
       setMemberData(response);
     } catch (error: any) {
       console.error('🔴 Failed to load members:', error);
@@ -341,7 +362,9 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
     console.log('🔍 DEBUG transformMemberData - Input:', {
       groupLeader: memberData.group_leader,
       members: memberData.members,
-      currentUserRole: memberData.current_user_role
+      currentUserRole: memberData.current_user_role,
+      authContextUser: user,
+      authContextUserId: user?.id
     });
     
     const allMembers: DisplayMember[] = [];
@@ -358,7 +381,7 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
           contribution: (memberData.group_leader as any).contribution ?? 0,
         role: GroupMemberRole.OWNER, // Group leader is always OWNER
         email: memberData.group_leader.user_email || t('group.memberManagement.noEmail'), // Fix undefined email
-        isCurrentUser: user?.id === memberData.group_leader.user_id.toString()
+        isCurrentUser: memberData.current_user_role === GroupMemberRole.OWNER
       });
     }
     
@@ -376,7 +399,7 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
             contribution: (member as any).contribution ?? 0,
             role: (member as any).role || GroupMemberRole.MEMBER, // FIX: Use role from API
             email: member.user_email || t('group.memberManagement.noEmail'), // Fix undefined email
-            isCurrentUser: user?.id === member.user_id.toString()
+            isCurrentUser: false // TODO: API doesn't provide way to identify current user in members array
           });
         }
       });
@@ -464,6 +487,14 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
       iconName: 'delete-forever',
       onConfirm: async () => {
         try {
+          // Close confirm modal first
+          setShowConfirmModal(false);
+          setConfirmModalData(null);
+          
+          // Show processing modal
+          setProcessingMessage(t('group.memberManagement.removeMember', { name: member.name }));
+          setShowProcessingModal(true);
+          
           setRemovingMember(member.id);
           console.log('🟡 Removing member:', member.name, member.id);
           
@@ -476,6 +507,9 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
           
           // Reload member list
           await loadGroupMembers();
+          
+          // Hide processing modal
+          setShowProcessingModal(false);
           
           // Show success modal AFTER data reload
           setSuccessModalData({
@@ -492,6 +526,9 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
         } catch (error: any) {
           console.error('🔴 Failed to remove member:', error);
           
+          // Hide processing modal
+          setShowProcessingModal(false);
+          
           // Show error modal
           setSuccessModalData({
             title: t('common.error'),
@@ -506,8 +543,6 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
           setShowSuccessModal(true);
         } finally {
           setRemovingMember(null);
-          setShowConfirmModal(false);
-          setConfirmModalData(null);
         }
       }
     });
@@ -564,25 +599,27 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
       return false;
     }
 
-    if (!currentUserRole || !user) {
-      console.log('❌ canActOnMember: No currentUserRole or user');
+    if (!currentUserRole) {
+      console.log('❌ canActOnMember: No currentUserRole', {
+        currentUserRole: currentUserRole,
+        memberDataCurrentUserRole: memberData?.current_user_role
+      });
       return false;
     }
 
-    // Cannot act on self
-    if (targetMember.id === user.id?.toString()) {
+    // Cannot act on self - check if target is current user
+    if (targetMember.isCurrentUser) {
       console.log('❌ canActOnMember: Cannot act on self');
       return false;
     }
 
-    // Cannot act on Owner
-    if (targetMember.role === GroupMemberRole.OWNER) {
-      console.log('❌ canActOnMember: Cannot act on Owner');
-      return false;
-    }
-
-    // Owner can act on anyone (except themselves)
+    // Owner can act on anyone (except themselves and other owners)
     if (currentUserRole === GroupMemberRole.OWNER) {
+      // Cannot act on other owners
+      if (targetMember.role === GroupMemberRole.OWNER) {
+        console.log('❌ canActOnMember: Owner cannot act on other Owner');
+        return false;
+      }
       console.log('✅ canActOnMember: Owner can act on', targetMember.name);
       return true;
     }
@@ -624,6 +661,14 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
       iconName: 'admin-panel-settings',
       onConfirm: async () => {
         try {
+          // Close confirm modal first
+          setShowConfirmModal(false);
+          setConfirmModalData(null);
+          
+          // Show processing modal
+          setProcessingMessage(t('group.memberManagement.updateRole', { name: member.name }));
+          setShowProcessingModal(true);
+          
           console.log('🟡 Updating member role:', member.name, newRole);
           
           await groupService.updateMemberRole(
@@ -636,6 +681,9 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
           
           // Reload member list to get updated data
           await loadGroupMembers();
+          
+          // Hide processing modal
+          setShowProcessingModal(false);
           
           // Show success modal AFTER data reload
           setSuccessModalData({
@@ -652,6 +700,9 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
         } catch (error: any) {
           console.error('🔴 Failed to update member role:', error);
           
+          // Hide processing modal
+          setShowProcessingModal(false);
+          
           // Show error modal
           setSuccessModalData({
             title: t('common.error'),
@@ -664,9 +715,6 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
             }
           });
           setShowSuccessModal(true);
-        } finally {
-          setShowConfirmModal(false);
-          setConfirmModalData(null);
         }
       }
     });
@@ -1041,6 +1089,22 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
           iconName={successModalData.iconName}
         />
       )}
+
+      {/* Processing Modal */}
+      <Modal
+        visible={showProcessingModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}} // Prevent closing during processing
+      >
+        <View style={styles.processingModalOverlay}>
+          <View style={styles.processingModalContainer}>
+            <ActivityIndicator size="large" color="#4A90E2" />
+            <Text style={styles.processingModalText}>{processingMessage}</Text>
+            <Text style={styles.processingModalSubtext}>{t('common.pleaseWait')}</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1595,6 +1659,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     ...typography.regular,
+  },
+  processingModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  processingModalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  processingModalText: {
+    fontSize: 16,
+    color: '#333333',
+    ...typography.medium,
+    textAlign: 'center',
+    marginTop: 16,
+    lineHeight: 22,
+  },
+  processingModalSubtext: {
+    fontSize: 14,
+    color: '#666666',
+    ...typography.regular,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
 

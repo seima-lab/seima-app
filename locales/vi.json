@@ -381,6 +381,8 @@
       "noMembers": "Không có thành viên nào"
     },
     "memberManagement": {
+      "removeMember": "Đang xóa thành viên {{name}}...",
+      "updateRole": "Đang cập nhật vai trò cho {{name}}...",
       "title": "Quản lý thành viên",
       "inviteUsers": "Mời người dùng qua email",
       "manageMembers": "Quản lý thành viên",
@@ -553,6 +555,7 @@
   },
 
   "common": {
+    "pleaseWait": "Vui lòng chờ trong khi chúng tôi xử lý yêu cầu của bạn...",
     "remove": "Đuổi",
     "loading": "Đang tải",
     "error": "Lỗi",

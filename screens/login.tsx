@@ -91,7 +91,7 @@ export default function LoginScreen() {
   // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+ 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -429,16 +429,7 @@ export default function LoginScreen() {
                     </View>
                   </View>
 
-                  {/* Remember Me */}
-                  <TouchableOpacity 
-                    style={styles.rememberMeContainer}
-                    onPress={() => setRememberMe(!rememberMe)}
-                  >
-                    <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                      {rememberMe && <Icon name="check" size={rf(14)} color="#fff" />}
-                    </View>
-                    <Text style={styles.rememberMeText}>{t('login.rememberMe')}</Text>
-                  </TouchableOpacity>
+        
 
                   {/* Login Button */}
                   <TouchableOpacity 

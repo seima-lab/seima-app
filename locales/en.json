@@ -276,6 +276,8 @@
       "noMembers": "No members"
     },
     "memberManagement": {
+      "removeMember": "Removing Member {{name}}...",
+      "updateRole": "Updating role for {{name}}...",
       "title": "Manage Members",
       "inviteUsers": "Invite Users with email",
       "manageMembers": "Manage Members",
@@ -454,6 +456,7 @@
   },
 
   "common": {
+    "pleaseWait": "Please wait while we process your request...",
     "remove": "Remove",
     "confirm": "Confirm",
     "back": "Back",
