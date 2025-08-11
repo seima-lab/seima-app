@@ -90,6 +90,9 @@ export interface Transaction {
   icon: string;
   iconColor: string;
   description?: string;
+  // Optional wallet mapping for edit navigation
+  wallet_id?: number;
+  walletId?: number;
 }
 
 export interface DayData {

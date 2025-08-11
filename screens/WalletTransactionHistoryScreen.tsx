@@ -3,17 +3,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    FlatList,
-    Modal,
-    RefreshControl,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Modal,
+  RefreshControl,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -743,8 +743,11 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
           />
         )}
 
-        {/* Filter Modal */}
-        <Modal
+        {/* Filter Modal - keep outside scroll container to avoid drawing order crashes */}
+      </SafeAreaView>
+      {/* Portals below root view to stabilize child drawing order on Android */}
+      {/* Filter Modal */}
+      <Modal
           visible={showFilterModal}
           transparent={true}
           animationType="slide"
@@ -801,10 +804,10 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
               </View>
             </View>
           </View>
-                 </Modal>
+        </Modal>
 
-         {/* Custom Date Range Modal */}
-         <Modal
+      {/* Custom Date Range Modal */}
+      <Modal
            visible={showCustomDateModal}
            transparent={true}
            animationType="slide"
@@ -896,11 +899,11 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
                  </TouchableOpacity>
                </View>
              </View>
-           </View>
-                   </Modal>
+          </View>
+        </Modal>
 
-          {/* DateTimePicker Components */}
-          {showStartDatePicker && (
+      {/* DateTimePicker Components */}
+      {showStartDatePicker && (
             <DateTimePicker
               value={tempStartDate}
               mode="date"
@@ -913,9 +916,9 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
                 }
               }}
             />
-          )}
+      )}
 
-          {showEndDatePicker && (
+      {showEndDatePicker && (
             <DateTimePicker
               value={tempEndDate}
               mode="date"
@@ -928,8 +931,7 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
                 }
               }}
             />
-          )}
-        </SafeAreaView>
+      )}
       </View>
     );
   };

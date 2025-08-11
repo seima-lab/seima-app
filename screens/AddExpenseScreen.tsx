@@ -75,9 +75,12 @@ export default function AddExpenseScreen() {
     if (fromGroupOverview) {
       return 0; // Set to 0 for group transactions
     }
-    if ((fromCopy && transactionData?.wallet_id) || (isEditMode && transactionData?.wallet_id)) {
-      console.log('🔄 Initializing selectedWallet from transactionData:', transactionData.wallet_id);
-      return transactionData.wallet_id;
+    const initialWalletId =
+      (fromCopy ? (transactionData?.wallet_id ?? transactionData?.walletId) : undefined) ??
+      (isEditMode ? (transactionData?.wallet_id ?? transactionData?.walletId) : undefined);
+    if (initialWalletId !== undefined && initialWalletId !== null) {
+      console.log('🔄 Initializing selectedWallet from transactionData:', initialWalletId);
+      return Number(initialWalletId);
     }
     return null;
   });
@@ -104,6 +107,7 @@ export default function AddExpenseScreen() {
     activeTab,
     fromGroupTransactionList,
     setSelectedWallet,
+    fromCopy,
   });
 
   // Form validation hook (declare before usage)

@@ -385,7 +385,7 @@
     "memberManagement": {
       "removeMember": "Đang xóa thành viên {{name}}...",
       "updateRole": "Đang cập nhật vai trò cho {{name}}...",
-      "title": "Quản lý thành viên",
+      "title": "Thành viên của nhóm",
       "inviteUsers": "Mời người dùng qua email",
       "manageMembers": "Quản lý thành viên",
       "listTransactions": "Danh sách giao dịch",
@@ -626,7 +626,8 @@
     "validation": "Xác thực",
     "noNote": "Không có ghi chú",
     "unknown": "Không rõ",
-    "unknownUser": "Người dùng không xác định"
+    "unknownUser": "Người dùng không xác định",
+    "transactions": "giao dịch"
   },
 
   "changePasswordBtn": "Đổi mật khẩu",

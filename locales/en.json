@@ -278,7 +278,7 @@
     "memberManagement": {
       "removeMember": "Removing Member {{name}}...",
       "updateRole": "Updating role for {{name}}...",
-      "title": "Manage Members",
+      "title": "Group Members",
       "inviteUsers": "Invite Users with email",
       "manageMembers": "Manage Members",
       "listTransactions": "List Transactions",
@@ -508,7 +508,8 @@
     "validation": "Validation",
     "noNote": "No note",
     "unknown": "Unknown",
-    "unknownUser": "Unknown User"
+    "unknownUser": "Unknown User",
+    "transactions": "transactions"
   },
 
   "changePasswordBtn": "Change Password",

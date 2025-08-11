@@ -66,6 +66,8 @@ export interface TransactionItem {
   description?: string;
   transaction_date: string; // LocalDateTime as string
   group_id?: number; // Add group_id field to filter group transactions
+  wallet_id?: number; // optional wallet id for mapping to edit screen
+  walletId?: number; // in case backend returns camelCase
 }
 
 // Transaction Report interfaces

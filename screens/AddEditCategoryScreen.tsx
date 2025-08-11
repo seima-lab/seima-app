@@ -3,18 +3,18 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...typography.semibold,
-    color: '#1e90ff',
+    color: '#333',
   },
   placeholder: {
     width: 40,
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.semibold,
-    color: '#FFF',
+    color: '#333',
     marginBottom: 12,
   },
   nameInput: {

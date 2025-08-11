@@ -23,6 +23,7 @@ interface UseDataLoadingProps {
   activeTab: 'expense' | 'income';
   fromGroupTransactionList: boolean;
   setSelectedWallet?: (walletId: number | null) => void;
+  fromCopy?: boolean;
 }
 
 export const useDataLoading = ({
@@ -34,6 +35,7 @@ export const useDataLoading = ({
   activeTab,
   fromGroupTransactionList,
   setSelectedWallet,
+  fromCopy = false,
 }: UseDataLoadingProps) => {
   const { t } = useTranslation();
   
@@ -130,11 +132,12 @@ export const useDataLoading = ({
       setExpenseCategories(convertedExpenseCategories);
       setIncomeCategories(convertedIncomeCategories);
 
-      // Set wallet selection - only if not already set from edit data
+      // Set wallet selection respecting edit/copy modes
       if (!fromGroupOverview && setSelectedWallet && walletsData.length > 0) {
-        if (isEditMode && transactionData?.wallet_id) {
+        const copiedWalletId = (transactionData?.wallet_id ?? transactionData?.walletId) as number | undefined;
+        if (isEditMode && (transactionData?.wallet_id ?? transactionData?.walletId)) {
           // In edit mode, verify the wallet exists, but don't override if already set
-          const editWallet = walletsData.find(w => w.id === transactionData.wallet_id);
+          const editWallet = walletsData.find(w => w.id === Number(transactionData.wallet_id ?? transactionData.walletId));
           if (editWallet) {
             console.log('✅ Edit mode wallet verified:', editWallet.wallet_name);
             // Don't call setSelectedWallet again if it's already set correctly
@@ -144,8 +147,19 @@ export const useDataLoading = ({
             setSelectedWallet(defaultWallet.id);
             console.log('⚠️ Edit wallet not found, using default:', defaultWallet.wallet_name);
           }
-        } else {
-          // Normal mode - select default wallet only if no wallet is selected
+        } else if (fromCopy && copiedWalletId !== undefined && copiedWalletId !== null) {
+          // Copy mode - preserve wallet if exists
+          const copyWallet = walletsData.find(w => w.id === Number(copiedWalletId));
+          if (copyWallet) {
+            setSelectedWallet(copyWallet.id);
+            console.log('✅ Copy mode wallet preserved:', copyWallet.wallet_name);
+          } else {
+            const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+            setSelectedWallet(defaultWallet.id);
+            console.log('⚠️ Copied wallet not found, using default:', defaultWallet.wallet_name);
+          }
+        } else if (!fromCopy) {
+          // Normal mode - select default wallet
           const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
           setSelectedWallet(defaultWallet.id);
           console.log('✅ Default wallet selected:', defaultWallet.wallet_name);
@@ -278,11 +292,12 @@ export const useDataLoading = ({
       
       setWallets(walletsData);
 
-      // Set wallet selection after refresh - verify but don't override edit mode selection
+      // Set wallet selection after refresh - verify but respect edit/copy selections
       if (!fromGroupOverview && setSelectedWallet && walletsData.length > 0) {
-        if (isEditMode && transactionData?.wallet_id) {
+        const copiedWalletId = (transactionData?.wallet_id ?? transactionData?.walletId) as number | undefined;
+        if (isEditMode && (transactionData?.wallet_id ?? transactionData?.walletId)) {
           // In edit mode, verify the wallet still exists but don't override selection
-          const editWallet = walletsData.find(w => w.id === transactionData.wallet_id);
+          const editWallet = walletsData.find(w => w.id === Number(transactionData.wallet_id ?? transactionData.walletId));
           if (editWallet) {
             console.log('🔄 Edit mode wallet verified after refresh:', editWallet.wallet_name);
           } else {
@@ -291,7 +306,18 @@ export const useDataLoading = ({
             setSelectedWallet(defaultWallet.id);
             console.log('🔄 Edit wallet not found after refresh, using default:', defaultWallet.wallet_name);
           }
-        } else {
+        } else if (fromCopy && copiedWalletId !== undefined && copiedWalletId !== null) {
+          // Copy mode - verify wallet exists
+          const copyWallet = walletsData.find(w => w.id === Number(copiedWalletId));
+          if (copyWallet) {
+            setSelectedWallet(copyWallet.id);
+            console.log('🔄 Copy mode wallet verified after refresh:', copyWallet.wallet_name);
+          } else {
+            const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+            setSelectedWallet(defaultWallet.id);
+            console.log('🔄 Copied wallet not found after refresh, using default:', defaultWallet.wallet_name);
+          }
+        } else if (!fromCopy) {
           // Normal mode - update to default wallet
           const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
           setSelectedWallet(defaultWallet.id);

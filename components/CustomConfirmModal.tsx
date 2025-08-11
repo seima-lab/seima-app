@@ -21,6 +21,7 @@ interface CustomConfirmModalProps {
     onCancel: () => void;
     type?: 'danger' | 'warning' | 'info';
     iconName?: string;
+    transitionKey?: string;
 }
 
 const CustomConfirmModal: React.FC<CustomConfirmModalProps> = ({
@@ -32,7 +33,8 @@ const CustomConfirmModal: React.FC<CustomConfirmModalProps> = ({
     onConfirm,
     onCancel,
     type = 'danger',
-    iconName = 'delete'
+    iconName = 'delete',
+    transitionKey,
 }) => {
     const scaleValue = new Animated.Value(0);
 
@@ -66,6 +68,7 @@ const CustomConfirmModal: React.FC<CustomConfirmModalProps> = ({
 
     return (
         <Modal
+            key={transitionKey}
             transparent
             visible={visible}
             animationType="fade"

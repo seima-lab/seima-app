@@ -200,13 +200,15 @@ const WalletScreen = ({ footerHeight = 0 }) => {
     }
 
     const walletData = {
+      // Keep legacy 'balance' but also pass explicit fields for clarity
       balance: wallet.current_balance.toString(),
+      currentBalance: wallet.current_balance, // numeric current balance (not shown but needed for API)
+      initialBalance: wallet.initial_balance ?? 0, // numeric initial balance
       name: wallet.wallet_name,
       type: mappedType,
       bankName: wallet.bank_name || '',
       isDefault: wallet.is_default,
       excludeFromTotal: wallet.exclude_from_total || false,
-      initialBalance: wallet.initial_balance?.toString() || '0',
     };
     
     console.log('📝 Edit wallet data:', walletData);
@@ -556,20 +558,21 @@ const WalletScreen = ({ footerHeight = 0 }) => {
               </TouchableOpacity>
             </View>
           </SafeAreaView>
-         <CustomConfirmModal
-           visible={deleteAlertVisible}
-           title={deleteWalletInfo?.isDefault ? t('wallet.alertTitleDeleteDefault') : t('wallet.alertTitleDelete')}
-           message={deleteWalletInfo?.isDefault
-             ? `"${deleteWalletInfo.name}" ${t('wallet.deleteWalletMessageDefault')}`
-             : t('wallet.deleteMessage', { walletName: deleteWalletInfo?.name })}
-           confirmText={t('delete')}
-           cancelText={t('cancel')}
-           onConfirm={confirmDelete}
-           onCancel={cancelDelete}
-           type="danger"
-           iconName="delete"
-         />
         </ScrollView>
+      {/* Move confirm modal outside ScrollView to avoid Android drawing order issues */}
+      <CustomConfirmModal
+        visible={deleteAlertVisible}
+        title={deleteWalletInfo?.isDefault ? t('wallet.alertTitleDeleteDefault') : t('wallet.alertTitleDelete')}
+        message={deleteWalletInfo?.isDefault
+          ? `"${deleteWalletInfo.name}" ${t('wallet.deleteWalletMessageDefault')}`
+          : t('wallet.deleteMessage', { walletName: deleteWalletInfo?.name })}
+        confirmText={t('delete')}
+        cancelText={t('cancel')}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        type="danger"
+        iconName="delete"
+      />
       {/* Bottom-sheet menu modal */}
       <Modal
         transparent

@@ -52,9 +52,13 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   const walletId = route?.params?.walletId;
   const walletData = route?.params?.walletData;
 
-  const [balance, setBalance] = useState(
-    walletData?.balance ? formatBalanceInput(walletData.balance.toString()) : ''
-  );
+  const [balance, setBalance] = useState(() => {
+    // Prefer initialBalance if provided during edit; fallback to legacy 'balance'
+    const sourceBalance =
+      walletData?.initialBalance ??
+      (walletData?.balance != null ? parseInt(String(walletData.balance).replace(/\D/g, ''), 10) : undefined);
+    return sourceBalance != null ? formatBalanceInput(String(sourceBalance)) : '';
+  });
   const [walletName, setWalletName] = useState(walletData?.name || '');
   const [walletType, setWalletType] = useState(walletData?.type || t('wallet.walletTypes.cash'));
   const [bankName, setBankName] = useState(walletData?.bankName || '');

@@ -18,6 +18,7 @@ interface CustomSuccessModalProps {
     buttonText: string;
     onConfirm: () => void;
     iconName?: string;
+    transitionKey?: string;
 }
 
 const CustomSuccessModal: React.FC<CustomSuccessModalProps> = ({
@@ -26,7 +27,8 @@ const CustomSuccessModal: React.FC<CustomSuccessModalProps> = ({
     message,
     buttonText,
     onConfirm,
-    iconName = 'check-circle'
+    iconName = 'check-circle',
+    transitionKey,
 }) => {
     const scaleValue = new Animated.Value(0);
 
@@ -45,6 +47,7 @@ const CustomSuccessModal: React.FC<CustomSuccessModalProps> = ({
 
     return (
         <Modal
+            key={transitionKey}
             transparent
             visible={visible}
             animationType="fade"

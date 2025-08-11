@@ -213,7 +213,9 @@ const CalendarScreen = () => {
             type: transactionType === 'income' ? 'income' : 'expense',
             icon: iconName,
             iconColor: iconColor,
-            description: item.description || item.category_name || 'No description'
+            description: item.description || item.category_name || 'No description',
+            // carry wallet id for edit screen preselection (supports snake_case and camelCase)
+            wallet_id: (item as any).wallet_id ?? (item as any).walletId
         };
     }, []);
 
@@ -449,7 +451,9 @@ const CalendarScreen = () => {
                 category: transaction.category,
                 type: transaction.type,
                 icon: transaction.icon,
-                iconColor: transaction.iconColor
+                iconColor: transaction.iconColor,
+                // Pass wallet_id so AddExpenseScreen can preselect wallet
+                wallet_id: (transaction as any).wallet_id ?? (transaction as any).walletId
             }
         });
     }, [navigation]);

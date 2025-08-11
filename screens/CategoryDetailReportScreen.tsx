@@ -2,6 +2,7 @@ import { typography } from '@/constants/typography';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { categoryService } from '../services/categoryService';
@@ -34,6 +35,7 @@ interface CategoryDetailReportResponse {
 }
 
 export default function CategoryDetailReportScreen() {
+  const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
   const { 
@@ -142,7 +144,7 @@ export default function CategoryDetailReportScreen() {
           </View>
           <View style={styles.transactionInfo}>
             <Text style={styles.transactionDescription} numberOfLines={2}>
-              {item.description || 'Không có mô tả'}
+              {item.description || t('common.noNote')}
             </Text>
             <Text style={styles.categoryName}>
               {category_name}
@@ -176,7 +178,7 @@ export default function CategoryDetailReportScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+        <Text style={styles.loadingText}>{t('reports.loadingReport')}</Text>
       </View>
     );
   }
@@ -187,7 +189,7 @@ export default function CategoryDetailReportScreen() {
         <Icon name="alert-circle" size={48} color="#E53935" />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchCategoryDetailReport}>
-          <Text style={styles.retryButtonText}>Thử lại</Text>
+          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -218,7 +220,7 @@ export default function CategoryDetailReportScreen() {
       <View style={styles.summaryContainer}>
         <View style={styles.summaryCard}>
           <Icon name="cash" size={24} color="#007AFF" />
-          <Text style={styles.summaryLabel}>Tổng cộng</Text>
+          <Text style={styles.summaryLabel}>{t('reports.totalAmount')}</Text>
           <Text style={styles.summaryAmount}>
             {totalAmount.toLocaleString('vi-VN')} ₫
           </Text>
@@ -226,7 +228,7 @@ export default function CategoryDetailReportScreen() {
         
         <View style={styles.summaryCard}>
           <Icon name="format-list-bulleted" size={24} color="#FF9500" />
-          <Text style={styles.summaryLabel}>Số giao dịch</Text>
+          <Text style={styles.summaryLabel}>{t('budget.detail.totalTransactions')}</Text>
           <Text style={styles.summaryAmount}>
             {allTransactions.length}
           </Text>
@@ -236,9 +238,9 @@ export default function CategoryDetailReportScreen() {
       {/* Transactions List */}
       <View style={styles.transactionsContainer}>
         <View style={styles.transactionsHeader}>
-          <Text style={styles.transactionsTitle}>Danh sách giao dịch</Text>
+          <Text style={styles.transactionsTitle}>{t('wallet.transactionHistory')}</Text>
           <Text style={styles.transactionsCount}>
-            {allTransactions.length} giao dịch
+            {allTransactions.length} {t('common.transactions')}
           </Text>
         </View>
 
@@ -253,7 +255,7 @@ export default function CategoryDetailReportScreen() {
         ) : (
           <View style={styles.emptyContainer}>
             <Icon name="file-document-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyText}>Không có giao dịch nào</Text>
+            <Text style={styles.emptyText}>{t('budget.noTransactions')}</Text>
           </View>
         )}
       </View>

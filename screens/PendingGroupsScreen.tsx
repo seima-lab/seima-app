@@ -2,15 +2,15 @@ import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -263,6 +263,7 @@ const PendingGroupsScreen = () => {
         onCancel={() => setShowRejectModal(false)}
         type="danger"
         iconName="cancel"
+        transitionKey="pending-group-reject"
       />
 
       <CustomSuccessModal
@@ -272,6 +273,7 @@ const PendingGroupsScreen = () => {
         buttonText={t('common.ok')}
         onConfirm={handleSuccessModalClose}
         iconName="check-circle"
+        transitionKey="pending-group-success"
       />
     </SafeAreaView>
   );
