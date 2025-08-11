@@ -15,8 +15,9 @@ i18n
   .use(initReactI18next)
   .init({
     compatibilityJSON: 'v4',
-    lng: getDeviceLanguage(),
-    fallbackLng: 'en',
+    // Set Vietnamese as the default and fallback language
+    lng: 'vi',
+    fallbackLng: 'vi',
     resources: {
       en: { translation: en },
       vi: { translation: vi },

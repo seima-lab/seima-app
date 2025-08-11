@@ -58,7 +58,8 @@ export default function AddExpenseScreen() {
   // Get route parameters for edit mode and group context
   const routeParams = route.params as any;
   const isEditMode = routeParams?.editMode || false;
-  const transactionData = routeParams?.transactionData;
+  const fromCopy = routeParams?.fromCopy || false;
+  const transactionData = routeParams?.transactionData || routeParams; // support both nested and flat
   const fromGroupOverview = routeParams?.fromGroupOverview || false;
   const fromGroupTransactionList = routeParams?.fromGroupTransactionList || false;
   const groupContextId = routeParams?.groupId;
@@ -69,10 +70,17 @@ export default function AddExpenseScreen() {
     isEditMode && transactionData?.type ? transactionData.type : 'expense'
   );
 
-  // State declarations first
-  const [selectedWallet, setSelectedWallet] = useState<number | null>(
-    fromGroupOverview ? 0 : null // Set to 0 for group transactions
-  );
+  // State declarations first - initialize with edit data if available
+  const [selectedWallet, setSelectedWallet] = useState<number | null>(() => {
+    if (fromGroupOverview) {
+      return 0; // Set to 0 for group transactions
+    }
+    if ((fromCopy && transactionData?.wallet_id) || (isEditMode && transactionData?.wallet_id)) {
+      console.log('🔄 Initializing selectedWallet from transactionData:', transactionData.wallet_id);
+      return transactionData.wallet_id;
+    }
+    return null;
+  });
 
   // Custom hooks
   const {
@@ -153,8 +161,15 @@ export default function AddExpenseScreen() {
   });
 
   // Form data - pre-fill if in edit mode
-  const initialAmount = isEditMode && transactionData?.amount ? formatAmountFromNumber(transactionData.amount) : '';
-  const [note, setNote] = useState(isEditMode && transactionData?.note ? transactionData.note : '');
+  // Prefill when copying from an existing transaction (make copy)
+  const initialAmount = fromCopy && transactionData?.amount
+    ? formatAmountFromNumber(transactionData.amount)
+    : (isEditMode && transactionData?.amount ? formatAmountFromNumber(transactionData.amount) : '');
+  const [note, setNote] = useState(
+    (fromCopy && transactionData?.note)
+      ? transactionData.note
+      : (isEditMode && transactionData?.note ? transactionData.note : '')
+  );
 
   // Debounced amount input for better performance
   const {
@@ -169,9 +184,9 @@ export default function AddExpenseScreen() {
   });
   
   const [date, setDate] = useState(() => {
-    if (isEditMode && transactionData?.date) {
-      const parsedDate = new Date(transactionData.date);
-      // Ensure we use local timezone
+    const srcDate = (fromCopy ? transactionData?.date : (isEditMode ? transactionData?.date : null));
+    if (srcDate) {
+      const parsedDate = new Date(srcDate);
       return new Date(
         parsedDate.getFullYear(),
         parsedDate.getMonth(),

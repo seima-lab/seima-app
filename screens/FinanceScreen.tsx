@@ -2,15 +2,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -142,7 +142,7 @@ const getPercent = (value: number, total: number) => {
 // SimplePieChart removed - not used anymore
 
 const FinanceScreen = React.memo(() => {
-  console.log('💰 [FinanceScreen] Component rendered/re-rendered');
+  
   
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -268,19 +268,25 @@ const FinanceScreen = React.memo(() => {
 
     const now = Date.now();
     if (!forceRefresh && now - lastFetchTime < CACHE_DURATION) {
-      console.log('📦 Using cached data, last fetch:', new Date(lastFetchTime));
+      
       return;
     }
 
     try {
       setLoading(true);
-      setWalletLoading(true);
-      console.log('🟡 Loading all data in parallel with 60s timeout...');
+      // Only show wallet loading spinner when we will actually fetch wallets
+      setWalletLoading(!!isBalanceVisible);
       
+      
+      // Chỉ gọi API ví nếu đang hiển thị số dư
+      const walletsPromise = isBalanceVisible
+        ? withTimeout(walletService.getAllWallets(), 60000)
+        : Promise.resolve([]);
+
       // Gọi tất cả API song song với timeout 60s (tăng từ 30s)
       const results = await Promise.allSettled([
         withTimeout(userService.getCurrentUserProfile(forceRefresh), 60000),
-        withTimeout(walletService.getAllWallets(), 60000),
+        walletsPromise,
         withTimeout((async () => {
           const { startDate, endDate } = getPeriodRange(selectedPeriodValue);
           const startDateStr = toLocalDateString(startDate);
@@ -293,7 +299,7 @@ const FinanceScreen = React.memo(() => {
 
       // Extract results with fallbacks
       const profile = results[0].status === 'fulfilled' ? results[0].value : null;
-      const walletsData = results[1].status === 'fulfilled' ? results[1].value : [];
+      const walletsData = results[1].status === 'fulfilled' ? (results[1].value as WalletResponse[]) : [];
       const chartResponse = results[2].status === 'fulfilled' ? results[2].value : null;
       const notificationResponse = results[3].status === 'fulfilled' ? results[3].value : 0;
       const healthData = results[4].status === 'fulfilled' ? results[4].value : null;
@@ -302,37 +308,41 @@ const FinanceScreen = React.memo(() => {
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
           const apiNames = ['userProfile', 'wallets', 'chartData', 'notifications', 'healthStatus'];
-          console.warn(`⚠️ ${apiNames[index]} API failed:`, result.reason?.message || result.reason);
+          
         }
       });
 
-      console.log('🟢 All data loaded successfully');
+      
       
       // Set states với safety checks
       if (profile) {
       setUserProfile(profile);
-        console.log('✅ User profile loaded:', profile.user_full_name || 'Unknown');
+        
       } else {
-        console.warn('⚠️ User profile failed to load, keeping existing or using fallback');
+        
         // Không update userProfile nếu API fail, giữ nguyên giá trị cũ
       }
       
-      setWallets(walletsData || []);
-      
-      // Calculate total balance
-      const totalBalance = walletsData.reduce((total: number, wallet: WalletResponse) => {
-        if (wallet.is_active !== false && !wallet.exclude_from_total) {
-          return total + (wallet.current_balance || 0);
-        }
-        return total;
-      }, 0);
-      
-      setFinanceData({
-        totalBalance,
-        income: 0,
-        expenses: 0,
-        difference: 0
-      });
+      // Only update wallets and total balance if we fetched them
+      if (isBalanceVisible) {
+        setWallets(walletsData || []);
+        const totalBalance = (walletsData || []).reduce((total: number, wallet: WalletResponse) => {
+          if (wallet.is_active !== false && !wallet.exclude_from_total) {
+            return total + (wallet.current_balance || 0);
+          }
+          return total;
+        }, 0);
+        setFinanceData(prev => ({
+          ...prev,
+          totalBalance,
+          income: 0,
+          expenses: 0,
+          difference: 0,
+        }));
+      } else {
+        // Ensure no spinner after parallel load if not fetching wallets
+        setWalletLoading(false);
+      }
 
       // Process chart data với safety checks
       if (chartResponse) {
@@ -349,9 +359,9 @@ const FinanceScreen = React.memo(() => {
       });
       
       setReportData(chartResponse);
-        console.log('✅ Chart data loaded:', { income, expenses, difference });
+        
       } else {
-        console.warn('⚠️ Chart data failed to load, using fallback values');
+        
         setChartData({
           income: 0,
           expenses: 0,
@@ -376,9 +386,9 @@ const FinanceScreen = React.memo(() => {
       } else if (responseAny?.data?.data?.count !== undefined) {
         count = responseAny.data.data.count;
       }
-        console.log('✅ Notification count loaded:', count);
+        
       } catch (error) {
-        console.warn('⚠️ Failed to parse notification count:', error);
+        
         count = 0;
       }
       setNotificationCount(Math.max(0, count || 0));
@@ -386,9 +396,9 @@ const FinanceScreen = React.memo(() => {
       // Set health status với fallback
       if (healthData) {
       setApiHealthStatus(healthData);
-        console.log('✅ Health status loaded:', healthData.score || 'Unknown');
+        
       } else {
-        console.warn('⚠️ Health status failed to load, using fallback');
+        
         setApiHealthStatus({ score: 75, status: 'unknown' } as any);
       }
       
@@ -403,7 +413,7 @@ const FinanceScreen = React.memo(() => {
       setLastFetchTime(now);
 
     } catch (error: any) {
-      console.error('🔴 Failed to load data:', error);
+      
     } finally {
       setLoading(false);
       setWalletLoading(false);
@@ -414,7 +424,7 @@ const FinanceScreen = React.memo(() => {
   // Memoized load data function với stable dependencies
   const memoizedLoadAllData = useCallback(() => {
     loadAllData();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isBalanceVisible, selectedPeriodValue]);
 
   // Load data khi mount
   useEffect(() => {
@@ -424,7 +434,7 @@ const FinanceScreen = React.memo(() => {
   // Refresh khi có transaction mới - only depend on trigger value
   useEffect(() => {
     if (transactionRefreshTrigger > 0) {
-      console.log('🔄 Transaction updated - refreshing data');
+      
       loadAllData(true); // Force refresh
     }
   }, [transactionRefreshTrigger]);
@@ -432,18 +442,18 @@ const FinanceScreen = React.memo(() => {
   // Memoized focus effect callback
   const focusEffectCallback = useCallback(() => {
       if (isAuthenticated) {
-        console.log('🔄 FinanceScreen focused, refreshing data...');
+        
         
         // Load main data first, then transaction history with a small delay
         loadAllData(true).then(() => {
           setTimeout(() => {
-            console.log('🔄 FinanceScreen focused, refreshing transaction history...');
+            
             loadTransactionHistory(true);
         }, 200);
         }).catch((error) => {
-          console.error('🔴 Error loading main data:', error);
+          
           setTimeout(() => {
-            console.log('🔄 FinanceScreen focused, refreshing transaction history...');
+            
             loadTransactionHistory(true);
           }, 200);
         });
@@ -500,7 +510,7 @@ const FinanceScreen = React.memo(() => {
 
     try {
       setChartData(prev => ({ ...prev, isLoading: true }));
-      console.log('📊 Loading chart data for period change with 45s timeout...');
+      
       
       let _startDate = startDate, _endDate = endDate;
       if (!_startDate || !_endDate) {
@@ -531,13 +541,13 @@ const FinanceScreen = React.memo(() => {
       });
       
       setReportData(reportResponse);
-        console.log('✅ Chart data period update:', { income, expenses, difference });
+        
       } else {
         throw new Error('Empty chart response');
       }
       
     } catch (error: any) {
-      console.error('🔴 Failed to load chart data:', error?.message || error);
+      
       // Fallback to previous values hoặc 0 values
       setChartData(prev => ({
         income: prev.income || 0,
@@ -880,9 +890,35 @@ const FinanceScreen = React.memo(() => {
     loadAllData(true); // Force refresh all data
   }, [loadAllData]);
 
-  const handleToggleBalance = useCallback(() => {
-    setIsBalanceVisible(prev => !prev);
+  // Quick refresh only wallets and total balance
+  const refreshWalletsQuick = useCallback(async () => {
+    try {
+      setWalletLoading(true);
+      const walletsData = await walletService.getAllWallets();
+      setWallets(walletsData || []);
+      const totalBalance = (walletsData || []).reduce((total: number, wallet: WalletResponse) => {
+        if (wallet.is_active !== false && !wallet.exclude_from_total) {
+          return total + (wallet.current_balance || 0);
+        }
+        return total;
+      }, 0);
+      setFinanceData(prev => ({ ...prev, totalBalance }));
+    } catch (error: any) {
+      
+    } finally {
+      setWalletLoading(false);
+    }
   }, []);
+
+  const handleToggleBalance = useCallback(() => {
+    if (walletLoading) return; // ignore when disabled
+    const next = !isBalanceVisible;
+    setIsBalanceVisible(next);
+    // Only fetch wallets when turning visibility ON
+    if (next) {
+      refreshWalletsQuick();
+    }
+  }, [isBalanceVisible, walletLoading, refreshWalletsQuick]);
 
   const handleNavigateToNotifications = useCallback(() => {
     navigation.navigate('Notifications');
@@ -1053,7 +1089,7 @@ const FinanceScreen = React.memo(() => {
 
       const now = Date.now();
       if (now - lastCategoriesFetch < CATEGORIES_CACHE_DURATION && Object.keys(categoriesCache).length > 0) {
-        console.log('📦 Using cached categories');
+        
         setCategoriesMap(categoriesCache);
         setCategoriesLoading(false);
         return;
@@ -1061,7 +1097,7 @@ const FinanceScreen = React.memo(() => {
 
       setCategoriesLoading(true);
       try {
-        console.log('🟡 Loading categories with 30s timeout...');
+        
         const categoryService = CategoryService.getInstance();
         const [incomeCats, expenseCats] = await Promise.all([
           withTimeout(
@@ -1084,12 +1120,12 @@ const FinanceScreen = React.memo(() => {
         setCategoriesMap(map);
         setCategoriesCache(map);
         setLastCategoriesFetch(now);
-        console.log('✅ Categories loaded:', Object.keys(map).length, 'categories');
+        
       } catch (err: any) {
-        console.error('🔴 Failed to load categories:', err?.message || err);
+        
         // Giữ cache cũ nếu có
         if (Object.keys(categoriesCache).length > 0) {
-          console.log('📦 Using old cached categories due to API failure');
+          
           setCategoriesMap(categoriesCache);
         } else {
         setCategoriesMap({});
@@ -1117,16 +1153,16 @@ const FinanceScreen = React.memo(() => {
   const loadTransactionHistory = useCallback(async (forceRefresh = false) => {
     const now = Date.now();
     if (!forceRefresh && now - lastTransactionFetch < TRANSACTION_CACHE_DURATION && transactionCache.length > 0) {
-      console.log('📦 Using cached transaction history');
+      
       setTransactionHistory(transactionCache);
       return;
     }
 
     setTransactionHistoryLoading(true);
     try {
-      console.log('🟡 Loading transaction history with 40s timeout...');
+      
       const apiResponse: any = await withTimeout(
-        viewHistoryTransactions({ page: 0, size: 30 }),
+        viewHistoryTransactions({ page: 0, size: 1000 }),
         40000 // 40s timeout cho transaction history
       );
       
@@ -1144,14 +1180,14 @@ const FinanceScreen = React.memo(() => {
       setTransactionHistory(filtered);
       setTransactionCache(filtered);
       setLastTransactionFetch(now);
-      console.log('✅ Transaction history loaded:', filtered.length, 'transactions today');
+      
     } catch (err: any) {
-      console.error('🔴 Failed to load transaction history:', err?.message || err);
+      
       // Giữ cache cũ nếu có, không clear hết
       if (transactionCache.length === 0) {
       setTransactionHistory([]);
       } else {
-        console.log('📦 Using old cached transaction history due to API failure');
+        
         setTransactionHistory(transactionCache);
       }
     } finally {
@@ -1172,7 +1208,7 @@ const FinanceScreen = React.memo(() => {
   // Refresh transaction history when transactionRefreshTrigger changes
   useEffect(() => {
     if (transactionRefreshTrigger > 0) {
-      console.log('🔄 Transaction refresh triggered - reloading transaction history');
+      
       loadTransactionHistory(true);
     }
   }, [transactionRefreshTrigger]);
@@ -1220,7 +1256,7 @@ const FinanceScreen = React.memo(() => {
 
   // Handle transaction press to navigate to edit mode
   const handleTransactionPress = useCallback((transaction: any) => {
-    console.log('🔄 Navigating to edit transaction:', transaction);
+    
     
     // Get category name for the transaction
     const categoryObj = transaction.category_id ? categoriesMap[transaction.category_id] : undefined;

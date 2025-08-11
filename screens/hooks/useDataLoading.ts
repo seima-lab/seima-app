@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Alert } from 'react-native';
 
 import { categoryService, CategoryService, CategoryType, LocalCategory } from '../../services/categoryService';
-import { secureApiService } from '../../services/secureApiService';
 import { WalletResponse, walletService } from '../../services/walletService';
 
 // Cache configuration
@@ -82,22 +81,17 @@ export const useDataLoading = ({
     try {
       console.log('🔄 Loading all data in parallel...');
       
-      // Load wallets and user profile in parallel
-      const [walletsData, userProfile] = await Promise.all([
-        walletService.getAllWallets(),
-        secureApiService.getCurrentUserProfile()
-      ]);
+      // Load wallets only; do not call /me
+      const walletsData = await walletService.getAllWallets();
       
       console.log('✅ Wallets loaded:', walletsData.length);
-      console.log('✅ User profile loaded:', userProfile);
+      // Removed user profile logging
 
       // Determine userId and groupId based on context
-      let userId, groupId;
+      let groupId;
       if (fromGroupOverview) {
-        userId = 0;
         groupId = groupContextId ? parseInt(groupContextId) : 0;
       } else {
-        userId = userProfile.user_id;
         groupId = 0;
       }
       
@@ -107,9 +101,8 @@ export const useDataLoading = ({
         groupContextId,
         groupContextName,
         isEditMode,
-        willUseUserId: userId,
         willUseGroupId: groupId,
-        realUserId: userProfile.user_id
+         note: 'userId omitted; backend infers from token'
       });
       
       // Fetch categories separately for each tab
@@ -137,11 +130,26 @@ export const useDataLoading = ({
       setExpenseCategories(convertedExpenseCategories);
       setIncomeCategories(convertedIncomeCategories);
 
-      // Set default wallet selection if not from group overview
+      // Set wallet selection - only if not already set from edit data
       if (!fromGroupOverview && setSelectedWallet && walletsData.length > 0) {
-        const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
-        setSelectedWallet(defaultWallet.id);
-        console.log('✅ Default wallet selected:', defaultWallet.wallet_name);
+        if (isEditMode && transactionData?.wallet_id) {
+          // In edit mode, verify the wallet exists, but don't override if already set
+          const editWallet = walletsData.find(w => w.id === transactionData.wallet_id);
+          if (editWallet) {
+            console.log('✅ Edit mode wallet verified:', editWallet.wallet_name);
+            // Don't call setSelectedWallet again if it's already set correctly
+          } else {
+            // Fallback to default if wallet not found
+            const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+            setSelectedWallet(defaultWallet.id);
+            console.log('⚠️ Edit wallet not found, using default:', defaultWallet.wallet_name);
+          }
+        } else {
+          // Normal mode - select default wallet only if no wallet is selected
+          const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+          setSelectedWallet(defaultWallet.id);
+          console.log('✅ Default wallet selected:', defaultWallet.wallet_name);
+        }
       }
 
       // Set default category based on current active tab or edit mode
@@ -223,17 +231,8 @@ export const useDataLoading = ({
   const refreshCategories = useCallback(async () => {
     try {
       console.log('🔄 Refreshing categories only...');
-      
-      const userProfile = await secureApiService.getCurrentUserProfile();
-      
-      let userId, groupId;
-      if (fromGroupOverview) {
-        userId = 0;
-        groupId = groupContextId ? parseInt(groupContextId) : 0;
-      } else {
-        userId = userProfile.user_id;
-        groupId = 0;
-      }
+      // Do not call /me; derive groupId from context
+      const groupId = fromGroupOverview ? (groupContextId ? parseInt(groupContextId) : 0) : 0;
       
       const [expenseCats, incomeCats] = await Promise.all([
         categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, groupId),
@@ -279,11 +278,25 @@ export const useDataLoading = ({
       
       setWallets(walletsData);
 
-      // Set default wallet if not from group overview and no wallet currently selected
+      // Set wallet selection after refresh - verify but don't override edit mode selection
       if (!fromGroupOverview && setSelectedWallet && walletsData.length > 0) {
-        const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
-        setSelectedWallet(defaultWallet.id);
-        console.log('🔄 Updated selected wallet after refresh:', defaultWallet.wallet_name);
+        if (isEditMode && transactionData?.wallet_id) {
+          // In edit mode, verify the wallet still exists but don't override selection
+          const editWallet = walletsData.find(w => w.id === transactionData.wallet_id);
+          if (editWallet) {
+            console.log('🔄 Edit mode wallet verified after refresh:', editWallet.wallet_name);
+          } else {
+            // Fallback to default if wallet not found
+            const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+            setSelectedWallet(defaultWallet.id);
+            console.log('🔄 Edit wallet not found after refresh, using default:', defaultWallet.wallet_name);
+          }
+        } else {
+          // Normal mode - update to default wallet
+          const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+          setSelectedWallet(defaultWallet.id);
+          console.log('🔄 Updated selected wallet after refresh:', defaultWallet.wallet_name);
+        }
       }
 
       console.log('✅ Data refreshed successfully');
@@ -291,7 +304,7 @@ export const useDataLoading = ({
     } catch (error: any) {
       console.error('❌ Error refreshing data:', error);
     }
-  }, [refreshCategories, fromGroupOverview, setSelectedWallet]);
+  }, [refreshCategories, fromGroupOverview, setSelectedWallet, isEditMode, transactionData]);
 
   const cleanup = useCallback(() => {
     isMountedRef.current = false;

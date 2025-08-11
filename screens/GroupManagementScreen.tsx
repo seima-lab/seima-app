@@ -2,16 +2,16 @@ import { NavigationProp, RouteProp, useFocusEffect, useNavigation, useRoute } fr
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -380,7 +380,7 @@ const GroupManagementScreen = () => {
     }
   }, [navigation, t, autoNavigateToGroupId]);
 
-  const handleGroupPress = useCallback(async (group: UserJoinedGroupResponse) => {
+  const handleGroupPress = useCallback((group: UserJoinedGroupResponse) => {
     console.log('🎯 [GroupManagementScreen] Group pressed:', {
       groupId: group.group_id,
       groupName: group.group_name,
@@ -388,68 +388,28 @@ const GroupManagementScreen = () => {
       memberCount: group.total_members_count,
       isAutoNavigation: !!autoNavigateToGroupId
     });
-    
-    try {
-      console.log('⏳ [GroupManagementScreen] Loading group detail for navigation...');
-      
-      // Show loading state (you could add a loading indicator here if needed)
-      const groupDetail = await groupService.getGroupDetail(group.group_id);
-      console.log('✅ [GroupManagementScreen] Group detail loaded successfully:', groupDetail);
-      
-      console.log('🧭 [GroupManagementScreen] Navigating to GroupDetail screen with data');
-      
-      // If this is auto-navigation from notification, clear the parameters to prevent loops
-      if (autoNavigateToGroupId) {
-        console.log('🧹 [GroupManagementScreen] Clearing auto-navigation parameters to prevent loops');
-        // Update navigation params to remove auto-navigation data
-        navigation.setParams({
-          autoNavigateToGroupId: undefined,
-          groupName: undefined
-        });
-      }
-      
-      // Navigate to group detail screen with the loaded data
-      navigation.navigate('GroupDetail', { 
-        groupId: group.group_id.toString(), 
-        groupName: group.group_name,
-        groupData: groupDetail
+
+    // Clear auto-navigation parameters to prevent loops if present
+    if (autoNavigateToGroupId) {
+      console.log('🧹 [GroupManagementScreen] Clearing auto-navigation parameters to prevent loops');
+      navigation.setParams({
+        autoNavigateToGroupId: undefined,
+        groupName: undefined
       });
-    } catch (error: any) {
-      console.error('🔴 [GroupManagementScreen] Failed to load group detail:', error);
-      
-      // Show error and still navigate with basic data
-      Alert.alert(
-        t('common.error'),
-        error.message || t('group.errorLoadingDetail'),
-        [
-          {
-            text: t('common.cancel'),
-            style: 'cancel'
-          },
-          {
-            text: t('group.continueAnyway'),
-            onPress: () => {
-              console.log('🧭 [GroupManagementScreen] Continuing with basic data after error');
-              
-              // Clear auto-navigation parameters even on error
-              if (autoNavigateToGroupId) {
-                console.log('🧹 [GroupManagementScreen] Clearing auto-navigation parameters (error case)');
-                navigation.setParams({
-                  autoNavigateToGroupId: undefined,
-                  groupName: undefined
-                });
-              }
-              
-              navigation.navigate('GroupDetail', { 
-                groupId: group.group_id.toString(), 
-                groupName: group.group_name 
-              });
-            }
-          }
-        ]
-      );
     }
-  }, [navigation, t, autoNavigateToGroupId]);
+
+    // Navigate immediately; GroupDetail screen will load data itself
+    console.log('🧭 [GroupManagementScreen] Navigating to GroupDetail screen immediately');
+    navigation.navigate('GroupDetail', {
+      groupId: group.group_id.toString(),
+      groupName: group.group_name,
+    });
+
+    // Optionally prefetch in background without blocking navigation
+    try {
+      groupService.getGroupDetail(group.group_id).catch(() => {});
+    } catch {}
+  }, [navigation, autoNavigateToGroupId]);
 
   const renderGroupItem = useCallback(({ item }: { item: UserJoinedGroupResponse }) => {
     console.log('📋 [GroupManagementScreen] Rendering group item:', {

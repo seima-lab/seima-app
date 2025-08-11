@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Modal,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -73,7 +74,8 @@ const { isSmallScreen, isMediumScreen, isLargeScreen, rp, rf, wp, hp, rb } = res
 const WalletScreen = ({ footerHeight = 0 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [menuVisible, setMenuVisible] = useState<string | null>(null);
+  const [menuModalVisible, setMenuModalVisible] = useState(false);
+  const [selectedWalletId, setSelectedWalletId] = useState<number | null>(null);
   const [deleteAlertVisible, setDeleteAlertVisible] = useState(false);
   const [deleteWalletInfo, setDeleteWalletInfo] = useState<{id: number, name: string, isDefault?: boolean} | null>(null);
   const navigation = useNavigationService();
@@ -176,17 +178,18 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   }, [loadWallets]);
 
   const handleMenuPress = (walletId: number) => {
-    const walletIdString = walletId.toString();
-    setMenuVisible(menuVisible === walletIdString ? null : walletIdString);
+    setSelectedWalletId(walletId);
+    setMenuModalVisible(true);
   };
 
   const handleCloseMenu = () => {
-    setMenuVisible(null);
+    setMenuModalVisible(false);
+    setSelectedWalletId(null);
   };
 
   const handleEdit = (walletId: number) => {
     console.log('Edit wallet:', walletId);
-    setMenuVisible(null);
+    handleCloseMenu();
     
     const wallet = wallets.find(w => w.id === walletId);
     if (!wallet) return;
@@ -216,7 +219,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   };
 
   const handleDelete = (walletId: number) => {
-    setMenuVisible(null);
+    handleCloseMenu();
     
     const wallet = wallets.find(w => w.id === walletId);
     if (!wallet) return;
@@ -251,7 +254,8 @@ const WalletScreen = ({ footerHeight = 0 }) => {
       
       setDeleteAlertVisible(false);
       setDeleteWalletInfo(null);
-      setMenuVisible(null);
+      // ensure any menu is closed
+      handleCloseMenu();
       setLoading(true);
       
       await walletService.deleteWallet(deleteWalletInfo.id);
@@ -293,37 +297,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
     navigation.navigate('AddWalletScreen');
   };
 
-  const renderMenu = (walletId: number, index: number) => {
-    const walletIdString = walletId.toString();
-    if (menuVisible !== walletIdString) return null;
-    
-    // Check if this is one of the last few items to determine menu position
-    const totalVisibleWallets = wallets.filter(wallet => !wallet.is_delete && wallet.is_active !== false).length;
-    const isNearBottom = index >= totalVisibleWallets - 2; // Last 2 items
-    
-    return (
-      <View style={[
-        styles.menuContainer,
-        isNearBottom && styles.menuContainerAbove
-      ]}>
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleEdit(walletId)}
-        >
-          <Icon name="edit" size={rf(18)} color="#333" />
-          <Text style={styles.menuText}>{t('edit')}</Text>
-        </TouchableOpacity>
-        <View style={styles.menuDivider} />
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleDelete(walletId)}
-        >
-          <Icon name="delete" size={rf(18)} color="#ff4757" />
-          <Text style={[styles.menuText, { color: '#ff4757' }]}>{t('delete')}</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
+  // Inline menu removed. Using bottom-sheet modal instead.
 
   const getWalletIcon = (walletTypeName?: string) => {
     if (walletTypeName === "Tài khoản Ngân hàng") {
@@ -416,7 +390,6 @@ const WalletScreen = ({ footerHeight = 0 }) => {
 
   return (
     <View style={styles.container}>
-      <TouchableWithoutFeedback onPress={handleCloseMenu}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -494,8 +467,14 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                   .map((wallet, index) => (
                     <TouchableOpacity 
                       key={`${wallet.id}-${index}`} 
-                      style={[styles.accountItem, wallet.exclude_from_total && styles.disabledAccountItem]} 
+                      style={[
+                        styles.accountItem,
+                        wallet.exclude_from_total && styles.disabledAccountItem,
+                      ]} 
                       onPress={() => {
+                        if (menuModalVisible) {
+                          return;
+                        }
                         console.log('📱 Navigating to wallet transaction history:', wallet.id, wallet.wallet_name);
                         navigation.navigate('WalletTransactionHistory', {
                           walletId: wallet.id,
@@ -504,7 +483,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                           initialBalance: wallet.initial_balance || 0
                         });
                       }}
-                      activeOpacity={0.7}
+                      activeOpacity={1}
                     >
                       <View style={[getWalletIconStyle(wallet.wallet_type_name), wallet.exclude_from_total && styles.disabledAccountIcon]}>
                         {getWalletIcon(wallet.wallet_type_name)}
@@ -538,7 +517,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                         >
                           <Icon name="more-vert" size={rf(24)} color="#666" />
                         </TouchableOpacity>
-                        {renderMenu(wallet.id, index)}
+                        {/* menu removed; using modal */}
                       </View>
                     </TouchableOpacity>
                   ))
@@ -591,7 +570,48 @@ const WalletScreen = ({ footerHeight = 0 }) => {
            iconName="delete"
          />
         </ScrollView>
-      </TouchableWithoutFeedback>
+      {/* Bottom-sheet menu modal */}
+      <Modal
+        transparent
+        visible={menuModalVisible}
+        animationType="fade"
+        onRequestClose={handleCloseMenu}
+      >
+        <TouchableWithoutFeedback onPress={handleCloseMenu}>
+          <View style={styles.sheetOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.sheetContainer}>
+                <View style={styles.sheetHandle} />
+                <TouchableOpacity
+                  style={[styles.sheetAction, styles.sheetActionEdit]}
+                  onPress={() => {
+                    if (selectedWalletId != null) {
+                      handleEdit(selectedWalletId);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Icon name="edit" size={rf(20)} color="#111827" />
+                  <Text style={[styles.sheetActionText, styles.sheetActionTextEdit]}>{t('edit')}</Text>
+                </TouchableOpacity>
+                <View style={styles.sheetDivider} />
+                <TouchableOpacity
+                  style={[styles.sheetAction, styles.sheetActionDelete]}
+                  onPress={() => {
+                    if (selectedWalletId != null) {
+                      handleDelete(selectedWalletId);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Icon name="delete" size={rf(20)} color="#ef4444" />
+                  <Text style={[styles.sheetActionText, styles.sheetActionTextDelete]}>{t('delete')}</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
       <CustomSuccessModal
         visible={showSuccessModal}
         title={t('common.success')}
@@ -623,14 +643,6 @@ const styles = StyleSheet.create({
   },
   balanceCard: {
     backgroundColor: '#1e90ff',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
   },
   balanceLabel: {
     fontSize: 16,
@@ -661,6 +673,7 @@ const styles = StyleSheet.create({
   },
   section: {
     backgroundColor: '#fff',
+    overflow: 'visible',
   },
   sectionTitle: {
     fontSize: 18,
@@ -738,6 +751,62 @@ const styles = StyleSheet.create({
   moreButton: {
     padding: 8,
   },
+  // Bottom sheet modal styles
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 12,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#e5e7eb',
+    marginBottom: 8,
+  },
+  sheetAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  sheetActionEdit: {},
+  sheetActionDelete: {},
+  sheetActionText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#111827',
+    ...typography.semibold,
+  },
+  sheetActionTextEdit: { color: '#111827' },
+  sheetActionTextDelete: { color: '#ef4444' },
+  sheetDivider: {
+    height: 1,
+    backgroundColor: '#f3f4f6',
+  },
+  // Menu backdrop to ensure menu stays above surrounding content without visual dimming
+  menuBackdrop: {
+    position: 'absolute',
+    top: -1000,
+    left: -1000,
+    right: -1000,
+    bottom: -1000,
+    zIndex: 999,
+    backgroundColor: 'transparent',
+  },
   actionsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -746,18 +815,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   actionButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
     color: '#1e90ff',
   },
   menuContainer: {
@@ -767,37 +828,54 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     minWidth: 120,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-    zIndex: 1000,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    zIndex: 1001,
     opacity: 1, // Luôn rõ nét
     pointerEvents: 'auto',
+    marginRight: 4,
   },
   menuContainerAbove: {
     top: -80, // Position above the item instead of below
     bottom: 'auto',
   },
+  menuGlobalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 900,
+  },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 48,
+  },
+  menuItemEdit: {},
+  menuItemDelete: {},
+  menuIconContainer: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   menuText: {
     fontWeight: '500',
-    marginLeft: 8,
+    marginLeft: 0,
     color: '#333',
+    flex: 1,
   },
+  menuTextEdit: { color: '#374151' },
+  menuTextDelete: { color: '#ef4444' },
   menuDivider: {
     height: 1,
-    backgroundColor: '#f0f0f0',
-    marginHorizontal: 12,
+    backgroundColor: '#f3f4f6',
+    marginHorizontal: 0,
   },
   alertOverlay: {
     flex: 1,
@@ -878,7 +956,7 @@ const styles = StyleSheet.create({
   },
   alertDeleteText: {
     color: '#fff',
-    fontWeight: '600',
+    ...typography.semibold,
     textAlign: 'center',
   },
   centerContent: {
@@ -887,7 +965,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: '#1e90ff',
-    fontWeight: 'bold',
+    ...typography.semibold,
     marginTop: 16,
     fontSize: 16,
     textAlign: 'center',
@@ -907,7 +985,7 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    ...typography.semibold,
     color: '#ef4444',
     marginBottom: 8,
     textAlign: 'center',
@@ -927,7 +1005,7 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    ...typography.semibold,
     fontSize: 16,
   },
   emptyContainer: {
@@ -955,20 +1033,24 @@ const styles = StyleSheet.create({
     color: '#64748b',
     marginBottom: 8,
     textAlign: 'center',
+    ...typography.semibold,
   },
   emptyWalletSubText: {
     fontSize: 15,
     color: '#94a3b8',
     textAlign: 'center',
+    ...typography.regular,
   },
   emptyText: {
     fontSize: 16,
     color: '#9CA3AF',
     textAlign: 'center',
+    ...typography.semibold,
   },
   emptySubText: {
     color: '#666',
-  },
+    ...typography.regular,
+    },
   balancePositive: {
     color: '#22c55e',
   },
@@ -978,6 +1060,7 @@ const styles = StyleSheet.create({
   balanceZero: {
     color: '#333',
   },
+  
 });
 
 export default WalletScreen; 

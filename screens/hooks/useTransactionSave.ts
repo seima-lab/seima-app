@@ -2,7 +2,6 @@ import { useNavigation } from '@react-navigation/native';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { secureApiService } from '../../services/secureApiService';
 import { CreateTransactionRequest, transactionService } from '../../services/transactionService';
 
 interface UseTransactionSaveProps {
@@ -76,23 +75,13 @@ export const useTransactionSave = ({
     const maxRetries = 2;
 
     try {
-      console.log(`🔄 Getting user profile for transaction... (attempt ${retryCount + 1})`);
-      
-      // Get user profile to get real userId - with optimized timeout
-      const userProfilePromise = secureApiService.getCurrentUserProfile();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 8000) // Reduced timeout
-      );
-      
-      const userProfile = await Promise.race([userProfilePromise, timeoutPromise]) as any;
-      const userId = userProfile.user_id;
-      
-      console.log('✅ User ID for transaction:', userId);
+      // Skip fetching /me; backend can infer user from auth token
+      console.log('🔄 Preparing transaction request without fetching /me');
 
       const categoryId = parseInt(formData.selectedCategory);
 
       const transactionRequestData: CreateTransactionRequest = {
-        user_id: userId,
+        user_id: undefined,
         wallet_id: fromGroupOverview ? 0 : formData.selectedWallet!,
         category_id: categoryId,
         group_id: fromGroupOverview && groupContextId ? parseInt(groupContextId) : undefined,
@@ -214,11 +203,15 @@ export const useTransactionSave = ({
 
   const copyTransaction = useCallback(() => {
     if (!isEditMode || !transactionData) return;
-    navigation.navigate('AddExpenseScreen' as never, {
-      ...transactionData,
-      editMode: false, // chuyển sang chế độ add
-    } as never);
-  }, [isEditMode, transactionData, navigation]);
+    (navigation as any).navigate('AddExpenseScreen', {
+      transactionData,        // pass nested for AddExpenseScreen to read
+      editMode: false,        // switch to add mode
+      fromCopy: true,         // flag to prefill form
+      fromGroupOverview,
+      groupId: groupContextId,
+      groupName: groupContextName,
+    });
+  }, [isEditMode, transactionData, navigation, fromGroupOverview, groupContextId, groupContextName]);
 
   return {
     isSaving,

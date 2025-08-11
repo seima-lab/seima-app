@@ -10,7 +10,7 @@ export enum TransactionType {
 
 // Request interfaces
 export interface CreateTransactionRequest {
-  user_id: number;
+  user_id?: number;
   wallet_id: number; // Use 0 for group transactions
   category_id: number;
   group_id?: number;
