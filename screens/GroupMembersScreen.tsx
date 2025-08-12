@@ -426,6 +426,21 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
   };
 
   const handleInviteUsers = () => {
+    // Disallow members
+    if (memberData?.current_user_role === GroupMemberRole.MEMBER) {
+      setSuccessModalData({
+        title: t('common.error'),
+        message: t('group.memberManagement.noPermission'),
+        buttonText: t('common.ok'),
+        iconName: 'error',
+        onConfirm: () => {
+          setShowSuccessModal(false);
+          setSuccessModalData(null);
+        }
+      });
+      setShowSuccessModal(true);
+      return;
+    }
     navigation.navigate('InviteUsers', { groupId });
   };
 
@@ -454,8 +469,8 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
       return;
     }
     
-    // ❌ Không mở modal nếu không có current_user_role
-    if (!memberData.current_user_role) {
+    // ❌ Không mở modal nếu không có quyền (chỉ OWNER/ADMIN)
+    if (!memberData.current_user_role || !canManageRoles()) {
       console.log('❌ Cannot open modal: No current_user_role');
       setSuccessModalData({
         title: t('common.error'),
@@ -990,21 +1005,35 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
 
         {/* Management Card */}
         <View style={styles.managementCard}>
-          <TouchableOpacity style={styles.managementItem} onPress={handleInviteUsers}>
-            <Icon name="mail" size={24} color="#4A90E2" />
-            <Text style={styles.managementText}>{t('group.memberManagement.inviteUsers')}</Text>
+          <TouchableOpacity 
+            style={[
+              styles.managementItem,
+              (loading || memberData?.current_user_role === GroupMemberRole.MEMBER) && styles.disabledManagementItem
+            ]} 
+            onPress={handleInviteUsers}
+            disabled={loading || memberData?.current_user_role === GroupMemberRole.MEMBER}
+          >
+            <Icon name="mail" size={24} color={(loading || memberData?.current_user_role === GroupMemberRole.MEMBER) ? '#CCCCCC' : '#4A90E2'} />
+            <Text style={[styles.managementText, (loading || memberData?.current_user_role === GroupMemberRole.MEMBER) && styles.disabledManagementText]}>{t('group.memberManagement.inviteUsers')}</Text>
             <Icon name="chevron-right" size={24} color="#CCCCCC" />
           </TouchableOpacity>
           
           <View style={styles.separator} />
           
           <TouchableOpacity 
-            style={[styles.managementItem, loading && styles.disabledManagementItem]} 
+            style={[
+              styles.managementItem, 
+              (loading || memberData?.current_user_role === GroupMemberRole.MEMBER) && styles.disabledManagementItem
+            ]} 
             onPress={handleManageMembers}
-            disabled={loading}
+            disabled={loading || memberData?.current_user_role === GroupMemberRole.MEMBER}
           >
-            <Icon name="people" size={24} color={loading ? "#CCCCCC" : "#4A90E2"} />
-            <Text style={[styles.managementText, loading && styles.disabledManagementText]}>
+            <Icon 
+              name="people" 
+              size={24} 
+              color={(loading || memberData?.current_user_role === GroupMemberRole.MEMBER) ? '#CCCCCC' : '#4A90E2'} 
+            />
+            <Text style={[styles.managementText, (loading || memberData?.current_user_role === GroupMemberRole.MEMBER) && styles.disabledManagementText]}>
               {t('group.memberManagement.manageMembers')}
             </Text>
             <Icon name="chevron-right" size={24} color="#CCCCCC" />

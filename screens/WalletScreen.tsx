@@ -106,9 +106,16 @@ const WalletScreen = ({ footerHeight = 0 }) => {
       const walletsData = await walletService.getAllWallets();
       console.log('✅ Wallets loaded:', walletsData);
       console.log('📊 Wallets count:', walletsData.length);
-      console.log('📋 Wallets data structure:', JSON.stringify(walletsData, null, 2));
       
-      setWallets(walletsData);
+      // Ensure wallets are sorted and filtered consistently
+      const processedWallets = walletsData
+        .filter(wallet => !wallet.is_delete && wallet.is_active !== false)
+        .sort((a, b) => {
+          if (a.exclude_from_total === b.exclude_from_total) return 0;
+          return a.exclude_from_total ? 1 : -1;
+        });
+
+      setWallets(processedWallets);
     } catch (err: any) {
       console.error('❌ Failed to load wallets:', err);
       setError(err.message || 'Failed to load wallets');
@@ -140,21 +147,31 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   // Check for refresh flag when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      if (isFirstRender.current) {
-        isFirstRender.current = false;
-        return;
-      }
+      let isActive = true;
 
-      if (walletService.shouldRefresh()) {
-        console.log('🔄 Refresh flag detected - reloading wallets...');
-        walletService.clearRefreshFlag();
-        
-        setTimeout(() => {
-          if (!loading && !refreshing) {
-            loadWallets(false);
-          }
-        }, 100);
-      }
+      const checkAndRefresh = async () => {
+        if (!isActive) return;
+
+        if (walletService.shouldRefresh()) {
+          console.log('🔄 Refresh flag detected - reloading wallets...');
+          walletService.clearRefreshFlag();
+          
+          // Use a slight delay to ensure UI is ready
+          setTimeout(() => {
+            if (isActive && !loading && !refreshing) {
+              loadWallets(false);
+            }
+          }, 200);
+        }
+      };
+
+      // Initial check
+      checkAndRefresh();
+
+      // Cleanup function
+      return () => {
+        isActive = false;
+      };
     }, [loading, refreshing, loadWallets])
   );
 
@@ -474,18 +491,57 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                         wallet.exclude_from_total && styles.disabledAccountItem,
                       ]} 
                       onPress={() => {
-                        if (menuModalVisible) {
+                        // Prevent navigation if menu is open or wallet is excluded
+                        if (menuModalVisible || wallet.exclude_from_total) {
                           return;
                         }
-                        console.log('📱 Navigating to wallet transaction history:', wallet.id, wallet.wallet_name);
-                        navigation.navigate('WalletTransactionHistory', {
-                          walletId: wallet.id,
-                          walletName: wallet.wallet_name,
-                          currentBalance: wallet.current_balance,
-                          initialBalance: wallet.initial_balance || 0
-                        });
+                        
+                        // Ensure we have a valid wallet before navigating
+                        if (!wallet || !wallet.id) {
+                          console.error('❌ Invalid wallet data');
+                          Alert.alert(
+                            'Navigation Error', 
+                            'Unable to navigate. Invalid wallet information.'
+                          );
+                          return;
+                        }
+
+                        try {
+                          // Slight delay to ensure UI is responsive
+                          setTimeout(() => {
+                            console.log('📱 Navigating to wallet transaction history:', {
+                              walletId: wallet.id, 
+                              walletName: wallet.wallet_name,
+                              currentBalance: wallet.current_balance,
+                              initialBalance: wallet.initial_balance || 0
+                            });
+                            
+                            // Ensure navigation is ready
+                            if (navigation && typeof navigation.navigate === 'function') {
+                              navigation.navigate('WalletTransactionHistory', {
+                                walletId: wallet.id,
+                                walletName: wallet.wallet_name,
+                                currentBalance: wallet.current_balance,
+                                initialBalance: wallet.initial_balance || 0
+                              });
+                            } else {
+                              console.error('❌ Navigation is not available');
+                              Alert.alert(
+                                'Navigation Error', 
+                                'Unable to navigate to transaction history. Please try again.'
+                              );
+                            }
+                          }, 50);
+                        } catch (error) {
+                          console.error('❌ Navigation error:', error);
+                          Alert.alert(
+                            'Navigation Error', 
+                            'An unexpected error occurred while navigating. Please try again.'
+                          );
+                        }
                       }}
-                      activeOpacity={1}
+                      activeOpacity={0.7}
+                      disabled={menuModalVisible || wallet.exclude_from_total}
                     >
                       <View style={[getWalletIconStyle(wallet.wallet_type_name), wallet.exclude_from_total && styles.disabledAccountIcon]}>
                         {getWalletIcon(wallet.wallet_type_name)}

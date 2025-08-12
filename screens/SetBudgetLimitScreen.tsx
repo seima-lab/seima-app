@@ -150,38 +150,34 @@ const BudgetLimitScreen = () => {
 
   // Load initial categories for new budget
   useEffect(() => {
-    if (!isEditMode) {
-      const loadInitialCategories = async () => {
-        try {
-          const allExpenseCategories = await categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0);
-          setSelectedCategories(allExpenseCategories);
-        } catch (error) {
-          console.error('Failed to load initial categories:', error);
-        }
-      };
-      loadInitialCategories();
-      
-      // For NONE period type, set a default end date
-      if (periodType === 'NONE') {
-        const defaultEndDate = new Date(startDate);
-        defaultEndDate.setDate(startDate.getDate() + 1);
-        setEndDate(defaultEndDate);
-      } else {
-        setEndDate(null);
+    // Only run once when creating a new budget, and do not overwrite user selection later
+    if (isEditMode) return;
+    let isMounted = true;
+    const loadInitialCategories = async () => {
+      try {
+        const allExpenseCategories = await categoryService.getAllCategoriesByTypeAndUser(CategoryType.EXPENSE, 0);
+        if (!isMounted) return;
+        // Preserve user-picked categories if already selected
+        setSelectedCategories(prev => (prev && prev.length > 0 ? prev : allExpenseCategories));
+      } catch (error) {
+        console.error('Failed to load initial categories:', error);
       }
-    }
-  }, [isEditMode, periodType, startDate]);
+    };
+    loadInitialCategories();
+    return () => {
+      isMounted = false;
+    };
+  }, [isEditMode]);
 
   // Recalculate end date when startDate or periodType changes for new budgets
   useEffect(() => {
     if (!isEditMode && startDate) {
+      // Only adjust endDate; never touch selectedCategories here
       if (periodType === 'NONE') {
-        // For NONE period type, set a default end date
         const defaultEndDate = new Date(startDate);
         defaultEndDate.setDate(startDate.getDate() + 1);
         setEndDate(defaultEndDate);
       } else {
-        // For other period types, clear endDate to let user choose
         setEndDate(null);
       }
     }
@@ -441,19 +437,19 @@ const BudgetLimitScreen = () => {
   };
 
   const handleRepeatSelect = (frequency: string) => {
-    setPeriodType(frequency);
-    setShowRepeatModal(false);
-    
-    // For NONE period type, set a default end date if none exists
-    if (frequency === 'NONE' && !endDate) {
-      const defaultEndDate = new Date(startDate);
-      defaultEndDate.setDate(startDate.getDate() + 1);
-      setEndDate(defaultEndDate);
-    } else if (frequency !== 'NONE') {
-      // For other period types, clear endDate to let user choose
-      setEndDate(null);
-    }
-  };
+     setPeriodType(frequency);
+     setShowRepeatModal(false);
+     
+     // Do NOT reset selectedCategories here
+     // Only handle endDate behavior according to the period type
+     if (frequency === 'NONE' && !endDate) {
+       const defaultEndDate = new Date(startDate);
+       defaultEndDate.setDate(startDate.getDate() + 1);
+       setEndDate(defaultEndDate);
+     } else if (frequency !== 'NONE') {
+       setEndDate(null);
+     }
+   };
 
   const getPeriodLabel = (value: string) => {
     switch (value) {

@@ -394,31 +394,44 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
 
   // Load transactions on component mount
   useEffect(() => {
-    loadCategories();
-    loadTransactions();
-    
-    // Test timezone calculation và icon mapping trong development
-    if (__DEV__) {
-      setTimeout(() => {
-        testIconMapping();
+    let isMounted = true;
+
+    const initializeScreen = async () => {
+      try {
+        // Load categories first
+        await loadCategories();
+
+        // Then load transactions
+        if (isMounted) {
+          await loadTransactions();
+        }
         
-        // Test timezone calculation
-        console.log('🧪 Testing timezone calculation at component mount...');
-        const vietnamDateString = getVietnamDateString();
-        console.log('🧪 Component mount - Vietnam date result:', vietnamDateString);
-        
-        // So sánh với date hiện tại theo nhiều cách khác
-        const now = new Date();
-        console.log('🧪 Comparison at mount:', {
-          deviceUTC: now.toISOString(),
-          deviceLocal: now.toLocaleDateString('vi-VN'),
-          vietnamCalculatedString: vietnamDateString,
-          manual_UTC_Plus_7: new Date(now.getTime() + 7*60*60*1000).toISOString().split('T')[0],
-          expectedResult: '2025-08-07'
-        });
-      }, 1000);
-    }
-  }, [loadCategories, loadTransactions]);
+        // Test timezone calculation and icon mapping in development
+        if (__DEV__ && isMounted) {
+          setTimeout(() => {
+            testIconMapping();
+            
+            // Test timezone calculation
+            console.log('🧪 Testing timezone calculation at component mount...');
+            const vietnamDateString = getVietnamDateString();
+            console.log('🧪 Component mount - Vietnam date result:', vietnamDateString);
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('❌ Initialization error:', error);
+        if (isMounted) {
+          setError(t('common.errorLoadingData') || 'Failed to load data');
+        }
+      }
+    };
+
+    initializeScreen();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [loadCategories, loadTransactions, t]);
 
   // Refresh when screen comes into focus
   useFocusEffect(

@@ -1124,26 +1124,22 @@ export default function AddExpenseScreen() {
       {/* Date Picker */}
       {showDatePicker && (
         <Modal visible={showDatePicker} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={closeDatePicker}
+          >
             <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={closeDatePicker}>
-                  <Text style={styles.modalButton}>{t('cancel')}</Text>
-                </TouchableOpacity>
-                <Text style={styles.modalTitle}>{t('date')}</Text>
-                <TouchableOpacity onPress={closeDatePicker}>
-                  <Text style={styles.modalButton}>{t('done')}</Text>
-                </TouchableOpacity>
-              </View>
               <DateTimePicker
                 value={date}
                 mode="date"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 onChange={handleDateChange}
                 maximumDate={new Date()}
+                style={{ backgroundColor: '#fff' }}
               />
             </View>
-          </View>
+          </TouchableOpacity>
         </Modal>
       )}
 
