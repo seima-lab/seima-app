@@ -1124,11 +1124,12 @@ export default function AddExpenseScreen() {
       {/* Date Picker */}
       {showDatePicker && (
         <Modal visible={showDatePicker} transparent animationType="slide">
-          <TouchableOpacity 
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={closeDatePicker}
-          >
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+              activeOpacity={1}
+              onPress={closeDatePicker}
+            />
             <View style={styles.modalContent}>
               <DateTimePicker
                 value={date}
@@ -1138,7 +1139,7 @@ export default function AddExpenseScreen() {
                 style={{ backgroundColor: '#fff' }}
               />
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
       )}
 
