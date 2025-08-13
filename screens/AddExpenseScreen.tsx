@@ -1135,7 +1135,6 @@ export default function AddExpenseScreen() {
                 mode="date"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 onChange={handleDateChange}
-                maximumDate={new Date()}
                 style={{ backgroundColor: '#fff' }}
               />
             </View>

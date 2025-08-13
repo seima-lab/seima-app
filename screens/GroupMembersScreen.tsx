@@ -1003,42 +1003,38 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
           />
         </View>
 
-        {/* Management Card */}
-        <View style={styles.managementCard}>
-          <TouchableOpacity 
-            style={[
-              styles.managementItem,
-              (loading || memberData?.current_user_role === GroupMemberRole.MEMBER) && styles.disabledManagementItem
-            ]} 
-            onPress={handleInviteUsers}
-            disabled={loading || memberData?.current_user_role === GroupMemberRole.MEMBER}
-          >
-            <Icon name="mail" size={24} color={(loading || memberData?.current_user_role === GroupMemberRole.MEMBER) ? '#CCCCCC' : '#4A90E2'} />
-            <Text style={[styles.managementText, (loading || memberData?.current_user_role === GroupMemberRole.MEMBER) && styles.disabledManagementText]}>{t('group.memberManagement.inviteUsers')}</Text>
-            <Icon name="chevron-right" size={24} color="#CCCCCC" />
-          </TouchableOpacity>
-          
-          <View style={styles.separator} />
-          
-          <TouchableOpacity 
-            style={[
-              styles.managementItem, 
-              (loading || memberData?.current_user_role === GroupMemberRole.MEMBER) && styles.disabledManagementItem
-            ]} 
-            onPress={handleManageMembers}
-            disabled={loading || memberData?.current_user_role === GroupMemberRole.MEMBER}
-          >
-            <Icon 
-              name="people" 
-              size={24} 
-              color={(loading || memberData?.current_user_role === GroupMemberRole.MEMBER) ? '#CCCCCC' : '#4A90E2'} 
-            />
-            <Text style={[styles.managementText, (loading || memberData?.current_user_role === GroupMemberRole.MEMBER) && styles.disabledManagementText]}>
-              {t('group.memberManagement.manageMembers')}
-            </Text>
-            <Icon name="chevron-right" size={24} color="#CCCCCC" />
-          </TouchableOpacity>
-        </View>
+        {/* Management Card - hidden for MEMBER role */}
+        {memberData?.current_user_role !== GroupMemberRole.MEMBER && (
+          <View style={styles.managementCard}>
+            <TouchableOpacity 
+              style={[styles.managementItem, loading && styles.disabledManagementItem]} 
+              onPress={handleInviteUsers}
+              disabled={loading}
+            >
+              <Icon name="mail" size={24} color={loading ? '#CCCCCC' : '#4A90E2'} />
+              <Text style={[styles.managementText, loading && styles.disabledManagementText]}>{t('group.memberManagement.inviteUsers')}</Text>
+              <Icon name="chevron-right" size={24} color="#CCCCCC" />
+            </TouchableOpacity>
+            
+            <View style={styles.separator} />
+            
+            <TouchableOpacity 
+              style={[styles.managementItem, loading && styles.disabledManagementItem]} 
+              onPress={handleManageMembers}
+              disabled={loading}
+            >
+              <Icon 
+                name="people" 
+                size={24} 
+                color={loading ? '#CCCCCC' : '#4A90E2'} 
+              />
+              <Text style={[styles.managementText, loading && styles.disabledManagementText]}>
+                {t('group.memberManagement.manageMembers')}
+              </Text>
+              <Icon name="chevron-right" size={24} color="#CCCCCC" />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Members List */}
         <View style={styles.membersCard}>
