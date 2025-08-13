@@ -534,6 +534,39 @@ export class TransactionService {
       throw error;
     }
   }
+
+  /**
+   * Get today's transactions
+   */
+  async getTransactionsToday(): Promise<TransactionResponse[]> {
+    try {
+      console.log('🔄 Fetching today\'s transactions');
+      const response = await apiService.get(TRANSACTION_ENDPOINTS.TRANSACTION_TODAY);
+      console.log('🟢 Today transactions response:', response);
+
+      // Handle different response structures robustly
+      if (response.data && Array.isArray(response.data)) {
+        return response.data as TransactionResponse[];
+      } else if (
+        response.data &&
+        typeof response.data === 'object' &&
+        'content' in response.data &&
+        Array.isArray((response.data as any).content)
+      ) {
+        return (response.data as any).content as TransactionResponse[];
+      } else if (response && typeof response === 'object' && 'content' in response && Array.isArray((response as any).content)) {
+        return (response as any).content as TransactionResponse[];
+      } else if (Array.isArray(response)) {
+        return response as TransactionResponse[];
+      }
+
+      console.error('❌ Unexpected response structure for today\'s transactions:', response);
+      return [];
+    } catch (error) {
+      console.error('Error fetching today\'s transactions:', error);
+      throw error;
+    }
+  }
 }
 
 export async function viewHistoryTransactions(params: { page: number, size: number }) {

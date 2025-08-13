@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { getNotifications } from '../services/notificationService';
+// Notification API calls disabled per request
 import { useAuth } from './AuthContext';
 
 interface Notification {
@@ -57,7 +57,7 @@ interface NotificationProviderProps {
 
 const DISPLAYED_NOTIFICATIONS_KEY = 'displayed_notifications';
 
-export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
+export const  NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   
   const [latestUnreadNotification, setLatestUnreadNotification] = useState<Notification | null>(null);
@@ -97,85 +97,35 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   // Load latest unread notification
   const loadLatestUnreadNotification = async () => {
     if (!isAuthenticated) return;
-    
-    try {
-      setError(null);
-      const response = await getNotifications({
-        page: 0,
-        size: 1,
-        isRead: false,
-      });
-      
-      const apiData = (response.data && typeof response.data === 'object' && 'content' in response.data) 
-        ? (response.data as any).content : [];
-      
-      if (apiData.length > 0) {
-        const notification = apiData[0];
-        setLatestUnreadNotification(notification);
-        console.log('📱 Latest unread notification loaded:', notification);
-      } else {
-        setLatestUnreadNotification(null);
-      }
-    } catch (err) {
-      console.log('🔴 Error loading latest unread notification:', err);
-      setError('Failed to load latest notification');
-    }
+    // Disabled: do not call API; clear latest unread
+    setError(null);
+    setLatestUnreadNotification(null);
   };
 
   // Load unread count
   const loadUnreadCount = async () => {
     if (!isAuthenticated) return;
-    
-    try {
-      const response = await getNotifications({
-        page: 0,
-        size: 1000, // Lấy tất cả để đếm
-        isRead: false,
-      });
-      
-      const apiData = (response.data && typeof response.data === 'object' && 'content' in response.data) 
-        ? (response.data as any).content : [];
-      
-      setUnreadCount(apiData.length);
-    } catch (err) {
-      console.log('🔴 Error loading unread count:', err);
-    }
+    // Disabled: do not call API; set count to 0
+    setUnreadCount(0);
   };
 
   // Load all notifications
   const loadAllNotifications = async () => {
     if (!isAuthenticated) return;
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const response = await getNotifications({
-        page: 0,
-        size: 50, // Lấy 50 notification gần nhất
-      });
-      
-      const apiData = (response.data && typeof response.data === 'object' && 'content' in response.data) 
-        ? (response.data as any).content : [];
-      
-      setNotifications(apiData);
-    } catch (err) {
-      console.log('🔴 Error loading all notifications:', err);
-      setError('Failed to load notifications');
-    } finally {
-      setIsLoading(false);
-    }
+    // Disabled: do not call API; clear list
+    setIsLoading(true);
+    setError(null);
+    setNotifications([]);
+    setIsLoading(false);
   };
 
   // Refresh all notification data
   const refreshNotifications = async () => {
     if (!isAuthenticated) return;
-    
-    await Promise.all([
-      loadLatestUnreadNotification(),
-      loadUnreadCount(),
-      loadAllNotifications(),
-    ]);
+    // Disabled: no API calls; ensure state is consistent
+    await loadLatestUnreadNotification();
+    await loadUnreadCount();
+    await loadAllNotifications();
   };
 
   // Mark single notification as read

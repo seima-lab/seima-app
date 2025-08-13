@@ -2,24 +2,25 @@ import { useRoute } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Calendar from 'react-native-calendars/src/calendar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
 import CustomErrorModal from '../components/CustomErrorModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
 import { useNavigationService } from '../navigation/NavigationService';
 import { Budget, budgetService } from '../services/budgetService';
@@ -1137,28 +1138,13 @@ const BudgetLimitScreen = () => {
       {/* Custom Modals */}
       
       {/* Success Modal */}
-      <Modal
+      <CustomSuccessModal
         visible={showSuccessModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleSuccessModalClose}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.customModalContainer}>
-            <View style={styles.modalIconContainer}>
-              <Icon name="check-circle" size={48} color="#10B981" />
-            </View>
-            <Text style={styles.modalTitle}>{modalTitle}</Text>
-            <Text style={styles.modalMessage}>{modalMessage}</Text>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleSuccessModalClose}
-            >
-              <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        title={modalTitle}
+        message={modalMessage}
+        buttonText={t('common.ok')}
+        onConfirm={handleSuccessModalClose}
+      />
 
       {/* Error Modal */}
       <Modal
