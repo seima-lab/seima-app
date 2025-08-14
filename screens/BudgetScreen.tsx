@@ -3,15 +3,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -305,23 +305,35 @@ const BudgetScreen = () => {
     return amount.toString();
   };
 
-  // Helper function to check if budget is expired
+  // Helper function to check if budget is expired by Vietnam time (UTC+7)
   const isBudgetExpired = (endDate: string): boolean => {
-    const currentDate = new Date();
-    const endDateObj = new Date(endDate);
-    
-    // Compare current date with end date
-    // end_date from API is already in local timezone
-    const isExpired = currentDate > endDateObj;
-    
-    // Debug log
-    console.log('🔍 Budget expiry check:', {
+    // Convert any Date to Vietnam local time (UTC+7)
+    const toVietnamTime = (date: Date) => {
+      const utcMs = date.getTime() + date.getTimezoneOffset() * 60000;
+      const vnMs = utcMs + 7 * 60 * 60000; // UTC+7
+      return new Date(vnMs);
+    };
+
+    const nowVN = toVietnamTime(new Date());
+    const endVN = toVietnamTime(new Date(endDate));
+
+    // Consider budget active for the entire end date in Vietnam time
+    const endOfEndDateVN = new Date(
+      endVN.getFullYear(),
+      endVN.getMonth(),
+      endVN.getDate(),
+      23, 59, 59, 999
+    );
+
+    const isExpired = nowVN.getTime() > endOfEndDateVN.getTime();
+
+    console.log('🔍 Budget expiry check (VN time):', {
       budgetEndDate: endDate,
-      endDateObj: endDateObj.toISOString(),
-      currentDate: currentDate.toISOString(),
-      isExpired
+      nowVN: nowVN.toISOString(),
+      endOfEndDateVN: endOfEndDateVN.toISOString(),
+      isExpired,
     });
-    
+
     return isExpired;
   };
 

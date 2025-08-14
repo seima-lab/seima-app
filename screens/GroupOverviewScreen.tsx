@@ -561,7 +561,7 @@ const GroupOverviewScreen: React.FC<Props> = ({ groupId, groupName }) => {
           <View style={styles.membersHeader}>
             <Text style={styles.cardTitle}>{t('group.overview.membersPreview')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('GroupMembers', { groupId, groupName })}>
-              <Text style={styles.viewDetailText}>View Detail</Text>
+              <Text style={styles.viewDetailText}>{t('group.actions.viewDetail')}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.memberAvatars}>

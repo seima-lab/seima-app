@@ -259,6 +259,9 @@
     "createGroup": "Tạo nhóm",
     "joinGroup": "Tham gia nhóm",
     "groupSettings": "Chức năng cài đặt nhóm",
+    "actions": {
+      "viewDetail": "Xem chi tiết nhóm"
+    },
     "pendingGroups": "Nhóm chờ duyệt",
     "pendingGroupsTitle": "Nhóm chờ phê duyệt",
     "noPendingGroups": "Không có nhóm nào đang chờ duyệt",
@@ -991,6 +994,7 @@
   },
   
   "budget": {
+    "expired": "Hết hạn",
     "summary": "Tổng quan",
     "total": "Tổng",
     "noTransactions": "Không có giao dịch",
@@ -1003,7 +1007,7 @@
     "remaining": "Còn lại",
     "spent": "Đã chi",
     "exceeded": "Đã vượt",
-    "expired": "Hết hạn",
+   
     "addBudget": "Thêm hạn mức",
     "addMoreBudget": "Thêm hạn mức mới",
     "createBudget": "Tạo hạn mức",

@@ -282,6 +282,7 @@ const VoiceRecorderModal = ({
     isLoading,
     onStartRecord,
     onStopRecord,
+    onCancelRecord,
     onCleanup,
 }: {
     visible: boolean;
@@ -290,6 +291,7 @@ const VoiceRecorderModal = ({
     isLoading: boolean;
     onStartRecord: () => Promise<void>;
     onStopRecord: () => Promise<void>;
+    onCancelRecord: () => Promise<void> | void;
     onCleanup: () => void;
 }) => {
     const { t } = useTranslation();
@@ -309,10 +311,10 @@ const VoiceRecorderModal = ({
             setIsProcessing(false);
             
             if (wasRecording && !isProcessing) {
-                // Dừng ghi âm nếu đang ghi khi đóng modal
-                console.log('🛑 Stopping recording due to modal close...');
+                // Hủy ghi âm nếu đang ghi khi đóng modal (KHÔNG upload)
+                console.log('🛑 Cancelling recording due to modal close...');
                 setIsProcessing(true);
-                onStopRecord().catch(console.error).finally(() => {
+                Promise.resolve(onCancelRecord()).catch(console.error).finally(() => {
                     setIsProcessing(false);
                 });
             }
@@ -442,15 +444,15 @@ const VoiceRecorderModal = ({
                             style={styles.voiceModalCloseButton}
                             onPress={() => {
                                 if (isRecording && !isProcessing) {
-                                    // Update UI state immediately, then stop recording
+                                    // Update UI state immediately, then cancel recording (NO upload)
                                     setIsRecording(false);
                                     setIsProcessing(true);
-                                    console.log('🚪 User closing modal while recording, stopping...');
+                                    console.log('🚪 User closing modal while recording, cancelling...');
                                     
                                     // Clean up immediately
                                     onCleanup();
                                     
-                                    onStopRecord().catch(console.error).finally(() => {
+                                    Promise.resolve(onCancelRecord()).catch(console.error).finally(() => {
                                         setIsProcessing(false);
                                         onClose();
                                     });
@@ -1655,6 +1657,14 @@ const ChatAIScreen = () => {
                     isLoading={isVoiceLoading}
                     onStartRecord={handleStartRecord}
                     onStopRecord={handleStopRecord}
+                    onCancelRecord={async () => {
+                        try {
+                            // Stop recorder without uploading or processing
+                            await audioRecorderPlayer.stopRecorder().catch(() => {});
+                        } catch (e) {
+                            // ignore
+                        }
+                    }}
                     onCleanup={() => {
                         try {
                             console.log('🧹 Cleanup callback called from modal');

@@ -74,6 +74,7 @@ export const USER_ENDPOINTS = {
 
 // Transaction endpoints
 export const TRANSACTION_ENDPOINTS = {
+  TRANSACTION_CHART: `${ApiConfig.API_PREFIX}/transactions/view-chart`,
   TRANSACTION_TODAY: `${ApiConfig.API_PREFIX}/transactions/transaction-today`,
 TRANSACTION_BUDGET_HISTORY: (id: string) => `${ApiConfig.API_PREFIX}/transactions/view-history-transactions-by-budget/${id}`,  
   TRANSACTION_WALLET_HISTORY: (id: string) => `${ApiConfig.API_PREFIX}/transactions/view-report-transactions-by-wallet/${id}`,

@@ -147,7 +147,7 @@ const GroupTransactionListScreen: React.FC = () => {
   const [isDeleteSuccessModalVisible, setIsDeleteSuccessModalVisible] = useState(false);
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
 
-  const LIMIT = 20;
+  const LIMIT = 10000;
   const SWIPE_THRESHOLD = -80;
   const DELETE_BUTTON_WIDTH = 80;
   const animatedValues = useRef<{ [key: string]: Animated.Value }>({});

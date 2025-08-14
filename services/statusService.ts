@@ -8,6 +8,10 @@ import { STATUS_ENDPOINTS } from './config';
 export interface HealthStatusData {
   score: number;
   level: string;
+  // New optional fields from API for current balance
+  total_balance?: number;
+  current_balance?: number;
+  balance?: number;
 }
 
 export interface HealthStatusResponse {

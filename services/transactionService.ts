@@ -378,6 +378,41 @@ export class TransactionService {
   }
 
   /**
+   * Get transaction chart (replacement for view-report)
+   * API and response structure remain the same as view-report
+   */
+  async viewTransactionChart(
+    categoryId?: number,
+    startDate?: string,
+    endDate?: string,
+    groupId?: number
+  ): Promise<TransactionReportResponse> {
+    try {
+      console.log('🔄 Getting transaction chart:', { categoryId, startDate, endDate, groupId });
+
+      const params = new URLSearchParams();
+      if (categoryId) params.append('categoryId', categoryId.toString());
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      if (groupId) params.append('groupId', groupId.toString());
+
+      const response = await apiService.get<TransactionReportResponse>(
+        `${TRANSACTION_ENDPOINTS.TRANSACTION_CHART}?${params.toString()}`
+      );
+
+      if (response.data) {
+        console.log('✅ Transaction chart retrieved successfully:', response.data);
+        return response.data;
+      }
+
+      throw new Error(response.message || 'Failed to get transaction chart');
+    } catch (error: any) {
+      console.error('❌ Failed to get transaction chart:', error);
+      throw new Error(error.message || 'Failed to get transaction chart');
+    }
+  }
+
+  /**
    * Get transactions by date range using the view-report API
    * @param startDate - Start date in YYYY-MM-DD format
    * @param endDate - End date in YYYY-MM-DD format

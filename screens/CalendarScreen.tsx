@@ -17,6 +17,7 @@ import {
 import { Calendar, DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import MonthPickerModal from '../components/MonthPickerModal';
 import SwipeableTransactionItem from '../components/SwipeableTransactionItem';
 import { typography } from '../constants/typography';
@@ -60,6 +61,7 @@ const CalendarScreen = () => {
     const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
     const [showMonthPicker, setShowMonthPicker] = useState(false);
     const [pickerDate, setPickerDate] = useState(new Date(currentMonth + '-01'));
+	const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
 
     // Load transaction overview data
     const loadTransactionOverview = async (month: string, isRefresh = false) => {
@@ -426,7 +428,8 @@ const CalendarScreen = () => {
             console.log('✅ Transaction deleted successfully');
             
             // Refresh the data
-            loadTransactionOverview(currentMonth);
+			loadTransactionOverview(currentMonth);
+			setShowDeleteSuccess(true);
             
         } catch (error: any) {
             console.error('❌ Failed to delete transaction:', error);
@@ -666,6 +669,15 @@ const CalendarScreen = () => {
                 onConfirm={handleMonthPickerConfirm}
                 onCancel={handleMonthPickerCancel}
             />
+
+			<CustomSuccessModal
+				visible={showDeleteSuccess}
+				title={t('common.success')}
+				message={t('calendar.transactionDeleted')}
+				buttonText={t('common.ok')}
+				onConfirm={() => setShowDeleteSuccess(false)}
+				iconName="check-circle"
+			/>
         </SafeAreaView>
     );
 };

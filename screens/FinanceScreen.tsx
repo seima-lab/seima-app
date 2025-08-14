@@ -2,15 +2,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -286,7 +286,7 @@ const FinanceScreen = React.memo(() => {
           const { startDate, endDate } = getPeriodRange(selectedPeriodValue);
           const startDateStr = toLocalDateString(startDate);
           const endDateStr = toLocalDateString(endDate);
-          return transactionService.viewTransactionReport(undefined, startDateStr, endDateStr);
+          return transactionService.viewTransactionChart(undefined, startDateStr, endDateStr);
         })(), 60000),
         withTimeout(getUnreadCount(), 30000),
         withTimeout(statusService.getHealthStatus(), 30000)
@@ -368,13 +368,16 @@ const FinanceScreen = React.memo(() => {
       }
       setNotificationCount(Math.max(0, count || 0));
 
-      // Set health status với fallback
+      // Set health status với fallback and update total balance from health API
       if (healthData) {
-      setApiHealthStatus(healthData);
-        
+        setApiHealthStatus(healthData);
+        // Prefer explicit total_balance/current_balance/balance fields
+        const healthBalance = (healthData as any).total_balance ?? (healthData as any).current_balance ?? (healthData as any).balance;
+        if (typeof healthBalance === 'number' && !isNaN(healthBalance)) {
+          setFinanceData(prev => ({ ...prev, totalBalance: healthBalance }));
+        }
       } else {
-        
-        setApiHealthStatus({ score: 75, status: 'unknown' } as any);
+        setApiHealthStatus({ score: 75, level: 'unknown' } as any);
       }
       
       // Update cache
@@ -473,7 +476,7 @@ const FinanceScreen = React.memo(() => {
       const endDateStr = toLocalDateString(_endDate);
       
       const reportResponse = await withTimeout(
-        transactionService.viewTransactionReport(undefined, startDateStr, endDateStr),
+        transactionService.viewTransactionChart(undefined, startDateStr, endDateStr),
         45000 // 45s timeout cho chart data
       );
       
@@ -1085,10 +1088,7 @@ const FinanceScreen = React.memo(() => {
       setTransactionCache(filtered);
       setLastTransactionFetch(now);
 
-      // Update total balance from the latest transaction's balance if available
-      if (filtered.length > 0 && typeof filtered[0].balance === 'number') {
-        setFinanceData(prev => ({ ...prev, totalBalance: filtered[0].balance || 0 }));
-      }
+      // No longer update total balance from today's transactions; health API is source of truth
       
     } catch (err: any) {
       
