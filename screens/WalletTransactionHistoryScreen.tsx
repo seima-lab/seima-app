@@ -89,8 +89,9 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
   // Transaction data state
   const [transactions, setTransactions] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categoryMap, setCategoryMap] = useState<Map<number, any>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalIncome, setTotalIncome] = useState<number>(0);
   const [totalExpense, setTotalExpense] = useState<number>(0);
@@ -137,6 +138,11 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
       }));
       
       setCategories(processedCategories);
+      const newCategoryMap = new Map<number, any>();
+      processedCategories.forEach((cat: any) => {
+        newCategoryMap.set(cat.category_id, cat);
+      });
+      setCategoryMap(newCategoryMap);
       console.log('✅ Categories loaded for mapping:', processedCategories.length);
       
       // Log chi tiết categories để debug
@@ -295,11 +301,7 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
   // Load transactions for specific wallet
   const loadTransactions = useCallback(async (showRefreshing = false) => {
     try {
-      if (showRefreshing) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      if (showRefreshing) setRefreshing(true);
       setError(null);
 
       const dateRange = getDateRange(selectedFilter);
@@ -350,8 +352,8 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
            if (Array.isArray(dayTransactions)) {
              dayTransactions.forEach((transaction: any) => {
                // Convert to the expected format
-               const convertedTransaction = {
-                 transaction_id: transaction.transactionId || transaction.transaction_id || Math.random(),
+                 const convertedTransaction = {
+                  transaction_id: transaction.transactionId || transaction.transaction_id,
                  user_id: transaction.user_id || 0,
                  wallet_id: transaction.wallet_id || walletId,
                  category_id: transaction.category_id,
@@ -387,7 +389,7 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
       console.error('❌ Failed to load wallet transactions:', err);
       setError(err.message || 'Failed to load transactions');
     } finally {
-      setLoading(false);
+      setIsInitialLoading(false);
       setRefreshing(false);
     }
   }, [walletId, selectedFilter]);
@@ -398,10 +400,8 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
 
     const initializeScreen = async () => {
       try {
-        // Load categories first
+        setIsInitialLoading(true);
         await loadCategories();
-
-        // Then load transactions
         if (isMounted) {
           await loadTransactions();
         }
@@ -451,7 +451,7 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
 
   // Helper function to get category info by category_id
   const getCategoryInfo = (categoryId: number) => {
-    const category = categories.find(cat => cat.category_id === categoryId);
+    const category = categoryMap.get(categoryId);
     if (category) {
       // Log thông tin category để debug
       if (__DEV__) {
@@ -629,11 +629,11 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={onRefresh} disabled={loading || refreshing}>
+            <TouchableOpacity onPress={onRefresh} disabled={isInitialLoading || refreshing}>
               <Icon 
                 name="refresh" 
                 size={rf(24)} 
-                color={loading || refreshing ? "#ccc" : "#333"} 
+                color={isInitialLoading || refreshing ? "#ccc" : "#333"} 
               />
             </TouchableOpacity>
           </View>
@@ -711,14 +711,7 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
         </View>
 
         {/* Transactions List */}
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#1e90ff" />
-            <Text style={[styles.loadingText, typography.medium]}>
-              {t('common.loading')}
-            </Text>
-          </View>
-        ) : error ? (
+        {error ? (
           <View style={styles.errorContainer}>
             <Icon name="error" size={rf(48)} color="#ff6b6b" />
             <Text style={[styles.errorText, typography.medium]}>
@@ -739,6 +732,7 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
             keyExtractor={(item: any) => item.transaction_id.toString()}
             renderItem={renderTransactionItem}
             showsVerticalScrollIndicator={false}
+            removeClippedSubviews={false}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -753,6 +747,14 @@ const WalletTransactionHistoryScreen = ({ route }: WalletTransactionHistoryScree
             }}
             ListEmptyComponent={renderEmptyState}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ListHeaderComponent={isInitialLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#1e90ff" />
+                <Text style={[styles.loadingText, typography.medium]}>
+                  {t('common.loading')}
+                </Text>
+              </View>
+            ) : null}
           />
         )}
 

@@ -25,25 +25,6 @@ const GroupDetailTabScreen = () => {
   const groupId = route.params?.groupId || '';
   const groupName = route.params?.groupName || '';
 
-  // Early return if required params are missing
-  if (!groupId || !groupName) {
-    console.error('🔴 [GroupDetailTabScreen] Missing required params:', { groupId, groupName });
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-back" size={24} color="#333333" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('common.error')}</Text>
-          <View style={styles.settingsButton} />
-        </View>
-        <View style={styles.content}>
-          <Text style={styles.errorText}>{t('group.errorLoadingGroups')}</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   const fetchGroupDetail = async () => {
     try {
       console.log('🟡 [GroupDetailTabScreen] Fetching group detail for groupId:', groupId);
@@ -63,6 +44,25 @@ const GroupDetailTabScreen = () => {
   useEffect(() => {
     fetchGroupDetail();
   }, [groupId]);
+
+  // Early return if required params are missing (must be after all hooks to keep hook order stable)
+  if (!groupId || !groupName) {
+    console.error('🔴 [GroupDetailTabScreen] Missing required params:', { groupId, groupName });
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color="#333333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t('common.error')}</Text>
+          <View style={styles.settingsButton} />
+        </View>
+        <View style={styles.content}>
+          <Text style={styles.errorText}>{t('group.errorLoadingGroups')}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const handleBackPress = () => {
     navigation.goBack();

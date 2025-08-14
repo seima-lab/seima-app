@@ -599,6 +599,15 @@ const ChatAIScreen = () => {
     // Create AudioRecorderPlayer instance
     const audioRecorderPlayer = useRef(new AudioRecorderPlayer()).current;
 
+    // Helper to reliably scroll to bottom (after layout/keyboard settled)
+    const scrollToBottom = useCallback(() => {
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+            }, 60);
+        });
+    }, []);
+
     // Load chat history from API
     const loadChatHistory = async () => {
         try {
@@ -646,13 +655,10 @@ const ChatAIScreen = () => {
     
     useEffect(() => {
         if (messages.length > 0 && !isLoadingHistory && shouldScrollToBottom) {
-            // Use requestAnimationFrame to ensure DOM is ready
-            requestAnimationFrame(() => {
-                scrollViewRef.current?.scrollToEnd({ animated: false });
-            });
+            scrollToBottom();
             setShouldScrollToBottom(false); // Reset after scrolling
         }
-    }, [messages.length, isLoadingHistory, shouldScrollToBottom]);
+    }, [messages.length, isLoadingHistory, shouldScrollToBottom, scrollToBottom]);
 
     // Lấy user_id và load chat history khi component mount
     useEffect(() => {
@@ -685,6 +691,7 @@ const ChatAIScreen = () => {
         // Keyboard listeners for UI state tracking
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
             setIsKeyboardVisible(true);
+            scrollToBottom();
         });
 
         const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
@@ -1515,6 +1522,11 @@ const ChatAIScreen = () => {
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                         automaticallyAdjustKeyboardInsets={true}
+                        onContentSizeChange={() => {
+                            if (isKeyboardVisible || shouldScrollToBottom) {
+                                scrollToBottom();
+                            }
+                        }}
                         onScroll={(event) => {
                             const offsetY = event.nativeEvent.contentOffset.y;
                             setCurrentScrollY(offsetY);
