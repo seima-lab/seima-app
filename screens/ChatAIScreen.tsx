@@ -676,6 +676,23 @@ const ChatAIScreen = () => {
                 // Load chat history after getting user ID
                 await loadChatHistory();
                 
+                // Log state after loading chat history
+                console.log('📊 State after loading chat history:', {
+                    messagesLength: messages.length,
+                    currentPage,
+                    hasMoreMessages,
+                    isLoadingHistory
+                });
+                
+                // Initialize scroll tracking - set initial position
+                // This prevents auto-loading when component first mounts
+                setTimeout(() => {
+                    // Set initial scroll position to prevent auto-loading
+                    // Only allow loading when user actively scrolls
+                    setLastLoadTriggerY(0);
+                    console.log('📍 Initial scroll position set to prevent auto-loading');
+                }, 100);
+                
             } catch (error) {
                 console.error('❌ Error loading user profile:', error);
                 console.error('❌ Error details:', JSON.stringify(error, null, 2));
@@ -1339,16 +1356,54 @@ const ChatAIScreen = () => {
 
     // Load more messages when scrolling up to the top
     const loadMoreMessages = async () => {
+        console.log('🚀 === LOAD MORE MESSAGES DEBUG START ===');
+        console.log('🚀 Function called with params:', {
+            hasMoreMessages,
+            isLoadingMore,
+            userId,
+            canLoadMore,
+            currentPage,
+            messagesLength: messages.length
+        });
+        
         if (!hasMoreMessages || isLoadingMore || !userId || !canLoadMore) {
             console.log('❌ Cannot load more messages:', { hasMoreMessages, isLoadingMore, userId, canLoadMore });
+            console.log('🚀 === LOAD MORE MESSAGES DEBUG END (BLOCKED) ===');
             return;
         }
         
+        // Check if we actually need to load more messages
+        // Only load if we have messages and user is at the top
+        if (messages.length === 0) {
+            console.log('ℹ️ No messages to load more from');
+            console.log('🚀 === LOAD MORE MESSAGES DEBUG END (NO MESSAGES) ===');
+            return;
+        }
+        
+        // Additional check: allow loading from page 0 if we have more messages available
+        // The API returns page 0 as the newest messages, so we can load page 1 for older messages
+        if (currentPage === 0 && !hasMoreMessages) {
+            console.log('ℹ️ At first page but no more messages available');
+            console.log('🚀 === LOAD MORE MESSAGES DEBUG END (NO MORE MESSAGES) ===');
+            return;
+        }
+        
+        console.log('✅ All checks passed, proceeding to load more messages...');
+        
         try {
             setIsLoadingMore(true);
+            // Set canLoadMore to false at the beginning to prevent multiple calls
+            setCanLoadMore(false);
+            
             const nextPage = currentPage + 1;
             console.log('🔄 Loading more messages, current page:', currentPage, 'next page:', nextPage);
-            const history = await aiService.getChatHistory(nextPage, 10);
+            
+            // For page 0, we load page 1 to get older messages
+            // For other pages, we load the next page
+            const targetPage = currentPage === 0 ? 1 : nextPage;
+            console.log('🎯 Target page for loading:', targetPage);
+            
+            const history = await aiService.getChatHistory(targetPage, 10);
             console.log('📥 API response:', history?.length, 'messages');
             
             if (history && history.length > 0) {
@@ -1370,25 +1425,45 @@ const ChatAIScreen = () => {
                     const newMessages = reversedMessages.filter(msg => !existingIds.has(msg.id));
                     const updatedMessages = [...newMessages, ...prev];
                     
+                    console.log('📝 Messages updated:', {
+                        previousCount: prev.length,
+                        newMessagesCount: newMessages.length,
+                        totalCount: updatedMessages.length
+                    });
+                    
                     // Keep scroll position after adding new messages
                     setTimeout(() => {
                         if (scrollViewRef.current) {
                             // Calculate the height of new messages added
                             const newMessagesHeight = newMessages.length * 120; // Approximate height per message
                             const newScrollY = currentScrollY + newMessagesHeight;
-                            scrollViewRef.current.scrollTo({
-                                y: newScrollY,
-                                animated: false
-                            });
-                            console.log('📏 Adjusted scroll position:', { currentScrollY, newMessagesHeight, newScrollY });
+                            
+                            // Only adjust scroll position if user is actively viewing the top
+                            // Don't auto-scroll if user is at the bottom
+                            if (currentScrollY <= 100) {
+                                scrollViewRef.current.scrollTo({
+                                    y: newScrollY,
+                                    animated: false
+                                });
+                                console.log('📏 Adjusted scroll position:', { currentScrollY, newMessagesHeight, newScrollY });
+                            } else {
+                                console.log('📏 User not at top, keeping current scroll position');
+                            }
                         }
                     }, 100);
                     
                     return updatedMessages;
                 });
-                setCurrentPage(nextPage);
+                
+                // Update page tracking correctly
+                if (currentPage === 0) {
+                    setCurrentPage(1); // Move to page 1 after loading from page 0
+                } else {
+                    setCurrentPage(nextPage);
+                }
+                
                 setHasMoreMessages(history.length === 10);
-                console.log('✅ Loaded more messages successfully, new page:', nextPage, 'hasMore:', history.length === 10);
+                console.log('✅ Loaded more messages successfully, new page:', targetPage, 'hasMore:', history.length === 10);
             } else {
                 setHasMoreMessages(false);
                 console.log('✅ No more messages to load');
@@ -1404,8 +1479,11 @@ const ChatAIScreen = () => {
                 // Reset lastLoadTriggerY to allow new triggers
                 setLastLoadTriggerY(0);
                 console.log('✅ Reset canLoadMore to true and lastLoadTriggerY to 0');
+                console.log('🔄 Ready to load more messages if needed');
             }, 1000);
         }
+        
+        console.log('🚀 === LOAD MORE MESSAGES DEBUG END ===');
     };
 
     const handleVoiceResult = (text: string) => {
@@ -1531,18 +1609,60 @@ const ChatAIScreen = () => {
                             const offsetY = event.nativeEvent.contentOffset.y;
                             setCurrentScrollY(offsetY);
                             
-                            // Load more messages when scrolling near the top (within 150px)
-                            // Also check if we've scrolled up significantly from last trigger
-                            const shouldLoad = offsetY <= 2000 && 
-                                             hasMoreMessages && 
-                                             !isLoadingMore && 
-                                             canLoadMore &&
-                                             (lastLoadTriggerY === 0 || offsetY < lastLoadTriggerY - 50);
+                            // Track user's manual scrolling (not auto-scroll)
+                            // Only update lastLoadTriggerY if user is actively scrolling
+                            if (!isLoadingHistory && !isLoadingMore) {
+                                // Update lastLoadTriggerY when user scrolls manually
+                                // This helps distinguish between auto-scroll and user scroll
+                                if (Math.abs(offsetY - lastLoadTriggerY) > 10) { // Significant scroll
+                                    setLastLoadTriggerY(offsetY);
+                                }
+                            }
+                            
+                            // Load more messages when user scrolls to the first message
+                            // But ONLY when user actively scrolls, not on initial load
+                            const isAtFirstMessage = offsetY <= 100; // Very close to top
+                            const hasMoreToLoad = hasMoreMessages && !isLoadingMore && canLoadMore;
+                            const isNotInitialLoad = !isLoadingHistory && messages.length > 0;
+                            
+                            // IMPORTANT: Only load if user has manually scrolled up
+                            // Prevent auto-loading when component first mounts
+                            const hasUserManuallyScrolled = lastLoadTriggerY > 0; // User has scrolled before
+                            const hasScrolledUp = hasUserManuallyScrolled && offsetY < lastLoadTriggerY - 50;
+                            
+                            // Debug logging for lazy loading
+                            if (offsetY <= 200) { // Log when near top
+                                console.log('🔍 === LAZY LOADING DEBUG ===');
+                                console.log('🔍 Scroll position:', offsetY);
+                                console.log('🔍 isAtFirstMessage:', isAtFirstMessage);
+                                console.log('🔍 hasMoreToLoad:', hasMoreToLoad, {
+                                    hasMoreMessages,
+                                    isLoadingMore,
+                                    canLoadMore
+                                });
+                                console.log('🔍 isNotInitialLoad:', isNotInitialLoad, {
+                                    isLoadingHistory,
+                                    messagesLength: messages.length
+                                });
+                                console.log('🔍 User scroll detection:', {
+                                    lastLoadTriggerY,
+                                    hasUserManuallyScrolled,
+                                    hasScrolledUp,
+                                    scrollDiff: lastLoadTriggerY - offsetY
+                                });
+                                console.log('🔍 === END DEBUG ===');
+                            }
+                            
+                            // Load ONLY if user has manually scrolled before
+                            const shouldLoad = isAtFirstMessage && 
+                                             hasMoreToLoad && 
+                                             isNotInitialLoad && 
+                                             hasUserManuallyScrolled &&
+                                             hasScrolledUp;
                             
                             if (shouldLoad) {
-                                console.log('🔄 Scrolling near top (offsetY:', offsetY, '), loading more messages...');
+                                console.log('🔄 User manually scrolled to first message, loading more messages...');
                                 setLastLoadTriggerY(offsetY);
-                                setCanLoadMore(false); // Prevent multiple calls
                                 loadMoreMessages();
                             }
                         }}
@@ -1566,7 +1686,7 @@ const ChatAIScreen = () => {
                         )}
                         
                         {/* Show indicator when near top and can load more */}
-                        {!isLoadingMore && hasMoreMessages && currentScrollY <= 150 && (
+                        {!isLoadingMore && hasMoreMessages && currentScrollY <= 100 && messages.length > 0 && (
                             <View style={styles.loadMoreHintContainer}>
                                 <Text style={styles.loadMoreHintText}>⬆️ Kéo lên để xem tin nhắn cũ hơn</Text>
                             </View>
