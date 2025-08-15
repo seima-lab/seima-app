@@ -1,5 +1,5 @@
-import { StyleSheet } from 'react-native';
 import { typography } from '@/constants/typography';
+import { StyleSheet } from 'react-native';
 
 export const addExpenseStyles = StyleSheet.create({
   container: { 
@@ -197,31 +197,49 @@ export const addExpenseStyles = StyleSheet.create({
     fontSize: 16,
     ...typography.semibold,
   },
-  modalOverlay: {
+  // Date Modal styles - matching SetBudgetLimitScreen.tsx
+  dateModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    elevation: 1000,
   },
-  modalContent: {
+  dateModalContainer: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 16,
+    width: '90%',
+    overflow: 'hidden',
+    elevation: 1001,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    zIndex: 1001,
   },
-  modalHeader: {
+  dateModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
   },
-  modalTitle: {
+  dateModalTitle: {
     fontSize: 18,
+    color: '#333',
     ...typography.semibold,
   },
-  modalButton: {
+  dateModalConfirmButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  dateModalConfirmButtonText: {
+    color: '#fff',
     fontSize: 16,
-    color: '#1e90ff',
+    ...typography.semibold,
   },
   walletModalOverlay: {
     flex: 1,
@@ -229,6 +247,8 @@ export const addExpenseStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    zIndex: 999,
+    elevation: 999,
   },
   walletPickerContainer: {
     backgroundColor: '#fff',
@@ -243,7 +263,8 @@ export const addExpenseStyles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 20,
-    elevation: 10,
+    elevation: 1000,
+    zIndex: 1000,
   },
   walletPickerTitle: {
     fontSize: 18,
@@ -314,6 +335,15 @@ export const addExpenseStyles = StyleSheet.create({
     alignItems: 'center',
   },
   // Image options modal styles
+  imageOptionsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    zIndex: 998,
+    elevation: 998,
+  },
   imageOptionsContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -326,7 +356,8 @@ export const addExpenseStyles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 20,
-    elevation: 10,
+    elevation: 999,
+    zIndex: 999,
   },
   imageOptionsTitle: {
     fontSize: 18,
@@ -364,6 +395,8 @@ export const addExpenseStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    zIndex: 997,
+    elevation: 997,
   },
   createWalletContainer: {
     backgroundColor: '#fff',
@@ -377,7 +410,8 @@ export const addExpenseStyles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 20,
-    elevation: 10,
+    elevation: 998,
+    zIndex: 998,
     padding: 20,
   },
   createWalletTitle: {

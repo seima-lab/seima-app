@@ -31,33 +31,83 @@ const CustomSuccessModal: React.FC<CustomSuccessModalProps> = ({
     transitionKey,
 }) => {
     const scaleValue = new Animated.Value(0);
+    const fadeValue = new Animated.Value(0);
 
     React.useEffect(() => {
         if (visible) {
-            Animated.spring(scaleValue, {
-                toValue: 1,
-                tension: 50,
-                friction: 6,
-                useNativeDriver: true,
-            }).start();
-        } else {
+            // Reset values and animate in
             scaleValue.setValue(0);
+            fadeValue.setValue(0);
+            
+            Animated.parallel([
+                Animated.spring(scaleValue, {
+                    toValue: 1,
+                    tension: 50,
+                    friction: 6,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(fadeValue, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true,
+                })
+            ]).start();
+        } else {
+            // Animate out before hiding
+            Animated.parallel([
+                Animated.timing(scaleValue, {
+                    toValue: 0,
+                    duration: 150,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(fadeValue, {
+                    toValue: 0,
+                    duration: 150,
+                    useNativeDriver: true,
+                })
+            ]).start();
         }
     }, [visible]);
+
+    const handleConfirm = () => {
+        // Animate out first, then call onConfirm
+        Animated.parallel([
+            Animated.timing(scaleValue, {
+                toValue: 0,
+                duration: 150,
+                useNativeDriver: true,
+            }),
+            Animated.timing(fadeValue, {
+                toValue: 0,
+                duration: 150,
+                useNativeDriver: true,
+            })
+        ]).start(() => {
+            onConfirm();
+        });
+    };
 
     return (
         <Modal
             key={transitionKey}
             transparent
             visible={visible}
-            animationType="fade"
-            onRequestClose={onConfirm}
+            animationType="none"
+            onRequestClose={handleConfirm}
         >
-            <View style={styles.overlay}>
+            <Animated.View 
+                style={[
+                    styles.overlay,
+                    { opacity: fadeValue }
+                ]}
+            >
                 <Animated.View
                     style={[
                         styles.container,
-                        { transform: [{ scale: scaleValue }] }
+                        { 
+                            transform: [{ scale: scaleValue }],
+                            opacity: fadeValue
+                        }
                     ]}
                 >
                     {/* Icon */}
@@ -74,13 +124,13 @@ const CustomSuccessModal: React.FC<CustomSuccessModalProps> = ({
                     {/* Button */}
                     <TouchableOpacity
                         style={styles.button}
-                        onPress={onConfirm}
+                        onPress={handleConfirm}
                         activeOpacity={0.8}
                     >
                         <Text style={styles.buttonText}>{buttonText}</Text>
                     </TouchableOpacity>
                 </Animated.View>
-            </View>
+            </Animated.View>
         </Modal>
     );
 };
@@ -94,6 +144,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 20,
+        zIndex: 9999,
+        elevation: 9999,
     },
     container: {
         backgroundColor: '#FFFFFF',
@@ -110,7 +162,8 @@ const styles = StyleSheet.create({
         },
         shadowOpacity: 0.25,
         shadowRadius: 20,
-        elevation: 10,
+        elevation: 10000,
+        zIndex: 10000,
     },
     iconContainer: {
         width: 80,

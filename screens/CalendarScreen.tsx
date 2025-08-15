@@ -62,6 +62,7 @@ const CalendarScreen = () => {
     const [showMonthPicker, setShowMonthPicker] = useState(false);
     const [pickerDate, setPickerDate] = useState(new Date(currentMonth + '-01'));
 	const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+	const [deleteSuccessKey, setDeleteSuccessKey] = useState(0);
 
     // Load transaction overview data
     const loadTransactionOverview = async (month: string, isRefresh = false) => {
@@ -429,6 +430,7 @@ const CalendarScreen = () => {
             
             // Refresh the data
 			loadTransactionOverview(currentMonth);
+			setDeleteSuccessKey(prev => prev + 1);
 			setShowDeleteSuccess(true);
             
         } catch (error: any) {
@@ -677,6 +679,7 @@ const CalendarScreen = () => {
 				buttonText={t('common.ok')}
 				onConfirm={() => setShowDeleteSuccess(false)}
 				iconName="check-circle"
+				transitionKey={deleteSuccessKey.toString()}
 			/>
         </SafeAreaView>
     );

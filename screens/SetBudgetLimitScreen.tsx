@@ -1209,13 +1209,19 @@ const BudgetLimitScreen = () => {
            setChangeType(null);
            performSave(false); // is_update_amount = false
          }}
-                 onCancel={() => {
+         onCancel={() => {
           console.log('❌ User cancelled amount change - save with is_update_amount = true');
           setShowAmountConfirmModal(false);
           setChangeType(null);
           // For amount-only changes: save with is_update_amount = true
           performSave(true);
         }}
+         onClose={() => {
+           console.log('❌ User closed modal - cancel update completely');
+           setShowAmountConfirmModal(false);
+           setChangeType(null);
+           // Don't save anything, just close the modal
+         }}
        />
 
        {/* Fields Change Confirmation Modal */}
@@ -1238,6 +1244,12 @@ const BudgetLimitScreen = () => {
            setShowFieldsConfirmModal(false);
            setChangeType(null);
            // Don't save anything if user cancels
+         }}
+         onClose={() => {
+           console.log('❌ User closed fields modal - cancel update completely');
+           setShowFieldsConfirmModal(false);
+           setChangeType(null);
+           // Don't save anything, just close the modal
          }}
        />
 

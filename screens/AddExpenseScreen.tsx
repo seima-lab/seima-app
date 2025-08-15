@@ -3,21 +3,19 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 // React Native imports
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Third-party component imports
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image } from 'expo-image';
@@ -48,6 +46,7 @@ import { useTransactionSave } from './hooks/useTransactionSave';
 import { addExpenseStyles as styles } from './AddExpenseScreen.styles';
 
 // i18n
+import { Calendar } from 'react-native-calendars';
 import '../i18n';
 export default function AddExpenseScreen() {
   const { t, i18n } = useTranslation();
@@ -715,26 +714,6 @@ export default function AddExpenseScreen() {
     });
   };
 
-  const handleDateChange = useCallback((event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      closeDatePicker();
-    }
-    if (selectedDate) {
-      // Ensure we use the selected date in local timezone
-      const localDate = new Date(
-        selectedDate.getFullYear(),
-        selectedDate.getMonth(),
-        selectedDate.getDate()
-      );
-      setDate(localDate);
-      console.log('📅 Date changed to (local):', {
-        selected: selectedDate,
-        local: localDate,
-        localString: localDate.toLocaleDateString()
-      });
-    }
-  }, [closeDatePicker]);
-
   const getCurrentCategories = useMemo(() => {
     const categories = activeTab === 'expense' ? expenseCategories : incomeCategories;
     
@@ -1123,21 +1102,48 @@ export default function AddExpenseScreen() {
 
       {/* Date Picker */}
       {showDatePicker && (
-        <Modal visible={showDatePicker} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-              activeOpacity={1}
-              onPress={closeDatePicker}
-            />
-            <View style={styles.modalContent}>
-              <DateTimePicker
-                value={date}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleDateChange}
-                style={{ backgroundColor: '#fff' }}
+        <Modal
+          transparent={true}
+          visible={showDatePicker}
+          animationType="slide"
+          onRequestClose={closeDatePicker}
+        >
+          <View style={styles.dateModalOverlay}>
+            <View style={styles.dateModalContainer}>
+              <View style={styles.dateModalHeader}>
+                <Text style={styles.dateModalTitle}>
+                  {t('date')}
+                </Text>
+                <TouchableOpacity onPress={closeDatePicker}>
+                  <Icon name="close" size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+              <Calendar
+                current={date.toISOString().split('T')[0]}
+                onDayPress={(day) => {
+                  const selectedDate = new Date(day.dateString);
+                  setDate(selectedDate);
+                  closeDatePicker();
+                }}
+                markedDates={{
+                  [date.toISOString().split('T')[0]]: {
+                    selected: true,
+                    selectedColor: '#007AFF'
+                  }
+                }}
+                theme={{
+                  selectedDayBackgroundColor: '#007AFF',
+                  selectedDayTextColor: '#ffffff',
+                  todayTextColor: '#007AFF',
+                  arrowColor: '#007AFF',
+                }}
               />
+              <TouchableOpacity 
+                style={styles.dateModalConfirmButton}
+                onPress={closeDatePicker}
+              >
+                <Text style={styles.dateModalConfirmButtonText}>{t('common.confirm')}</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -1145,7 +1151,12 @@ export default function AddExpenseScreen() {
 
       {/* Wallet Picker Modal */}
       {showWalletPicker && (
-        <Modal visible={showWalletPicker} transparent animationType="fade">
+        <Modal 
+          visible={showWalletPicker} 
+          transparent 
+          animationType="fade"
+          onRequestClose={closeWalletPicker}
+        >
           <TouchableOpacity 
             style={styles.walletModalOverlay} 
             activeOpacity={1} 
@@ -1187,9 +1198,14 @@ export default function AddExpenseScreen() {
 
       {/* Image Options Modal */}
       {showImageOptions && (
-        <Modal visible={showImageOptions} transparent animationType="fade">
+        <Modal 
+          visible={showImageOptions} 
+          transparent 
+          animationType="fade"
+          onRequestClose={() => setShowImageOptions(false)}
+        >
           <TouchableOpacity 
-            style={styles.modalOverlay} 
+            style={styles.imageOptionsOverlay} 
             activeOpacity={1} 
             onPress={() => setShowImageOptions(false)}
           >
@@ -1236,7 +1252,12 @@ export default function AddExpenseScreen() {
 
       {/* Create Wallet Modal */}
       {showCreateWalletModal && (
-        <Modal visible={showCreateWalletModal} transparent animationType="fade">
+        <Modal 
+          visible={showCreateWalletModal} 
+          transparent 
+          animationType="fade"
+          onRequestClose={closeCreateWalletModal}
+        >
           <View style={styles.createWalletModalOverlay}>
             <View style={styles.createWalletContainer}>
                           <Text style={styles.createWalletTitle}>{t('common.noWallets')}</Text>
@@ -1283,7 +1304,14 @@ export default function AddExpenseScreen() {
         title={successModal.title}
         message={successModal.message}
         buttonText={t('common.ok')}
-        onConfirm={hideSuccessModal}
+        onConfirm={() => {
+          // Call the onConfirm callback if it exists, otherwise just hide the modal
+          if (successModal.onConfirm) {
+            successModal.onConfirm();
+          } else {
+            hideSuccessModal();
+          }
+        }}
       />
     </SafeAreaView>
   );

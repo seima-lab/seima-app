@@ -19,6 +19,7 @@ interface CustomConfirmModalProps {
     cancelText: string;
     onConfirm: () => void;
     onCancel: () => void;
+    onClose?: () => void; // Optional close button handler
     type?: 'danger' | 'warning' | 'info';
     iconName?: string;
     transitionKey?: string;
@@ -32,6 +33,7 @@ const CustomConfirmModal: React.FC<CustomConfirmModalProps> = ({
     cancelText,
     onConfirm,
     onCancel,
+    onClose,
     type = 'danger',
     iconName = 'delete',
     transitionKey,
@@ -81,6 +83,17 @@ const CustomConfirmModal: React.FC<CustomConfirmModalProps> = ({
                         { transform: [{ scale: scaleValue }] }
                     ]}
                 >
+                    {/* Close Button */}
+                    {onClose && (
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={onClose}
+                            activeOpacity={0.8}
+                        >
+                            <Icon name="close" size={24} color="#999" />
+                        </TouchableOpacity>
+                    )}
+
                     {/* Icon */}
                     <View style={[styles.iconContainer, { backgroundColor: typeColor + '20' }]}>
                         <Icon name={iconName} size={40} color={typeColor} />
@@ -198,6 +211,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         ...typography.semibold,
         color: '#FFFFFF',
+    },
+    closeButton: {
+        position: 'absolute',
+        top: 15,
+        right: 15,
+        zIndex: 1,
     },
 });
 
