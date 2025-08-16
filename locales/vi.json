@@ -561,6 +561,7 @@
   },
 
   "common": {
+    "undefined": "Không xác định",
     "pleaseWait": "Vui lòng chờ trong khi chúng tôi xử lý yêu cầu của bạn...",
     "remove": "Đuổi",
     "loading": "Đang tải",

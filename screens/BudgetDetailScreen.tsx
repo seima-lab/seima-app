@@ -292,36 +292,84 @@ const BudgetDetailScreen = () => {
     }
   };
 
-  // Helper function to format date range
+  // ✅ Helper function to format date range
+  // FIXED: Xử lý trường hợp startDate/endDate trả ra NaN thành "Không xác định"
   const formatDateRange = (startDate: string, endDate: string) => {
     try {
+      // Kiểm tra nếu dateStrings rỗng hoặc null/undefined
+      if (!startDate || !endDate || 
+          startDate === 'null' || startDate === 'undefined' ||
+          endDate === 'null' || endDate === 'undefined') {
+        return t('common.undefined') || 'Không xác định';
+      }
+      
       const start = new Date(startDate);
       const end = new Date(endDate);
       
-      const startDay = start.getDate().toString().padStart(2, '0');
-      const startMonth = (start.getMonth() + 1).toString().padStart(2, '0');
-      const endDay = end.getDate().toString().padStart(2, '0');
-      const endMonth = (end.getMonth() + 1).toString().padStart(2, '0');
+      // Kiểm tra nếu dates không hợp lệ (NaN)
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        console.log('⚠️ Invalid date detected in range:', { startDate, endDate });
+        return t('common.undefined') || 'Không xác định';
+      }
       
-      return `${startDay}/${startMonth} - ${endDay}/${endMonth}`;
+      const startDay = start.getDate();
+      const startMonth = start.getMonth() + 1;
+      const endDay = end.getDate();
+      const endMonth = end.getMonth() + 1;
+      
+      // Kiểm tra thêm nếu các giá trị vẫn là NaN
+      if (isNaN(startDay) || isNaN(startMonth) || isNaN(endDay) || isNaN(endMonth)) {
+        console.log('⚠️ Date range components are NaN:', { startDay, startMonth, endDay, endMonth });
+        return t('common.undefined') || 'Không xác định';
+      }
+      
+      const startDayStr = startDay.toString().padStart(2, '0');
+      const startMonthStr = startMonth.toString().padStart(2, '0');
+      const endDayStr = endDay.toString().padStart(2, '0');
+      const endMonthStr = endMonth.toString().padStart(2, '0');
+      
+      return `${startDayStr}/${startMonthStr} - ${endDayStr}/${endMonthStr}`;
     } catch (error) {
       console.error('❌ Error formatting date range:', error);
-      return 'Invalid Date';
+      return t('common.undefined') || 'Không xác định';
     }
   };
 
-  // Helper function to format date as dd-mm-yyyy
+  // ✅ Helper function to format date as dd-mm-yyyy
+  // FIXED: Xử lý trường hợp dateString trả ra NaN-NaN-NaN thành "Không xác định"
   const formatDateAsDDMMYYYY = (dateString: string) => {
     try {
+      // Kiểm tra nếu dateString rỗng hoặc null/undefined
+      if (!dateString || dateString === 'null' || dateString === 'undefined') {
+        return t('common.undefined') || 'Không xác định';
+      }
+      
       const date = new Date(dateString);
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      
+      // Kiểm tra nếu date không hợp lệ (NaN)
+      if (isNaN(date.getTime())) {
+        console.log('⚠️ Invalid date detected:', dateString);
+        return t('common.undefined') || 'Không xác định';
+      }
+      
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
       const year = date.getFullYear();
       
-      return `${day}-${month}-${year}`;
+      // Kiểm tra thêm nếu các giá trị vẫn là NaN
+      if (isNaN(day) || isNaN(month) || isNaN(year)) {
+        console.log('⚠️ Date components are NaN:', { day, month, year });
+        return t('common.undefined') || 'Không xác định';
+      }
+      
+      const dayStr = day.toString().padStart(2, '0');
+      const monthStr = month.toString().padStart(2, '0');
+      const yearStr = year.toString();
+      
+      return `${dayStr}-${monthStr}-${yearStr}`;
     } catch (error) {
       console.error('❌ Error formatting date:', error);
-      return 'Invalid Date';
+      return t('common.undefined') || 'Không xác định';
     }
   };
 

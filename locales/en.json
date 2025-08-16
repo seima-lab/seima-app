@@ -457,6 +457,7 @@
   },
 
   "common": {
+    "undefined": "Undefined",
     "pleaseWait": "Please wait while we process your request...",
     "remove": "Remove",
     "confirm": "Confirm",
