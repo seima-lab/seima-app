@@ -916,13 +916,15 @@ export class AuthService {
     }
   }
 
-  // Check if user is authenticated with token validation
+  // ✅ Check if user is authenticated with token validation
+  // FIXED: Tránh vòng lặp vô hạn khi token expired và logout
   async isAuthenticated(): Promise<boolean> {
     try {
       const token = await this.getStoredToken();
       const refresh_token = await this.getStoredRefreshToken();
       
       if (!token || !refresh_token) {
+        console.log('🔴 No tokens found, user not authenticated');
         return false;
       }
 
@@ -930,8 +932,23 @@ export class AuthService {
       const { isExpired } = await this.checkTokenExpiry();
       if (isExpired) {
         console.log('🔴 Token expired, attempting refresh...');
-        const newToken = await this.refreshAccessToken();
-        return !!newToken;
+        try {
+          const newToken = await this.refreshAccessToken();
+          if (newToken) {
+            console.log('🟢 Token refreshed successfully');
+            return true;
+          } else {
+            // ✅ Token refresh failed - clear tokens và return false ngay lập tức
+            console.log('🔴 Token refresh failed, clearing tokens and returning false');
+            await this.clearTokens();
+            return false;
+          }
+        } catch (refreshError) {
+          // ✅ Token refresh error - clear tokens và return false ngay lập tức
+          console.error('🔴 Token refresh error:', refreshError);
+          await this.clearTokens();
+          return false;
+        }
       }
 
       return true;
@@ -971,7 +988,8 @@ export class AuthService {
     }
   }
 
-  // Refresh access token
+  // ✅ Refresh access token
+  // FIXED: Không gọi clearTokens() để tránh vòng lặp vô hạn
   async refreshAccessToken(): Promise<string | null> {
     try {
       const refresh_token = await this.getStoredRefreshToken();
@@ -1012,7 +1030,8 @@ export class AuthService {
       throw new Error(errorMessage);
     } catch (error) {
       console.error('🔴 AuthService - Token Refresh Error:', error);
-      await this.clearTokens();
+      // ✅ Không gọi clearTokens() ở đây để tránh vòng lặp vô hạn
+      // Tokens sẽ được clear trong isAuthenticated() khi cần thiết
       return null;
     }
   }

@@ -65,7 +65,9 @@
     "welcomeSubtitle": "I'm ready to help you manage your finances smartly! Share your spending information or ask about your budget.",
     "loadMoreHint": "Pull up to see older messages",
     "pleaseSelectWallet": "Please select wallet",
-    "messagePlaceholder": "Message..."
+    "messagePlaceholder": "Message...",
+    "loading": "Loading...",
+    "loadingMore": "Loading older messages..."
   },
   "finance": {
     "hello": "Hello!",
@@ -1192,7 +1194,10 @@
     "title": "Are you still there?",
     "message": "Your session will expire in {{remainingTime}} seconds. Do you want to stay signed in?",
     "stay": "I'm still here",
-    "logout": "Logout"
+    "logout": "Logout",
+    "successTitle": "Session Extended Successfully",
+    "successMessage": "Your login session has been extended successfully!",
+    "successButton": "OK"
   },
   "groupTransaction": {
     "confirmDelete": "Are you sure you want to delete this transaction?",

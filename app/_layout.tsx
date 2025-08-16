@@ -79,12 +79,8 @@ LogBox.ignoreLogs([
 ]);
 
 if (__DEV__) {
-  // LogBox.ignoreAllLogs(true);
-  console.log = () => {};
-  console.info = () => {};
-  console.warn = () => {};
-  console.error = () => {};
-  console.debug = () => {};
+  LogBox.ignoreAllLogs(true);
+ 
 }
 if (!__DEV__) {
   console.log = () => {};

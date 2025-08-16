@@ -72,18 +72,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(true);
   };
 
-  // Logout function
+  // ✅ Logout function - FIXED: Chỉ clear state, không gọi NavigationService.resetToLogin()
+  // VẤN ĐỀ TRƯỚC: Gọi NavigationService.resetToLogin() gây conflict với các service khác
+  // GIẢI PHÁP: Chỉ clear state, AuthNavigator sẽ tự động render Login khi isAuthenticated = false
   const logout = async () => {
-    // Xóa local state trước để UI về Login ngay
-    setUser(null);
-    setIsAuthenticated(false);
     try {
       console.log('🟡 Logging out...');
+      
+      // ✅ Xóa local state trước để UI về Login ngay
+      setUser(null);
+      setIsAuthenticated(false);
+      
+      // Gọi logout API
       await authService.logout();
       console.log('🟢 Logout successful');
+      
+      // ✅ KHÔNG gọi NavigationService.resetToLogin() - AuthNavigator sẽ tự động render Login
+      console.log('🔄 State cleared, AuthNavigator will automatically show Login screen');
+      
     } catch (error) {
       console.error('🔴 Logout error:', error);
-      // Có thể show toast nếu cần
+      // ✅ Vẫn không gọi resetToLogin - chỉ clear state
+      console.log('🔄 State cleared despite logout error, AuthNavigator will show Login screen');
     }
   };
 

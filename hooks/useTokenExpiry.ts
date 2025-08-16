@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/authService';
 
@@ -9,6 +8,9 @@ export const useTokenExpiry = () => {
   // Only states we need
   const [showModal, setShowModal] = useState(false);
   const [countdown, setCountdown] = useState(60);
+  
+  // ✅ State cho modal thành công khi gia hạn token
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   // Only one timer ref
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -49,15 +51,9 @@ export const useTokenExpiry = () => {
         modalShownRef.current = false;
         setShowModal(false);
         
-        // Logout and force navigation
-        logout().then(async () => {
-          try {
-            const NavigationServiceModule = await import('../navigation/NavigationService');
-            NavigationServiceModule.NavigationService.resetToLogin();
-          } catch (navError) {
-            console.error('🔴 Navigation backup failed:', navError);
-          }
-        });
+        // ✅ Logout - AuthNavigator sẽ tự động render Login khi state được clear
+        // FIXED: Loại bỏ NavigationService.resetToLogin() để tránh conflict
+        logout();
         return;
       }
       
@@ -71,7 +67,7 @@ export const useTokenExpiry = () => {
     tick(60);
   };
   
-  // User chose to refresh
+  // ✅ User chose to refresh - FIXED: Sử dụng CustomSuccessModal thay vì Alert.alert
   const handleRefresh = async () => {
     console.log('🟡 User refresh');
     
@@ -84,7 +80,8 @@ export const useTokenExpiry = () => {
       const newToken = await authService.refreshAccessToken();
       if (newToken) {
         console.log('🟢 Token refreshed successfully');
-        Alert.alert('Thành công', 'Phiên đăng nhập đã được gia hạn!');
+        // ✅ Hiển thị CustomSuccessModal thay vì Alert.alert
+        setShowSuccessModal(true);
       } else {
         console.log('🔴 Refresh failed');
         logout();
@@ -104,6 +101,11 @@ export const useTokenExpiry = () => {
     logout();
   };
   
+  // ✅ Xử lý khi modal thành công được đóng
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+  };
+  
   // Check token status
   const checkToken = async () => {
     // Don't check if modal is already showing or user not authenticated
@@ -117,16 +119,9 @@ export const useTokenExpiry = () => {
       
       if (isExpired) {
         console.log('🔴 Token expired - automatic logout');
-        // Clear auth state and force navigation to login
+        // ✅ Clear auth state - AuthNavigator sẽ tự động render Login
+        // FIXED: Loại bỏ NavigationService.resetToLogin() để tránh conflict
         await logout();
-        
-        // Also use NavigationService as backup to ensure navigation
-        try {
-          const NavigationServiceModule = await import('../navigation/NavigationService');
-          NavigationServiceModule.NavigationService.resetToLogin();
-        } catch (navError) {
-          console.error('🔴 Navigation backup failed:', navError);
-        }
         return;
       }
       
@@ -177,5 +172,8 @@ export const useTokenExpiry = () => {
     tokenExpiryRemainingTime: countdown,
     handleTokenExpiryRefresh: handleRefresh,
     handleTokenExpiryLogout: handleLogout,
+    // ✅ Thêm CustomSuccessModal vào return để hiển thị khi gia hạn token thành công
+    showSuccessModal,
+    handleSuccessModalClose,
   };
 }; 

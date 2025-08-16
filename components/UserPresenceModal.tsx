@@ -1,12 +1,13 @@
+import { typography } from '@/constants/typography';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -84,13 +85,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
+    ...typography.semibold,
     color: '#333',
     textAlign: 'center',
     marginTop: 16,
     marginBottom: 12,
   },
   message: {
+    ...typography.regular,
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
@@ -110,7 +112,7 @@ const styles = StyleSheet.create({
   refreshText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   logoutButton: {
     backgroundColor: 'transparent',
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
   logoutText: {
     color: '#FF4444',
     fontSize: 16,
-    fontWeight: '600',
+    ...typography.semibold,
   },
   progressContainer: {
     width: '100%',

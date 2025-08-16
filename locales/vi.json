@@ -72,7 +72,9 @@
     "loadMoreHint": "Kéo lên để xem tin nhắn cũ hơn",
     "headerSubtitle": "Trợ lý tài chính thông minh",
     "welcomeTitle": "Seima AI Assistant",
-      "welcomeSubtitle": "Tôi sẵn sàng giúp bạn quản lý tài chính một cách thông minh! Hãy chia sẻ thông tin chi tiêu hoặc đặt câu hỏi về ngân sách."
+    "welcomeSubtitle": "Tôi sẵn sàng giúp bạn quản lý tài chính một cách thông minh! Hãy chia sẻ thông tin chi tiêu hoặc đặt câu hỏi về ngân sách.",
+    "loading": "Đang tải...",
+    "loadingMore": "Đang tải tin nhắn cũ..."
   },
 
 
@@ -1217,7 +1219,10 @@
     "title": "Bạn còn ở đó không?",
     "message": "Phiên đăng nhập sắp hết hạn trong {{remainingTime}} giây. Bạn có muốn tiếp tục không?",
     "stay": "Tôi vẫn ở đây",
-    "logout": "Đăng xuất"
+    "logout": "Đăng xuất",
+    "successTitle": "Gia hạn thành công",
+    "successMessage": "Phiên đăng nhập của bạn đã được gia hạn thành công!",
+    "successButton": "OK"
   },
   "groupTransaction": {
    

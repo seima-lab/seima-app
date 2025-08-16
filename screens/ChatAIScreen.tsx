@@ -9,6 +9,7 @@ import {
     ActivityIndicator,
     Alert,
     Animated,
+    Clipboard,
     Dimensions,
     Image,
     Keyboard,
@@ -96,6 +97,107 @@ const TypingIndicator = () => {
             <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1 }] }]} />
             <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot2 }] }]} />
             <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot3 }] }]} />
+        </View>
+    );
+};
+
+// Message Item Component with Copy Option
+const MessageItem = ({ 
+    message, 
+    onCopy, 
+    onWalletSelect, 
+    onBudgetSelect,
+    onMenuOpen,
+    onMenuClose,
+    isMenuOpen
+}: { 
+    message: Message; 
+    onCopy: (text: string) => void; 
+    onWalletSelect: (wallet: SuggestedWallet) => void;
+    onBudgetSelect: (budget: SuggestedBudget) => void;
+    onMenuOpen: (messageId: string) => void;
+    onMenuClose: () => void;
+    isMenuOpen: boolean;
+}) => {
+    const handleLongPress = () => {
+        onMenuOpen(message.id);
+    };
+    
+    const handleCopy = () => {
+        onCopy(message.text);
+        onMenuClose();
+    };
+
+    return (
+        <View style={[
+            styles.messageRow,
+            message.isUser && { flexDirection: 'row-reverse', justifyContent: 'flex-end' },
+        ]}>
+            <Avatar isUser={message.isUser} avatarUrl={message.isUser ? undefined : undefined} />
+            <View
+                style={[
+                    styles.messageContent,
+                    message.isUser && { alignItems: 'flex-end' },
+                ]}
+            >
+                <TouchableOpacity
+                    onLongPress={handleLongPress}
+                    activeOpacity={0.8}
+                >
+                    <View
+                        style={[
+                            styles.messageContainer,
+                            message.isUser ? styles.userMessage : styles.aiMessage
+                        ]}
+                    >
+                        <Text style={[
+                            styles.messageText,
+                            message.isUser ? styles.userMessageText : styles.aiMessageText
+                        ]}>
+                            {message.text}
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+                
+                {/* Suggested Wallets - Only show if wallets exist */}
+                {message.suggestedWallets && message.suggestedWallets.length > 0 && (
+                    <SuggestedWallets 
+                        wallets={message.suggestedWallets} 
+                        onWalletSelect={onWalletSelect}
+                        disabled={!!message.suggestDisabled}
+                    />
+                )}
+                
+                {/* Suggested Budgets - Only show if budgets exist */}
+                {message.suggestedBudgets && message.suggestedBudgets.length > 0 && (
+                    <SuggestedBudgets 
+                        budgets={message.suggestedBudgets} 
+                        onBudgetSelect={onBudgetSelect}
+                        disabled={!!message.suggestDisabled}
+                    />
+                )}
+                
+                <Text style={[
+                    styles.timestamp,
+                    message.isUser ? styles.userTimestamp : styles.aiTimestamp
+                ]}>
+                    {formatRelativeTime(message.timestamp)}
+                </Text>
+                
+                {/* Copy Menu Dropdown */}
+                {isMenuOpen && (
+                    <View style={styles.copyMenuDropdown}>
+                        <TouchableOpacity 
+                            style={styles.copyMenuItem}
+                            onPress={handleCopy}
+                            activeOpacity={0.8}
+                        >
+                            <Icon name="content-copy" size={16} color="#1e90ff" />
+                            <Text style={styles.copyMenuText}>Sao chép</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
         </View>
     );
 };
@@ -572,6 +674,9 @@ const ChatAIScreen = () => {
     const [currentScrollY, setCurrentScrollY] = useState(0);
     const [lastLoadTriggerY, setLastLoadTriggerY] = useState(0); // Track last trigger position
     
+    // Menu state
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    
     const inputRef = useRef<TextInput>(null);
     
     const suggestions = [
@@ -1036,9 +1141,13 @@ const ChatAIScreen = () => {
     const handleSuggestion = (suggestion: string) => {
         setInputText(suggestion);
         setShowWelcome(false);
+        setOpenMenuId(null);
     };
 
     const handleWalletSelect = (wallet: SuggestedWallet) => {
+        // Đóng menu copy khi chọn wallet
+        setOpenMenuId(null);
+        
         // Unblock input when wallet is selected
         if (isInputBlocked) {
             console.log('🔓 Unblocking input due to wallet selection');
@@ -1057,6 +1166,9 @@ const ChatAIScreen = () => {
     };
 
     const handleBudgetSelect = (budget: SuggestedBudget) => {
+        // Đóng menu copy khi chọn budget
+        setOpenMenuId(null);
+        
         let budgetMessage = budget.name;
         
         // Add budget limit information if available
@@ -1491,60 +1603,30 @@ const ChatAIScreen = () => {
         setShowVoiceModal(false);
     };
 
-    const renderMessage = (message: Message) => (
-        <View
-            key={message.id}
-            style={[
-                styles.messageRow,
-                message.isUser && { flexDirection: 'row-reverse', justifyContent: 'flex-end' },
-            ]}
-        >
-            <Avatar isUser={message.isUser} avatarUrl={message.isUser ? undefined : undefined} />
-            <View
-                style={[
-                    styles.messageContent,
-                    message.isUser && { alignItems: 'flex-end' },
-                ]}
-            >
-                <View
-                    style={[
-                        styles.messageContainer,
-                        message.isUser ? styles.userMessage : styles.aiMessage
-                    ]}
-                >
-                    <Text style={[
-                        styles.messageText,
-                        message.isUser ? styles.userMessageText : styles.aiMessageText
-                    ]}>
-                        {message.text}
-                    </Text>
-                </View>
-                {/* Suggested Wallets - Only show if wallets exist */}
-                {message.suggestedWallets && message.suggestedWallets.length > 0 && (
-                    <SuggestedWallets 
-                        wallets={message.suggestedWallets} 
-                        onWalletSelect={handleWalletSelect}
-                        disabled={!!message.suggestDisabled}
-                    />
-                )}
-                
-                {/* Suggested Budgets - Only show if budgets exist */}
-                {message.suggestedBudgets && message.suggestedBudgets.length > 0 && (
-                    <SuggestedBudgets 
-                        budgets={message.suggestedBudgets} 
-                        onBudgetSelect={handleBudgetSelect}
-                        disabled={!!message.suggestDisabled}
-                    />
-                )}
-                <Text style={[
-                    styles.timestamp,
-                    message.isUser ? styles.userTimestamp : styles.aiTimestamp
-                ]}>
-                    {formatRelativeTime(message.timestamp)}
-                </Text>
-            </View>
-        </View>
-    );
+    const renderMessage = (message: Message) => {
+        const handleCopy = (text: string) => {
+            Clipboard.setString(text);
+            Alert.alert('', 'Tin nhắn đã được sao chép!', [{ text: 'OK' }], { cancelable: true });
+        };
+
+        return (
+            <MessageItem
+                key={message.id}
+                message={message}
+                onCopy={handleCopy}
+                onWalletSelect={handleWalletSelect}
+                onBudgetSelect={handleBudgetSelect}
+                onMenuOpen={(messageId) => {
+                    // Đóng menu cũ nếu có
+                    if (openMenuId !== messageId) {
+                        setOpenMenuId(messageId);
+                    }
+                }}
+                onMenuClose={() => setOpenMenuId(null)}
+                isMenuOpen={openMenuId === message.id}
+            />
+        );
+    };
 
     return (
         <KeyboardAvoidingView 
@@ -1571,7 +1653,10 @@ const ChatAIScreen = () => {
                     >
                     <TouchableOpacity 
                         style={styles.backButton}
-                        onPress={() => navigation.goBack()}
+                        onPress={() => {
+                            navigation.goBack();
+                            setOpenMenuId(null);
+                        }}
                     >
                         <Icon name="chevron-left" size={28} color="#FFFFFF" style={{ alignSelf: 'center' }} />
                     </TouchableOpacity>
@@ -1588,18 +1673,19 @@ const ChatAIScreen = () => {
                 </LinearGradient>
                 </TouchableWithoutFeedback>
 
-                <View style={styles.chatContainer}>
-                    {/* Messages */}
-                    <ScrollView 
-                        ref={scrollViewRef}
-                        showsVerticalScrollIndicator={true}
-                        contentContainerStyle={styles.messagesContent}
-                        style={styles.messagesContainer}
-                        bounces={true}
-                        alwaysBounceVertical={true}
-                        keyboardShouldPersistTaps="handled"
-                        keyboardDismissMode="on-drag"
-                        automaticallyAdjustKeyboardInsets={true}
+                <TouchableWithoutFeedback onPress={() => setOpenMenuId(null)}>
+                    <View style={styles.chatContainer}>
+                        {/* Messages */}
+                        <ScrollView 
+                            ref={scrollViewRef}
+                            showsVerticalScrollIndicator={true}
+                            contentContainerStyle={styles.messagesContent}
+                            style={styles.messagesContainer}
+                            bounces={true}
+                            alwaysBounceVertical={true}
+                            keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="on-drag"
+                            automaticallyAdjustKeyboardInsets={true}
                         onContentSizeChange={() => {
                             if (isKeyboardVisible || shouldScrollToBottom) {
                                 scrollToBottom();
@@ -1669,40 +1755,42 @@ const ChatAIScreen = () => {
                         scrollEventThrottle={300}
                     >
                         {isLoadingHistory ? (
-                            <View style={styles.loadingContainer}>
+                            <TouchableOpacity style={styles.loadingContainer} activeOpacity={1}>
                                 <ActivityIndicator size="large" color="#1e90ff" style={{ marginBottom: 16 }} />
-                                <Text style={styles.loadingText}>{t('loading')}</Text>
-                            </View>
+                                <Text style={styles.loadingText}>{t('chatAIScreen.loading')}</Text>
+                            </TouchableOpacity>
                         ) : (showWelcome && messages.length === 0) ? (
-                            <WelcomeMessage />
+                            <TouchableOpacity activeOpacity={1}>
+                                <WelcomeMessage />
+                            </TouchableOpacity>
                         ) : null}
                         
                         {/* Loading more messages indicator */}
                         {isLoadingMore && (
-                            <View style={styles.loadingMoreContainer}>
+                            <TouchableOpacity style={styles.loadingMoreContainer} activeOpacity={1}>
                                 <ActivityIndicator size="small" color="#1e90ff" style={{ marginBottom: 8 }} />
-                                <Text style={styles.loadingMoreText}>{t('loading')}</Text>
-                            </View>
+                                <Text style={styles.loadingMoreText}>{t('chatAIScreen.loadingMore')}</Text>
+                            </TouchableOpacity>
                         )}
                         
                         {/* Show indicator when near top and can load more */}
                         {!isLoadingMore && hasMoreMessages && currentScrollY <= 100 && messages.length > 0 && (
-                            <View style={styles.loadMoreHintContainer}>
+                            <TouchableOpacity style={styles.loadMoreHintContainer} activeOpacity={1}>
                                 <Text style={styles.loadMoreHintText}>⬆️ Kéo lên để xem tin nhắn cũ hơn</Text>
-                            </View>
+                            </TouchableOpacity>
                         )}
                         
                         {messages.map(renderMessage)}
                         
                         {isLoading ? (
-                            <View style={styles.messageRow}>
+                            <TouchableOpacity style={styles.messageRow} activeOpacity={1}>
                                 <Avatar isUser={false} />
                                 <View style={styles.messageContent}>
                                     <View style={[styles.messageContainer, styles.aiMessage, styles.typingMessage]}>
                                         <TypingIndicator />
                                     </View>
                                 </View>
-                            </View>
+                            </TouchableOpacity>
                         ) : null}
                     </ScrollView>
 
@@ -1719,10 +1807,13 @@ const ChatAIScreen = () => {
                         >
                             <View style={styles.inputRow}>
                                 <View style={styles.inputButtons}>
-                                    <TouchableOpacity 
-                                        style={styles.inputButton}
-                                        onPress={() => setShowVoiceModal(true)}
-                                    >
+                                                                    <TouchableOpacity 
+                                    style={styles.inputButton}
+                                    onPress={() => {
+                                        setShowVoiceModal(true);
+                                        setOpenMenuId(null);
+                                    }}
+                                >
                                         <Icon name="mic" size={20} color="#1e90ff" />
                                     </TouchableOpacity>
                                 </View>
@@ -1744,6 +1835,8 @@ const ChatAIScreen = () => {
                                         onFocus={() => {
                                             // Set flag to scroll to bottom when input is focused
                                             setShouldScrollToBottom(true);
+                                            // Đóng menu copy khi focus vào input
+                                            setOpenMenuId(null);
                                         }}
                                     />
                                     {isInputBlocked && (
@@ -1760,7 +1853,10 @@ const ChatAIScreen = () => {
                                         styles.sendButton, 
                                         (!inputText.trim() || isLoading || isInputBlocked) && styles.disabledButton
                                     ]}
-                                    onPress={() => handleSendMessage()}
+                                    onPress={() => {
+                                        handleSendMessage();
+                                        setOpenMenuId(null);
+                                    }}
                                     disabled={!inputText.trim() || isLoading || isInputBlocked}
                                     activeOpacity={0.8}
                                 >
@@ -1777,8 +1873,9 @@ const ChatAIScreen = () => {
                                 </TouchableOpacity>
                             </View>
                         </LinearGradient>
+                        </View>
                     </View>
-                </View>
+                </TouchableWithoutFeedback>
                 {/* Voice Recorder Modal */}
                 <VoiceRecorderModal
                     visible={showVoiceModal}
@@ -2413,6 +2510,35 @@ const styles = StyleSheet.create({
         color: '#1e90ff',
         fontWeight: '500',
         textAlign: 'center',
+    },
+    
+    // Copy Menu Dropdown Styles
+    copyMenuDropdown: {
+        position: 'absolute',
+        top: -40,
+        right: 0,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 4,
+        zIndex: 1000,
+        minWidth: 100,
+    },
+    copyMenuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    copyMenuText: {
+        fontSize: 14,
+        color: '#1e90ff',
+        fontWeight: '500',
+        marginLeft: 6,
     },
 });
 console.log("styles", styles);
