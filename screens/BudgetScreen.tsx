@@ -342,6 +342,20 @@ const BudgetScreen = () => {
     const percentage = (budget.overall_amount_limit ?? 0) > 0 ? (spent / budget.overall_amount_limit) * 100 : 0;
     const isExpired = isBudgetExpired(budget.end_date);
     
+    // Check if start and end dates are the same
+    const startDate = new Date(budget.start_date);
+    const endDate = new Date(budget.end_date);
+    const isSameDate = startDate.toDateString() === endDate.toDateString();
+    
+    // Format date for display
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    };
+    
     return (
       <View style={styles.budgetItemCard}>
         <View style={styles.budgetItemHeader}>
@@ -357,15 +371,10 @@ const BudgetScreen = () => {
                 </View>
               ) : (
                 <Text style={styles.budgetItemPeriod}>
-                  {new Date(budget.start_date).toLocaleDateString('vi-VN', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                  })} - {new Date(budget.end_date).toLocaleDateString('vi-VN', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                  })}
+                  {isSameDate 
+                    ? formatDate(startDate)
+                    : `${formatDate(startDate)} - ${formatDate(endDate)}`
+                  }
                 </Text>
               )}
             </View>

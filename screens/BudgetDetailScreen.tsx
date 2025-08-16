@@ -294,6 +294,7 @@ const BudgetDetailScreen = () => {
 
   // ✅ Helper function to format date range
   // FIXED: Xử lý trường hợp startDate/endDate trả ra NaN thành "Không xác định"
+  // UPDATED: Hiển thị chỉ 1 ngày nếu start_date và end_date trùng nhau
   const formatDateRange = (startDate: string, endDate: string) => {
     try {
       // Kiểm tra nếu dateStrings rỗng hoặc null/undefined
@@ -312,6 +313,24 @@ const BudgetDetailScreen = () => {
         return t('common.undefined') || 'Không xác định';
       }
       
+      // Kiểm tra nếu start_date và end_date trùng nhau
+      if (start.toDateString() === end.toDateString()) {
+        const day = start.getDate();
+        const month = start.getMonth() + 1;
+        
+        // Kiểm tra thêm nếu các giá trị vẫn là NaN
+        if (isNaN(day) || isNaN(month)) {
+          console.log('⚠️ Date components are NaN:', { day, month });
+          return t('common.undefined') || 'Không xác định';
+        }
+        
+        const dayStr = day.toString().padStart(2, '0');
+        const monthStr = month.toString().padStart(2, '0');
+        
+        return `${dayStr}/${monthStr}`;
+      }
+      
+      // Nếu dates khác nhau, hiển thị range như cũ
       const startDay = start.getDate();
       const startMonth = start.getMonth() + 1;
       const endDay = end.getDate();

@@ -394,7 +394,20 @@ const BudgetTransactionHistoryScreen = ({ route }: BudgetTransactionHistoryScree
             </Text>
             <Text style={[styles.headerSubtitle, typography.regular]}>
               {startDate && endDate 
-                ? `${new Date(startDate).toLocaleDateString('vi-VN')} - ${new Date(endDate).toLocaleDateString('vi-VN')}`
+                ? (() => {
+                    // Check if start and end dates are the same
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+                    const isSameDate = start.toDateString() === end.toDateString();
+                    
+                    if (isSameDate) {
+                      // Show only one date if they're the same
+                      return start.toLocaleDateString('vi-VN');
+                    } else {
+                      // Show date range if they're different
+                      return `${start.toLocaleDateString('vi-VN')} - ${end.toLocaleDateString('vi-VN')}`;
+                    }
+                  })()
                 : t('budget.transactionHistory')
               }
             </Text>
