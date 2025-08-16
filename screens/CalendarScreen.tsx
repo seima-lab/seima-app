@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
     RefreshControl,
     SafeAreaView,
     ScrollView,
@@ -640,20 +639,11 @@ const CalendarScreen = () => {
                             <Text style={styles.loadingText}>{t('common.loading')}</Text>
                         </View>
                     ) : Object.keys(groupedTransactions).length > 0 ? (
-                        <FlatList
-                            data={Object.entries(groupedTransactions)}
-                            keyExtractor={([date]) => date}
-                            renderItem={({ item: [date, dayTransactions] }) => renderDayGroup(date, dayTransactions)}
-                            ListEmptyComponent={
-                                <View style={styles.noTransactions}>
-                                    <Text style={styles.noTransactionsText}>
-                                        {t('calendar.noTransactionsThisMonth')}
-                                    </Text>
-                                </View>
-                            }
-                            showsVerticalScrollIndicator={false}
-                            contentContainerStyle={{ paddingBottom: 20 }}
-                        />
+                        <View>
+                            {Object.entries(groupedTransactions).map(([date, dayTransactions]) => 
+                                renderDayGroup(date, dayTransactions)
+                            )}
+                        </View>
                     ) : (
                         <View style={styles.noTransactions}>
                             <Text style={styles.noTransactionsText}>

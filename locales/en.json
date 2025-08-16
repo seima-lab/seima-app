@@ -791,8 +791,9 @@
   },
   
   "updateProfilePage": {
+    "profileUpdatedSuccessfully": "Profile updated successfully!",
     "avatarUploadFailed": "Couldn't upload your new photo. We'll keep the old one for now 📸",
-    "updateSuccess": "Profile updated successfully! Looking good! ✨",
+    "updateSuccess": "Profile updated",
     "updateFailed": "Couldn't save your changes right now. Please try again 🔄",
     "validationError": "Please check your information and try again 📝",
     "loadFailed": "Couldn't load your profile. Please try again 🔄",

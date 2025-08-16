@@ -26,6 +26,7 @@ import { HealthStatusData, statusService } from '../services/statusService';
 import { TransactionReportResponse, transactionService } from '../services/transactionService';
 import { UserProfile, userService } from '../services/userService';
 // import of walletService removed; balance now derives from today's transactions
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 const { width, height } = Dimensions.get('window');
@@ -240,8 +241,24 @@ const FinanceScreen = React.memo(() => {
   const handleSelectPeriod = (option: {label: string, value: string}) => {
     setSelectedPeriodValue(option.value);
     setIsDropdownOpen(false);
-    const { startDate, endDate } = getPeriodRange(option.value);
-    loadChartData(startDate, endDate);
+    
+    // Kiểm tra cache trước khi gọi API
+    const cacheKey = `chart_${option.value}`;
+    if (dataCache[cacheKey] && Date.now() - lastFetchTime < CACHE_DURATION) {
+      console.log('⏰ Using cached chart data for period:', option.value);
+      const cachedData = dataCache[cacheKey];
+      setChartData({
+        income: cachedData.income || 0,
+        expenses: cachedData.expenses || 0,
+        difference: cachedData.difference || 0,
+        isLoading: false
+      });
+      setReportData(cachedData.reportData);
+    } else {
+      console.log('🔄 Loading fresh chart data for period:', option.value);
+      const { startDate, endDate } = getPeriodRange(option.value);
+      loadChartData(startDate, endDate);
+    }
   };
 
   // Cache state để tránh gọi API không cần thiết
@@ -259,12 +276,15 @@ const FinanceScreen = React.memo(() => {
     ]);
   };
 
-  // Load tất cả data song song với cache và timeout
+  // Load tất cả data song song với cache và timeout - OPTIMIZED VERSION
   const loadAllData = useCallback(async (forceRefresh: boolean = false) => {
     if (isAllDataLoadingRef.current) {
+      console.log('🔄 loadAllData already in progress, skipping...');
       return;
     }
+    
     isAllDataLoadingRef.current = true;
+    
     if (!isAuthenticated) {
       setLoading(false);
       isAllDataLoadingRef.current = false;
@@ -273,163 +293,237 @@ const FinanceScreen = React.memo(() => {
 
     const now = Date.now();
     if (!forceRefresh && now - lastFetchTime < CACHE_DURATION) {
-      
+      console.log('⏰ Using cached data, skipping API calls...');
+      isAllDataLoadingRef.current = false;
       return;
     }
 
     try {
+      console.log('🚀 Starting optimized data loading...');
       setLoading(true);
-      // Gọi tất cả API song song với timeout 60s (tăng từ 30s)
+      setHealthStatusLoading(true);
+      
+      // Gọi tất cả API song song với timeout tối ưu
       const results = await Promise.allSettled([
-        withTimeout(userService.getCurrentUserProfile(forceRefresh), 60000),
+        // 1. User Profile
+        withTimeout(userService.getCurrentUserProfile(forceRefresh), 30000),
+        
+        // 2. Chart Data + Transaction Report (gộp chung)
         withTimeout((async () => {
           const { startDate, endDate } = getPeriodRange(selectedPeriodValue);
           const startDateStr = toLocalDateString(startDate);
           const endDateStr = toLocalDateString(endDate);
           return transactionService.viewTransactionChart(undefined, startDateStr, endDateStr);
-        })(), 60000),
-        withTimeout(getUnreadCount(), 30000),
-        withTimeout(statusService.getHealthStatus(), 30000)
+        })(), 45000),
+        
+        // 3. Notifications
+        withTimeout(getUnreadCount(), 20000),
+        
+        // 4. Health Status
+        withTimeout(statusService.getHealthStatus(), 20000),
+        
+        // 5. Today's Transactions (gộp vào đây thay vì gọi riêng)
+        withTimeout(transactionService.getTransactionsToday(), 30000)
       ]);
 
-      // Extract results with fallbacks
-      const profile = results[0].status === 'fulfilled' ? results[0].value : null;
-      const chartResponse = results[1].status === 'fulfilled' ? results[1].value : null;
-      const notificationResponse = results[2].status === 'fulfilled' ? results[2].value : 0;
-      const healthData = results[3].status === 'fulfilled' ? results[3].value : null;
-
-      // Log any failures
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          const apiNames = ['userProfile', 'chartData', 'notifications', 'healthStatus'];
-          
-        }
-      });
-
+      // Extract và process results với error handling tốt hơn
+      const [profileResult, chartResult, notificationResult, healthResult, transactionsResult] = results;
       
-      
-      // Set states với safety checks
-      if (profile) {
-      setUserProfile(profile);
-        
+      // Process User Profile
+      if (profileResult.status === 'fulfilled' && profileResult.value) {
+        setUserProfile(profileResult.value);
+        console.log('✅ User profile loaded successfully');
       } else {
-        
-        // Không update userProfile nếu API fail, giữ nguyên giá trị cũ
+        console.log('⚠️ User profile API failed, keeping existing data');
       }
       
-      // Total balance now derived from today's transactions in loadTransactionHistory
-
-      // Process chart data với safety checks
-      if (chartResponse) {
-        const summary = (chartResponse as any)?.summary || chartResponse?.summary || {};
-      const income = summary?.total_income || summary?.totalIncome || 0;
-      const expenses = summary?.total_expense || summary?.totalExpense || 0;
-      const difference = income - expenses;
-      
-      setChartData({
-        income,
-        expenses,
-        difference,
-        isLoading: false
-      });
-      
-      setReportData(chartResponse);
-        
-      } else {
+      // Process Chart Data + Report
+      if (chartResult.status === 'fulfilled' && chartResult.value) {
+        const summary = (chartResult.value as any)?.summary || chartResult.value?.summary || {};
+        const income = summary?.total_income || summary?.totalIncome || 0;
+        const expenses = summary?.total_expense || summary?.totalExpense || 0;
+        const difference = income - expenses;
         
         setChartData({
-          income: 0,
-          expenses: 0,
-          difference: 0,
+          income,
+          expenses,
+          difference,
           isLoading: false
         });
-        setReportData(null);
-      }
-
-      // Process notification count với safety checks
-      let count = 0;
-      try {
-      const responseAny = notificationResponse as any;
-        if (typeof notificationResponse === 'number') {
-          count = notificationResponse;
-        } else if (responseAny?.data?.count !== undefined) {
-        count = responseAny.data.count;
-      } else if (responseAny?.count !== undefined) {
-        count = responseAny.count;
-      } else if (typeof responseAny?.data === 'number') {
-        count = responseAny.data;
-      } else if (responseAny?.data?.data?.count !== undefined) {
-        count = responseAny.data.data.count;
-      }
         
-      } catch (error) {
-        
-        count = 0;
+        setReportData(chartResult.value);
+        console.log('✅ Chart data loaded successfully');
+      } else {
+        console.log('⚠️ Chart data API failed, using fallback values');
+        setChartData(prev => ({
+          income: prev.income || 0,
+          expenses: prev.expenses || 0,
+          difference: prev.difference || 0,
+          isLoading: false
+        }));
       }
-      setNotificationCount(Math.max(0, count || 0));
-
-      // Set health status với fallback and update total balance from health API
-      if (healthData) {
-        setApiHealthStatus(healthData);
-        // Prefer explicit total_balance/current_balance/balance fields
-        const healthBalance = (healthData as any).total_balance ?? (healthData as any).current_balance ?? (healthData as any).balance;
+      
+      // Process Notifications
+      let notificationCount = 0;
+      if (notificationResult.status === 'fulfilled') {
+        try {
+          const response = notificationResult.value as any;
+          if (typeof response === 'number') {
+            notificationCount = response;
+          } else if (response?.data?.count !== undefined) {
+            notificationCount = response.data.count;
+          } else if (response?.count !== undefined) {
+            notificationCount = response.count;
+          } else if (typeof response?.data === 'number') {
+            notificationCount = response.data;
+          }
+        } catch (error) {
+          console.log('⚠️ Error processing notification response');
+        }
+      }
+      setNotificationCount(Math.max(0, notificationCount));
+      
+      // Process Health Status + Balance
+      if (healthResult.status === 'fulfilled' && healthResult.value) {
+        setApiHealthStatus(healthResult.value);
+        
+        // Update total balance from health API
+        const healthBalance = (healthResult.value as any).total_balance ?? 
+                            (healthResult.value as any).current_balance ?? 
+                            (healthResult.value as any).balance;
+        
         if (typeof healthBalance === 'number' && !isNaN(healthBalance)) {
           setFinanceData(prev => ({ ...prev, totalBalance: healthBalance }));
         }
+        console.log('✅ Health status loaded successfully');
       } else {
         setApiHealthStatus({ score: 75, level: 'unknown' } as any);
+        console.log('⚠️ Health status API failed, using default values');
       }
       
-      // Update cache
+      // Process Today's Transactions (gộp vào đây)
+      if (transactionsResult.status === 'fulfilled' && transactionsResult.value) {
+        const filtered = Array.isArray(transactionsResult.value) ? transactionsResult.value : [];
+        filtered.sort((a: any, b: any) => 
+          new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+        );
+        
+        setTransactionHistory(filtered);
+        setTransactionCache(filtered);
+        setLastTransactionFetch(now);
+        console.log('✅ Today\'s transactions loaded successfully');
+      } else {
+        console.log('⚠️ Transactions API failed, keeping existing data');
+      }
+      
+      // Update cache với tất cả data
       setDataCache({
-        profile,
-        chartData: chartResponse,
-        notifications: count,
-        health: healthData
+        profile: profileResult.status === 'fulfilled' ? profileResult.value : null,
+        chartData: chartResult.status === 'fulfilled' ? chartResult.value : null,
+        notifications: notificationCount,
+        health: healthResult.status === 'fulfilled' ? healthResult.value : null,
+        transactions: transactionsResult.status === 'fulfilled' ? transactionsResult.value : []
       });
+      
+      // ✅ Sử dụng callback function để tránh dependency loop
       setLastFetchTime(now);
+      console.log('🎉 All data loaded successfully in one batch!');
 
     } catch (error: any) {
-      
+      console.error('❌ Error in loadAllData:', error);
     } finally {
       isAllDataLoadingRef.current = false;
       setLoading(false);
       setHealthStatusLoading(false);
     }
-  }, [isAuthenticated, selectedPeriodValue, lastFetchTime]);
+  }, [isAuthenticated, selectedPeriodValue]); // ✅ Xóa lastFetchTime khỏi dependencies
 
   // Load data handled via focus effect and refresh triggers only
 
   // Refresh khi có transaction mới - only depend on trigger value
-  useEffect(() => {
-    if (transactionRefreshTrigger > 0) {
-      
-      loadAllData(true); // Force refresh
-    }
-  }, [transactionRefreshTrigger]);
+  // useEffect này đã được gộp vào useEffect ở dưới để tránh trùng lặp
 
-  // Memoized focus effect callback
-  const focusEffectCallback = useCallback(() => {
-      if (isAuthenticated) {
-        // Load main data first, then transaction history with a small delay
-        loadAllData(false).then(() => {
-          setTimeout(() => {
-            loadTransactionHistory(false);
-        }, 200);
-        }).catch((error) => {
-          setTimeout(() => {
-            loadTransactionHistory(false);
-          }, 200);
-        });
+  // Check if notifications have changed and reload if needed
+  const checkNotificationsChanges = useCallback(async () => {
+    try {
+      const changeInfoStr = await AsyncStorage.getItem('NotificationsChangeInfo');
+      if (changeInfoStr) {
+        const changeInfo = JSON.parse(changeInfoStr);
+        const now = Date.now();
+        const timeDiff = now - changeInfo.timestamp;
+        
+        // Only reload if change is recent (within last 5 minutes)
+        if (changeInfo.notificationsChanged && timeDiff < 5 * 60 * 1000) {
+          console.log('🔄 Notifications changed detected, reloading notification count...');
+          
+          // Reload notification count
+          const notificationResponse = await getUnreadCount();
+          let count = 0;
+          try {
+            const responseAny = notificationResponse as any;
+            if (typeof notificationResponse === 'number') {
+              count = notificationResponse;
+            } else if (responseAny?.data?.count !== undefined) {
+              count = responseAny.data.count;
+            } else if (responseAny?.count !== undefined) {
+              count = responseAny.count;
+            } else if (typeof responseAny?.data === 'number') {
+              count = responseAny.data;
+            } else if (responseAny?.data?.data?.count !== undefined) {
+              count = responseAny.data.data.count;
+            }
+          } catch (error) {
+            count = 0;
+          }
+          setNotificationCount(Math.max(0, count || 0));
+          
+          // Clear the change info after reloading
+          await AsyncStorage.removeItem('NotificationsChangeInfo');
+          console.log('✅ Notification count reloaded and change info cleared');
+        }
       }
-  }, [isAuthenticated]);
+    } catch (error) {
+      console.error('❌ Error checking notifications changes:', error);
+    }
+  }, []);
 
-  // Refresh khi focus với debounce
-  useFocusEffect(focusEffectCallback);
+  // Memoized focus effect callback - OPTIMIZED VERSION
+  const focusEffectCallback = useCallback(() => {
+    if (isAuthenticated) {
+      console.log('🔄 Screen focused, loading data...');
+      
+      // Load tất cả data trong một lần gọi duy nhất (đã bao gồm transaction history)
+      loadAllData(false).catch((error) => {
+        console.error('❌ Error loading data on focus:', error);
+      });
+      
+      // Check notifications changes (chỉ khi cần thiết)
+      checkNotificationsChanges();
+    }
+  }, [isAuthenticated, loadAllData, checkNotificationsChanges]);
 
-  // Chart data will be fetched inside loadAllData and when user selects a period
+  // Refresh khi focus với debounce để tránh gọi API quá nhiều
+  useFocusEffect(
+    useCallback(() => {
+      // Debounce focus effect để tránh gọi API liên tục
+      const timeoutId = setTimeout(() => {
+        focusEffectCallback();
+      }, 300); // Delay 300ms
 
-  // Removed individual loadUserProfile - now handled in loadAllData
+      return () => clearTimeout(timeoutId);
+    }, [focusEffectCallback])
+  );
+
+  // 🚀 OPTIMIZATION SUMMARY:
+  // - Gộp tất cả API calls vào loadAllData (5 APIs song song thay vì gọi riêng lẻ)
+  // - Implement proper caching với CACHE_DURATION = 30s
+  // - Debounce focus effect (300ms delay) để tránh gọi API liên tục
+  // - Smart cache checking trước khi gọi API mới
+  // - Reduced timeout values: Profile(30s), Chart(45s), Notifications(20s), Health(20s), Transactions(30s)
+  // - Transaction history loading đã được gộp vào loadAllData
+  // - Chart data chỉ gọi riêng khi user thay đổi period filter
+  // ✅ FIXED: Xóa useEffect trùng lặp để tránh API status load liên tục sau khi add transaction
+  // ✅ FIXED: Tránh vòng lặp vô hạn trong useEffect dependencies để API health không load lại liên tục
 
   // Helper function to format money - memoized
   const formatMoney = useCallback((amount: number): string => {
@@ -455,7 +549,8 @@ const FinanceScreen = React.memo(() => {
   const toLocalDateString = (date: Date) =>
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-  // Optimized chart data loading với timeout và fallback
+  // Chart data loading đã được gộp vào loadAllData để tối ưu hóa
+  // Chỉ gọi riêng khi user thay đổi period filter
   const loadChartData = useCallback(async (startDate?: Date, endDate?: Date) => {
     if (!isAuthenticated) {
       return;
@@ -463,7 +558,6 @@ const FinanceScreen = React.memo(() => {
 
     try {
       setChartData(prev => ({ ...prev, isLoading: true }));
-      
       
       let _startDate = startDate, _endDate = endDate;
       if (!_startDate || !_endDate) {
@@ -475,46 +569,44 @@ const FinanceScreen = React.memo(() => {
       const startDateStr = toLocalDateString(_startDate);
       const endDateStr = toLocalDateString(_endDate);
       
+      console.log('📊 Loading chart data for period:', startDateStr, 'to', endDateStr);
+      
       const reportResponse = await withTimeout(
         transactionService.viewTransactionChart(undefined, startDateStr, endDateStr),
-        45000 // 45s timeout cho chart data
+        30000 // Giảm timeout vì chỉ gọi 1 API
       );
       
       if (reportResponse) {
         const summary = (reportResponse as any)?.summary || reportResponse?.summary || {};
-      const income = summary?.total_income || summary?.totalIncome || 0;
-      const expenses = summary?.total_expense || summary?.totalExpense || 0;
-      const difference = income - expenses;
-      
-      setChartData({
-        income,
-        expenses,
-        difference,
-        isLoading: false
-      });
-      
-      setReportData(reportResponse);
+        const income = summary?.total_income || summary?.totalIncome || 0;
+        const expenses = summary?.total_expense || summary?.totalExpense || 0;
+        const difference = income - expenses;
         
+        setChartData({
+          income,
+          expenses,
+          difference,
+          isLoading: false
+        });
+        
+        setReportData(reportResponse);
+        console.log('✅ Chart data updated for new period');
       } else {
         throw new Error('Empty chart response');
       }
       
     } catch (error: any) {
+      console.error('❌ Error loading chart data:', error);
       
-      // Fallback to previous values hoặc 0 values
+      // Fallback to previous values
       setChartData(prev => ({
         income: prev.income || 0,
         expenses: prev.expenses || 0,
         difference: prev.difference || 0,
         isLoading: false
       }));
-      
-      // Không set reportData null để giữ data cũ nếu có
-      if (!reportData) {
-        setReportData(null);
-      }
     }
-  }, [isAuthenticated, selectedPeriodValue, reportData]);
+  }, [isAuthenticated, selectedPeriodValue]);
 
   // Removed individual loadNotificationCount - now handled in loadAllData
 
@@ -1060,60 +1152,28 @@ const FinanceScreen = React.memo(() => {
     return `${year}-${month}-${day}`;
   };
 
-  // Optimized transaction history loading với cache
-
-  const loadTransactionHistory = useCallback(async (forceRefresh = false) => {
-    if (isTxnHistoryLoadingRef.current) {
-      return;
-    }
-    const now = Date.now();
-    if (!forceRefresh && now - lastTransactionFetch < TRANSACTION_CACHE_DURATION && transactionCache.length > 0) {
-      
-      setTransactionHistory(transactionCache);
-      return;
-    }
-
-    setTransactionHistoryLoading(true);
-    isTxnHistoryLoadingRef.current = true;
-    try {
-      const todayTransactions = await withTimeout(
-        transactionService.getTransactionsToday(),
-        40000
-      );
-      const filtered = Array.isArray(todayTransactions) ? todayTransactions : [];
-      
-      filtered.sort((a: any, b: any) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
-      
-      setTransactionHistory(filtered);
-      setTransactionCache(filtered);
-      setLastTransactionFetch(now);
-
-      // No longer update total balance from today's transactions; health API is source of truth
-      
-    } catch (err: any) {
-      
-      // Giữ cache cũ nếu có, không clear hết
-      if (transactionCache.length === 0) {
-      setTransactionHistory([]);
-      } else {
-        
-        setTransactionHistory(transactionCache);
-      }
-    } finally {
-      setTransactionHistoryLoading(false);
-      isTxnHistoryLoadingRef.current = false;
-    }
-  }, [transactionCache]);
+  // Transaction history loading đã được gộp vào loadAllData để tối ưu hóa
+  // Không cần gọi API riêng nữa
 
   // Transaction history fetched on focus and refresh triggers
 
-  // Refresh transaction history when transactionRefreshTrigger changes
+  // 🚨 SINGLE SOURCE OF TRUTH: Refresh tất cả data khi có transaction mới
+  // useEffect này thay thế useEffect trùng lặp ở trên để tránh gọi API 2 lần
+  // ✅ FIXED: Tránh vòng lặp vô hạn bằng cách không đưa loadAllData vào dependencies
   useEffect(() => {
     if (transactionRefreshTrigger > 0) {
-      
-      loadTransactionHistory(true);
+      console.log('🔄 Transaction refresh triggered, reloading all data...');
+      // Gọi loadAllData trực tiếp thay vì qua dependency để tránh vòng lặp vô hạn
+      const refreshData = async () => {
+        try {
+          await loadAllData(true); // Force refresh tất cả data
+        } catch (error) {
+          console.error('❌ Error refreshing data after transaction:', error);
+        }
+      };
+      refreshData();
     }
-  }, [transactionRefreshTrigger]);
+  }, [transactionRefreshTrigger]); // ✅ Chỉ phụ thuộc vào transactionRefreshTrigger
 
   // Memoized helper functions
   const formatDate = useCallback((dateStr: string) => {

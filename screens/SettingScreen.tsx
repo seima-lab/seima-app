@@ -31,6 +31,7 @@ const SettingScreen = () => {
   // Prevent multiple concurrent API calls
   const isLoadingRef = useRef(false);
   const isMountedRef = useRef(true);
+  const hasReloadedOnFocusRef = useRef(false); // 🔥 THÊM: Track đã reload khi focus chưa
 
   // Load user profile với cache
   const loadUserProfile = useCallback(async (forceRefresh: boolean = false) => {
@@ -39,7 +40,7 @@ const SettingScreen = () => {
       return;
     }
 
-    // Prevent multiple concurrent calls
+    // Prevent multiple concurrent calls, nhưng cho phép force refresh
     if (isLoadingRef.current && !forceRefresh) {
       console.log('⏭️ Skipping profile load - already loading');
       return;
@@ -73,6 +74,7 @@ const SettingScreen = () => {
         setUserProfile(profile);
         setProfileCache(profile);
         setLastFetchTime(now);
+        console.log('✅ Profile updated in state and cache');
       }
     } catch (error: any) {
       console.error('🔴 Failed to load user profile:', error);
@@ -116,19 +118,35 @@ const SettingScreen = () => {
     };
   }, [isAuthenticated]);
 
+  // 🔥 DEBUG: Log khi userProfile thay đổi
+  useEffect(() => {
+    if (userProfile) {
+      console.log('📊 UserProfile updated in SettingScreen:', {
+        name: userProfile.user_full_name,
+        email: userProfile.user_email,
+        phone: userProfile.user_phone_number,
+        gender: userProfile.user_gender,
+        dob: userProfile.user_dob,
+        avatar: userProfile.user_avatar_url
+      });
+    }
+  }, [userProfile]);
+
   // Auto reload data when screen comes into focus với debounce
   useFocusEffect(
     useCallback(() => {
-      if (isAuthenticated) {
-        const now = Date.now();
-        if (now - lastFetchTime > CACHE_DURATION) {
-          console.log('🔄 SettingScreen focused, refreshing profile...');
-          loadUserProfile();
-        } else {
-          console.log('🔄 SettingScreen focused, using cached data');
-        }
+      if (isAuthenticated && !hasReloadedOnFocusRef.current) {
+        // 🔥 FORCE REFRESH khi quay về từ UpdateProfile (chỉ 1 lần)
+        console.log('🔄 SettingScreen focused, forcing profile refresh...');
+        hasReloadedOnFocusRef.current = true; // Đánh dấu đã reload
+        loadUserProfile(true); // Force refresh để lấy dữ liệu mới nhất
+        
+        // Reset flag sau 2 giây để có thể reload lần sau
+        setTimeout(() => {
+          hasReloadedOnFocusRef.current = false;
+        }, 2000);
       }
-    }, [isAuthenticated, lastFetchTime, loadUserProfile])
+    }, [isAuthenticated, loadUserProfile])
   );
 
   // Helper function to get avatar source based on gender

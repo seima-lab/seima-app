@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import CustomToast from '../components/CustomToast';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
@@ -59,25 +59,14 @@ const UpdateProfile = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasDateOfBirth, setHasDateOfBirth] = useState(false);
 
-  // Toast state
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'error' | 'success' | 'warning' | 'info'>('error');
+  // Modal state thay vì toast
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
 
   // Refs for TextInputs
   const fullNameRef = useRef<TextInput>(null);
   const phoneNumberRef = useRef<TextInput>(null);
 
-  // Toast functions
-  const showToast = (message: string, type: 'error' | 'success' | 'warning' | 'info' = 'error') => {
-    setToastMessage(message);
-    setToastType(type);
-    setToastVisible(true);
-  };
 
-  const hideToast = () => {
-    setToastVisible(false);
-  };
 
   // Start animations when component mounts
   useEffect(() => {
@@ -143,7 +132,6 @@ const UpdateProfile = () => {
     } catch (err: any) {
       console.error('❌ Failed to fetch user profile:', err);
       setError(err.message || t('updateProfilePage.loadFailed'));
-      showToast(t('updateProfilePage.loadFailed'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -198,10 +186,6 @@ const UpdateProfile = () => {
 
   const handleSaveChanges = async () => {
     if (!validate()) {
-      // Show first validation error with toast
-      const firstError = Object.values(errors)[0] as string;
-      showToast(firstError, 'warning');
-      
       // Shake animation for error
       const shakeAnimation = Animated.sequence([
         Animated.timing(slideAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
@@ -258,12 +242,8 @@ const UpdateProfile = () => {
       console.log('🔄 Refreshing local profile data after update...');
       await fetchUserProfile();
       
-      showToast(t('updateProfilePage.updateSuccess'), 'success');
-      
-      // Navigate back after showing success message
-      setTimeout(() => {
-        navigation.goBack();
-      }, 1500);
+      // Show success modal thay vì toast
+      setSuccessModalVisible(true);
       
     } catch (err: any) {
       console.error('❌ Failed to update profile:', err);
@@ -275,7 +255,7 @@ const UpdateProfile = () => {
         errorMessage = err.message;
       }
       
-      showToast(errorMessage, 'error');
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -286,7 +266,7 @@ const UpdateProfile = () => {
     const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (cameraStatus !== 'granted' || mediaLibraryStatus !== 'granted') {
-      showToast(t('permissions.permissionMessage'), 'warning');
+      Alert.alert(t('common.warning'), t('permissions.permissionMessage'));
       return false;
     }
     return true;
@@ -309,7 +289,7 @@ const UpdateProfile = () => {
       }
     } catch (error) {
       console.log('Error picking image from camera:', error);
-      showToast(t('permissions.cameraError'), 'error');
+      Alert.alert(t('common.error'), t('permissions.cameraError'));
     }
   };
 
@@ -330,7 +310,7 @@ const UpdateProfile = () => {
       }
     } catch (error) {
       console.log('Error picking image from gallery:', error);
-      showToast(t('permissions.galleryError'), 'error');
+      Alert.alert(t('common.error'), t('permissions.galleryError'));
     }
   };
 
@@ -396,6 +376,12 @@ const UpdateProfile = () => {
   const handleInputBlur = () => {
     console.log('🎯 Input blur');
     setFocusedField(null);
+  };
+
+  const handleSuccessModalConfirm = () => {
+    setSuccessModalVisible(false);
+    // Navigate back after modal is closed
+    navigation.goBack();
   };
 
   // Loading state
@@ -702,12 +688,14 @@ const UpdateProfile = () => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Custom Toast */}
-      <CustomToast
-        visible={toastVisible}
-        message={toastMessage}
-        type={toastType}
-        onHide={hideToast}
+      {/* Custom Success Modal thay vì Toast */}
+      <CustomSuccessModal
+        visible={successModalVisible}
+        title={t('updateProfilePage.updateSuccess')}
+
+        buttonText={t('common.continue')}
+        onConfirm={handleSuccessModalConfirm}
+        iconName="check-circle"
       />
     </SafeAreaView>
   );

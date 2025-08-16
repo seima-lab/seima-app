@@ -1,5 +1,7 @@
 import { typography } from '@/constants/typography';
-import { useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useEffect, useRef, useState } from 'react'; // Added missing import for React
 import { useTranslation } from 'react-i18next';
 import {
     Animated,
@@ -38,8 +40,40 @@ const NotificationsScreen = () => {
     const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
     const [notificationToDelete, setNotificationToDelete] = useState<number | null>(null);
 
+    // Track changes to notify FinanceScreen to reload
+    const [hasChanges, setHasChanges] = useState(false);
+    const [changeType, setChangeType] = useState<'delete' | 'read' | 'deleteAll' | null>(null);
+
     // Animation values for each notification
     const animatedValues = useRef<{ [key: number]: Animated.Value }>({});
+
+    // Notify FinanceScreen to reload notifications when there are changes
+    useFocusEffect(
+        React.useCallback(() => {
+            // When screen loses focus and there are changes, notify parent to reload
+            return () => {
+                if (hasChanges) {
+                    console.log('🔄 NotificationsScreen has changes, notifying FinanceScreen to reload');
+                    // Store change info in AsyncStorage for FinanceScreen to check
+                    // This is a simple way to communicate between screens
+                    const storeChangeInfo = async () => {
+                        try {
+                            const changeInfo = {
+                                notificationsChanged: true,
+                                changeType: changeType,
+                                timestamp: Date.now()
+                            };
+                            await AsyncStorage.setItem('NotificationsChangeInfo', JSON.stringify(changeInfo));
+                            console.log('📝 Change info stored for FinanceScreen:', changeInfo);
+                        } catch (error) {
+                            console.error('❌ Error storing change info:', error);
+                        }
+                    };
+                    storeChangeInfo();
+                }
+            };
+        }, [hasChanges, changeType])
+    );
 
     // Initialize animated value for a notification
     const getAnimatedValue = (notificationId: number) => {
@@ -70,6 +104,10 @@ const NotificationsScreen = () => {
                 setNotifications(prev => prev.map((item, i) =>
                     i === index ? { ...item, is_read: true } : item
                 ));
+                
+                // Track change for reload
+                setHasChanges(true);
+                setChangeType('read');
             }
         } catch (e) {
             // Có thể hiển thị toast hoặc log lỗi nếu cần
@@ -99,6 +137,10 @@ const NotificationsScreen = () => {
             // Clean up animated value
             delete animatedValues.current[notificationToDelete];
             
+            // Track change for reload
+            setHasChanges(true);
+            setChangeType('delete');
+            
             console.log('✅ Notification deleted successfully');
         } catch (error) {
             console.error('❌ Error deleting notification:', error);
@@ -126,6 +168,11 @@ const NotificationsScreen = () => {
             console.log('🔴 Calling deleteAllNotifications API...');
             await deleteAllNotifications();
             setNotifications([]);
+            
+            // Track change for reload
+            setHasChanges(true);
+            setChangeType('deleteAll');
+            
             console.log('✅ Delete all notifications completed');
         } catch (e) {
             console.error('❌ Error deleting all notifications:', e);
@@ -182,6 +229,11 @@ const NotificationsScreen = () => {
                 is_read: true
             })));
             setIsDropdownOpen(false);
+            
+            // Track change for reload
+            setHasChanges(true);
+            setChangeType('read');
+            
             console.log('✅ Mark all as read completed');
         } catch (e) {
             console.error('❌ Error marking all as read:', e);

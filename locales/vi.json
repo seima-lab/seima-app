@@ -899,8 +899,9 @@
   },
   
   "updateProfilePage": {
+    "profileUpdatedSuccessfully": "Hồ sơ đã được cập nhật thành công!",
     "avatarUploadFailed": "Không thể tải ảnh mới lên. Mình sẽ giữ ảnh cũ nhé 📸",
-    "updateSuccess": "Cập nhật hồ sơ thành công! Trông bạn thật tuyệt! ✨",
+    "updateSuccess": "Cập nhật hồ sơ!",
     "updateFailed": "Không thể lưu thay đổi của bạn lúc này. Bạn thử lại nhé 🔄",
     "validationError": "Bạn vui lòng kiểm tra thông tin và thử lại 📝",
     "loadFailed": "Không thể tải hồ sơ của bạn. Bạn thử lại nhé 🔄",
