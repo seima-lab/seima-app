@@ -3,19 +3,19 @@ import messaging from '@react-native-firebase/messaging';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -390,18 +390,47 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
       setIsLoading(false);
       setShowLoadingModal(false); // Hide loading modal on error
       console.error('🔴 Registration/Update failed:', error);
-      
-      // Show error under email field (most common registration errors are email-related)
-      let errorMessage = isGoogleUser 
+
+      // Prefer backend field-level errors if available
+      const backendData = error?.data || error?.raw?.data;
+      const newErrors = { ...errors };
+
+      const assignIfString = (key: keyof typeof newErrors, value: any) => {
+        if (Array.isArray(value)) {
+          if (value.length > 0 && typeof value[0] === 'string') {
+            newErrors[key] = value[0];
+          }
+        } else if (typeof value === 'string') {
+          newErrors[key] = value;
+        }
+      };
+
+      if (backendData && typeof backendData === 'object') {
+        // Map common backend keys (both snake_case and camelCase) to our UI fields
+        assignIfString('fullName', backendData.full_name ?? backendData.fullName);
+        assignIfString('email', backendData.email ?? backendData.email_address ?? backendData.emailAddress);
+        assignIfString('phoneNumber', backendData.phone_number ?? backendData.phoneNumber);
+        assignIfString('dateOfBirth', backendData.dob ?? backendData.birth_date ?? backendData.birthDate ?? backendData.date_of_birth ?? backendData.dateOfBirth);
+        assignIfString('gender', backendData.gender);
+        assignIfString('password', backendData.password ?? backendData.new_password ?? backendData.newPassword);
+        assignIfString('confirmPassword', backendData.confirm_password ?? backendData.confirmPassword ?? backendData.confirm_new_password ?? backendData.confirmNewPassword);
+
+        // If any field-specific error was set, commit and return
+        const hasFieldError = Object.values(newErrors).some(v => !!v);
+        if (hasFieldError) {
+          setErrors(newErrors);
+          return;
+        }
+      }
+
+      // Fallback: show backend message under email field
+      let errorMessage = isGoogleUser
         ? 'Failed to create profile. Please try again.'
         : t('register.registerFailed');
-        
-      if (error.message) {
+      if (error?.message) {
         errorMessage = error.message;
       }
-      
-      // Set error under email field instead of showing alert
-      setErrors({...errors, email: errorMessage});
+      setErrors({ ...errors, email: errorMessage });
     }
   };  
 

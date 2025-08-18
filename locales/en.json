@@ -67,7 +67,11 @@
     "pleaseSelectWallet": "Please select wallet",
     "messagePlaceholder": "Message...",
     "loading": "Loading...",
-    "loadingMore": "Loading older messages..."
+    "loadingMore": "Loading older messages...",
+    "deleteHistory": "Delete history",
+    "confirmDeleteHistory": "Are you sure you want to delete all chat history?",
+    "deleteHistorySuccess": "Chat history deleted.",
+    "deleteHistoryFailed": "Failed to delete chat history. Please try again."
   },
   "finance": {
     "hello": "Hello!",
@@ -1090,6 +1094,7 @@
   },
   
   "wallet": {
+    
     "deleteWalletMessageDefault": "is your default wallet. Are you sure you want to delete it? You'll need to set another wallet as default.",
     "alertTitleDelete": "Delete Wallet",
     "deleteWalletSuccess": "Delete wallet Successfully",

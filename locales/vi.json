@@ -74,7 +74,11 @@
     "welcomeTitle": "Seima AI Assistant",
     "welcomeSubtitle": "Tôi sẵn sàng giúp bạn quản lý tài chính một cách thông minh! Hãy chia sẻ thông tin chi tiêu hoặc đặt câu hỏi về ngân sách.",
     "loading": "Đang tải...",
-    "loadingMore": "Đang tải tin nhắn cũ..."
+    "loadingMore": "Đang tải tin nhắn cũ...",
+    "deleteHistory": "Xoá lịch sử",
+    "confirmDeleteHistory": "Bạn có chắc muốn xoá toàn bộ lịch sử chat?",
+    "deleteHistorySuccess": "Đã xoá lịch sử chat.",
+    "deleteHistoryFailed": "Xoá lịch sử thất bại. Vui lòng thử lại."
   },
 
 
@@ -162,6 +166,7 @@
     }
   },
   "wallet": {
+    "bankName": "Tên ngân hàng",
     "deleteMessage": "Nếu bạn xóa {{walletName}}, tất cả các giao dịch liên quan sẽ bị xóa. Bạn có chắc chắn muốn xóa?",
     "loading": "Đang tải...",
     "alertTitleDelete": "Xóa ví",

@@ -11,8 +11,7 @@
 
 export class ApiConfig {
   // Base URL configuration
-  public static readonly BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://seima-server-byb7bmgea3fea4ej.southeastasia-01.azurewebsites.net';
-  
+  public static readonly BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
   // API versioning
   public static readonly API_VERSION = 'v1';
   public static readonly API_PREFIX = `/api/${ApiConfig.API_VERSION}`;

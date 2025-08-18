@@ -46,10 +46,21 @@ export const useDebounceInput = ({
     setDebouncedValue(initialValue);
   }, [initialValue]);
 
+  const setImmediateValue = useCallback((newValue: string) => {
+    const formattedValue = formatValue ? formatValue(newValue) : newValue;
+    // Update both immediately so downstream validators see the value right away
+    setValue(formattedValue);
+    setDebouncedValue(formattedValue);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, [formatValue]);
+
   return {
     value,
     debouncedValue,
     handleChange,
-    setValue,
+    setValue: setImmediateValue,
   };
 };

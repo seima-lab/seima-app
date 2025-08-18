@@ -93,7 +93,12 @@ export class ApiService {
         // Preserve the original error message from the API
         const errorMessage = result.message || result.error || 'API request failed';
         console.log(`🎯 Throwing error with message:`, errorMessage);
-        throw new Error(errorMessage);
+        // Attach backend payload so callers can map field errors
+        const err: any = new Error(errorMessage);
+        err.status_code = result.status_code;
+        err.data = result.data;
+        err.raw = result;
+        throw err;
       }
     } catch (error: any) {
       console.error(`🔴 API Request Error:`, error);

@@ -266,6 +266,49 @@ export class AIService {
     }
   }
 
+  // Xóa toàn bộ lịch sử chat của người dùng
+  async deleteChatHistory(): Promise<boolean> {
+    try {
+      console.log('🗑️ Deleting chat history...');
+      console.log('   - Endpoint:', AI_CHAT_ENDPOINTS.CHAT_HISTORY);
+
+      const authService = AuthService.getInstance();
+      const accessToken = await authService.getStoredToken();
+      if (!accessToken) {
+        console.error('❌ No access token available');
+        throw new Error('Authentication required');
+      }
+
+      const response = await fetch(AI_CHAT_ENDPOINTS.CHAT_HISTORY, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('📥 Delete history response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Delete history failed:', errorText);
+        throw new Error(`Failed to delete history: ${response.status}`);
+      }
+
+      // Try to parse message for logging, ignore errors
+      try {
+        const data = await response.json();
+        console.log('✅ Delete history response:', data);
+      } catch (_) {
+        // no-op
+      }
+
+      return true;
+    } catch (error) {
+      console.error('❌ Error deleting chat history:', error);
+      throw error;
+    }
+  }
+
   // Lấy message thân thiện dựa vào loại lỗi
   private getFriendlyErrorMessage(errorType: 'empty_response' | 'no_message' | 'network_error' | 'timeout' | 'default'): string {
     const friendlyMessages = {

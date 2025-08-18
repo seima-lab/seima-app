@@ -392,8 +392,12 @@ export class AuthService {
       if (response.ok && result.data) {
         return result.data;
       }
-      
-      throw new Error(result.message || 'Registration failed');
+      // Attach backend details to the error for UI mapping
+      const err: any = new Error(result.message || 'Registration failed');
+      err.status_code = result.status_code || response.status;
+      err.data = result.data;
+      err.raw = result;
+      throw err;
     } catch (error) {
       console.error('🔴 AuthService - Registration Error:', error);
       throw error;

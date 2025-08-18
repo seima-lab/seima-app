@@ -334,6 +334,29 @@ export const addExpenseStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // Full-screen preview styles
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  previewClose: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    padding: 8,
+  },
   // Image options modal styles
   imageOptionsOverlay: {
     flex: 1,

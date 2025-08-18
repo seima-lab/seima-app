@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
-import { Alert, Platform } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
+import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Alert, Platform } from 'react-native';
 
 import { ocrService, TransactionOcrResponse } from '../../services/ocrService';
 
@@ -179,6 +179,9 @@ export const useImagePicker = ({ activeTab, onOCRResult }: UseImagePickerProps) 
         return;
       }
 
+      // Close options for a cleaner transition into the native camera
+      setShowImageOptions(false);
+
       console.log('📷 Launching camera...');
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -192,18 +195,16 @@ export const useImagePicker = ({ activeTab, onOCRResult }: UseImagePickerProps) 
       if (!result.canceled && result.assets && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('✅ Photo taken successfully:', imageUri);
-        setSelectedImage(imageUri);
-        setShowImageOptions(false);
         
-        // Auto-scan for expense tab without asking
-        if (activeTab === 'expense') {
-          console.log('🔄 Auto-scanning photo for expense...');
-          scanInvoice(imageUri);
-        } else {
-          console.log('ℹ️ Photo saved for income tab (no auto-scan)');
-        }
+        console.log('🔄 Auto-scanning photo...');
+        setSelectedImage(imageUri);
+        await scanInvoice(imageUri);
+
+        // Ensure options are closed in any case
+        setShowImageOptions(false);
       } else {
         console.log('📷 Camera capture cancelled or failed');
+        // User cancelled - nothing to do
       }
     } catch (error) {
       console.error('❌ Error taking photo:', error);
@@ -220,6 +221,9 @@ export const useImagePicker = ({ activeTab, onOCRResult }: UseImagePickerProps) 
         return;
       }
 
+      // Close options for a cleaner transition into the native picker
+      setShowImageOptions(false);
+
       console.log('🖼️ Launching image library...');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -235,16 +239,13 @@ export const useImagePicker = ({ activeTab, onOCRResult }: UseImagePickerProps) 
       if (!result.canceled && result.assets && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('✅ Image selected successfully:', imageUri);
-        setSelectedImage(imageUri);
-        setShowImageOptions(false);
         
-        // Auto-scan for expense tab without asking
-        if (activeTab === 'expense') {
-          console.log('🔄 Auto-scanning gallery image for expense...');
-          scanInvoice(imageUri);
-        } else {
-          console.log('ℹ️ Photo saved for income tab (no auto-scan)');
-        }
+        console.log('🔄 Auto-scanning gallery image...');
+        setSelectedImage(imageUri);
+        await scanInvoice(imageUri);
+
+        // Ensure options are closed in any case
+        setShowImageOptions(false);
       } else {
         console.log('🖼️ Gallery selection cancelled or failed');
       }
@@ -263,6 +264,9 @@ export const useImagePicker = ({ activeTab, onOCRResult }: UseImagePickerProps) 
         return;
       }
 
+      // Close options for a cleaner transition into the native picker
+      setShowImageOptions(false);
+
       console.log('✂️ Launching image library with crop editor...');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -278,16 +282,13 @@ export const useImagePicker = ({ activeTab, onOCRResult }: UseImagePickerProps) 
       if (!result.canceled && result.assets && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         console.log('✅ Cropped image selected successfully:', imageUri);
-        setSelectedImage(imageUri);
-        setShowImageOptions(false);
         
-        // Auto-scan for expense tab without asking
-        if (activeTab === 'expense') {
-          console.log('🔄 Auto-scanning cropped image for expense...');
-          scanInvoice(imageUri);
-        } else {
-          console.log('ℹ️ Photo saved for income tab (no auto-scan)');
-        }
+        console.log('🔄 Auto-scanning cropped image...');
+        setSelectedImage(imageUri);
+        await scanInvoice(imageUri);
+
+        // Ensure options are closed in any case
+        setShowImageOptions(false);
       } else {
         console.log('✂️ Gallery with crop cancelled or failed');
       }

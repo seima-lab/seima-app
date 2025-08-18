@@ -154,6 +154,7 @@ export default function AddExpenseScreen() {
     isScanning,
     showImageOptions,
     setShowImageOptions,
+    setSelectedImage,
     takePhoto,
     pickFromGallery,
     pickFromGalleryWithCrop,
@@ -163,11 +164,33 @@ export default function AddExpenseScreen() {
     onOCRResult,
   });
 
+  // Prefill existing receipt image when editing
+  useEffect(() => {
+    if (isEditMode && !selectedImage) {
+      const existingUrl =
+        (transactionData && (
+          transactionData.receipt_image_url ||
+          transactionData.receiptImageUrl ||
+          transactionData.receipt_image ||
+          transactionData.receiptImage
+        )) || null;
+      if (existingUrl) {
+        setSelectedImage(existingUrl);
+      }
+    }
+  }, [isEditMode, transactionData, selectedImage, setSelectedImage]);
+
   // Form data - pre-fill if in edit mode
   // Prefill when copying from an existing transaction (make copy)
-  const initialAmount = fromCopy && transactionData?.amount
-    ? formatAmountFromNumber(transactionData.amount)
-    : (isEditMode && transactionData?.amount ? formatAmountFromNumber(transactionData.amount) : '');
+  const rawAmountSource = (fromCopy
+    ? transactionData?.amount
+    : (isEditMode ? transactionData?.amount : undefined));
+  const parsedInitialAmountNumber = typeof rawAmountSource === 'number'
+    ? rawAmountSource
+    : (rawAmountSource ? parseInt(String(rawAmountSource).replace(/[^\d]/g, ''), 10) : 0);
+  const initialAmount = parsedInitialAmountNumber > 0
+    ? formatAmountFromNumber(parsedInitialAmountNumber)
+    : '';
   const [note, setNote] = useState(
     (fromCopy && transactionData?.note)
       ? transactionData.note
@@ -198,6 +221,7 @@ export default function AddExpenseScreen() {
     }
     return new Date();
   });
+  const [showImagePreview, setShowImagePreview] = useState(false);
   
   // Modal states hook
   const {
@@ -232,8 +256,13 @@ export default function AddExpenseScreen() {
       fromGroupOverview
     });
 
+    // Prefer debouncedAmount, but fall back to immediate amount if needed
+    const amountText = (debouncedAmount && debouncedAmount.trim().length > 0)
+      ? debouncedAmount.trim()
+      : (amount || '').trim();
+
     // Check amount
-    if (!debouncedAmount.trim()) {
+    if (!amountText) {
       console.log('❌ Amount is empty:', debouncedAmount);
       return {
         isValid: false,
@@ -244,7 +273,7 @@ export default function AddExpenseScreen() {
       };
     }
     
-    const amountValue = getNumericAmountFromInput(debouncedAmount);
+    const amountValue = getNumericAmountFromInput(amountText);
     if (amountValue <= 0) {
       console.log('❌ Amount is zero or negative:', amountValue);
       return {
@@ -257,7 +286,7 @@ export default function AddExpenseScreen() {
     }
     
     // Check if amount exceeds 15 digits
-    const digitsOnly = debouncedAmount.replace(/[^\d]/g, '');
+    const digitsOnly = amountText.replace(/[^\d]/g, '');
     if (digitsOnly.length > 15) {
       return {
         isValid: false,
@@ -873,14 +902,9 @@ export default function AddExpenseScreen() {
 
   const MemoizedSkeletonLoader = SkeletonLoader;
 
-  // Show full loading only when no data has been loaded
-  if (showFullLoading) {
-    return <MemoizedSkeletonLoader />;
-  }
-
-  // Show scanning overlay when OCR is processing
+  // Show scanning overlay when OCR is processing (prioritize over skeleton)
   if (isScanning) {
-  return (
+    return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color="#1e90ff" />
@@ -889,6 +913,11 @@ export default function AddExpenseScreen() {
         </View>
       </SafeAreaView>
     );
+  }
+
+  // Show full loading only when no data has been loaded
+  if (showFullLoading) {
+    return <MemoizedSkeletonLoader />;
   }
 
   return (
@@ -1047,7 +1076,9 @@ export default function AddExpenseScreen() {
               {activeTab === 'expense' ? 'Receipt' : 'Photo'}
             </Text>
             <View style={styles.imageContainer}>
-              <Image source={{ uri: selectedImage }} style={styles.receiptImage} />
+              <TouchableOpacity activeOpacity={0.9} onPress={() => setShowImagePreview(true)}>
+                <Image source={{ uri: selectedImage }} style={styles.receiptImage} contentFit="cover" />
+              </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.removeImageButton}
                 onPress={removeImage}
@@ -1099,6 +1130,20 @@ export default function AddExpenseScreen() {
           loadingColor="#fff"
         />
       </View>
+
+      {/* Full-screen image preview */}
+      <Modal visible={showImagePreview} transparent animationType="fade" onRequestClose={() => setShowImagePreview(false)}>
+        <View style={styles.previewOverlay}>
+          <View style={styles.previewContainer}>
+            {selectedImage && (
+              <Image source={{ uri: selectedImage }} style={styles.previewImage} contentFit="contain" />
+            )}
+            <TouchableOpacity style={styles.previewClose} onPress={() => setShowImagePreview(false)}>
+              <Icon name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Date Picker */}
       {showDatePicker && (
@@ -1201,52 +1246,62 @@ export default function AddExpenseScreen() {
         <Modal 
           visible={showImageOptions} 
           transparent 
-          animationType="fade"
+          animationType={isScanning ? 'none' : 'fade'}
           onRequestClose={() => setShowImageOptions(false)}
         >
-          <TouchableOpacity 
-            style={styles.imageOptionsOverlay} 
-            activeOpacity={1} 
-            onPress={() => setShowImageOptions(false)}
-          >
-            <View style={styles.imageOptionsContainer}>
-              <Text style={styles.imageOptionsTitle}>
-                {activeTab === 'expense' ? t('addExpense') : t('addIncome')}
-              </Text>
-              
-              <TouchableOpacity
-                style={styles.imageOptionItem}
-                onPress={takePhoto}
-              >
-                <Icon name="camera" size={24} color="#007aff" />
-                <Text style={styles.imageOptionText}>{t('common.takePhoto')}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.imageOptionItem}
-                onPress={pickFromGallery}
-              >
-                <Icon name="image" size={24} color="#007aff" />
-                <Text style={styles.imageOptionText}>{t('common.photoLibrary')}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.imageOptionItem}
-                onPress={pickFromGalleryWithCrop}
-              >
-                <Icon name="crop" size={24} color="#007aff" />
-                <Text style={styles.imageOptionText}>{t('common.photoLibraryWithCrop')}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.imageOptionItem, styles.imageOptionCancel]}
-                onPress={() => setShowImageOptions(false)}
-              >
-                <Icon name="close" size={24} color="#666" />
-                <Text style={[styles.imageOptionText, styles.imageOptionCancelText]}>{t('cancel')}</Text>
-              </TouchableOpacity>
+          {isScanning ? (
+            <View style={styles.imageOptionsOverlay}>
+              <View style={styles.centerContent}>
+                <ActivityIndicator size="large" color="#1e90ff" />
+                <Text style={styles.loadingText}>{t('common.scanningInvoice')}</Text>
+                <Text style={styles.subLoadingText}>{t('common.extractingText')}</Text>
+              </View>
             </View>
-          </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={styles.imageOptionsOverlay} 
+              activeOpacity={1} 
+              onPress={() => setShowImageOptions(false)}
+            >
+              <View style={styles.imageOptionsContainer}>
+                <Text style={styles.imageOptionsTitle}>
+                  {activeTab === 'expense' ? t('addExpense') : t('addIncome')}
+                </Text>
+                
+                <TouchableOpacity
+                  style={styles.imageOptionItem}
+                  onPress={takePhoto}
+                >
+                  <Icon name="camera" size={24} color="#007aff" />
+                  <Text style={styles.imageOptionText}>{t('common.takePhoto')}</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.imageOptionItem}
+                  onPress={pickFromGallery}
+                >
+                  <Icon name="image" size={24} color="#007aff" />
+                  <Text style={styles.imageOptionText}>{t('common.photoLibrary')}</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.imageOptionItem}
+                  onPress={pickFromGalleryWithCrop}
+                >
+                  <Icon name="crop" size={24} color="#007aff" />
+                  <Text style={styles.imageOptionText}>{t('common.photoLibraryWithCrop')}</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.imageOptionItem, styles.imageOptionCancel]}
+                  onPress={() => setShowImageOptions(false)}
+                >
+                  <Icon name="close" size={24} color="#666" />
+                  <Text style={[styles.imageOptionText, styles.imageOptionCancelText]}>{t('cancel')}</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          )}
         </Modal>
       )}
 

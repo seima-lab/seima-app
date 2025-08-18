@@ -3,6 +3,7 @@ import { useFocusEffect, useRoute } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { typography } from '@/constants/typography';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,6 +37,8 @@ import AudioRecorderPlayer, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CustomConfirmModal from '../components/CustomConfirmModal';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import '../i18n';
 import { useNavigationService } from '../navigation/NavigationService';
 import { aiService, SuggestedBudget, SuggestedWallet } from '../services/aiService';
@@ -676,6 +679,10 @@ const ChatAIScreen = () => {
     
     // Menu state
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+    const [isDeletingHistory, setIsDeletingHistory] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
     
     const inputRef = useRef<TextInput>(null);
     
@@ -1670,6 +1677,13 @@ const ChatAIScreen = () => {
                             <Text style={styles.headerSubtitle}>{t('chatAIScreen.headerSubtitle')}</Text>
                         </View>
                     </View>
+                    <TouchableOpacity 
+                        style={styles.headerAction}
+                        onPress={() => setShowHeaderMenu(true)}
+                        activeOpacity={0.8}
+                    >
+                        <Icon name="more-vert" size={22} color="#FFFFFF" />
+                    </TouchableOpacity>
                 </LinearGradient>
                 </TouchableWithoutFeedback>
 
@@ -1902,6 +1916,73 @@ const ChatAIScreen = () => {
                             console.log('⚠️ Error in cleanup callback:', err);
                         }
                     }}
+                />
+                {/* Header menu modal */}
+                <Modal
+                    visible={showHeaderMenu}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setShowHeaderMenu(false)}
+                >
+                    <TouchableOpacity
+                        style={styles.menuOverlay}
+                        activeOpacity={1}
+                        onPress={() => setShowHeaderMenu(false)}
+                    >
+                        <View style={styles.menuContainer}>
+                            <TouchableOpacity
+                                style={styles.menuItem}
+                                onPress={() => {
+                                    setShowHeaderMenu(false);
+                                    setShowDeleteConfirm(true);
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <Icon name="delete" size={18} color="#E53935" />
+                                <Text style={styles.menuItemText}>{t('chatAIScreen.deleteHistory') || 'Xoá lịch sử'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
+                </Modal>
+                <CustomConfirmModal
+                    visible={showDeleteConfirm}
+                    title={t('common.confirm') || 'Xác nhận'}
+                    message={t('chatAIScreen.confirmDeleteHistory') || 'Bạn có chắc muốn xoá toàn bộ lịch sử chat?'}
+                    confirmText={isDeletingHistory ? (t('common.loading') || 'Đang xoá...') : (t('common.delete') || 'Xoá')}
+                    cancelText={t('common.cancel') || 'Hủy'}
+                    onConfirm={async () => {
+                        if (isDeletingHistory) return;
+                        setIsDeletingHistory(true);
+                        try {
+                            await aiService.deleteChatHistory();
+                            setMessages([]);
+                            setCurrentPage(0);
+                            setHasMoreMessages(false);
+                            setOpenMenuId(null);
+                            setShowWelcome(true);
+                            setShowDeleteConfirm(false);
+                            setShowDeleteSuccess(true);
+                        } catch (e) {
+                            setShowDeleteConfirm(false);
+                            Alert.alert('', t('chatAIScreen.deleteHistoryFailed') || 'Xoá lịch sử thất bại. Vui lòng thử lại.');
+                        } finally {
+                            setIsDeletingHistory(false);
+                        }
+                    }}
+                    onCancel={() => setShowDeleteConfirm(false)}
+                    onClose={() => setShowDeleteConfirm(false)}
+                    type="danger"
+                    iconName="delete"
+                    transitionKey="deleteHistoryConfirm"
+                />
+                <CustomSuccessModal
+                    visible={showDeleteSuccess}
+                    title={t('common.success') || 'Thành công'}
+                    message={t('chatAIScreen.deleteHistorySuccess') || 'Đã xoá lịch sử chat.'}
+                    buttonText={t('common.ok') || 'OK'}
+                    onConfirm={() => setShowDeleteSuccess(false)}
+                    iconName="check-circle"
+                    transitionKey="deleteHistorySuccess"
                 />
             </LinearGradient>
         </KeyboardAvoidingView>
@@ -2440,7 +2521,7 @@ const styles = StyleSheet.create({
     voiceLoadingSubtext: {
         fontSize: 14,
         color: '#718096',
-        fontWeight: '400',
+        ...typography.regular,  
     },
     voiceRecordButton: {
         width: 80,
@@ -2494,7 +2575,7 @@ const styles = StyleSheet.create({
     voiceRecordingText: {
         fontSize: 14,
         color: '#FF4D4F',
-        fontWeight: '600',
+        ...typography.semibold ,
     },
     loadMoreHintContainer: {
         alignItems: 'center',
@@ -2508,7 +2589,7 @@ const styles = StyleSheet.create({
     loadMoreHintText: {
         fontSize: 13,
         color: '#1e90ff',
-        fontWeight: '500',
+        ...typography.regular,
         textAlign: 'center',
     },
     
@@ -2539,6 +2620,43 @@ const styles = StyleSheet.create({
         color: '#1e90ff',
         fontWeight: '500',
         marginLeft: 6,
+    },
+    menuOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        justifyContent: 'flex-start',
+        alignItems: 'flex-end',
+    },
+    menuContainer: {
+        marginTop: 60,
+        marginRight: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 8,
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        minWidth: 180,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        gap: 8,
+    },
+    menuItemText: {
+        fontSize: 14,
+        color: '#333',
+        ...typography.semibold,
+        marginLeft: 8,
     },
 });
 console.log("styles", styles);
