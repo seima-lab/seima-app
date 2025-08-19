@@ -3,15 +3,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 // React Native imports
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -1072,9 +1072,7 @@ export default function AddExpenseScreen() {
         {/* Receipt Image - Available for both expense and income tabs */}
         {selectedImage && (
           <View style={styles.row}>
-            <Text style={styles.label}>
-              {activeTab === 'expense' ? 'Receipt' : 'Photo'}
-            </Text>
+            <Text style={styles.label}>{t('images')}</Text>
             <View style={styles.imageContainer}>
               <TouchableOpacity activeOpacity={0.9} onPress={() => setShowImagePreview(true)}>
                 <Image source={{ uri: selectedImage }} style={styles.receiptImage} contentFit="cover" />

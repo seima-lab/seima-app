@@ -93,6 +93,11 @@ export interface Transaction {
   // Optional wallet mapping for edit navigation
   wallet_id?: number;
   walletId?: number;
+  // Optional receipt image fields for edit navigation
+  receipt_image_url?: string | null;
+  receiptImageUrl?: string | null;
+  receipt_image?: string | null;
+  receiptImage?: string | null;
 }
 
 export interface DayData {

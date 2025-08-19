@@ -70,12 +70,12 @@ const TypingIndicator = () => {
                     Animated.delay(delay),
                     Animated.timing(dot, {
                         toValue: -6,
-                        duration: 600,
+                        duration: 400,
                         useNativeDriver: true,
                     }),
                     Animated.timing(dot, {
                         toValue: 0,
-                        duration: 600,
+                        duration: 400,
                         useNativeDriver: true,
                     }),
                 ])
@@ -743,12 +743,13 @@ const ChatAIScreen = () => {
                 setHasMoreMessages(history.length === 10); // Nếu có 10 tin nhắn, có thể còn thêm
                 console.log('✅ Chat history loaded:', reversedMessages.length, 'messages');
                 
-                            // Set flag to scroll to bottom after loading history
-            setShouldScrollToBottom(true);
+                // Set flag to scroll to bottom after loading history
+                setShouldScrollToBottom(true);
             } else {
                 // If no history, don't add any messages, just show welcome message
                 setMessages([]);
                 setHasMoreMessages(false);
+                setShowWelcome(true); // Ensure welcome message is shown when no history
                 console.log('✅ No chat history found, will show welcome message');
             }
             
@@ -771,6 +772,13 @@ const ChatAIScreen = () => {
             setShouldScrollToBottom(false); // Reset after scrolling
         }
     }, [messages.length, isLoadingHistory, shouldScrollToBottom, scrollToBottom]);
+
+    // Auto-hide welcome message when there are messages in chat
+    useEffect(() => {
+        if (messages.length > 0 && showWelcome) {
+            setShowWelcome(false);
+        }
+    }, [messages.length, showWelcome]);
 
     // Lấy user_id và load chat history khi component mount
     useEffect(() => {
@@ -813,9 +821,6 @@ const ChatAIScreen = () => {
         };
 
         fetchUserId();
-        
-        // Hide welcome message after 3 seconds
-        setTimeout(() => setShowWelcome(false), 3000);
         
         // Keyboard listeners for UI state tracking
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
@@ -1021,7 +1026,8 @@ const ChatAIScreen = () => {
                 setInputText('');
             }
             setIsLoading(true);
-            setShowWelcome(false); // Hide welcome message when user sends message
+            // Hide welcome message when user sends first message
+            setShowWelcome(false);
             
             // Dismiss keyboard after sending
             Keyboard.dismiss();
@@ -1959,7 +1965,7 @@ const ChatAIScreen = () => {
                             setCurrentPage(0);
                             setHasMoreMessages(false);
                             setOpenMenuId(null);
-                            setShowWelcome(true);
+                            setShowWelcome(true); // Show welcome message after deleting history
                             setShowDeleteConfirm(false);
                             setShowDeleteSuccess(true);
                         } catch (e) {

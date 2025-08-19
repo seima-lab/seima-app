@@ -2,16 +2,16 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  RefreshControl,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    RefreshControl,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -154,7 +154,9 @@ const BudgetTransactionHistoryScreen = ({ route }: BudgetTransactionHistoryScree
       let filteredTransactions = response || [];
       if (startDate && endDate) {
         const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
         const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
         
         filteredTransactions = (response || []).filter((transaction: any) => {
           const transactionDate = new Date(transaction.transaction_date);

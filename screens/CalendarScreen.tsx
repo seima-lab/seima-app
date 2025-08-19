@@ -217,7 +217,12 @@ const CalendarScreen = () => {
             iconColor: iconColor,
             description: item.description || item.category_name || 'No description',
             // carry wallet id for edit screen preselection (supports snake_case and camelCase)
-            wallet_id: (item as any).wallet_id ?? (item as any).walletId
+            wallet_id: (item as any).wallet_id ?? (item as any).walletId,
+            // carry receipt image fields for edit screen prefill
+            receipt_image_url: (item as any).receipt_image_url ?? (item as any).receiptImageUrl ?? (item as any).receipt_image ?? (item as any).receiptImage ?? null,
+            receiptImageUrl: (item as any).receiptImageUrl ?? (item as any).receipt_image_url ?? (item as any).receipt_image ?? (item as any).receiptImage ?? null,
+            receipt_image: (item as any).receipt_image ?? null,
+            receiptImage: (item as any).receiptImage ?? null,
         };
     }, []);
 
@@ -457,7 +462,10 @@ const CalendarScreen = () => {
                 icon: transaction.icon,
                 iconColor: transaction.iconColor,
                 // Pass wallet_id so AddExpenseScreen can preselect wallet
-                wallet_id: (transaction as any).wallet_id ?? (transaction as any).walletId
+                wallet_id: (transaction as any).wallet_id ?? (transaction as any).walletId,
+                // Pass receipt image urls so AddExpenseScreen can prefill image
+                receipt_image_url: (transaction as any).receipt_image_url ?? (transaction as any).receiptImageUrl ?? (transaction as any).receipt_image ?? (transaction as any).receiptImage ?? null,
+                receiptImageUrl: (transaction as any).receiptImageUrl ?? (transaction as any).receipt_image_url ?? (transaction as any).receipt_image ?? (transaction as any).receiptImage ?? null,
             }
         });
     }, [navigation]);

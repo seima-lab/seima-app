@@ -131,7 +131,7 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
   };
 
   const validatePhoneNumber = (phone: string) => {
-    const phoneRegex = /^\d{9,15}$/;
+    const phoneRegex = /^\d{10,12}$/;
     return phoneRegex.test(phone);
   };
 
@@ -249,11 +249,13 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
     const googleUserData = route?.params?.googleUserData;
     const isGoogleUser = googleUserData?.isGoogleLogin && !googleUserData?.userIsActive;
     
-    // Show loading modal immediately after validation
+    // Start loading; delay showing pending modal to avoid flashing on quick validation errors
     setIsLoading(true);
-    setShowLoadingModal(true);
     setIsLoadingSuccess(false);
     setLoadingMessage(isGoogleUser ? 'Đang tạo hồ sơ của bạn...' : 'Đang gửi mã OTP đến email của bạn...');
+    const pendingModalTimer = setTimeout(() => {
+      setShowLoadingModal(true);
+    }, 600);
 
     try {
       if (isGoogleUser) {
@@ -287,7 +289,9 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         
         console.log('🟢 Google user created successfully');
         
-        // Show success state
+        // Ensure modal is visible and switch to success state
+        clearTimeout(pendingModalTimer);
+        setShowLoadingModal(true);
         setIsLoadingSuccess(true);
         setLoadingMessage('Hồ sơ đã được tạo thành công');
         
@@ -352,7 +356,9 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
         await authService.storePendingRegistration(registerData);
         console.log('🟢 Pending registration data stored');
         
-        // Show success state
+        // Ensure modal is visible and switch to success state
+        clearTimeout(pendingModalTimer);
+        setShowLoadingModal(true);
         setIsLoadingSuccess(true);
         setLoadingMessage('Mã OTP đã được gửi thành công');
         
@@ -387,8 +393,10 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
       }
       
     } catch (error: any) {
+      clearTimeout(pendingModalTimer);
+      // Ensure no loading modal is shown on errors
       setIsLoading(false);
-      setShowLoadingModal(false); // Hide loading modal on error
+      setShowLoadingModal(false);
       console.error('🔴 Registration/Update failed:', error);
 
       // Prefer backend field-level errors if available
@@ -665,12 +673,14 @@ export default function RegisterScreen({ route }: RegisterScreenProps) {
                         placeholderTextColor="#9CA3AF"
                         value={phoneNumber}
                         onChangeText={(text) => {
-                          setPhoneNumber(text);
+                          const digitsOnly = text.replace(/\D/g, '');
+                          setPhoneNumber(digitsOnly);
                           if (errors.phoneNumber) setErrors({...errors, phoneNumber: ''});
                         }}
                         onFocus={() => handleInputFocus('phone')}
                         onBlur={handleInputBlur}
                         keyboardType="phone-pad"
+                        maxLength={12}
                         returnKeyType="next"
                       />
                       {phoneNumber && validatePhoneNumber(phoneNumber) ? (

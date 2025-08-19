@@ -2,15 +2,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -1218,7 +1218,10 @@ const FinanceScreen = React.memo(() => {
         categoryId: transaction.category_id,
         type: (transaction.transaction_type || 'expense').toLowerCase(),
         icon: transaction.category_icon_url || '',
-        iconColor: getIconColor(transaction.category_icon_url || '', (transaction.transaction_type || 'expense').toLowerCase())
+        iconColor: getIconColor(transaction.category_icon_url || '', (transaction.transaction_type || 'expense').toLowerCase()),
+        // Pass receipt image url for edit screen prefill (support multiple naming conventions)
+        receipt_image_url: transaction.receipt_image_url || transaction.receiptImageUrl || transaction.receipt_image || transaction.receiptImage || null,
+        receiptImageUrl: transaction.receiptImageUrl || transaction.receipt_image_url || transaction.receipt_image || transaction.receiptImage || null,
       }
     });
   }, [navigation, categoriesMap]);
