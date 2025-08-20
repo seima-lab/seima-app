@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Image,
   Modal,
   RefreshControl,
   SafeAreaView,
@@ -223,7 +224,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
       initialBalance: wallet.initial_balance ?? 0, // numeric initial balance
       name: wallet.wallet_name,
       type: mappedType,
-      bankName: wallet.bank_name || '',
+      bankName: wallet.bank_code || '',
       isDefault: wallet.is_default,
       excludeFromTotal: wallet.exclude_from_total || false,
     };
@@ -318,16 +319,32 @@ const WalletScreen = ({ footerHeight = 0 }) => {
 
   // Inline menu removed. Using bottom-sheet modal instead.
 
-  const getWalletIcon = (walletTypeName?: string) => {
-    if (walletTypeName === "Tài khoản Ngân hàng") {
-      return <Icon2 name="university" size={rf(20)} color="#fff" />;
+  const getWalletIcon = (walletTypeName?: string, bankLogoUrl?: string) => {
+    if (walletTypeName === "Tài khoản Ngân hàng" && bankLogoUrl) {
+      return (
+        <Image 
+          source={{ uri: bankLogoUrl }} 
+          style={{ 
+            width: rf(50), 
+            height: rf(50), 
+            borderRadius: rf(25),
+            borderWidth: 1,
+            borderColor: '#e0e0e0'
+          }}
+          resizeMode="contain"
+          onError={() => console.log('Failed to load bank logo:', bankLogoUrl)}
+        />
+      );
     }
-    return <Icon2 name="wallet" size={rf(20)} color="#fff" />;
+    if (walletTypeName === "Tài khoản Ngân hàng") {
+      return <Icon2 name="university" size={rf(28)} color="#fff" />;
+    }
+    return <Icon2 name="wallet" size={rf(28)} color="#fff" />;
   };
 
   const getWalletIconStyle = (walletTypeName?: string) => {
     if (walletTypeName === "Tài khoản Ngân hàng") {
-      return [styles.accountIcon, { backgroundColor: '#ff6b6b' }];
+      return [styles.accountIcon, { backgroundColor: 'transparent' }];
     }
     return [styles.accountIcon, styles.walletIcon];
   };
@@ -544,7 +561,7 @@ const WalletScreen = ({ footerHeight = 0 }) => {
                       disabled={menuModalVisible || wallet.exclude_from_total}
                     >
                       <View style={[getWalletIconStyle(wallet.wallet_type_name), wallet.exclude_from_total && styles.disabledAccountIcon]}>
-                        {getWalletIcon(wallet.wallet_type_name)}
+                        {getWalletIcon(wallet.wallet_type_name, wallet.bank_logo_url)}
                       </View>
                       <View style={styles.accountInfo}>
                         <View style={styles.walletNameContainer}>

@@ -38,7 +38,7 @@ export interface CreateWalletRequest {
   wallet_type_id: number; // @NotNull - required
   is_default?: boolean; // optional, default false
   exclude_from_total?: boolean; // optional, default false
-  bank_name?: string; // optional
+  bank_id?: number; // optional
   icon_url?: string; // optional
   currency_code?: string; // optional
   initial_balance?: number; // optional
@@ -59,10 +59,18 @@ export interface WalletResponse {
   is_active?: boolean;
   is_delete?: boolean;
   exclude_from_total?: boolean;
-  bank_name?: string;
+  bank_code?: string;
+  bank_logo_url?: string;
   icon_url?: string;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface Bank {
+  id: number;
+  name: string;
+  icon_url?: string;
+  code?: string;
 }
 
 export class WalletService {
@@ -268,6 +276,32 @@ export class WalletService {
     } catch (error: any) {
       console.error('❌ Failed to get total balance:', error);
       throw new Error(error.message || 'Failed to get total balance');
+    }
+  }
+
+  // Get list of available banks
+  async getBankList(): Promise<Bank[]> {
+    try {
+      const data = await secureApiService.makeAuthenticatedRequest<Bank[]>(
+        WALLET_ENDPOINTS.BALANCE,
+        'GET'
+      );
+      
+      console.log('🏦 Bank list response:', data);
+      
+      if (data && Array.isArray(data)) {
+        return data.map((bank: any) => ({
+          id: bank.bank_id,
+          name: bank.bank_code, // Sử dụng bank_code làm tên hiển thị
+          icon_url: bank.bank_logo_url, // Map đúng trường logo từ API
+          code: bank.bank_code
+        }));
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('❌ Failed to fetch bank list:', error);
+      throw error;
     }
   }
 }

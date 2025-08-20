@@ -3,15 +3,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 // React Native imports
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -105,6 +105,7 @@ export default function AddExpenseScreen() {
     transactionData,
     activeTab,
     fromGroupTransactionList,
+    selectedWallet,
     setSelectedWallet,
     fromCopy,
   });

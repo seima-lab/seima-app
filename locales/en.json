@@ -460,7 +460,7 @@
     "fromDate": "From Date",
     "toDate": "To Date",
     "cancel": "Cancel",
-    "ok": "OK"
+      "ok": "Confirm"
   },
 
   "common": {
@@ -1149,6 +1149,7 @@
       "enterInitialBalance": "Enter initial balance",
       "enterWalletName": "Enter wallet name",
       "enterBankName": "Enter bank name",
+      "selectBank": "Select a bank",
       "enterEWalletName": "Enter e-wallet name",
       "enterDescription": "Enter description"
     },

@@ -22,6 +22,7 @@ interface UseDataLoadingProps {
   transactionData?: any;
   activeTab: 'expense' | 'income';
   fromGroupTransactionList: boolean;
+  selectedWallet?: number | null;
   setSelectedWallet?: (walletId: number | null) => void;
   fromCopy?: boolean;
 }
@@ -34,6 +35,7 @@ export const useDataLoading = ({
   transactionData,
   activeTab,
   fromGroupTransactionList,
+  selectedWallet,
   setSelectedWallet,
   fromCopy = false,
 }: UseDataLoadingProps) => {
@@ -132,7 +134,7 @@ export const useDataLoading = ({
       setExpenseCategories(convertedExpenseCategories);
       setIncomeCategories(convertedIncomeCategories);
 
-      // Set wallet selection respecting edit/copy modes
+      // Set wallet selection respecting edit/copy modes and user's manual choice
       if (!fromGroupOverview && setSelectedWallet && walletsData.length > 0) {
         const copiedWalletId = (transactionData?.wallet_id ?? transactionData?.walletId) as number | undefined;
         if (isEditMode && (transactionData?.wallet_id ?? transactionData?.walletId)) {
@@ -140,7 +142,11 @@ export const useDataLoading = ({
           const editWallet = walletsData.find(w => w.id === Number(transactionData.wallet_id ?? transactionData.walletId));
           if (editWallet) {
             console.log('✅ Edit mode wallet verified:', editWallet.wallet_name);
-            // Don't call setSelectedWallet again if it's already set correctly
+            // Initialize to edit wallet if none selected yet
+            if (selectedWallet == null) {
+              setSelectedWallet(editWallet.id);
+              console.log('🎯 Initialized selected wallet to edit transaction\'s wallet');
+            }
           } else {
             // Fallback to default if wallet not found
             const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
@@ -159,10 +165,14 @@ export const useDataLoading = ({
             console.log('⚠️ Copied wallet not found, using default:', defaultWallet.wallet_name);
           }
         } else if (!fromCopy) {
-          // Normal mode - select default wallet
-          const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
-          setSelectedWallet(defaultWallet.id);
-          console.log('✅ Default wallet selected:', defaultWallet.wallet_name);
+          // Normal mode - select default wallet ONLY if user hasn't picked one yet
+          if (selectedWallet == null) {
+            const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+            setSelectedWallet(defaultWallet.id);
+            console.log('✅ Default wallet selected (initial):', defaultWallet.wallet_name);
+          } else {
+            console.log('↪️ Keeping user-selected wallet:', selectedWallet);
+          }
         }
       }
 
@@ -239,7 +249,8 @@ export const useDataLoading = ({
     lastFetchTime, 
     dataCache, 
     t,
-    setSelectedWallet
+    setSelectedWallet,
+    selectedWallet
   ]);
 
   const refreshCategories = useCallback(async () => {
@@ -292,7 +303,7 @@ export const useDataLoading = ({
       
       setWallets(walletsData);
 
-      // Set wallet selection after refresh - verify but respect edit/copy selections
+      // Set wallet selection after refresh - verify but respect edit/copy selections and user's manual choice
       if (!fromGroupOverview && setSelectedWallet && walletsData.length > 0) {
         const copiedWalletId = (transactionData?.wallet_id ?? transactionData?.walletId) as number | undefined;
         if (isEditMode && (transactionData?.wallet_id ?? transactionData?.walletId)) {
@@ -300,6 +311,11 @@ export const useDataLoading = ({
           const editWallet = walletsData.find(w => w.id === Number(transactionData.wallet_id ?? transactionData.walletId));
           if (editWallet) {
             console.log('🔄 Edit mode wallet verified after refresh:', editWallet.wallet_name);
+            // Initialize to edit wallet if none selected yet
+            if (selectedWallet == null) {
+              setSelectedWallet(editWallet.id);
+              console.log('🎯 Initialized selected wallet to edit transaction\'s wallet after refresh');
+            }
           } else {
             // Fallback to default if wallet not found
             const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
@@ -318,10 +334,14 @@ export const useDataLoading = ({
             console.log('🔄 Copied wallet not found after refresh, using default:', defaultWallet.wallet_name);
           }
         } else if (!fromCopy) {
-          // Normal mode - update to default wallet
-          const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
-          setSelectedWallet(defaultWallet.id);
-          console.log('🔄 Updated selected wallet after refresh:', defaultWallet.wallet_name);
+          // Normal mode - keep user's wallet; only set default if none selected yet
+          if (selectedWallet == null) {
+            const defaultWallet = walletsData.find(w => w.is_default) || walletsData[0];
+            setSelectedWallet(defaultWallet.id);
+            console.log('🔄 Set default wallet after refresh (initial):', defaultWallet.wallet_name);
+          } else {
+            console.log('↪️ Keeping user-selected wallet after refresh:', selectedWallet);
+          }
         }
       }
 
@@ -330,7 +350,7 @@ export const useDataLoading = ({
     } catch (error: any) {
       console.error('❌ Error refreshing data:', error);
     }
-  }, [refreshCategories, fromGroupOverview, setSelectedWallet, isEditMode, transactionData]);
+  }, [refreshCategories, fromGroupOverview, setSelectedWallet, isEditMode, transactionData, selectedWallet]);
 
   const cleanup = useCallback(() => {
     isMountedRef.current = false;

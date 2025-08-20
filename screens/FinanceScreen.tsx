@@ -1219,6 +1219,9 @@ const FinanceScreen = React.memo(() => {
         type: (transaction.transaction_type || 'expense').toLowerCase(),
         icon: transaction.category_icon_url || '',
         iconColor: getIconColor(transaction.category_icon_url || '', (transaction.transaction_type || 'expense').toLowerCase()),
+        // Ensure AddExpenseScreen receives wallet id for correct wallet selection in edit mode
+        wallet_id: transaction.wallet_id ?? transaction.walletId ?? null,
+        walletId: transaction.wallet_id ?? transaction.walletId ?? null,
         // Pass receipt image url for edit screen prefill (support multiple naming conventions)
         receipt_image_url: transaction.receipt_image_url || transaction.receiptImageUrl || transaction.receipt_image || transaction.receiptImage || null,
         receiptImageUrl: transaction.receiptImageUrl || transaction.receipt_image_url || transaction.receipt_image || transaction.receiptImage || null,

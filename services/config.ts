@@ -98,6 +98,7 @@ TRANSACTION_BUDGET_HISTORY: (id: string) => `${ApiConfig.API_PREFIX}/transaction
 
 // Wallet endpoints
 export const WALLET_ENDPOINTS = {
+  BALANCE: `${ApiConfig.API_PREFIX}/banks`,
   LIST: `${ApiConfig.API_PREFIX}/wallets`,
   CREATE: `${ApiConfig.API_PREFIX}/wallets`,
   GET_BY_ID: (id: string) => `${ApiConfig.API_PREFIX}/wallets/${id}`,

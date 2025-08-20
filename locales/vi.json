@@ -212,6 +212,7 @@
       "enterInitialBalance": "Nhập số dư ban đầu",
       "enterWalletName": "Nhập tên ví",
       "enterBankName": "Nhập tên ngân hàng",
+      "selectBank": "Chọn ngân hàng",
       "enterEWalletName": "Nhập tên ví điện tử",
       "enterDescription": "Nhập mô tả"
     },
@@ -565,7 +566,7 @@
     "fromDate": "Từ ngày",
     "toDate": "Đến ngày",
     "cancel": "Hủy",
-    "ok": "OK"
+    "ok": "Xác nhận"
   },
 
   "common": {
@@ -576,7 +577,7 @@
     "error": "Lỗi",
     "success": "Thành công",
     "cancel": "Hủy",
-    "ok": "OK",
+      "ok": "Xác nhận",
     "retry": "Thử lại",
     "close": "Đóng",
     "back": "Quay lại",

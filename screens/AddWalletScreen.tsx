@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -20,7 +21,7 @@ import CustomErrorModal from '../components/CustomErrorModal';
 import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
 import { useNavigationService } from '../navigation/NavigationService';
-import { CreateWalletRequest, walletService } from '../services/walletService';
+import { Bank, CreateWalletRequest, walletService } from '../services/walletService';
 
 interface Props {
   route?: {
@@ -61,16 +62,49 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
   });
   const [walletName, setWalletName] = useState(walletData?.name || '');
   const [walletType, setWalletType] = useState(walletData?.type || t('wallet.walletTypes.cash'));
+  const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
   const [bankName, setBankName] = useState(walletData?.bankName || '');
   const [isDefault, setIsDefault] = useState(walletData?.isDefault || false);
   const [excludeFromTotal, setExcludeFromTotal] = useState(walletData?.excludeFromTotal || false);
   const [showWalletTypes, setShowWalletTypes] = useState(false);
+  const [showBankDropdown, setShowBankDropdown] = useState(false);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [loadingBanks, setLoadingBanks] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorTitle, setErrorTitle] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Load banks when component mounts
+  useEffect(() => {
+    loadBanks();
+  }, []);
+
+  // Load banks from API
+  const loadBanks = async () => {
+    try {
+      setLoadingBanks(true);
+      const bankList = await walletService.getBankList();
+      setBanks(bankList);
+      
+      // If editing and we have bankName, try to find and select the bank
+      if (editMode && bankName && bankList.length > 0) {
+        const existingBank = bankList.find(bank => 
+          bank.name === bankName || bank.code === bankName
+        );
+        if (existingBank) {
+          setSelectedBank(existingBank);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to load banks:', error);
+      // Don't show error modal for bank loading, just log it
+    } finally {
+      setLoadingBanks(false);
+    }
+  };
 
   // Add keyboard event listeners for debugging
   useEffect(() => {
@@ -125,7 +159,15 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
     setShowWalletTypes(false);
     if (type === t('wallet.walletTypes.cash')) {
       setBankName('');
+      setSelectedBank(null);
     }
+    // Banks are already loaded when component mounts, no need to load again
+  };
+
+  const handleBankSelect = (bank: Bank) => {
+    setSelectedBank(bank);
+    setBankName(bank.name);
+    setShowBankDropdown(false);
   };
 
   const validateForm = (): boolean => {
@@ -160,7 +202,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
       return false;
     }
 
-    if (walletType === t('wallet.walletTypes.bank') && !bankName.trim()) {
+    if (walletType === t('wallet.walletTypes.bank') && !selectedBank) {
       setErrorTitle(t('common.error'));
        setErrorMessage(t('wallet.error.enterBankName'));
       setShowErrorModal(true);
@@ -183,7 +225,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
          wallet_type_id: getWalletTypeId(walletType),
          is_default: isDefault,
          exclude_from_total: excludeFromTotal,
-         bank_name: bankName.trim() || undefined,
+         bank_id: selectedBank?.id,
          icon_url: undefined, // Set to undefined instead of null
          currency_code: "VND",
          initial_balance: getNumericBalance(balance)
@@ -247,6 +289,72 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
               <Text style={styles.dropdownItemText}>{type}</Text>
             </TouchableOpacity>
           ))}
+        </View>
+      )}
+    </View>
+  );
+
+  const renderBankDropdown = () => (
+    <View style={styles.dropdownContainer}>
+      <TouchableOpacity
+        style={styles.dropdownButton}
+        onPress={() => setShowBankDropdown(!showBankDropdown)}
+        disabled={loadingBanks}
+      >
+        {selectedBank ? (
+          <View style={styles.selectedBankContainer}>
+            {selectedBank.icon_url && (
+              <View style={styles.bankIconContainer}>
+                <Image 
+                  source={{ uri: selectedBank.icon_url }} 
+                  style={styles.bankLogo}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+            <Text style={styles.dropdownText}>{selectedBank.name}</Text>
+          </View>
+        ) : (
+          <Text style={[styles.dropdownText, styles.placeholderText]}>
+            {loadingBanks ? t('common.loading') : t('wallet.placeholders.selectBank')}
+          </Text>
+        )}
+        <Icon 
+          name={showBankDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} 
+          size={24} 
+          color="#666" 
+        />
+      </TouchableOpacity>
+      
+      {showBankDropdown && banks.length > 0 && (
+        <View style={styles.dropdownMenu}>
+          <ScrollView 
+            style={styles.dropdownScrollView}
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={true}
+            contentContainerStyle={styles.dropdownScrollContent}
+          >
+            {banks.map((bank) => (
+              <TouchableOpacity
+                key={bank.id}
+                style={styles.dropdownItem}
+                onPress={() => handleBankSelect(bank)}
+              >
+                <View style={styles.bankItemContainer}>
+                  {bank.icon_url && (
+                    <View style={styles.bankIconContainer}>
+                      <Image 
+                        source={{ uri: bank.icon_url }} 
+                        style={styles.bankLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  )}
+                  <Text style={styles.dropdownItemText}>{bank.name}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       )}
     </View>
@@ -360,19 +468,13 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
             {renderWalletTypeDropdown()}
           </View>
 
-          {/* Bank Name Field - Conditional */}
+          {/* Bank Selection Field - Conditional */}
           {walletType === t('wallet.walletTypes.bank') && (
             <View style={styles.section}>
               <Text style={[styles.sectionLabel, typography.semibold]}>
-                {getFieldLabel()} <Text style={styles.required}>*</Text>
+                {t('wallet.bankName')} <Text style={styles.required}>*</Text>
               </Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder={getFieldPlaceholder()}
-                value={bankName}
-                onChangeText={setBankName}
-                editable={!saving}
-              />
+              {renderBankDropdown()}
             </View>
           )}
 
@@ -543,6 +645,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  placeholderText: {
+    color: '#999',
+  },
   dropdownMenu: {
     position: 'absolute',
     top: '100%',
@@ -559,6 +664,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    maxHeight: 300, // Giới hạn chiều cao để có thể scroll
+  },
+  dropdownScrollView: {
+    maxHeight: 300,
+  },
+  dropdownScrollContent: {
+    paddingBottom: 8,
   },
   dropdownItem: {
     paddingHorizontal: 16,
@@ -569,6 +681,26 @@ const styles = StyleSheet.create({
   dropdownItemText: {
     fontSize: 16,
     color: '#333',
+  },
+  bankItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bankIconContainer: {
+    marginRight: 8,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bankLogo: {
+    width: 50,
+    height: 50,
+    borderRadius: 4,
+  },
+  selectedBankContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   toggleSection: {
     flexDirection: 'row',
