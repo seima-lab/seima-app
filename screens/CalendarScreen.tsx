@@ -432,10 +432,9 @@ const CalendarScreen = () => {
             
             console.log('✅ Transaction deleted successfully');
             
-            // Refresh the data
-			loadTransactionOverview(currentMonth);
-			setDeleteSuccessKey(prev => prev + 1);
-			setShowDeleteSuccess(true);
+            // Show success modal first, then refresh data after modal is dismissed
+            setDeleteSuccessKey(prev => prev + 1);
+            setShowDeleteSuccess(true);
             
         } catch (error: any) {
             console.error('❌ Failed to delete transaction:', error);
@@ -445,7 +444,7 @@ const CalendarScreen = () => {
                 [{ text: 'OK' }]
             );
         }
-    }, [currentMonth]);
+    }, []); // Remove currentMonth dependency since we're not calling loadTransactionOverview here
 
     // Memoized handle edit transaction
     const handleEditTransaction = useCallback((transaction: Transaction) => {
@@ -675,7 +674,11 @@ const CalendarScreen = () => {
 				title={t('common.success')}
 				message={t('calendar.transactionDeleted')}
 				buttonText={t('common.ok')}
-				onConfirm={() => setShowDeleteSuccess(false)}
+				onConfirm={() => {
+					setShowDeleteSuccess(false);
+					// Refresh data after modal is dismissed to avoid conflicts
+					loadTransactionOverview(currentMonth, true);
+				}}
 				iconName="check-circle"
 				transitionKey={deleteSuccessKey.toString()}
 			/>
