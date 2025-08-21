@@ -780,6 +780,13 @@ const ChatAIScreen = () => {
         }
     }, [messages.length, showWelcome]);
 
+    // Close header menu while waiting for AI response
+    useEffect(() => {
+        if (isLoading) {
+            setShowHeaderMenu(false);
+        }
+    }, [isLoading]);
+
     // Lấy user_id và load chat history khi component mount
     useEffect(() => {
         const fetchUserId = async () => {
@@ -1684,9 +1691,10 @@ const ChatAIScreen = () => {
                         </View>
                     </View>
                     <TouchableOpacity 
-                        style={styles.headerAction}
+                        style={[styles.headerAction, isLoading && { opacity: 0.5 }]}
                         onPress={() => setShowHeaderMenu(true)}
                         activeOpacity={0.8}
+                        disabled={isLoading}
                     >
                         <Icon name="more-vert" size={22} color="#FFFFFF" />
                     </TouchableOpacity>
@@ -1937,12 +1945,13 @@ const ChatAIScreen = () => {
                     >
                         <View style={styles.menuContainer}>
                             <TouchableOpacity
-                                style={styles.menuItem}
+                                style={[styles.menuItem, isLoading && { opacity: 0.5 }]}
                                 onPress={() => {
                                     setShowHeaderMenu(false);
                                     setShowDeleteConfirm(true);
                                 }}
                                 activeOpacity={0.8}
+                                disabled={isLoading}
                             >
                                 <Icon name="delete" size={18} color="#E53935" />
                                 <Text style={styles.menuItemText}>{t('chatAIScreen.deleteHistory') || 'Xoá lịch sử'}</Text>
