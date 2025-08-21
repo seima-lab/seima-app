@@ -21,6 +21,7 @@ interface Transaction {
   icon: string;
   iconColor: string;
   description?: string;
+  transaction_datetime?: string;
 }
 
 interface SwipeableTransactionItemProps {
@@ -121,6 +122,16 @@ const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> = React.
     resetPosition();
   };
 
+  const formatTimeFromString = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  };
+
   return (
     <>
       <View style={styles.swipeableContainer}>
@@ -145,6 +156,9 @@ const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> = React.
                 {transaction.description && (
                   <Text style={styles.transactionDescription}>{transaction.description}</Text>
                 )}
+                <Text style={styles.transactionTime}>
+                  {formatTimeFromString(transaction.transaction_datetime || transaction.date)}
+                </Text>
               </View>
             </View>
             <Text style={[
@@ -267,6 +281,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     ...typography.semibold,
     marginRight: 8,
+  },
+  transactionTime: {
+    fontSize: 12,
+    ...typography.regular,
+    color: '#999',
+    marginTop: 2,
   },
   incomeAmount: {
     color: '#34C759',

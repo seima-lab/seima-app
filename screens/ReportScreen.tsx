@@ -134,8 +134,13 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
   return (
     <View style={[styles.chartContainer, { width: size * 1.8, height: size * 1.2, flexDirection: 'row', alignItems: 'center' }]}>
       {renderSvgChart()}
-      {/* Legend on the right */}
-      <View style={styles.legendContainer}>
+      {/* Legend on the right with scroll capability */}
+      <ScrollView 
+        style={styles.legendContainer} 
+        contentContainerStyle={styles.legendContentContainer}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+      >
         {chartData.map((item, index) => (
           <View key={index} style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: item.color }]} />
@@ -149,7 +154,7 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
             </View>
           </View>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -1225,6 +1230,7 @@ const styles = StyleSheet.create({
   chartContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden', // Đảm bảo không bị tràn ra ngoài
   },
   pieChartWrapper: {
     alignItems: 'center',
@@ -1282,6 +1288,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+    paddingVertical: 2,
   },
   legendDot: {
     width: 12,
@@ -1307,7 +1314,12 @@ const styles = StyleSheet.create({
   },
   legendContainer: {
     marginLeft: 20,
-    justifyContent: 'center',
+    maxHeight: 200, // Giới hạn chiều cao để có thể scroll
+    flex: 1,
+  },
+  legendContentContainer: {
+    justifyContent: 'flex-start',
+    paddingVertical: 4,
   },
   customDateModalContainer: {
     backgroundColor: '#fff',

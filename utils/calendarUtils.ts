@@ -90,6 +90,8 @@ export interface Transaction {
   icon: string;
   iconColor: string;
   description?: string;
+  // Full datetime from backend for intra-day sorting
+  transaction_datetime?: string;
   // Optional wallet mapping for edit navigation
   wallet_id?: number;
   walletId?: number;

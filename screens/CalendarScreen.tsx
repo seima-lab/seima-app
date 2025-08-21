@@ -210,6 +210,7 @@ const CalendarScreen = () => {
         return {
             id: (item.transaction_id || 0).toString(),
             date: date,
+            transaction_datetime: (item as any).transaction_date ?? (item as any).transactionDate ?? date,
             category: item.category_name || 'Unknown',
             amount: item.amount || 0,
             type: transactionType === 'income' ? 'income' : 'expense',
@@ -524,6 +525,13 @@ const CalendarScreen = () => {
                 : total - transaction.amount;
         }, 0);
 
+        // Sort transactions within the day by latest time first
+        const sortedTransactions = [...dayTransactions].sort((a, b) => {
+            const aTime = new Date(a.transaction_datetime || a.date).getTime();
+            const bTime = new Date(b.transaction_datetime || b.date).getTime();
+            return bTime - aTime;
+        });
+
         return (
             <View key={date} style={styles.dayGroup}>
                 <View style={styles.dayHeader}>
@@ -537,7 +545,7 @@ const CalendarScreen = () => {
                         {dayTotal >= 0 ? '+' : ''}{formatMoney(Math.abs(dayTotal))}
                     </Text>
                 </View>
-                {dayTransactions.map(transaction => (
+                {sortedTransactions.map(transaction => (
                     <SwipeableTransactionItem 
                         key={transaction.id} 
                         transaction={transaction} 

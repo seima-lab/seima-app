@@ -30,8 +30,8 @@ const CustomSuccessModal: React.FC<CustomSuccessModalProps> = ({
     iconName = 'check-circle',
     transitionKey,
 }) => {
-    const scaleValue = new Animated.Value(0);
-    const fadeValue = new Animated.Value(0);
+    const scaleValue = React.useRef(new Animated.Value(0)).current;
+    const fadeValue = React.useRef(new Animated.Value(0)).current;
 
     React.useEffect(() => {
         if (visible) {
@@ -39,47 +39,50 @@ const CustomSuccessModal: React.FC<CustomSuccessModalProps> = ({
             scaleValue.setValue(0);
             fadeValue.setValue(0);
             
-            Animated.parallel([
-                Animated.spring(scaleValue, {
-                    toValue: 1,
-                    tension: 50,
-                    friction: 6,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(fadeValue, {
-                    toValue: 1,
-                    duration: 200,
-                    useNativeDriver: true,
-                })
-            ]).start();
+            // Small delay to ensure modal is properly positioned
+            setTimeout(() => {
+                Animated.parallel([
+                    Animated.spring(scaleValue, {
+                        toValue: 1,
+                        tension: 100,
+                        friction: 8,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(fadeValue, {
+                        toValue: 1,
+                        duration: 300,
+                        useNativeDriver: true,
+                    })
+                ]).start();
+            }, 50);
         } else {
             // Animate out before hiding
             Animated.parallel([
                 Animated.timing(scaleValue, {
                     toValue: 0,
-                    duration: 150,
+                    duration: 200,
                     useNativeDriver: true,
                 }),
                 Animated.timing(fadeValue, {
                     toValue: 0,
-                    duration: 150,
+                    duration: 200,
                     useNativeDriver: true,
                 })
             ]).start();
         }
-    }, [visible]);
+    }, [visible, scaleValue, fadeValue]);
 
     const handleConfirm = () => {
         // Animate out first, then call onConfirm
         Animated.parallel([
             Animated.timing(scaleValue, {
                 toValue: 0,
-                duration: 150,
+                duration: 200,
                 useNativeDriver: true,
             }),
             Animated.timing(fadeValue, {
                 toValue: 0,
-                duration: 150,
+                duration: 200,
                 useNativeDriver: true,
             })
         ]).start(() => {
@@ -94,13 +97,9 @@ const CustomSuccessModal: React.FC<CustomSuccessModalProps> = ({
             visible={visible}
             animationType="none"
             onRequestClose={handleConfirm}
+            statusBarTranslucent={true}
         >
-            <Animated.View 
-                style={[
-                    styles.overlay,
-                    { opacity: fadeValue }
-                ]}
-            >
+            <View style={styles.overlay}>
                 <Animated.View
                     style={[
                         styles.container,
@@ -130,12 +129,12 @@ const CustomSuccessModal: React.FC<CustomSuccessModalProps> = ({
                         <Text style={styles.buttonText}>{buttonText}</Text>
                     </TouchableOpacity>
                 </Animated.View>
-            </Animated.View>
+            </View>
         </Modal>
     );
 };
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
     overlay: {
@@ -144,8 +143,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 20,
-        zIndex: 9999,
-        elevation: 9999,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
     },
     container: {
         backgroundColor: '#FFFFFF',
@@ -162,8 +164,10 @@ const styles = StyleSheet.create({
         },
         shadowOpacity: 0.25,
         shadowRadius: 20,
-        elevation: 10000,
-        zIndex: 10000,
+        elevation: 10,
+        // Ensure proper positioning
+        position: 'relative',
+        alignSelf: 'center',
     },
     iconContainer: {
         width: 80,
