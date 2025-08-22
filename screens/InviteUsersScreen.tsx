@@ -59,17 +59,17 @@ const InviteUsersScreen = () => {
   // State for CustomErrorModal
   const [errorModal, setErrorModal] = useState({
     visible: false,
-    title: '',
-    message: '',
+    title: 'Error',
+    message: 'An error occurred',
     type: 'error' as 'error' | 'warning' | 'info' | 'success',
   });
 
   // State for CustomSuccessModal
   const [successModal, setSuccessModal] = useState({
     visible: false,
-    title: '',
-    message: '',
-    buttonText: '',
+    title: 'Success',
+    message: 'Operation completed successfully',
+    buttonText: 'OK',
   });
 
   // Cleanup function
@@ -104,12 +104,27 @@ const InviteUsersScreen = () => {
   const showError = (message: string, title?: string, type: 'error' | 'warning' | 'info' | 'success' = 'error') => {
     if (!isMountedRef.current) return;
     
-    setErrorModal({
-      visible: true,
-      title: title || t('common.error'),
-      message,
-      type,
-    });
+    // Validate inputs to prevent crash
+    const safeTitle = title || t('common.error') || 'Error';
+    const safeMessage = message || 'An error occurred';
+    
+    try {
+      setErrorModal({
+        visible: true,
+        title: safeTitle,
+        message: safeMessage,
+        type,
+      });
+    } catch (error) {
+      console.error('Error in showError:', error);
+      // Fallback to basic modal
+      setErrorModal({
+        visible: true,
+        title: 'Error',
+        message: safeMessage,
+        type,
+      });
+    }
   };
 
   const hideErrorModal = useCallback(() => {
@@ -121,12 +136,28 @@ const InviteUsersScreen = () => {
   const showSuccess = (message: string, title?: string, buttonText?: string) => {
     if (!isMountedRef.current) return;
     
-    setSuccessModal({
-      visible: true,
-      title: title || t('common.success'),
-      message,
-      buttonText: buttonText || t('common.ok'),
-    });
+    // Validate inputs to prevent crash
+    const safeTitle = title || t('common.success') || 'Success';
+    const safeMessage = message || 'Operation completed successfully';
+    const safeButtonText = buttonText || t('common.ok') || 'OK';
+    
+    try {
+      setSuccessModal({
+        visible: true,
+        title: safeTitle,
+        message: safeMessage,
+        buttonText: safeButtonText,
+      });
+    } catch (error) {
+      console.error('Error in showSuccess:', error);
+      // Fallback to basic modal
+      setSuccessModal({
+        visible: true,
+        title: 'Success',
+        message: safeMessage,
+        buttonText: 'OK',
+      });
+    }
   };
 
   const hideSuccessModal = useCallback(() => {
@@ -258,17 +289,21 @@ const InviteUsersScreen = () => {
         if (apiResponse.email_sent) {
           if (apiResponse.user_exists) {
             showSuccess(
-              t('group.invitation.sentToExistingUser', { email: trimmedEmail }),
-              t('common.success')
+              t('group.invitation.sentToExistingUser', { email: trimmedEmail }) || `Invitation sent to existing user: ${trimmedEmail}`,
+              t('common.success') || 'Success'
             );
           } else {
             showSuccess(
-              t('group.invitation.sentToNewUser', { email: trimmedEmail }),
-              t('common.success')
+              t('group.invitation.sentToNewUser', { email: trimmedEmail }) || `Invitation sent to new user: ${trimmedEmail}`,
+              t('common.success') || 'Success'
             );
           }
-          // Reload invited members list after successful invitation
-          fetchInvitedMembers();
+          // Reload invited members list after successful invitation - with delay to prevent crash
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              fetchInvitedMembers();
+            }
+          }, 100);
         } else {
           showError(translateBackendMessage(apiResponse.message));
         }
@@ -347,7 +382,7 @@ const InviteUsersScreen = () => {
         if (!isMountedRef.current) return;
         
         console.error('Error fetching pending members:', e);
-        showError('Failed to load pending members');
+        // Don't show error modal here to prevent crash, just log it
         safeSetState(setPendingMembers, []);
       } finally {
         if (isMountedRef.current) {
@@ -381,7 +416,7 @@ const InviteUsersScreen = () => {
       if (!isMountedRef.current) return;
       
       console.error('Error fetching invited members:', e);
-      showError('Failed to load invited members');
+      // Don't show error modal here to prevent crash, just log it
       safeSetState(setInvitedMembers, []);
     } finally {
       if (isMountedRef.current) {
@@ -704,33 +739,37 @@ const InviteUsersScreen = () => {
       </Modal>
       
       {/* CustomErrorModal for 409 error */}
-      <CustomErrorModal
-        visible={errorModal.visible}
-        title={errorModal.title}
-        message={errorModal.message}
-        onDismiss={() => {
-          if (isMountedRef.current && errorModal.visible) {
-            hideErrorModal();
-          }
-        }}
-        type={errorModal.type}
-      />
+      {errorModal.title && errorModal.message && errorModal.visible && (
+        <CustomErrorModal
+          visible={true}
+          title={errorModal.title}
+          message={errorModal.message}
+          onDismiss={() => {
+            if (isMountedRef.current) {
+              hideErrorModal();
+            }
+          }}
+          type={errorModal.type}
+        />
+      )}
 
       {/* CustomSuccessModal for accept/reject */}
-      <CustomSuccessModal
-        visible={successModal.visible}
-        title={successModal.title}
-        message={successModal.message}
-        buttonText={successModal.buttonText}
-        onConfirm={() => {
-          // Safe modal handling to prevent crash
-          if (isMountedRef.current && successModal.visible && !shouldNavigateBack) {
-            hideSuccessModal();
-            console.log('✅ Success modal confirmed');
-          }
-        }}
-        iconName="check-circle"
-      />
+      {successModal.title && successModal.message && successModal.buttonText && successModal.visible && (
+        <CustomSuccessModal
+          visible={true}
+          title={successModal.title}
+          message={successModal.message}
+          buttonText={successModal.buttonText}
+          onConfirm={() => {
+            // Safe modal handling to prevent crash
+            if (isMountedRef.current && !shouldNavigateBack) {
+              hideSuccessModal();
+              console.log('✅ Success modal confirmed');
+            }
+          }}
+          iconName="check-circle"
+        />
+      )}
     </SafeAreaView>
   );
 };
