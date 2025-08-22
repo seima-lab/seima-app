@@ -2,136 +2,136 @@
 // Centralized icon color management for consistent UI across the app
 
 export const ICON_COLOR_MAP: { [iconName: string]: string } = {
-  // Food & Dining icons
+  // Food & Dining icons - Orange/Red tones
   'silverware-fork-knife': '#ff9500',
   'coffee': '#8b4513',
   'hamburger': '#ff6b35',
   'food-apple': '#32d74b',
   'cake': '#ffd700',
   
-  // Daily & Shopping icons
-  'bottle-soda': '#32d74b',
-  'shopping': '#32d74b',
-  'cart': '#228b22',
-  'store': '#32d74b',
-  'minus-circle': '#ff375f',
+  // Daily & Shopping icons - Green tones
+  'bottle-soda': '#2ecc71',
+  'shopping': '#27ae60',
+  'cart': '#16a085',
+  'store': '#1abc9c',
+  'minus-circle': '#e74c3c',
   
-  // Clothing & Fashion icons
-  'tshirt-crew': '#007aff',
-  'shoe-heel': '#1e90ff',
-  'hanger': '#4169e1',
-  'tshirt-v': '#007aff',
+  // Clothing & Fashion icons - Blue tones
+  'tshirt-crew': '#3498db',
+  'shoe-heel': '#2980b9',
+  'hanger': '#5dade2',
+  'tshirt-v': '#85c1e9',
   
-  // Beauty & Cosmetic icons
-  'lipstick': '#ff2d92',
-  'face-woman': '#dda0dd',
-  'spray': '#ff69b4',
+  // Beauty & Cosmetic icons - Pink/Purple tones
+  'lipstick': '#e91e63',
+  'face-woman': '#9b59b6',
+  'spray': '#f39c12',
   
-  // Entertainment & Social icons
-  'glass-cocktail': '#ffcc02',
-  'gamepad-variant': '#ff8c00',
-  'movie': '#ffd700',
-  'music': '#ffa500',
-  'party-popper': '#ffcc02',
-  'glass-wine': '#800080',
-  'account-group': '#696969',
+  // Entertainment & Social icons - Yellow/Orange tones
+  'glass-cocktail': '#f1c40f',
+  'gamepad-variant': '#e67e22',
+  'movie': '#f39c12',
+  'music': '#e67e22',
+  'party-popper': '#f39c12',
+  'glass-wine': '#8e44ad',
+  'account-group': '#7f8c8d',
   
-  // Health & Medical icons
-  'pill': '#30d158',
-  'hospital-box': '#30d158',
-  'dumbbell': '#00ff7f',
-  'doctor': '#30d158',
-  'stethoscope': '#30d158',
-  'medical-bag': '#228b22',
-  'pharmacy': '#30d158',
+  // Health & Medical icons - Green/Blue tones
+  'pill': '#00b894',
+  'hospital-box': '#00cec9',
+  'dumbbell': '#6c5ce7',
+  'doctor': '#a29bfe',
+  'stethoscope': '#3498db',
+  'medical-bag': '#2980b9',
+  'pharmacy': '#5dade2',
   
-  // Education & Learning icons
-  'book-open-variant': '#ff375f',
-  'school': '#ff375f',
-  'book-open-page-variant': '#30d158',
-  'graduation-cap': '#dc143c',
-  'pencil': '#b22222',
-  'book-open': '#ff375f',
-  'book': '#30d158',
+  // Education & Learning icons - Red/Orange tones
+  'book-open-variant': '#e74c3c',
+  'school': '#c0392b',
+  'book-open-page-variant': '#e67e22',
+  'graduation-cap': '#d35400',
+  'pencil': '#c0392b',
+  'book-open': '#e74c3c',
+  'book': '#d35400',
   
-  // Work & Office icons
-  'briefcase': '#708090',
-  'office-building': '#708090',
-  'laptop': '#ff375f',
+  // Work & Office icons - Gray/Blue tones
+  'briefcase': '#34495e',
+  'office-building': '#2c3e50',
+  'laptop': '#5dade2',
   
-  // Utilities icons
-  'flash': '#00c7be',
-  'water': '#00bfff',
-  'wifi': '#20b2aa',
-  'fire': '#ff4500',
-  'home-lightning-bolt': '#00c7be',
-  'lightning-bolt': '#00c7be',
-  'power-plug': '#00c7be',
+  // Utilities icons - Blue/Cyan tones
+  'flash': '#00bcd4',
+  'water': '#00acc1',
+  'wifi': '#0097a7',
+  'fire': '#ff5722',
+  'home-lightning-bolt': '#00bcd4',
+  'lightning-bolt': '#00bcd4',
+  'power-plug': '#0097a7',
   
-  // Transportation icons
-  'train': '#bf5af2',
-  'car': '#9370db',
-  'bus': '#8a2be2',
-  'taxi': '#dda0dd',
-  'gas-station': '#ff4500',
-  'parking': '#bf5af2',
-  'airplane': '#007aff',
-  'motorbike': '#9370db',
+  // Transportation icons - Purple/Blue tones
+  'train': '#9c27b0',
+  'car': '#673ab7',
+  'bus': '#3f51b5',
+  'taxi': '#2196f3',
+  'gas-station': '#ff9800',
+  'parking': '#795548',
+  'airplane': '#607d8b',
+  'motorbike': '#795548',
   
-  // Communication icons
-  'cellphone': '#6ac4dc',
-  'phone': '#6ac4dc',
+  // Communication icons - Blue tones
+  'cellphone': '#2196f3',
+  'phone': '#1976d2',
   
-  // Housing icons
-  'home-city': '#ff9500',
-  'home': '#cd853f',
-  'apartment': '#daa520',
-  'home-outline': '#ff9500',
-  'key': '#32d74b',
-  'home-account': '#ffcc02',
+  // Housing icons - Brown/Orange tones
+  'home-city': '#ff9800',
+  'home': '#8d6e63',
+  'apartment': '#a1887f',
+  'home-outline': '#ff9800',
+  'key': '#4caf50',
+  'home-account': '#ff9800',
   
-  // Financial icons
-  'cash': '#32d74b',
-  'cash-plus': '#32d74b',
-  'cash-minus': '#ff375f',
-  'bank': '#ff2d92',
-  'percent': '#00c7be',
-  'chart-line': '#007aff',
-  'piggy-bank': '#32d74b',
-  'credit-card': '#4682b4',
-  'wallet': '#8b4513',
-  'bank-transfer': '#4682b4',
-  'credit-card-multiple': '#ff7f50',
-  'credit-card-off': '#ff6b6b',
+  // Financial icons - Green/Blue tones
+  'cash': '#4caf50',
+  'cash-plus': '#66bb6a',
+  'cash-minus': '#f44336',
+  'bank': '#2196f3',
+  'percent': '#00bcd4',
+  'chart-line': '#3f51b5',
+  'piggy-bank': '#7cb342',
+  'credit-card': '#607d8b',
+  'wallet': '#795548',
+  'bank-transfer': '#9e9e9e',
+  'credit-card-multiple': '#ff9800',
+  'credit-card-off': '#f44336',
   
-  // Gifts & Rewards icons
-  'gift': '#bf5af2',
-  'hand-heart': '#ff2d92',
-  'star': '#ffcc02',
-  'trophy': '#ffd700',
+  // Gifts & Rewards icons - Purple/Pink tones
+  'gift': '#e91e63',
+  'hand-heart': '#ad1457',
+  'star': '#ffc107',
+  'trophy': '#ff9800',
   
-  // Additional common icons
-  'dots-horizontal': '#999999',
-  'shield-account': '#32cd32',
-  'tools': '#ff9500',
-  'wrench': '#ff375f',
-  'dog': '#8b4513',
-  'baby': '#ffb6c1',
-  'beach': '#00ced1',
-  'calendar-heart': '#ff69b4',
-  'soccer': '#32d74b',
-  'palette': '#9370db',
-  'heart': '#ff1493',
-  'file-document': '#ff375f',
-  'alert-circle': '#ff4500',
-  'ticket': '#ff375f',
-  'exit-to-app': '#666666',
-  'arrow-left': '#007aff',
-  'close': '#ff375f',
-  'help-circle': '#666666',
+  // Additional common icons - Various unique colors
+  'dots-horizontal': '#9e9e9e',
+  'shield-account': '#388e3c',
+  'tools': '#ff9800',
+  'wrench': '#ff5722',
+  'dog': '#8d6e63',
+  'baby': '#f8bbd9',
+  'beach': '#00bcd4',
+  'calendar-heart': '#e91e63',
+  'soccer': '#689f38',
+  'palette': '#9c27b0',
+  'heart': '#e91e63',
+  'file-document': '#ff5722',
+  'alert-circle': '#ff9800',
+  'ticket': '#ff5722',
+  'exit-to-app': '#9e9e9e',
+  'arrow-left': '#2196f3',
+  'close': '#f44336',
+  'help-circle': '#9e9e9e',
   
-  // Additional useful icons to complete the grid
-  'earth': '#4caf50',
+  // Additional useful icons with unique colors
+  'earth': '#2e7d32',
   'diamond': '#e91e63',
 };
 

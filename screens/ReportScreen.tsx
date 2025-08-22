@@ -138,7 +138,7 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
       <ScrollView 
         style={styles.legendContainer} 
         contentContainerStyle={styles.legendContentContainer}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         nestedScrollEnabled={true}
       >
         {chartData.map((item, index) => (

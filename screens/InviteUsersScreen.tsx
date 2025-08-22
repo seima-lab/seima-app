@@ -2,18 +2,18 @@ import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navig
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -178,17 +178,15 @@ const InviteUsersScreen = () => {
       
       const currentLocale = i18n.language || 'en';
       
-      // Convert to Vietnam timezone (UTC+7)
-      const vietnamTime = new Date(date.getTime() + (7 * 60 * 60 * 1000));
-      
-      // Format: dd/mm/yyyy HH:mm
-      return vietnamTime.toLocaleDateString(currentLocale, {
+      // Format: dd/mm/yyyy HH:mm (Vietnam timezone UTC+7)
+      return date.toLocaleDateString(currentLocale, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false
+        hour12: false,
+        timeZone: 'Asia/Ho_Chi_Minh'
       });
     } catch (error) {
       console.error('Error formatting date:', error);
@@ -956,7 +954,7 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   pendingName: {
-    fontWeight: 'bold',
+    ...typography.semibold,
     fontSize: 16,
     color: '#222',
     marginBottom: 2,
@@ -1011,7 +1009,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   invitedName: {
-    fontWeight: 'bold',
+    ...typography.semibold,
     fontSize: 16,
     color: '#222',
     marginBottom: 2,

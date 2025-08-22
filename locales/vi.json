@@ -1166,7 +1166,7 @@
       },
       "confirmFieldsChange": {
         "title": "Cập nhật ngân sách",
-        "message": "Thông báo bạn có muốn cập nhật không? Cập nhật này sẽ thay đổi toàn bộ các period cũ.",
+        "message": "Thông báo bạn có muốn cập nhật không? Cập nhật này sẽ thay đổi toàn bộ các chu kỳ cũ.",
         "yes": "Cập nhật",
         "no": "Huỷ"
       }

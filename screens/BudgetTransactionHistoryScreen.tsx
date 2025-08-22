@@ -170,7 +170,15 @@ const BudgetTransactionHistoryScreen = ({ route }: BudgetTransactionHistoryScree
         });
       }
       
-      setTransactions(filteredTransactions);
+      // Sort transactions by date (newest first)
+      const sortedTransactions = filteredTransactions.sort((a: any, b: any) => {
+        const dateA = new Date(a.transaction_date);
+        const dateB = new Date(b.transaction_date);
+        return dateB.getTime() - dateA.getTime(); // Descending order (newest first)
+      });
+      
+      console.log('📅 Transactions sorted by date (newest first)');
+      setTransactions(sortedTransactions);
     } catch (err: any) {
       console.error('❌ Failed to load budget transactions:', err);
       setError(err.message || 'Failed to load transactions');

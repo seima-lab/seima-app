@@ -2,19 +2,19 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
-import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,6 +27,8 @@ import { TransactionReportResponse, transactionService } from '../services/trans
 import { UserProfile, userService } from '../services/userService';
 // import of walletService removed; balance now derives from today's transactions
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CustomSuccessModal from '../components/CustomSuccessModal';
+import SwipeableTransactionItem from '../components/SwipeableTransactionItem';
 import { getIconColor, getIconForCategory } from '../utils/iconUtils';
 
 const { width, height } = Dimensions.get('window');
@@ -175,6 +177,8 @@ const FinanceScreen = React.memo(() => {
   // UI state
   const [isBalanceVisible, setIsBalanceVisible] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [deleteSuccessKey, setDeleteSuccessKey] = useState(0);
 
   // Health status state from API
   const [apiHealthStatus, setApiHealthStatus] = useState<HealthStatusData | null>(null);
@@ -829,30 +833,30 @@ const FinanceScreen = React.memo(() => {
               const { iconName, iconColor, type } = getIconAndColor(item);
               const categoryObj = item.category_id ? categoriesMap[item.category_id] : undefined;
               const categoryName = categoryObj?.category_name || item.category_name || item.categoryName || t('common.unknown');
+              
+              // Convert to Transaction format for SwipeableTransactionItem
+              const transaction = {
+                id: (item.transaction_id || item.id || index).toString(),
+                date: item.transaction_date,
+                transaction_datetime: item.transaction_date,
+                category: categoryName,
+                amount: item.amount || 0,
+                type: type as 'income' | 'expense',
+                icon: iconName || (type === 'income' ? 'trending-up' : 'trending-down'),
+                iconColor: iconColor,
+                description: item.description || item.category_name || 'No description',
+                wallet_id: item.wallet_id ?? item.walletId,
+                receipt_image_url: item.receipt_image_url || item.receiptImageUrl || item.receipt_image || item.receiptImage || null,
+                receiptImageUrl: item.receiptImageUrl || item.receipt_image_url || item.receipt_image || item.receiptImage || null,
+              };
+              
               return (
-                <TouchableOpacity 
-                  key={item.transaction_id?.toString() || item.id?.toString() || index.toString()} 
-                  style={styles.historyItem}
-                  onPress={() => handleTransactionPress(item)}
-                  activeOpacity={0.6}
-                >
-                  <View style={[styles.historyIcon, { backgroundColor: iconColor + '22' }]}> 
-                    <IconMC name={iconName || (type === 'income' ? 'trending-up' : 'trending-down')} size={20} color={iconColor} />
-                  </View>
-                  <View style={styles.historyInfo}>
-                    <Text style={styles.historyCategory} numberOfLines={1}>{categoryName}</Text>
-                    {item.description ? (
-                      <Text style={styles.historyDesc} numberOfLines={1}>{item.description}</Text>
-                    ) : null}
-                    <Text style={styles.historyDate}>{formatDate(item.transaction_date)}</Text>
-                  </View>
-                  <View style={styles.historyAmountContainer}>
-                    <Text style={[styles.historyAmount, type === 'income' ? styles.incomeAmount : styles.expenseAmount]} numberOfLines={1}>
-                      {type === 'income' ? '+' : '-'}{formatAmountDisplay(item.amount || 0)} đ
-                    </Text>
-                    <Icon name="chevron-right" size={20} color="#999" />
-                  </View>
-                </TouchableOpacity>
+                <SwipeableTransactionItem 
+                  key={transaction.id} 
+                  transaction={transaction} 
+                  onDelete={handleDeleteTransaction}
+                  onEdit={handleEditTransaction}
+                />
               );
             })}
           </ScrollView>
@@ -1229,6 +1233,60 @@ const FinanceScreen = React.memo(() => {
     });
   }, [navigation, categoriesMap]);
 
+  // Handle delete transaction
+  const handleDeleteTransaction = useCallback(async (transactionId: string) => {
+    try {
+      console.log('🔄 Deleting transaction:', transactionId);
+      
+      // Call the actual delete API
+      await transactionService.deleteTransaction(parseInt(transactionId));
+      
+      console.log('✅ Transaction deleted successfully');
+      
+      // Show success modal first, then refresh data after modal is dismissed
+      setDeleteSuccessKey(prev => prev + 1);
+      setShowDeleteSuccess(true);
+      
+    } catch (error: any) {
+      console.error('❌ Failed to delete transaction:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to delete transaction',
+        [{ text: 'OK' }]
+      );
+    }
+  }, []);
+
+  // Handle edit transaction
+  const handleEditTransaction = useCallback((transaction: any) => {
+    console.log('🔄 Navigating to edit transaction:', transaction);
+    
+    // Get category name for the transaction
+    const categoryObj = transaction.category_id ? categoriesMap[transaction.category_id] : undefined;
+    const categoryName = categoryObj?.category_name || transaction.category_name || transaction.categoryName || t('common.unknown');
+    
+    // Navigate to AddExpenseScreen in edit mode
+    navigation.navigate('AddExpenseScreen', {
+      editMode: true,
+      transactionData: {
+        id: transaction.transaction_id?.toString() || transaction.id?.toString() || `transaction-${Math.random()}`,
+        amount: (transaction.amount || 0).toString(),
+        note: transaction.description || transaction.note || '',
+        date: transaction.transaction_date,
+        category: categoryName,
+        categoryId: transaction.category_id,
+        type: (transaction.transaction_type || 'expense').toLowerCase(),
+        icon: transaction.category_icon_url || '',
+        iconColor: getIconColor(transaction.category_icon_url || '', (transaction.transaction_type || 'expense').toLowerCase()),
+        // Pass wallet_id so AddExpenseScreen can preselect wallet
+        wallet_id: transaction.wallet_id ?? transaction.walletId ?? null,
+        // Pass receipt image urls so AddExpenseScreen can prefill image
+        receipt_image_url: transaction.receipt_image_url ?? transaction.receiptImageUrl ?? transaction.receipt_image ?? transaction.receiptImage ?? null,
+        receiptImageUrl: transaction.receiptImageUrl ?? transaction.receipt_image_url ?? transaction.receipt_image ?? transaction.receiptImage ?? null,
+      }
+    });
+  }, [navigation, categoriesMap]);
+
   // Better loading state management
   const hasEssentialData = userProfile?.user_full_name && userProfile?.user_email;
   const showFullLoading = loading && (!userProfile || !hasEssentialData);
@@ -1326,6 +1384,21 @@ const FinanceScreen = React.memo(() => {
           <TransactionHistorySection />
         </View>
       </ScrollView>
+
+      {/* Delete Success Modal */}
+      <CustomSuccessModal
+        visible={showDeleteSuccess}
+        title={t('common.success')}
+        message={t('calendar.transactionDeleted')}
+        buttonText={t('common.ok')}
+        onConfirm={() => {
+          setShowDeleteSuccess(false);
+          // Refresh data after modal is dismissed
+          loadAllData(true);
+        }}
+        iconName="check-circle"
+        transitionKey={deleteSuccessKey.toString()}
+      />
     </View>
   );
 });
@@ -1941,15 +2014,17 @@ legendValue: {
 
   transactionHistoryContainer: {
     height: 320,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: '#e1e5e9',
     overflow: 'hidden',
+    marginTop: 8,
+    marginBottom: 8,
   },
   transactionHistoryContent: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
   transactionHistoryFlatList: {
     flex: 1,
@@ -2066,6 +2141,7 @@ legendValue: {
     borderRadius: rp(6),
     marginRight: rp(15),
   },
+
 });
 
 export default FinanceScreen; 
