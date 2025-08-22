@@ -1,5 +1,5 @@
 import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
@@ -22,12 +22,30 @@ import CustomSuccessModal from '../components/CustomSuccessModal';
 import { typography } from '../constants/typography';
 import { RootStackParamList } from '../navigation/types';
 import { groupService, InvitedMemberResponse, PendingGroupMemberResponse } from '../services/groupService';
+
 type InviteUsersRouteProp = RouteProp<RootStackParamList, 'InviteUsers'>;
+
+// Type definitions for better type safety
+interface ApiResponse {
+  email_sent?: boolean;
+  user_exists?: boolean;
+  message?: string;
+  status_code?: number;
+}
+
+interface PendingMembersResponse {
+  pending_members: PendingGroupMemberResponse[];
+}
 
 const InviteUsersScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<InviteUsersRouteProp>();
   const { t, i18n } = useTranslation();
+  
+  // Refs for cleanup
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+  
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFullScreenLoading, setIsFullScreenLoading] = useState(false);
@@ -54,7 +72,38 @@ const InviteUsersScreen = () => {
     buttonText: '',
   });
 
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  // Component unmount cleanup
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      cleanup();
+      
+      // Cleanup modals to prevent state updates on unmounted component
+      setSuccessModal(prev => ({ ...prev, visible: false }));
+      setErrorModal(prev => ({ ...prev, visible: false }));
+    };
+  }, [cleanup]);
+
+  // Validate route params
+  useEffect(() => {
+    if (!route.params?.groupId) {
+      showError(t('common.error'), 'Invalid group ID');
+      navigation.goBack();
+      return;
+    }
+  }, [route.params?.groupId, navigation, t]);
+
   const showError = (message: string, title?: string, type: 'error' | 'warning' | 'info' | 'success' = 'error') => {
+    if (!isMountedRef.current) return;
+    
     setErrorModal({
       visible: true,
       title: title || t('common.error'),
@@ -63,11 +112,15 @@ const InviteUsersScreen = () => {
     });
   };
 
-  const hideErrorModal = () => {
+  const hideErrorModal = useCallback(() => {
+    if (!isMountedRef.current) return;
+    
     setErrorModal((prev) => ({ ...prev, visible: false }));
-  };
+  }, []);
 
   const showSuccess = (message: string, title?: string, buttonText?: string) => {
+    if (!isMountedRef.current) return;
+    
     setSuccessModal({
       visible: true,
       title: title || t('common.success'),
@@ -76,16 +129,20 @@ const InviteUsersScreen = () => {
     });
   };
 
-  const hideSuccessModal = () => {
+  const hideSuccessModal = useCallback(() => {
+    if (!isMountedRef.current) return;
+    
     setSuccessModal((prev) => ({ ...prev, visible: false }));
-  };
+  }, []);
 
-  // Format date helper function
+  // Format date helper function with better error handling
   const formatRequestedDate = (dateString: string): string => {
+    if (!dateString) return 'N/A';
+    
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
-        return dateString; // Return original if invalid
+        return 'Invalid Date';
       }
       
       const currentLocale = i18n.language || 'en';
@@ -104,11 +161,11 @@ const InviteUsersScreen = () => {
       });
     } catch (error) {
       console.error('Error formatting date:', error);
-      return dateString;
+      return 'Date Error';
     }
   };
 
-  const { groupId } = route.params;
+  const groupId = route.params?.groupId;
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -142,6 +199,8 @@ const InviteUsersScreen = () => {
   };
 
   const handleInvite = async () => {
+    if (!isMountedRef.current) return;
+    
     if (!email.trim()) {
       Alert.alert(t('common.error'), t('group.invitation.enterEmail'));
       return;
@@ -149,6 +208,11 @@ const InviteUsersScreen = () => {
 
     if (!isValidEmail(email)) {
       Alert.alert(t('common.error'), t('group.invitation.invalidEmail'));
+      return;
+    }
+
+    if (!groupId) {
+      showError(t('common.error'), 'Invalid group ID');
       return;
     }
 
@@ -166,25 +230,33 @@ const InviteUsersScreen = () => {
         group_id: parseInt(groupId),
         email: trimmedEmail
       });
+      
       console.log('API response:', response);
+      
+      // Safe response handling with proper type checking
       if (!response) {
-        showError(t('group.invitation.alreadyInvited') || 'Gửi lời mời thất bại. Vui lòng thử lại.');
+        showError(t('group.invitation.sendFailed') || 'Gửi lời mời thất bại. Vui lòng thử lại.');
         return;
       }
-      // Nếu response chỉ có status_code và message (không có email_sent)
-      if (
-        typeof response === 'object' && response !== null &&
-        'status_code' in response && 'message' in response && !('email_sent' in response)
-      ) {
-        const res: any = response;
-        showError(translateBackendMessage(res.message));
+
+      // Type guard to ensure response is an object
+      if (typeof response !== 'object' || response === null) {
+        showError(t('group.invitation.sendFailed') || 'Invalid response format');
         return;
       }
-      // Nếu response có email_sent thì xử lý như cũ
-      if ('email_sent' in response) {
-        const res: any = response;
-        if (res.email_sent) {
-          if (res.user_exists) {
+
+      const apiResponse = response as ApiResponse;
+
+      // Check if response has status_code and message (error case)
+      if ('status_code' in apiResponse && 'message' in apiResponse && !('email_sent' in apiResponse)) {
+        showError(translateBackendMessage(apiResponse.message));
+        return;
+      }
+
+      // Check if response has email_sent (success case)
+      if ('email_sent' in apiResponse) {
+        if (apiResponse.email_sent) {
+          if (apiResponse.user_exists) {
             showSuccess(
               t('group.invitation.sentToExistingUser', { email: trimmedEmail }),
               t('common.success')
@@ -198,185 +270,313 @@ const InviteUsersScreen = () => {
           // Reload invited members list after successful invitation
           fetchInvitedMembers();
         } else {
-          showError(translateBackendMessage(res.message));
+          showError(translateBackendMessage(apiResponse.message));
         }
         return;
       }
-      // Nếu không khớp trường hợp nào, show lỗi chung
+
+      // Fallback error case
       showError(t('group.invitation.sendFailed') || 'Gửi lời mời thất bại. Vui lòng thử lại.');
-      return;
 
     } catch (error: any) {
+      if (!isMountedRef.current) return;
+      
       console.error('🔴 Failed to send invitation:', error);
-      // Xử lý lỗi 409
+      
+      // Safe error handling
       let statusCode = error?.response?.status;
-      let backendMessage = error?.response?.data?.message || error?.message;
+      let backendMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+      
       if (statusCode === 409 || (backendMessage && (backendMessage.toLowerCase().includes('409') || backendMessage.toLowerCase().includes('conflict')))) {
         showError(translateBackendMessage(backendMessage));
       } else {
         Alert.alert(t('common.error'), translateBackendMessage(backendMessage));
       }
     } finally {
-      setIsLoading(false);
-      setIsFullScreenLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+        setIsFullScreenLoading(false);
+      }
     }
   };
 
   const isValidEmail = (email: string) => {
+    if (!email || typeof email !== 'string') return false;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
-  // Fetch pending members on mount
+  // Safe state update function with proper typing
+  const safeSetState = useCallback((
+    setter: React.Dispatch<React.SetStateAction<any>>,
+    value: any
+  ) => {
+    if (isMountedRef.current) {
+      setter(value);
+    }
+  }, []);
+
+  // Fetch pending members on mount with proper error handling
   useEffect(() => {
+    if (!groupId) return;
+
     const fetchPending = async () => {
-      setPendingLoading(true);
+      if (!isMountedRef.current) return;
+      
+      safeSetState(setPendingLoading, true);
+      
       try {
         const res = await groupService.getPendingGroupMembers(Number(groupId));
-        setPendingMembers(res.pending_members);
-      } catch (e) {
-        // handle error
+        
+        if (!isMountedRef.current) return;
+        
+        // Safe response validation
+        if (res && typeof res === 'object' && 'pending_members' in res) {
+          const pendingResponse = res as PendingMembersResponse;
+          if (Array.isArray(pendingResponse.pending_members)) {
+            safeSetState(setPendingMembers, pendingResponse.pending_members);
+          } else {
+            console.warn('Invalid pending_members format:', pendingResponse.pending_members);
+            safeSetState(setPendingMembers, []);
+          }
+        } else {
+          console.warn('Invalid response format for pending members:', res);
+          safeSetState(setPendingMembers, []);
+        }
+      } catch (e: any) {
+        if (!isMountedRef.current) return;
+        
+        console.error('Error fetching pending members:', e);
+        showError('Failed to load pending members');
+        safeSetState(setPendingMembers, []);
+      } finally {
+        if (isMountedRef.current) {
+          safeSetState(setPendingLoading, false);
+        }
       }
-      setPendingLoading(false);
     };
+    
     fetchPending();
-  }, [groupId]);
+  }, [groupId, safeSetState]);
 
-  // Fetch invited members function
-  const fetchInvitedMembers = async () => {
-    setInvitedLoading(true);
+  // Fetch invited members function with proper error handling
+  const fetchInvitedMembers = useCallback(async () => {
+    if (!groupId || !isMountedRef.current) return;
+    
+    safeSetState(setInvitedLoading, true);
+    
     try {
       const res = await groupService.getInvitedMembers(Number(groupId));
-      setInvitedMembers(res);
-    } catch (e) {
+      
+      if (!isMountedRef.current) return;
+      
+      // Safe response validation
+      if (res && Array.isArray(res)) {
+        safeSetState(setInvitedMembers, res);
+      } else {
+        console.warn('Invalid invited members response:', res);
+        safeSetState(setInvitedMembers, []);
+      }
+    } catch (e: any) {
+      if (!isMountedRef.current) return;
+      
       console.error('Error fetching invited members:', e);
+      showError('Failed to load invited members');
+      safeSetState(setInvitedMembers, []);
+    } finally {
+      if (isMountedRef.current) {
+        safeSetState(setInvitedLoading, false);
+      }
     }
-    setInvitedLoading(false);
-  };
+  }, [groupId, safeSetState]);
 
   // Fetch invited members on mount
   useEffect(() => {
     fetchInvitedMembers();
-  }, [groupId]);
+  }, [fetchInvitedMembers]);
 
-  // Accept/Reject handlers
+  // Accept/Reject handlers with proper error handling
   const handleAccept = async (userId: number) => {
+    if (!groupId || !isMountedRef.current) return;
+    
     try {
-      setLoadingUserId(userId);
+      safeSetState(setLoadingUserId, userId);
       await groupService.acceptGroupMemberRequest(Number(groupId), userId);
+      
+      if (!isMountedRef.current) return;
+      
       showSuccess(t('group.invitation.memberAccepted'));
       setShouldNavigateBack(true);
     } catch (e: any) {
-      showError(e.message || t('group.invitation.acceptFailed'));
+      if (!isMountedRef.current) return;
+      
+      const errorMessage = e?.message || t('group.invitation.acceptFailed');
+      showError(errorMessage);
     } finally {
-      setLoadingUserId(null);
+      if (isMountedRef.current) {
+        safeSetState(setLoadingUserId, null);
+      }
     }
   };
 
   const handleReject = async (userId: number) => {
+    if (!groupId || !isMountedRef.current) return;
+    
     try {
-      setLoadingUserId(userId);
+      safeSetState(setLoadingUserId, userId);
       await groupService.rejectGroupMemberRequest(Number(groupId), userId);
+      
+      if (!isMountedRef.current) return;
+      
       showSuccess(t('group.invitation.memberRejected'));
       setShouldNavigateBack(true);
     } catch (e: any) {
-      showError(e.message || t('group.invitation.rejectFailed'));
+      if (!isMountedRef.current) return;
+      
+      const errorMessage = e?.message || t('group.invitation.rejectFailed');
+      showError(errorMessage);
     } finally {
-      setLoadingUserId(null);
+      if (isMountedRef.current) {
+        safeSetState(setLoadingUserId, null);
+      }
     }
   };
 
-  // Thêm renderPendingMember
-  const renderPendingMember = ({ item }: { item: PendingGroupMemberResponse }) => (
-    <View style={styles.pendingCard}>
-      {item.user_avatar_url ? (
-        <View style={styles.avatarWrapper}>
-          <View style={styles.avatarBorder}>
-            <Image source={{ uri: item.user_avatar_url }} style={styles.avatarImg} />
+  // Safe render functions with null checks
+  const renderPendingMember = useCallback(({ item }: { item: PendingGroupMemberResponse }) => {
+    if (!item || !isMountedRef.current) return null;
+    
+    return (
+      <View style={styles.pendingCard}>
+        {item.user_avatar_url ? (
+          <View style={styles.avatarWrapper}>
+            <View style={styles.avatarBorder}>
+              <Image 
+                source={{ uri: item.user_avatar_url }} 
+                style={styles.avatarImg}
+                onError={() => console.warn('Failed to load avatar for user:', item.user_id)}
+              />
+            </View>
           </View>
-        </View>
-      ) : (
-        <View style={styles.avatarWrapper}>
-          <View style={styles.avatarBorder}>
-            <Icon name="person" size={40} color="#90caf9" />
-          </View>
-        </View>
-      )}
-      <View style={{ flex: 1, marginLeft: 12 }}>
-        <Text style={styles.pendingName}>{item.user_full_name}</Text>
-        <Text style={styles.pendingEmail}>{item.user_email}</Text>
-        <Text style={styles.pendingTime}>
-          {t('group.invitation.requestedAt')}: {formatRequestedDate(item.requested_at)}
-        </Text>
-      </View>
-      <TouchableOpacity
-        onPress={() => handleAccept(item.user_id)}
-        style={[styles.acceptBtn, loadingUserId === item.user_id && { opacity: 0.5 }]}
-        disabled={loadingUserId === item.user_id}
-      >
-        {loadingUserId === item.user_id ? (
-          <ActivityIndicator size="small" color="#fff" />
         ) : (
-          <Icon name="check" size={22} color="#fff" />
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => handleReject(item.user_id)}
-        style={[styles.rejectBtn, loadingUserId === item.user_id && { opacity: 0.5 }]}
-        disabled={loadingUserId === item.user_id}
-      >
-        {loadingUserId === item.user_id ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Icon name="close" size={22} color="#fff" />
-        )}
-      </TouchableOpacity>
-    </View>
-  );
-
-  // Render invited member
-  const renderInvitedMember = ({ item }: { item: any }) => (
-    <View style={styles.invitedCard}>
-      {item.user_avatar_url ? (
-        <View style={styles.avatarWrapper}>
-          <View style={styles.avatarBorder}>
-            <Image source={{ uri: item.user_avatar_url }} style={styles.avatarImg} />
+          <View style={styles.avatarWrapper}>
+            <View style={styles.avatarBorder}>
+              <Icon name="person" size={40} color="#90caf9" />
+            </View>
           </View>
+        )}
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.pendingName}>{item.user_full_name || 'Unknown User'}</Text>
+          <Text style={styles.pendingEmail}>{item.user_email || 'No email'}</Text>
+          <Text style={styles.pendingTime}>
+            {t('group.invitation.requestedAt')}: {formatRequestedDate(item.requested_at)}
+          </Text>
         </View>
-      ) : (
-        <View style={styles.avatarWrapper}>
-          <View style={styles.avatarBorder}>
-            <Icon name="person" size={40} color="#90caf9" />
-          </View>
-        </View>
-      )}
-      <View style={{ flex: 1, marginLeft: 12 }}>
-        <Text style={styles.invitedName}>{item.user_full_name}</Text>
-        <Text style={styles.invitedEmail}>{item.user_email}</Text>
-        <Text style={styles.invitedTime}>
-          {t('group.invitation.invitedAt')}: {formatRequestedDate(item.invited_at)}
-        </Text>
-      
+        <TouchableOpacity
+          onPress={() => handleAccept(item.user_id)}
+          style={[styles.acceptBtn, loadingUserId === item.user_id && { opacity: 0.5 }]}
+          disabled={loadingUserId === item.user_id}
+        >
+          {loadingUserId === item.user_id ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Icon name="check" size={22} color="#fff" />
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => handleReject(item.user_id)}
+          style={[styles.rejectBtn, loadingUserId === item.user_id && { opacity: 0.5 }]}
+          disabled={loadingUserId === item.user_id}
+        >
+          {loadingUserId === item.user_id ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Icon name="close" size={22} color="#fff" />
+          )}
+        </TouchableOpacity>
       </View>
-    </View>
-  );
+    );
+  }, [loadingUserId, t]);
 
-  // Handle navigation after successful accept/reject
+  // Render invited member with null checks
+  const renderInvitedMember = useCallback(({ item }: { item: InvitedMemberResponse }) => {
+    if (!item || !isMountedRef.current) return null;
+    
+    return (
+      <View style={styles.invitedCard}>
+        {item.user_avatar_url ? (
+          <View style={styles.avatarWrapper}>
+            <View style={styles.avatarBorder}>
+              <Image 
+                source={{ uri: item.user_avatar_url }} 
+                style={styles.avatarImg}
+                onError={() => console.warn('Failed to load avatar for user:', item.user_id)}
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.avatarWrapper}>
+            <View style={styles.avatarBorder}>
+              <Icon name="person" size={40} color="#90caf9" />
+            </View>
+          </View>
+        )}
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.invitedName}>{item.user_full_name || 'Unknown User'}</Text>
+          <Text style={styles.invitedEmail}>{item.user_email || 'No email'}</Text>
+          <Text style={styles.invitedTime}>
+            {t('group.invitation.invitedAt')}: {formatRequestedDate(item.invited_at)}
+          </Text>
+        </View>
+      </View>
+    );
+  }, [t]);
+
+  // Handle navigation after successful accept/reject with proper cleanup
   useEffect(() => {
-    if (shouldNavigateBack) {
+    if (shouldNavigateBack && isMountedRef.current) {
+      // Cleanup any existing timeout
+      cleanup();
+      
       // Add a small delay to ensure modal closes properly
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
+        if (!isMountedRef.current) return;
+        
         // Navigate back to GroupOverviewScreen by going back twice
         // since the navigation stack is: GroupOverview -> GroupMembers -> InviteUsers
         console.log('🔄 Navigating back to GroupOverviewScreen after accept/reject');
         navigation.goBack(); // Go back to GroupMembers
-        setTimeout(() => {
+        
+        timeoutRef.current = setTimeout(() => {
+          if (!isMountedRef.current) return;
           navigation.goBack(); // Go back to GroupOverview
         }, 50);
       }, 100);
+      
       setShouldNavigateBack(false); // Reset the flag
     }
-  }, [shouldNavigateBack, navigation]);
+  }, [shouldNavigateBack, navigation, cleanup]);
+
+  // Early return if no groupId
+  if (!groupId) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+            <Icon name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Icon name="group-add" size={24} color="#FFFFFF" style={styles.headerIcon} />
+            <Text style={styles.headerTitle}>{t('group.invitation.title')}</Text>
+          </View>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.content}>
+          <Text style={styles.errorText}>Invalid group ID</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -445,7 +645,7 @@ const InviteUsersScreen = () => {
           ) : (
             <FlatList
               data={invitedMembers}
-              keyExtractor={item => String(item.user_id)}
+              keyExtractor={item => String(item?.user_id || Math.random())}
               renderItem={renderInvitedMember}
               scrollEnabled={false}
               ListEmptyComponent={
@@ -467,7 +667,7 @@ const InviteUsersScreen = () => {
           ) : (
             <FlatList
               data={pendingMembers}
-              keyExtractor={item => String(item.user_id)}
+              keyExtractor={item => String(item?.user_id || Math.random())}
               renderItem={renderPendingMember}
               scrollEnabled={false}
               ListEmptyComponent={
@@ -502,12 +702,17 @@ const InviteUsersScreen = () => {
           </View>
         </View>
       </Modal>
+      
       {/* CustomErrorModal for 409 error */}
       <CustomErrorModal
         visible={errorModal.visible}
         title={errorModal.title}
         message={errorModal.message}
-        onDismiss={hideErrorModal}
+        onDismiss={() => {
+          if (isMountedRef.current && errorModal.visible) {
+            hideErrorModal();
+          }
+        }}
         type={errorModal.type}
       />
 
@@ -518,8 +723,11 @@ const InviteUsersScreen = () => {
         message={successModal.message}
         buttonText={successModal.buttonText}
         onConfirm={() => {
-          hideSuccessModal();
-          console.log('✅ Success modal confirmed');
+          // Safe modal handling to prevent crash
+          if (isMountedRef.current && successModal.visible && !shouldNavigateBack) {
+            hideSuccessModal();
+            console.log('✅ Success modal confirmed');
+          }
         }}
         iconName="check-circle"
       />
@@ -605,6 +813,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1976D2',
     lineHeight: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#F44336',
+    textAlign: 'center',
+    marginTop: 50,
   },
   // Loading Modal Styles
   loadingOverlay: {
