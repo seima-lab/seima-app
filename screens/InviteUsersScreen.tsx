@@ -114,6 +114,33 @@ const InviteUsersScreen = () => {
     navigation.goBack();
   };
 
+  // Map backend English messages to bilingual (VI + EN) display
+  const translateBackendMessage = (message?: string): string => {
+    if (!message) return t('group.invitation.sendFailed');
+    const normalized = message.toLowerCase();
+
+    if (normalized.includes('user account does not exist') || normalized.includes('needs to register')) {
+      const vi = t(
+        'group.invitation.userNotExists',
+        'Tài khoản chưa tồn tại. Người dùng cần đăng ký trước khi tham gia nhóm.'
+      );
+      return i18n.language?.startsWith('vi') ? vi : message;
+    }
+
+    if (normalized.includes('already') && normalized.includes('invited')) {
+      const vi = t('group.invitation.alreadyInvited', 'Người dùng đã được mời trước đó.');
+      return i18n.language?.startsWith('vi') ? vi : message;
+    }
+
+    if (normalized.includes('conflict') || normalized.includes('409')) {
+      const vi = t('group.invitation.conflict', 'Xung đột lời mời.');
+      return i18n.language?.startsWith('vi') ? vi : message;
+    }
+
+    const genericVi = t('group.invitation.sendFailed', 'Gửi lời mời thất bại. Vui lòng thử lại.');
+    return i18n.language?.startsWith('vi') ? genericVi : message;
+  };
+
   const handleInvite = async () => {
     if (!email.trim()) {
       Alert.alert(t('common.error'), t('group.invitation.enterEmail'));
@@ -150,11 +177,7 @@ const InviteUsersScreen = () => {
         'status_code' in response && 'message' in response && !('email_sent' in response)
       ) {
         const res: any = response;
-        if (res.status_code === 409 || (res.message && res.message.toLowerCase().includes('already been invited'))) {
-          showError(t('group.invitation.alreadyInvited'));
-        } else {
-          showError(res.message || t('group.invitation.sendFailed'));
-        }
+        showError(translateBackendMessage(res.message));
         return;
       }
       // Nếu response có email_sent thì xử lý như cũ
@@ -175,7 +198,7 @@ const InviteUsersScreen = () => {
           // Reload invited members list after successful invitation
           fetchInvitedMembers();
         } else {
-          showError(res.message || t('group.invitation.sendFailed'));
+          showError(translateBackendMessage(res.message));
         }
         return;
       }
@@ -189,9 +212,9 @@ const InviteUsersScreen = () => {
       let statusCode = error?.response?.status;
       let backendMessage = error?.response?.data?.message || error?.message;
       if (statusCode === 409 || (backendMessage && (backendMessage.toLowerCase().includes('409') || backendMessage.toLowerCase().includes('conflict')))) {
-        showError(backendMessage || t('group.invitation.conflict'));
+        showError(translateBackendMessage(backendMessage));
       } else {
-        Alert.alert(t('common.error'), error.message || t('group.invitation.sendFailed'));
+        Alert.alert(t('common.error'), translateBackendMessage(backendMessage));
       }
     } finally {
       setIsLoading(false);
