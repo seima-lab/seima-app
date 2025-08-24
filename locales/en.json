@@ -160,6 +160,39 @@
         "needsImprovement": "Needs improvement - focus on spending",
         "fair": "Fair - minor adjustments needed",
         "excellent": "Excellent - keep it up!"
+      },
+      "infoModal": {
+        "title": "How Financial Health Score is Calculated",
+        "description": "Financial health score is calculated based on 3 main criteria to comprehensively assess your financial situation:",
+        "savingsRate": {
+          "title": "Savings Rate",
+          "description": "Measures your ability to save compared to total income. Higher rate is better.",
+          "numerator": "Income - Expenses",
+          "denominator": "Income"
+        },
+        "budgetCompliance": {
+          "title": "Budget Compliance",
+          "description": "Measures your adherence to set budgets.",
+          "numerator": "Budgets not exceeded",
+          "denominator": "Total active budgets"
+        },
+        "assetGrowth": {
+          "title": "Asset Growth",
+          "description": "Tracks asset changes over time to assess financial trends.",
+          "numerator": "This month's assets - Last month's assets",
+          "denominator": "|Last month's assets|"
+        },
+        "totalScore": {
+          "title": "Overall Score",
+          "description": "Comprehensive financial health score combining the above 3 criteria to assess your overall financial situation."
+        },
+        "colorLegend": {
+          "title": "Color Legend",
+          "excellent": "Excellent",
+          "good": "Good",
+          "fair": "Fair",
+          "poor": "Poor"
+        }
       }
     }
   },

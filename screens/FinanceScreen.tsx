@@ -6,6 +6,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Modal,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -179,6 +180,7 @@ const FinanceScreen = React.memo(() => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
   const [deleteSuccessKey, setDeleteSuccessKey] = useState(0);
+  const [showHealthInfoModal, setShowHealthInfoModal] = useState(false);
 
   // Health status state from API
   const [apiHealthStatus, setApiHealthStatus] = useState<HealthStatusData | null>(null);
@@ -632,9 +634,18 @@ const FinanceScreen = React.memo(() => {
         </View>
       ) : (
         <>
-          <Text style={styles.sectionTitle}>
-            ❤️ {t('finance.health.title')}: {apiHealthStatus?.score || 75}/100 ⓘ
-          </Text>
+          <View style={styles.healthTitleRow}>
+            <Text style={styles.sectionTitle}>
+              ❤️ {t('finance.health.title')}: {apiHealthStatus?.score || 75}/100
+            </Text>
+            <TouchableOpacity 
+              style={styles.healthInfoButton}
+              onPress={() => setShowHealthInfoModal(true)}
+              activeOpacity={0.7}
+            >
+              <Icon name="info" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
           
           {/* Health Status Bar - using real API data */}
           <View style={styles.healthBarContainer}>
@@ -659,6 +670,190 @@ const FinanceScreen = React.memo(() => {
   ));
 
   HealthStatusSection.displayName = 'HealthStatusSection';
+
+  // Memoized Health Info Modal Component
+  const HealthInfoModal = React.memo(() => (
+    <Modal
+      visible={showHealthInfoModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowHealthInfoModal(false)}
+      statusBarTranslucent={true}
+    >
+      <View style={styles.healthInfoModalOverlay}>
+        <View style={styles.healthInfoModalContainer}>
+          <View style={styles.healthInfoModalHeader}>
+            <Text style={styles.healthInfoModalTitle}>
+              {t('finance.health.infoModal.title')}
+            </Text>
+            <TouchableOpacity 
+              style={styles.healthInfoModalCloseButton}
+              onPress={() => setShowHealthInfoModal(false)}
+            >
+              <Icon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView 
+            style={styles.healthInfoModalScroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.healthInfoModalContent}
+          >
+            <Text style={styles.healthInfoDescription}>
+              {t('finance.health.infoModal.description')}
+            </Text>
+            
+            {/* Savings Rate Card */}
+            <View style={styles.healthMetricCard}>
+              <View style={styles.healthMetricHeader}>
+                <View style={styles.healthMetricIconContainer}>
+                  <Icon name="trending-up" size={20} color="#4285F4" />
+                </View>
+                <Text style={styles.healthMetricTitle}>
+                  {t('finance.health.infoModal.savingsRate.title')}
+                </Text>
+                <View style={styles.healthMetricScore}>
+                  <Text style={[styles.healthMetricScoreText, { color: '#4285F4' }]}>
+                    {Math.round((chartData.income > 0 ? ((chartData.income - Math.abs(chartData.expenses)) / chartData.income) * 100 : 0))}₫
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.healthMetricFormula}>
+                <View style={styles.fractionRow}>
+                  <View style={styles.fractionContainer}>
+                    <Text style={styles.fractionNumerator}>
+                      {t('finance.health.infoModal.savingsRate.numerator')}
+                    </Text>
+                    <View style={styles.fractionLine} />
+                    <Text style={styles.fractionDenominator}>
+                      {t('finance.health.infoModal.savingsRate.denominator')}
+                    </Text>
+                  </View>
+                  <Text style={styles.formulaResult}>× 100%</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Budget Compliance Card */}
+            <View style={styles.healthMetricCard}>
+              <View style={styles.healthMetricHeader}>
+                <View style={styles.healthMetricIconContainer}>
+                  <Icon name="gps-fixed" size={20} color="#FF9800" />
+                </View>
+                <Text style={styles.healthMetricTitle}>
+                  {t('finance.health.infoModal.budgetCompliance.title')}
+                </Text>
+                <View style={styles.healthMetricScore}>
+                  <Text style={[styles.healthMetricScoreText, { color: '#FF9800' }]}>
+                    30₫
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.healthMetricFormula}>
+                <View style={styles.fractionRow}>
+                  <View style={styles.fractionContainer}>
+                    <Text style={styles.fractionNumerator}>
+                      {t('finance.health.infoModal.budgetCompliance.numerator')}
+                    </Text>
+                    <View style={styles.fractionLine} />
+                    <Text style={styles.fractionDenominator}>
+                      {t('finance.health.infoModal.budgetCompliance.denominator')}
+                    </Text>
+                  </View>
+                  <Text style={styles.formulaResult}>× 100%</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Asset Growth Card */}
+            <View style={styles.healthMetricCard}>
+              <View style={styles.healthMetricHeader}>
+                <View style={styles.healthMetricIconContainer}>
+                  <Icon name="attach-money" size={20} color="#4CAF50" />
+                </View>
+                <Text style={styles.healthMetricTitle}>
+                  {t('finance.health.infoModal.assetGrowth.title')}
+                </Text>
+                <View style={styles.healthMetricScore}>
+                  <Text style={[styles.healthMetricScoreText, { color: '#4CAF50' }]}>
+                    30₫
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.healthMetricFormula}>
+                <View style={styles.fractionRow}>
+                  <View style={styles.fractionContainer}>
+                    <Text style={styles.fractionNumerator}>
+                      {t('finance.health.infoModal.assetGrowth.numerator')}
+                    </Text>
+                    <View style={styles.fractionLine} />
+                    <Text style={styles.fractionDenominator}>
+                      {t('finance.health.infoModal.assetGrowth.denominator')}
+                    </Text>
+                  </View>
+                  <Text style={styles.formulaResult}>× 100%</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Total Score Section */}
+            <View style={styles.totalScoreSection}>
+              <Text style={styles.totalScoreTitle}>
+                {t('finance.health.infoModal.totalScore.title')}
+              </Text>
+              <View style={styles.totalScoreContainer}>
+                <Text style={[
+                  styles.totalScoreValue, 
+                  { color: getHealthStatusColor(apiHealthStatus?.score || 75) }
+                ]}>
+                  {apiHealthStatus?.score || 75}
+                </Text>
+                <Text style={styles.totalScoreUnit}>/100</Text>
+              </View>
+              <Text style={styles.totalScoreDescription}>
+                {t('finance.health.infoModal.totalScore.description')}
+              </Text>
+            </View>
+
+            {/* Color Legend Section */}
+            <View style={styles.colorLegendSection}>
+              <Text style={styles.colorLegendTitle}>
+                {t('finance.health.infoModal.colorLegend.title')}
+              </Text>
+              <View style={styles.colorLegendContainer}>
+                <View style={styles.colorLegendRow}>
+                  <View style={[styles.colorLegendDot, { backgroundColor: '#4CAF50' }]} />
+                  <Text style={styles.colorLegendText}>
+                    {t('finance.health.infoModal.colorLegend.excellent')} (76-100)
+                  </Text>
+                </View>
+                <View style={styles.colorLegendRow}>
+                  <View style={[styles.colorLegendDot, { backgroundColor: '#FF9800' }]} />
+                  <Text style={styles.colorLegendText}>
+                    {t('finance.health.infoModal.colorLegend.good')} (60-75)
+                  </Text>
+                </View>
+                <View style={styles.colorLegendRow}>
+                  <View style={[styles.colorLegendDot, { backgroundColor: '#FF5722' }]} />
+                  <Text style={styles.colorLegendText}>
+                    {t('finance.health.infoModal.colorLegend.fair')} (40-59)
+                  </Text>
+                </View>
+                <View style={styles.colorLegendRow}>
+                  <View style={[styles.colorLegendDot, { backgroundColor: '#F44336' }]} />
+                  <Text style={styles.colorLegendText}>
+                    {t('finance.health.infoModal.colorLegend.poor')} (0-39)
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  ));
+
+  HealthInfoModal.displayName = 'HealthInfoModal';
 
   // Memoized Income and Expense Section Component
   const IncomeExpenseSection = React.memo(() => (
@@ -1224,8 +1419,8 @@ const FinanceScreen = React.memo(() => {
         icon: transaction.category_icon_url || '',
         iconColor: getIconColor(transaction.category_icon_url || '', (transaction.transaction_type || 'expense').toLowerCase()),
         // Ensure AddExpenseScreen receives wallet id for correct wallet selection in edit mode
-        wallet_id: transaction.wallet_id ?? transaction.walletId ?? null,
-        walletId: transaction.wallet_id ?? transaction.walletId ?? null,
+        wallet_id: transaction.wallet_id ?? transaction.walletId,
+        walletId: transaction.wallet_id ?? transaction.walletId,
         // Pass receipt image url for edit screen prefill (support multiple naming conventions)
         receipt_image_url: transaction.receipt_image_url || transaction.receiptImageUrl || transaction.receipt_image || transaction.receiptImage || null,
         receiptImageUrl: transaction.receiptImageUrl || transaction.receipt_image_url || transaction.receipt_image || transaction.receiptImage || null,
@@ -1279,7 +1474,7 @@ const FinanceScreen = React.memo(() => {
         icon: transaction.category_icon_url || '',
         iconColor: getIconColor(transaction.category_icon_url || '', (transaction.transaction_type || 'expense').toLowerCase()),
         // Pass wallet_id so AddExpenseScreen can preselect wallet
-        wallet_id: transaction.wallet_id ?? transaction.walletId ?? null,
+        wallet_id: transaction.wallet_id ?? transaction.walletId,
         // Pass receipt image urls so AddExpenseScreen can prefill image
         receipt_image_url: transaction.receipt_image_url ?? transaction.receiptImageUrl ?? transaction.receipt_image ?? transaction.receiptImage ?? null,
         receiptImageUrl: transaction.receiptImageUrl ?? transaction.receipt_image_url ?? transaction.receipt_image ?? transaction.receiptImage ?? null,
@@ -1399,6 +1594,7 @@ const FinanceScreen = React.memo(() => {
         iconName="check-circle"
         transitionKey={deleteSuccessKey.toString()}
       />
+      <HealthInfoModal />
     </View>
   );
 });
@@ -2141,7 +2337,329 @@ legendValue: {
     borderRadius: rp(6),
     marginRight: rp(15),
   },
-
+  healthTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: rp(10),
+  },
+  healthInfoButton: {
+    marginLeft: rp(10),
+  },
+  healthInfoContent: {
+    padding: rp(16),
+  },
+  healthInfoDescription: {
+    fontSize: rf(14),
+    color: '#666',
+    marginBottom: rp(15),
+    lineHeight: rf(20),
+    textAlign: 'center',
+   ...typography.regular,
+  },
+  healthInfoSection: {
+    marginBottom: rp(15),
+    paddingVertical: rp(12),
+    paddingHorizontal: rp(16),
+    backgroundColor: '#f8f9fa',
+    borderRadius: rp(12),
+    borderLeftWidth: 4,
+    borderLeftColor: '#4285F4',
+  },
+  healthInfoSectionTitle: {
+    fontSize: rf(16),
+    color: '#333',
+    marginBottom: rp(8),
+    ...typography.semibold,
+  },
+  healthInfoSectionText: {
+    ...typography.regular,
+    fontSize: rf(14),
+    color: '#666',
+    lineHeight: rf(20),
+    marginBottom: rp(8),
+  },
+  healthInfoFormula: {
+    fontSize: rf(12),
+    color: '#666',
+    marginTop: rp(8),
+    
+    backgroundColor: '#e9ecef',
+    padding: rp(8),
+    borderRadius: rp(6),
+    textAlign: 'center',
+    ...typography.regular,
+  },
+  healthInfoScoring: {
+    marginTop: rp(15),
+    backgroundColor: '#f8f9fa',
+    borderRadius: rp(12),
+    padding: rp(12),
+  },
+  healthInfoScoreRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: rp(8),
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  healthInfoScoreRowLast: {
+    borderBottomWidth: 0,
+  },
+  healthInfoScoreLabel: {
+    fontSize: rf(14),
+    ...typography.semibold,
+  },
+  healthInfoScoreValue: {
+    fontSize: rf(12),
+    ...typography.semibold,
+    color: '#666',
+    backgroundColor: '#fff',
+    paddingHorizontal: rp(8),
+    paddingVertical: rp(4),
+    borderRadius: rp(6),
+  },
+  healthInfoModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: rp(20),
+  },
+  healthInfoModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: rp(20),
+    width: '95%',
+    maxWidth: 450,
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.3,
+    shadowRadius: 25,
+    elevation: 15,
+  },
+  healthInfoModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: rp(20),
+    paddingTop: rp(20),
+    paddingBottom: rp(16),
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+    backgroundColor: '#f8f9fa',
+    borderTopLeftRadius: rp(20),
+    borderTopRightRadius: rp(20),
+  },
+  healthInfoModalTitle: {
+    fontSize: rf(20),
+    color: '#333',
+    ...typography.semibold,
+    flex: 1,
+  },
+  healthInfoModalCloseButton: {
+    padding: rp(8),
+    borderRadius: rp(20),
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  healthInfoModalScroll: {
+    maxHeight: rp(450),
+  },
+  healthInfoModalContent: {
+    paddingHorizontal: rp(20),
+    paddingBottom: rp(20),
+    paddingTop: rp(16),
+  },
+  // New Health Metric Card Styles
+  healthMetricCard: {
+    backgroundColor: '#fff',
+    borderRadius: rp(18),
+    padding: rp(20),
+    marginBottom: rp(18),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  healthMetricHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: rp(16),
+  },
+  healthMetricIconContainer: {
+    width: rp(44),
+    height: rp(44),
+    borderRadius: rp(22),
+    backgroundColor: '#f8f9fa',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: rp(16),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  healthMetricTitle: {
+    fontSize: rf(17),
+    ...typography.semibold,
+    color: '#333',
+    flex: 1,
+  },
+  healthMetricScore: {
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: rp(16),
+    paddingVertical: rp(8),
+    borderRadius: rp(24),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  healthMetricScoreText: {
+    fontSize: rf(17),
+    ...typography.semibold,
+  },
+  healthMetricFormula: {
+    padding: rp(16),
+    borderRadius: rp(12),
+    borderLeftWidth: 4,
+    borderLeftColor: '#4285F4',
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+  },
+  // Total Score Section Styles
+  totalScoreSection: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: rp(16),
+    padding: rp(20),
+    alignItems: 'center',
+    marginTop: rp(8),
+  },
+  totalScoreTitle: {
+    fontSize: rf(18),
+    ...typography.semibold,
+    color: '#333',
+    marginBottom: rp(12),
+  },
+  totalScoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: rp(8),
+  },
+  totalScoreValue: {
+      fontSize: rf(32),
+      fontWeight: '700',
+    color: '#4285F4',
+  },
+  totalScoreUnit: {
+    fontSize: rf(18),
+    ...typography.regular,
+    color: '#666',
+    marginLeft: rp(4),
+  },
+  totalScoreDescription: {
+    ...typography.regular,
+    fontSize: rf(14),
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: rf(20),
+  },
+  colorLegendSection: {
+    marginTop: rp(20),
+    paddingHorizontal: rp(20),
+    paddingVertical: rp(16),
+    backgroundColor: '#f8f9fa',
+    borderRadius: rp(16),
+    borderWidth: 1,
+    borderColor: '#e1e5e9',
+  },
+  colorLegendTitle: {
+    fontSize: rf(16),
+      fontWeight: '600',
+    color: '#333',
+    marginBottom: rp(12),
+    textAlign: 'center',
+  },
+  colorLegendContainer: {
+    flexDirection: 'column',
+    gap: rp(8),
+  },
+  colorLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: rp(6),
+    paddingHorizontal: rp(8),
+    backgroundColor: '#fff',
+    borderRadius: rp(8),
+    marginBottom: rp(4),
+  },
+  colorLegendDot: {
+    width: rp(12),
+    height: rp(12),
+    borderRadius: rp(6),
+    marginRight: rp(12),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+    flexShrink: 0,
+  },
+  colorLegendText: {
+    fontSize: rf(14),
+    color: '#555',
+    ...typography.regular,
+    flex: 1,
+    flexShrink: 1,
+  },
+  fractionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  fractionContainer: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  fractionNumerator: {
+    fontSize: rf(14),
+    ...typography.semibold,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: rp(2),
+  },
+  fractionLine: {
+    width: rp(40),
+    height: 1,
+    backgroundColor: '#666',
+    marginVertical: rp(4),
+  },
+  fractionDenominator: {
+    fontSize: rf(14),
+    ...typography.semibold,
+    color: '#333',
+    textAlign: 'center',
+    marginTop: rp(2),
+  },
+  formulaResult: {
+    fontSize: rf(14),
+    color: '#666',
+    ...typography.regular,
+    marginLeft: rp(16),
+    flexShrink: 0,
+  },
 });
 
 export default FinanceScreen; 

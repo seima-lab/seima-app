@@ -165,6 +165,39 @@
         "needsImprovement": "Cần cải thiện - tập trung vào chi tiêu",
         "fair": "Khá - cần điều chỉnh nhỏ",
         "excellent": "Xuất sắc - hãy duy trì!"
+      },
+      "infoModal": {
+        "title": "Cách tính điểm sức khỏe tài chính",
+        "description": "Điểm sức khỏe tài chính được tính dựa trên 3 tiêu chí chính để đánh giá tổng quan tình hình tài chính của bạn:",
+        "savingsRate": {
+          "title": "Tỷ lệ tiết kiệm",
+          "description": "Đo lường khả năng tiết kiệm của bạn so với tổng thu nhập. Tỷ lệ càng cao càng tốt.",
+          "numerator": "Thu nhập - Chi tiêu",
+          "denominator": "Thu nhập"
+        },
+        "budgetCompliance": {
+          "title": "Tuân thủ budget",
+          "description": "Đo lường mức độ tuân thủ ngân sách đã đặt ra.",
+          "numerator": "Số budget chưa vượt quá",
+          "denominator": "Tổng số budget"
+        },
+        "assetGrowth": {
+          "title": "Tăng trưởng tài sản",
+          "description": "Theo dõi sự thay đổi tài sản theo thời gian để đánh giá xu hướng tài chính.",
+          "numerator": "Tài sản tháng này - Tài sản tháng trước",
+          "denominator": "|Tài sản tháng trước|"
+        },
+        "totalScore": {
+          "title": "Điểm tổng thể",
+          "description": "Điểm sức khỏe tài chính tổng hợp từ 3 tiêu chí trên, giúp đánh giá toàn diện tình hình tài chính của bạn."
+        },
+        "colorLegend": {
+          "title": "Chú thích màu sắc",
+          "excellent": "Xuất sắc",
+          "good": "Tốt",
+          "fair": "Khá",
+          "poor": "Tệ"
+        }
       }
     }
   },
