@@ -1,5 +1,6 @@
 import { typography } from '@/constants/typography';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Animated,
     Dimensions,
@@ -17,6 +18,7 @@ interface CustomErrorModalProps {
     message: string;
     onDismiss: () => void;
     type?: 'error' | 'warning' | 'info' | 'success';
+    buttonText?: string;
 }
 
 const CustomErrorModal: React.FC<CustomErrorModalProps> = ({
@@ -24,8 +26,10 @@ const CustomErrorModal: React.FC<CustomErrorModalProps> = ({
     title,
     message,
     onDismiss,
-    type = 'error'
+    type = 'error',
+    buttonText
 }) => {
+    const { t } = useTranslation();
     const scaleValue = new Animated.Value(0);
 
     React.useEffect(() => {
@@ -108,7 +112,9 @@ const CustomErrorModal: React.FC<CustomErrorModalProps> = ({
                         onPress={onDismiss}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.buttonText}>Đã hiểu</Text>
+                        <Text style={styles.buttonText}>
+                            {buttonText || t('common.understood')}
+                        </Text>
                     </TouchableOpacity>
                 </Animated.View>
             </View>

@@ -1,4 +1,5 @@
-{"categoryDeletedSuccess": "Danh mục đã được xóa thành công",
+{  
+  "categoryDeletedSuccess": "Danh mục đã được xóa thành công",
   "languageSettings": "Cài đặt ngôn ngữ",
   "selectLanguage": "Chọn ngôn ngữ bạn muốn sử dụng.",
   "testNotification": "Thử nghiệm thông báo",
@@ -231,7 +232,15 @@
       "enterDescription": "Vui lòng nhập mô tả",
       "enterBalancevalid": "Vui lòng nhập số dư hợp lệ",
       "enterBalanceNegative": "Số dư không được âm",
-      "enterBalanceMax": "Số dư không được vượt quá 15 chữ số"
+      "enterBalanceMax": "Số dư không được vượt quá 15 chữ số",
+      "loadWalletsFailed": "Không thể tải danh sách ví",
+      "loadWalletsRetry": "Vui lòng kiểm tra kết nối và thử lại",
+      "deleteWalletFailed": "Không thể xóa ví",
+      "deleteWalletRetry": "Vui lòng thử lại",
+      "budgetConflict": "Xung đột ngân sách",
+      "budgetConflictMessage": "Có ngân sách đang sử dụng ví này. Vui lòng cập nhật ngân sách trước khi xóa ví.",
+      "lastWalletError": "Không thể xóa ví cuối cùng",
+      "lastWalletMessage": "Bạn phải có ít nhất một ví."
     },
     "transactionHistory": "Lịch sử giao dịch",
     "summary": "Tổng kết",
@@ -571,9 +580,11 @@
   },
 
   "common": {
+
+    
     "undefined": "Không xác định",
     "pleaseWait": "Vui lòng chờ trong khi chúng tôi xử lý yêu cầu của bạn...",
-    "remove": "Đuổi",
+    "understood": "Đã hiểu",
     "loading": "Đang tải",
     "error": "Lỗi",
     "success": "Thành công",

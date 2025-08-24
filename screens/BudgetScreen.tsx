@@ -527,10 +527,11 @@ const BudgetScreen = () => {
       {/* Error Modal */}
       <CustomErrorModal
         visible={isErrorModalVisible}
-        title="Lỗi"
+        title={t('common.error')}
         message={errorMessage}
         onDismiss={() => setIsErrorModalVisible(false)}
         type="error"
+        buttonText={t('common.understood')}
       />
     </View>
   );

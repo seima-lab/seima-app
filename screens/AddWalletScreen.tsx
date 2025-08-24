@@ -530,6 +530,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
         message={errorMessage}
         onDismiss={() => setShowErrorModal(false)}
         type="error"
+        buttonText={t('common.understood')}
       />
       <CustomSuccessModal
         visible={showSuccessModal}

@@ -1,4 +1,10 @@
 {
+  "common": {
+    "error": "Error",
+    "success": "Success",
+    "ok": "OK",
+    "understood": "Got it"
+  },
   "categoryDeletedSuccess": "Category deleted successfully",
   "languageSettings": "Language Settings",
   "selectLanguage": "Select your preferred language.",
@@ -464,6 +470,7 @@
   },
 
   "common": {
+    "understood": "Understood",
     "undefined": "Undefined",
     "pleaseWait": "Please wait while we process your request...",
     "remove": "Remove",
@@ -1142,7 +1149,15 @@
       "enterDescription": "Please enter description",
       "enterBalancevalid": "Please enter valid balance",
       "enterBalanceNegative": "Balance cannot be negative",
-      "enterBalanceMax": "Balance cannot exceed 15 digits"
+      "enterBalanceMax": "Balance cannot exceed 15 digits",
+      "loadWalletsFailed": "Failed to load wallets",
+      "loadWalletsRetry": "Please check your connection and try again",
+      "deleteWalletFailed": "Failed to delete wallet",
+      "deleteWalletRetry": "Please try again",
+      "budgetConflict": "Budget Conflict",
+      "budgetConflictMessage": "There are budgets currently using this wallet. Please update the budgets before deleting this wallet.",
+      "lastWalletError": "Cannot delete the last wallet",
+      "lastWalletMessage": "You must have at least one wallet."
     },
     "placeholders": {
       "enterBalance": "Enter balance",

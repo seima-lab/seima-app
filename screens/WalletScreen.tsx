@@ -22,6 +22,7 @@ import Icon2 from 'react-native-vector-icons/FontAwesome5';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CustomConfirmModal from '../components/CustomConfirmModal';
 import CustomSuccessModal from '../components/CustomSuccessModal';
+import CustomErrorModal from '../components/CustomErrorModal';
 import { typography } from '../constants/typography';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigationService } from '../navigation/NavigationService';
@@ -85,6 +86,15 @@ const WalletScreen = ({ footerHeight = 0 }) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Error modal state
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalData, setErrorModalData] = useState<{
+    title: string;
+    message: string;
+    type: 'error' | 'warning' | 'info';
+    onRetry?: () => void;
+  } | null>(null);
+
   // Wallet data state
   const [wallets, setWallets] = useState<WalletResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,14 +131,14 @@ const WalletScreen = ({ footerHeight = 0 }) => {
       console.error('❌ Failed to load wallets:', err);
       setError(err.message || 'Failed to load wallets');
       
-      Alert.alert(
-        t('common.error'),
-        'Failed to load wallets. Please check your connection and try again.',
-        [
-          { text: 'Retry', onPress: () => loadWallets() },
-          { text: 'Cancel' }
-        ]
-      );
+      // Show error modal instead of Alert
+      setErrorModalData({
+        title: t('wallet.error.loadWalletsFailed'),
+        message: t('wallet.error.loadWalletsRetry'),
+        type: 'error',
+        onRetry: () => loadWallets()
+      });
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -247,11 +257,12 @@ const WalletScreen = ({ footerHeight = 0 }) => {
     const activeWallets = wallets.filter(w => !w.is_delete && w.is_active !== false);
     
     if (activeWallets.length <= 1) {
-      Alert.alert(
-        t('common.error'),
-        'Cannot delete the last wallet. You must have at least one wallet.',
-        [{ text: 'OK' }]
-      );
+      setErrorModalData({
+        title: t('wallet.error.lastWalletError'),
+        message: t('wallet.error.lastWalletMessage'),
+        type: 'warning'
+      });
+      setShowErrorModal(true);
       return;
     }
 
@@ -294,23 +305,37 @@ const WalletScreen = ({ footerHeight = 0 }) => {
       
       setLoading(false);
       
-      Alert.alert(
-        t('common.error'),
-        error.message || 'Failed to delete wallet. Please try again.',
-        [
-          { text: 'Retry', onPress: () => {
+      // Check if it's a budget conflict error
+      if (error.message && error.message.includes('budgets currently using wallet')) {
+        setErrorModalData({
+          title: t('wallet.error.budgetConflict'),
+          message: t('wallet.error.budgetConflictMessage'),
+          type: 'warning'
+        });
+      } else {
+        // Generic delete error
+        setErrorModalData({
+          title: t('wallet.error.deleteWalletFailed'),
+          message: error.message || t('wallet.error.deleteWalletRetry'),
+          type: 'error',
+          onRetry: () => {
             setDeleteWalletInfo({ id: deleteWalletInfo.id, name: deleteWalletInfo.name });
             setDeleteAlertVisible(true);
-          }},
-          { text: 'Cancel' }
-        ]
-      );
+          }
+        });
+      }
+      setShowErrorModal(true);
     }
   };
 
   const cancelDelete = () => {
     setDeleteAlertVisible(false);
     setDeleteWalletInfo(null);
+  };
+
+  const handleErrorModalDismiss = () => {
+    setShowErrorModal(false);
+    setErrorModalData(null);
   };
 
   const handleAddWallet = () => {
@@ -695,6 +720,18 @@ const WalletScreen = ({ footerHeight = 0 }) => {
         buttonText={t('common.ok')}
         onConfirm={() => setShowSuccessModal(false)}
       />
+      
+      {/* Error Modal */}
+      {errorModalData && (
+        <CustomErrorModal
+          visible={showErrorModal}
+          title={errorModalData.title}
+          message={errorModalData.message}
+          type={errorModalData.type}
+          onDismiss={handleErrorModalDismiss}
+          buttonText={t('common.understood')}
+        />
+      )}
     </View>
   );
 };

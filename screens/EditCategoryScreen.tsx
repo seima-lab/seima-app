@@ -481,6 +481,7 @@ export default function EditCategoryScreen() {
         message={errorModal.message}
         type={errorModal.type}
         onDismiss={hideErrorModal}
+        buttonText={t('common.understood')}
       />
     </SafeAreaView>
   );
