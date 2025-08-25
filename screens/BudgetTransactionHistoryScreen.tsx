@@ -132,7 +132,7 @@ const BudgetTransactionHistoryScreen = ({ route }: BudgetTransactionHistoryScree
     }
   }, []);
 
-  // Load transactions for specific budget with date filtering
+  // Load transactions for specific budget
   const loadTransactions = useCallback(async (showRefreshing = false) => {
     try {
       if (showRefreshing) {
@@ -144,34 +144,20 @@ const BudgetTransactionHistoryScreen = ({ route }: BudgetTransactionHistoryScree
 
       console.log('🔄 Loading budget transactions for budget:', budgetId);
       console.log('🔄 Pagination:', { page, size });
-      console.log('🔄 Date filter:', { startDate, endDate });
+      console.log('🔄 Date range:', { startDate, endDate });
+      console.log('🔄 Formatted dates:', { formattedStartDate: startDate ? new Date(startDate).toISOString().split('T')[0] : undefined, formattedEndDate: endDate ? new Date(endDate).toISOString().split('T')[0] : undefined });
       
-      const response = await transactionService.getBudgetTransactionHistory(budgetId, page, size);
+      // Format dates to YYYY-MM-DD format (remove time)
+      const formattedStartDate = startDate ? new Date(startDate).toISOString().split('T')[0] : undefined;
+      const formattedEndDate = endDate ? new Date(endDate).toISOString().split('T')[0] : undefined;
+      
+      // API will handle date filtering based on startDate and endDate parameters
+      const response = await transactionService.getBudgetTransactionHistory(budgetId, page, size, formattedStartDate, formattedEndDate);
       
       console.log('✅ Budget transactions loaded:', response?.length || 0);
       
-      // Filter transactions by date range if startDate and endDate are provided
-      let filteredTransactions = response || [];
-      if (startDate && endDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        
-        filteredTransactions = (response || []).filter((transaction: any) => {
-          const transactionDate = new Date(transaction.transaction_date);
-          return transactionDate >= start && transactionDate <= end;
-        });
-        
-        console.log('🔍 Filtered transactions by date range:', {
-          totalTransactions: response?.length || 0,
-          filteredTransactions: filteredTransactions.length,
-          dateRange: { startDate, endDate }
-        });
-      }
-      
       // Sort transactions by date (newest first)
-      const sortedTransactions = filteredTransactions.sort((a: any, b: any) => {
+      const sortedTransactions = (response || []).sort((a: any, b: any) => {
         const dateA = new Date(a.transaction_date);
         const dateB = new Date(b.transaction_date);
         return dateB.getTime() - dateA.getTime(); // Descending order (newest first)

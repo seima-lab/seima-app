@@ -535,11 +535,22 @@ export class TransactionService {
   async getBudgetTransactionHistory(
     budgetId: number,
     page: number = 0,
-    size: number = 10000
+    size: number = 10000,
+    startDate?: string,
+    endDate?: string
   ): Promise<TransactionResponse[]> {
     try {
+      // Build query parameters
+      let queryParams = `?page=${page}&size=${size}`;
+      if (startDate) {
+        queryParams += `&startDate=${startDate}`;
+      }
+      if (endDate) {
+        queryParams += `&endDate=${endDate}`;
+      }
+      
       // Use the endpoint from config
-      const url = `${TRANSACTION_ENDPOINTS.TRANSACTION_BUDGET_HISTORY(budgetId.toString())}?page=${page}&size=${size}`;
+      const url = `${TRANSACTION_ENDPOINTS.TRANSACTION_BUDGET_HISTORY(budgetId.toString())}${queryParams}`;
       console.log('🔍 Generated URL:', url);
       
       const response = await apiService.get(url);
