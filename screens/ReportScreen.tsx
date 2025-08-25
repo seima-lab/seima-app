@@ -44,6 +44,7 @@ interface PieChartProps {
 
 const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, categoryType }) => {
   const { t } = useTranslation();
+  const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
   
   if (!data || data.length === 0) {
     return (
@@ -72,7 +73,7 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
   // SVG Donut Chart Implementation
   const renderSvgChart = () => {
     const radius = size * 0.4;
-    const strokeWidth = size * 0.18;
+    const baseStrokeWidth = size * 0.18;
     const circumference = 2 * Math.PI * radius;
 
     let cumulativePercentage = 0;
@@ -91,7 +92,8 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
             cy={size / 2}
             r={radius}
             stroke="#f0f0f0"
-            strokeWidth={strokeWidth}
+            strokeWidth={baseStrokeWidth}
+            strokeLinecap="butt"
             fill="transparent"
           />
           {/* Data Segments */}
@@ -110,11 +112,13 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
                 cy={size / 2}
                 r={radius}
                 stroke={item.color}
-                strokeWidth={strokeWidth}
+                strokeWidth={baseStrokeWidth}
                 strokeDasharray={`${segmentLength} ${circumference}`}
                 strokeLinecap="butt"
+                strokeOpacity={highlightIndex === null ? 1 : (highlightIndex === index ? 1 : 0.25)}
                 fill="transparent"
                 transform={`rotate(${rotationAngle - 90}, ${size / 2}, ${size / 2})`}
+                onPress={() => setHighlightIndex(highlightIndex === index ? null : index)}
               />
             );
           })}
@@ -132,7 +136,7 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
   };
 
   return (
-    <View style={[styles.chartContainer, { width: size * 1.8, height: size * 1.2, flexDirection: 'row', alignItems: 'center' }]}>
+    <View style={[styles.chartContainer, { width: '100%', height: size * 1.2, flexDirection: 'row', alignItems: 'center' }]}>
       {renderSvgChart()}
       {/* Legend on the right with scroll capability */}
       <ScrollView 
@@ -142,17 +146,23 @@ const SimplePieChart: React.FC<PieChartProps> = ({ data, size = CHART_SIZE, cate
         nestedScrollEnabled={true}
       >
         {chartData.map((item, index) => (
-          <View key={index} style={styles.legendItem}>
+          <TouchableOpacity
+            key={index}
+            activeOpacity={0.8}
+            onPress={() => setHighlightIndex(highlightIndex === index ? null : index)}
+          >
+          <View style={[styles.legendItem, highlightIndex === index && styles.legendItemSelected]}>
             <View style={[styles.legendDot, { backgroundColor: item.color }]} />
             <View style={styles.legendContent}>
-              <Text style={styles.legendLabel} numberOfLines={1}>
+              <Text style={[styles.legendLabel, highlightIndex === index && styles.legendLabelSelected]} numberOfLines={2}>
                 {item.categoryName}
               </Text>
-              <Text style={styles.legendPercentage}>
+              <Text style={[styles.legendPercentage, highlightIndex === index && styles.legendPercentageSelected]}>
                 {item.percentage.toFixed(1)}%
               </Text>
             </View>
           </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
@@ -1290,6 +1300,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingVertical: 2,
   },
+  legendItemSelected: {
+    backgroundColor: '#eef6ff',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
   legendDot: {
     width: 12,
     height: 12,
@@ -1303,9 +1319,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
   },
+  legendLabelSelected: {
+    color: '#0A84FF',
+  },
   legendPercentage: {
     fontSize: 12,
     color: '#666',
+  },
+  legendPercentageSelected: {
+    color: '#0A84FF',
+    fontWeight: '600',
   },
   chartCenterIcon: {
     position: 'absolute',

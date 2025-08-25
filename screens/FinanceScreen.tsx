@@ -2,17 +2,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    Modal,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon2 from 'react-native-vector-icons/FontAwesome5';
@@ -713,9 +713,7 @@ const FinanceScreen = React.memo(() => {
                   {t('finance.health.infoModal.savingsRate.title')}
                 </Text>
                 <View style={styles.healthMetricScore}>
-                  <Text style={[styles.healthMetricScoreText, { color: '#4285F4' }]}>
-                    {Math.round((chartData.income > 0 ? ((chartData.income - Math.abs(chartData.expenses)) / chartData.income) * 100 : 0))}₫
-                  </Text>
+                  <Text style={[styles.healthMetricScoreText, { color: '#4285F4' }]}>40đ</Text>
                 </View>
               </View>
               <View style={styles.healthMetricFormula}>
@@ -744,9 +742,7 @@ const FinanceScreen = React.memo(() => {
                   {t('finance.health.infoModal.budgetCompliance.title')}
                 </Text>
                 <View style={styles.healthMetricScore}>
-                  <Text style={[styles.healthMetricScoreText, { color: '#FF9800' }]}>
-                    30₫
-                  </Text>
+                  <Text style={[styles.healthMetricScoreText, { color: '#FF9800' }]}>40đ</Text>
                 </View>
               </View>
               <View style={styles.healthMetricFormula}>
@@ -775,9 +771,7 @@ const FinanceScreen = React.memo(() => {
                   {t('finance.health.infoModal.assetGrowth.title')}
                 </Text>
                 <View style={styles.healthMetricScore}>
-                  <Text style={[styles.healthMetricScoreText, { color: '#4CAF50' }]}>
-                    30₫
-                  </Text>
+                  <Text style={[styles.healthMetricScoreText, { color: '#4CAF50' }]}>30đ</Text>
                 </View>
               </View>
               <View style={styles.healthMetricFormula}>

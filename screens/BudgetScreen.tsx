@@ -395,7 +395,7 @@ const BudgetScreen = () => {
               styles.progressFill, 
               { 
                 width: `${Math.min(percentage, 100)}%`,
-                backgroundColor: (budget.budget_remaining_amount ?? 0) <= 0 ? '#F44336' : '#2196F3'
+                backgroundColor: percentage >= 90 ? '#F44336' : '#2196F3'
               }
             ]} />
           </View>

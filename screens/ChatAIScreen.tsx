@@ -1049,6 +1049,24 @@ const ChatAIScreen = () => {
                 console.log('🤖 Calling aiService.sendMessage...');
                 const aiResponse = await aiService.sendMessage(userId, textToSend);
                 
+                // Handle Cloudflare 524 timeout gracefully
+                if (
+                    (aiResponse && (aiResponse as any).status_code === 524) ||
+                    (typeof aiResponse?.message === 'string' && /\b524\b/.test(aiResponse.message)) ||
+                    (typeof aiResponse === 'string' && /\b524\b/.test(aiResponse))
+                ) {
+                    const aiMessage524: Message = {
+                        id: (Date.now() + 1).toString(),
+                        text: 'Hệ thống đang xử lý giao dịch của bạn. Đừng lo, chúng tôi sẽ thông báo kết quả sớm nhất có thể.',
+                        isUser: false,
+                        timestamp: new Date(),
+                    };
+                    console.log('⚠️ Detected 524 response, showing friendly processing message');
+                    setMessages(prev => [...prev, aiMessage524]);
+                    setShouldScrollToBottom(true);
+                    return;
+                }
+                
                 // Support both 'suggested_wallets' and 'suggest_wallet' (for API compatibility)
                 const suggestedWallets = aiResponse.suggested_wallets || (aiResponse as any).suggest_wallet || undefined;
                 
