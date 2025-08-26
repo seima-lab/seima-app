@@ -392,6 +392,13 @@ const BudgetDetailScreen = () => {
     }
   };
 
+  // Helper to safely get start/end date from period supporting snake_case and camelCase
+  const getPeriodDates = (period: any) => {
+    const start = (period as any).start_date ?? (period as any).startDate ?? '';
+    const end = (period as any).end_date ?? (period as any).endDate ?? '';
+    return { start, end };
+  };
+
   // Budget Period Item Component
   const BudgetPeriodItem = ({ period, index }: { period: BudgetPeriodResponse; index: number }) => {
     // Add safety checks for undefined values
@@ -418,7 +425,7 @@ const BudgetDetailScreen = () => {
       <View style={[styles.periodItem, isSpecialPeriod && styles.specialPeriodItem]}>
         <View style={styles.periodHeader}>
           <Text style={styles.periodDateRange}>
-            {formatDateRange(period.start_date, period.end_date)}
+            {(() => { const { start, end } = getPeriodDates(period); return formatDateRange(start, end); })()}
           </Text>
           {isSpecialPeriod && (
             <View style={styles.specialPeriodBadge}>
@@ -596,17 +603,18 @@ const BudgetDetailScreen = () => {
                     onPress={() => {
                       console.log('🎯 Budget period pressed:', period);
                       console.log('🎯 Period date range:', {
-                        startDate: period.start_date,
-                        endDate: period.end_date
+                        startDate: (period as any).start_date ?? (period as any).startDate,
+                        endDate: (period as any).end_date ?? (period as any).endDate
                       });
                       
+                      const { start, end } = getPeriodDates(period);
                       (navigation as any).navigate('BudgetTransactionHistoryScreen', {
                         budgetId: budgetId,
                         budgetName: budget.budget_name,
                         page: 0,
                         size: 10000,
-                        startDate: period.start_date,
-                        endDate: period.end_date
+                        startDate: start,
+                        endDate: end
                       });
                     }}
                     style={styles.periodItemTouchable}

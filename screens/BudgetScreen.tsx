@@ -300,9 +300,16 @@ const BudgetScreen = () => {
     }
   };
 
-  // Helper function to display amount without formatting
+  // Helper function to display amount with dot thousand separators (vi-VN)
   const displayAmount = (amount: number): string => {
-    return amount.toString();
+    try {
+      if (Number.isNaN(amount) || amount === null || amount === undefined) {
+        return '0';
+      }
+      return Math.round(amount).toLocaleString('vi-VN');
+    } catch {
+      return String(amount ?? 0);
+    }
   };
 
   // Helper function to check if budget is expired by Vietnam time (UTC+7)

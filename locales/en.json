@@ -183,7 +183,7 @@
           "denominator": "|Last month's assets|"
         },
         "totalScore": {
-          "title": "Overall Score",
+          "title": "Your current overall score",
           "description": "Comprehensive financial health score combining the above 3 criteria to assess your overall financial situation."
         },
         "colorLegend": {

@@ -145,11 +145,25 @@ const BudgetTransactionHistoryScreen = ({ route }: BudgetTransactionHistoryScree
       console.log('🔄 Loading budget transactions for budget:', budgetId);
       console.log('🔄 Pagination:', { page, size });
       console.log('🔄 Date range:', { startDate, endDate });
-      console.log('🔄 Formatted dates:', { formattedStartDate: startDate ? new Date(startDate).toISOString().split('T')[0] : undefined, formattedEndDate: endDate ? new Date(endDate).toISOString().split('T')[0] : undefined });
       
-      // Format dates to YYYY-MM-DD format (remove time)
-      const formattedStartDate = startDate ? new Date(startDate).toISOString().split('T')[0] : undefined;
-      const formattedEndDate = endDate ? new Date(endDate).toISOString().split('T')[0] : undefined;
+      // Helper: format date to YYYY-MM-DD without UTC conversion
+      const formatToYYYYMMDD = (input?: string) => {
+        if (!input) return undefined;
+        // If already looks like YYYY-MM-DD or ISO, take the date part directly
+        if (input.includes('T')) return input.split('T')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+        // Fallback: parse and format using local time to avoid UTC shift
+        const d = new Date(input);
+        if (isNaN(d.getTime())) return undefined;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+      
+      const formattedStartDate = formatToYYYYMMDD(startDate);
+      const formattedEndDate = formatToYYYYMMDD(endDate);
+      console.log('🔄 Formatted dates (no UTC shift):', { formattedStartDate, formattedEndDate });
       
       // API will handle date filtering based on startDate and endDate parameters
       const response = await transactionService.getBudgetTransactionHistory(budgetId, page, size, formattedStartDate, formattedEndDate);

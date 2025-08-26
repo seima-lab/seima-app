@@ -188,7 +188,7 @@
           "denominator": "|Tài sản tháng trước|"
         },
         "totalScore": {
-          "title": "Điểm tổng thể",
+          "title": "Điểm tổng thể của bạn hiện tại",
           "description": "Điểm sức khỏe tài chính tổng hợp từ 3 tiêu chí trên, giúp đánh giá toàn diện tình hình tài chính của bạn."
         },
         "colorLegend": {
