@@ -55,6 +55,7 @@ interface Message {
     suggestedWallets?: SuggestedWallet[];
     suggestedBudgets?: SuggestedBudget[];
     suggestDisabled?: boolean; // New prop for disabling suggestions
+    yesOrNo?: boolean; // New prop for yes/no questions
 }
 
 // Typing indicator component with 3 bouncing dots
@@ -104,12 +105,52 @@ const TypingIndicator = () => {
     );
 };
 
+// Yes/No Buttons component
+const YesNoButtons = ({ onYesSelect, onNoSelect, disabled = false }: { 
+    onYesSelect: () => void,
+    onNoSelect: () => void,
+    disabled?: boolean
+}) => {
+    return (
+        <View style={styles.yesNoContainer}>
+            <Text style={styles.yesNoTitle}>❓ Bạn có muốn tiếp tục?</Text>
+            <View style={styles.yesNoButtonsRow}>
+                <TouchableOpacity
+                    style={[styles.yesButton, disabled && { opacity: 0.5 }]}
+                    onPress={() => !disabled && onYesSelect()}
+                    disabled={disabled}
+                    activeOpacity={0.8}
+                >
+                    <View style={styles.yesNoButtonContent}>
+                        <Icon name="check-circle" size={16} color="#28a745" />
+                        <Text style={styles.yesNoButtonText}>Có</Text>
+                    </View>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                    style={[styles.noButton, disabled && { opacity: 0.5 }]}
+                    onPress={() => !disabled && onNoSelect()}
+                    disabled={disabled}
+                    activeOpacity={0.8}
+                >
+                    <View style={styles.yesNoButtonContent}>
+                        <Icon name="cancel" size={16} color="#dc3545" />
+                        <Text style={styles.yesNoButtonText}>Không</Text>
+                    </View>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+};
+
 // Message Item Component with Copy Option
 const MessageItem = ({ 
     message, 
     onCopy, 
     onWalletSelect, 
     onBudgetSelect,
+    onYesSelect,
+    onNoSelect,
     onMenuOpen,
     onMenuClose,
     isMenuOpen
@@ -118,6 +159,8 @@ const MessageItem = ({
     onCopy: (text: string) => void; 
     onWalletSelect: (wallet: SuggestedWallet) => void;
     onBudgetSelect: (budget: SuggestedBudget) => void;
+    onYesSelect: () => void;
+    onNoSelect: () => void;
     onMenuOpen: (messageId: string) => void;
     onMenuClose: () => void;
     isMenuOpen: boolean;
@@ -176,6 +219,15 @@ const MessageItem = ({
                     <SuggestedBudgets 
                         budgets={message.suggestedBudgets} 
                         onBudgetSelect={onBudgetSelect}
+                        disabled={!!message.suggestDisabled}
+                    />
+                )}
+                
+                {/* Yes/No Buttons - Only show if yes_or_no is true */}
+                {message.yesOrNo && (
+                    <YesNoButtons 
+                        onYesSelect={onYesSelect}
+                        onNoSelect={onNoSelect}
                         disabled={!!message.suggestDisabled}
                     />
                 )}
@@ -668,6 +720,7 @@ const ChatAIScreen = () => {
     // Persist suggested items state across navigation
     const [currentSuggestedWallets, setCurrentSuggestedWallets] = useState<SuggestedWallet[]>([]);
     const [currentSuggestedBudgets, setCurrentSuggestedBudgets] = useState<SuggestedBudget[]>([]);
+    const [currentYesOrNo, setCurrentYesOrNo] = useState<boolean>(false);
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(0);
@@ -919,6 +972,7 @@ const ChatAIScreen = () => {
                         remainingBlockTime,
                         currentSuggestedWallets,
                         currentSuggestedBudgets,
+                        yesOrNo: currentYesOrNo,
                         timestamp: Date.now()
                     };
                     
@@ -958,10 +1012,11 @@ const ChatAIScreen = () => {
                                         setIsInputBlocked(false);
                                         setBlockTimer(null);
                                         setCurrentSuggestedBudgets([]); // Clear suggested budgets when timer expires
+                                        setCurrentYesOrNo(false); // Clear yes/no state when timer expires
                                         // Disable suggestions in the last AI message
                                         setMessages(prev => {
                                             // Tìm message cuối cùng có suggest
-                                            const lastIdx = [...prev].reverse().findIndex(m => (m.suggestedWallets && m.suggestedWallets.length > 0) || (m.suggestedBudgets && m.suggestedBudgets.length > 0));
+                                            const lastIdx = [...prev].reverse().findIndex(m => (m.suggestedWallets && m.suggestedWallets.length > 0) || (m.suggestedBudgets && m.suggestedBudgets.length > 0) || m.yesOrNo);
                                             if (lastIdx !== -1) {
                                                 const realIdx = prev.length - 1 - lastIdx;
                                                 const updated = [...prev];
@@ -980,19 +1035,33 @@ const ChatAIScreen = () => {
                         }
                         
                         // If suggestions were active when blocked, add them as a new AI message
-                        if (state.currentSuggestedWallets?.length > 0 || state.currentSuggestedBudgets?.length > 0) {
+                        if (state.currentSuggestedWallets?.length > 0 || state.currentSuggestedBudgets?.length > 0 || state.yesOrNo) {
                             const restoredAIMessage: Message = {
                                 id: `restored_suggestions_${Date.now()}`, // Unique ID
-                                text: state.currentSuggestedWallets?.length > 0 ? 'Vui lòng chọn một ví từ danh sách gợi ý bên dưới:' : 'Vui lòng chọn một ngân sách từ danh sách gợi ý bên dưới:',
+                                text: state.currentSuggestedWallets?.length > 0 ? 'Vui lòng chọn một ví từ danh sách gợi ý bên dưới:' : 
+                                      state.currentSuggestedBudgets?.length > 0 ? 'Vui lòng chọn một ngân sách từ danh sách gợi ý bên dưới:' :
+                                      'Vui lòng trả lời câu hỏi bên dưới:',
                                 isUser: false,
                                 timestamp: new Date(), // Use current time for restored message
                                 suggestedWallets: state.currentSuggestedWallets,
                                 suggestedBudgets: state.currentSuggestedBudgets,
+                                yesOrNo: state.yesOrNo,
                             };
                             // Append this message to the existing messages
                             setMessages(prev => [...prev, restoredAIMessage]);
                             setShouldScrollToBottom(true);
                             console.log('🤖 Added restored AI message with suggestions.');
+                            
+                            // Restore current state
+                            if (state.currentSuggestedWallets) {
+                                setCurrentSuggestedWallets(state.currentSuggestedWallets);
+                            }
+                            if (state.currentSuggestedBudgets) {
+                                setCurrentSuggestedBudgets(state.currentSuggestedBudgets);
+                            }
+                            if (state.yesOrNo) {
+                                setCurrentYesOrNo(state.yesOrNo);
+                            }
                         }
                     } else {
                         // Clear old persisted state
@@ -1073,6 +1142,9 @@ const ChatAIScreen = () => {
                 // Support suggested budgets - handle alternative field names for API compatibility
                 const suggestedBudgets = aiResponse.suggested_budgets || (aiResponse as any).suggest_budget || (aiResponse as any).list_suggested_budgets || undefined;
                 
+                // Support yes_or_no field from API
+                const yesOrNo = aiResponse.yes_or_no || (aiResponse as any).yesOrNo || false;
+                
                 console.log('✅ AI response received:', aiResponse);
                 console.log('📝 AI response structure:', {
                     hasMessage: !!aiResponse.message,
@@ -1083,13 +1155,14 @@ const ChatAIScreen = () => {
                     hasSuggestedBudgets: !!aiResponse.suggested_budgets || !!(aiResponse as any).suggest_budget || !!(aiResponse as any).list_suggested_budgets,
                     suggestedBudgetsCount: aiResponse.suggested_budgets?.length || (aiResponse as any).suggest_budget?.length || (aiResponse as any).list_suggested_budgets?.length,
                     suggestedBudgets,
+                    hasYesOrNo: yesOrNo,
                 });
                 
-                        // Check if suggested wallets are present and block input for 1 minute 30 seconds
-        if (suggestedWallets && suggestedWallets.length > 0) {
-            console.log('🔒 Blocking input due to suggested wallets');
-            setIsInputBlocked(true);
-            setRemainingBlockTime(90); // 90 seconds (1 minute 30 seconds)
+                // Check if suggested wallets are present and block input for 1 minute 30 seconds
+                if (suggestedWallets && suggestedWallets.length > 0) {
+                    console.log('🔒 Blocking input due to suggested wallets');
+                    setIsInputBlocked(true);
+                    setRemainingBlockTime(90); // 90 seconds (1 minute 30 seconds)
                     setCurrentSuggestedWallets(suggestedWallets);
                     
                     // Start countdown timer
@@ -1101,10 +1174,11 @@ const ChatAIScreen = () => {
                                 setBlockTimer(null);
                                 setCurrentSuggestedWallets([]); // Clear suggested wallets when timer expires
                                 setCurrentSuggestedBudgets([]); // Clear suggested budgets when timer expires
+                                setCurrentYesOrNo(false); // Clear yes/no state when timer expires
                                 // Disable suggestions in the last AI message
                                 setMessages(prev => {
                                     // Tìm message cuối cùng có suggest
-                                    const lastIdx = [...prev].reverse().findIndex(m => (m.suggestedWallets && m.suggestedWallets.length > 0) || (m.suggestedBudgets && m.suggestedBudgets.length > 0));
+                                    const lastIdx = [...prev].reverse().findIndex(m => (m.suggestedWallets && m.suggestedWallets.length > 0) || (m.suggestedBudgets && m.suggestedBudgets.length > 0) || m.yesOrNo);
                                     if (lastIdx !== -1) {
                                         const realIdx = prev.length - 1 - lastIdx;
                                         const updated = [...prev];
@@ -1128,6 +1202,11 @@ const ChatAIScreen = () => {
                     setCurrentSuggestedBudgets(suggestedBudgets);
                 }
                 
+                // Update current yes/no state
+                if (yesOrNo) {
+                    setCurrentYesOrNo(yesOrNo);
+                }
+                
                 const aiMessage: Message = {
                     id: (Date.now() + 1).toString(),
                     text: aiResponse.message,
@@ -1135,6 +1214,7 @@ const ChatAIScreen = () => {
                     timestamp: new Date(),
                     suggestedWallets,
                     suggestedBudgets,
+                    yesOrNo,
                 };
                 
                 console.log('🤖 AI message created:', JSON.stringify(aiMessage, null, 2));
@@ -1193,6 +1273,7 @@ const ChatAIScreen = () => {
             setRemainingBlockTime(0);
             setCurrentSuggestedWallets([]); // Clear suggested wallets when one is selected
             setCurrentSuggestedBudgets([]); // Clear suggested budgets when wallet is selected
+            setCurrentYesOrNo(false); // Clear yes/no state when wallet is selected
             if (blockTimer) {
                 clearInterval(blockTimer);
                 setBlockTimer(null);
@@ -1222,8 +1303,53 @@ const ChatAIScreen = () => {
         // Clear current suggested budgets when one is selected
         setCurrentSuggestedBudgets([]);
         setCurrentSuggestedWallets([]); // Clear suggested wallets when budget is selected
+        setCurrentYesOrNo(false); // Clear yes/no state when budget is selected
         
         handleSendMessage(budgetMessage);
+    };
+
+    const handleYesSelect = () => {
+        // Đóng menu copy khi chọn yes
+        setOpenMenuId(null);
+        
+        // Unblock input when yes is selected
+        if (isInputBlocked) {
+            console.log('🔓 Unblocking input due to yes selection');
+            setIsInputBlocked(false);
+            setRemainingBlockTime(0);
+            setCurrentSuggestedWallets([]); // Clear suggested wallets when yes is selected
+            setCurrentSuggestedBudgets([]); // Clear suggested budgets when yes is selected
+            setCurrentYesOrNo(false); // Clear yes/no state when yes is selected
+            if (blockTimer) {
+                clearInterval(blockTimer);
+                setBlockTimer(null);
+            }
+        }
+        
+        const yesMessage = "Có";
+        handleSendMessage(yesMessage);
+    };
+
+    const handleNoSelect = () => {
+        // Đóng menu copy khi chọn no
+        setOpenMenuId(null);
+        
+        // Unblock input when no is selected
+        if (isInputBlocked) {
+            console.log('🔓 Unblocking input due to no selection');
+            setIsInputBlocked(false);
+            setRemainingBlockTime(0);
+            setCurrentSuggestedWallets([]); // Clear suggested wallets when no is selected
+            setCurrentSuggestedBudgets([]); // Clear suggested budgets when no is selected
+            setCurrentYesOrNo(false); // Clear yes/no state when no is selected
+            if (blockTimer) {
+                clearInterval(blockTimer);
+                setBlockTimer(null);
+            }
+        }
+        
+        const noMessage = "Không";
+        handleSendMessage(noMessage);
     };
 
     // Hàm bắt đầu ghi âm với cấu hình audio tối ưu
@@ -1504,7 +1630,11 @@ const ChatAIScreen = () => {
         }
     };
 
-    // Load more messages when scrolling up to the top
+    const handleVoiceResult = (text: string) => {
+        handleSendMessage(text);
+        setShowVoiceModal(false);
+    };
+
     const loadMoreMessages = async () => {
         console.log('🚀 === LOAD MORE MESSAGES DEBUG START ===');
         console.log('🚀 Function called with params:', {
@@ -1636,11 +1766,6 @@ const ChatAIScreen = () => {
         console.log('🚀 === LOAD MORE MESSAGES DEBUG END ===');
     };
 
-    const handleVoiceResult = (text: string) => {
-        handleSendMessage(text);
-        setShowVoiceModal(false);
-    };
-
     const renderMessage = (message: Message) => {
         const handleCopy = (text: string) => {
             Clipboard.setString(text);
@@ -1654,6 +1779,8 @@ const ChatAIScreen = () => {
                 onCopy={handleCopy}
                 onWalletSelect={handleWalletSelect}
                 onBudgetSelect={handleBudgetSelect}
+                onYesSelect={handleYesSelect}
+                onNoSelect={handleNoSelect}
                 onMenuOpen={(messageId) => {
                     // Đóng menu cũ nếu có
                     if (openMenuId !== messageId) {
@@ -2690,6 +2817,61 @@ const styles = StyleSheet.create({
         color: '#333',
         ...typography.semibold,
         marginLeft: 8,
+    },
+    yesNoContainer: {
+        marginTop: 8,
+        marginBottom: 8,
+    },
+    yesNoTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#4a5568',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    yesNoButtonsRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 16,
+    },
+    yesButton: {
+        backgroundColor: '#28a745',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#28a745',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        minWidth: 100,
+        elevation: 2,
+        shadowColor: '#28a745',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+    },
+    noButton: {
+        backgroundColor: '#dc3545',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#dc3545',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        minWidth: 100,
+        elevation: 2,
+        shadowColor: '#dc3545',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+    },
+    yesNoButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+    },
+    yesNoButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
     },
 });
 console.log("styles", styles);

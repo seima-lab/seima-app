@@ -47,6 +47,7 @@ export interface AIChatResponse {
   message: string;
   suggested_wallets?: SuggestedWallet[];
   suggested_budgets?: SuggestedBudget[];
+  yes_or_no?: boolean;
   status_code: number;
   data?: any;
 }
@@ -57,6 +58,7 @@ interface ApiAIResponse {
   message: string;
   suggested_wallets?: SuggestedWallet[];
   suggested_budgets?: SuggestedBudget[];
+  yes_or_no?: boolean;
   data: {
     response: string;
     timestamp: string;
@@ -175,6 +177,12 @@ export class AIService {
           // Giới hạn tối đa 5 phần tử
           result.suggested_budgets = suggestedBudgets.slice(0, 5);
           console.log('💰 Found suggested budgets:', result.suggested_budgets);
+        }
+
+        // Kiểm tra và xử lý yes_or_no field
+        if (actualResponseData.yes_or_no !== undefined) {
+          result.yes_or_no = actualResponseData.yes_or_no;
+          console.log('❓ Found yes_or_no field:', result.yes_or_no);
         }
 
         console.log('🤖 === AI SERVICE DEBUG END ===');
