@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -160,6 +160,10 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
     if (type === t('wallet.walletTypes.cash')) {
       setBankName('');
       setSelectedBank(null);
+      // In edit mode, ensure bank_id will be set to undefined when switching to cash type
+      if (editMode) {
+        console.log('🔄 Switching to cash type in edit mode - bank_id will be set to undefined');
+      }
     }
     // Banks are already loaded when component mounts, no need to load again
   };
@@ -225,7 +229,7 @@ const AddWalletScreen: React.FC<Props> = ({ route }) => {
          wallet_type_id: getWalletTypeId(walletType),
          is_default: isDefault,
          exclude_from_total: excludeFromTotal,
-         bank_id: selectedBank?.id,
+         bank_id: walletType === t('wallet.walletTypes.cash') ? undefined : selectedBank?.id,
          icon_url: undefined, // Set to undefined instead of null
          currency_code: "VND",
          initial_balance: getNumericBalance(balance)
