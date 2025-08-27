@@ -1,4 +1,4 @@
-import { NavigationProp, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { NavigationProp, RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -319,6 +319,14 @@ const GroupMembersScreen: React.FC<Props> = ({ groupId, groupName }) => {
   useEffect(() => {
     loadGroupMembers();
   }, [groupId]);
+
+  // Reload data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔄 GroupMembersScreen focused, reloading data...');
+      loadGroupMembers();
+    }, [groupId])
+  );
 
   const loadGroupMembers = async () => {
     try {

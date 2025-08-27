@@ -575,18 +575,14 @@ const InviteUsersScreen = () => {
       timeoutRef.current = setTimeout(() => {
         if (!isMountedRef.current) return;
         
-        // Navigate back to GroupOverviewScreen by going back twice
-        // since the navigation stack is: GroupOverview -> GroupMembers -> InviteUsers
-        console.log('🔄 Navigating back to GroupOverviewScreen after accept/reject');
-        navigation.goBack(); // Go back to GroupMembers
+        console.log('🔄 Navigating back to GroupMembersScreen after accept/reject');
         
-        timeoutRef.current = setTimeout(() => {
-          if (!isMountedRef.current) return;
-          navigation.goBack(); // Go back to GroupOverview
-        }, 50);
-      }, 100);
-      
-      setShouldNavigateBack(false); // Reset the flag
+        // Simply go back to GroupMembersScreen
+        // The GroupMembersScreen will handle reloading data when it receives focus
+        navigation.goBack();
+        
+        setShouldNavigateBack(false); // Reset the flag
+      }, 200); // Delay to ensure modal closes properly
     }
   }, [shouldNavigateBack, navigation, cleanup]);
 
@@ -847,11 +843,13 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   instructionsText: {
+    ...typography.regular,
     fontSize: 14,
     color: '#1976D2',
     lineHeight: 20,
   },
   errorText: {
+    ...typography.regular,
     fontSize: 16,
     color: '#F44336',
     textAlign: 'center',
@@ -882,12 +880,13 @@ const styles = StyleSheet.create({
   },
   loadingTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    ...typography.semibold,
     color: '#333333',
     marginBottom: 8,
     textAlign: 'center',
   },
   loadingSubtitle: {
+    ...typography.regular,
     fontSize: 14,
     color: '#666666',
     textAlign: 'center',
