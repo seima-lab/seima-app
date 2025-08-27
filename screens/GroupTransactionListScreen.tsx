@@ -449,7 +449,9 @@ const GroupTransactionListScreen: React.FC = () => {
         date: transaction.transaction_date,
         category: getCategoryName(transaction.category_id),
         categoryId: transaction.category_id, // Add categoryId for better matching
-        type: transaction.transaction_type.toLowerCase()
+        type: transaction.transaction_type.toLowerCase(),
+        // Pass through receipt image url so AddExpenseScreen can prefill image
+        receipt_image_url: transaction.receipt_image_url
       },
       fromGroupOverview: true, // Enable group context
       groupId: groupId,
