@@ -742,7 +742,7 @@ const FinanceScreen = React.memo(() => {
                   {t('finance.health.infoModal.budgetCompliance.title')}
                 </Text>
                 <View style={styles.healthMetricScore}>
-                  <Text style={[styles.healthMetricScoreText, { color: '#FF9800' }]}>40đ</Text>
+                  <Text style={[styles.healthMetricScoreText, { color: '#FF9800' }]}>30đ</Text>
                 </View>
               </View>
               <View style={styles.healthMetricFormula}>
